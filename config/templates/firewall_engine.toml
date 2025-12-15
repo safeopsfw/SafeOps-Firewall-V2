@@ -1,0 +1,153 @@
+# SafeOps Firewall Engine Configuration
+# Purpose: Rule evaluation, connection tracking, NAT, and packet filtering
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "firewall_engine"
+listen_address = "0.0.0.0"
+grpc_port = 50052
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\firewall_engine.log"
+
+# =============================================================================
+# RULE ENGINE
+# =============================================================================
+[rules]
+# Rule storage
+rules_file = "C:\\ProgramData\\SafeOps\\config\\firewall_rules.yaml"
+
+# Rule loading
+load_on_startup = true
+reload_on_change = true
+watch_file_changes = true
+
+# Rule limits
+max_rules = 100000
+
+# Default policy
+default_action = "deny"  # allow, deny, reject
+default_log = true
+
+# =============================================================================
+# CONNECTION TRACKING
+# =============================================================================
+[connection_tracking]
+enabled = true
+
+# Connection table sizing
+max_connections = 10000000  # 10 million
+hash_table_size = 2097152   # 2^21 buckets
+
+# TCP state tracking
+track_tcp_states = true
+tcp_timeout_established = 7200  # 2 hours
+tcp_timeout_syn_sent = 120
+tcp_timeout_syn_recv = 60
+tcp_timeout_fin_wait = 120
+tcp_timeout_close_wait = 60
+tcp_timeout_time_wait = 120
+
+# UDP tracking
+udp_timeout = 180  # 3 minutes
+udp_stream_timeout = 180
+
+# ICMP tracking
+icmp_timeout = 30
+
+# =============================================================================
+# NAT CONFIGURATION
+# =============================================================================
+[nat]
+enabled = true
+
+# NAT types
+source_nat = true
+destination_nat = true
+port_forwarding = true
+
+# NAT pool
+external_ip = "auto"  # auto-detect from WAN NIC
+port_range_start = 1024
+port_range_end = 65535
+
+# NAT session table
+max_nat_sessions = 5000000
+session_timeout = 300
+
+# =============================================================================
+# 3-NIC ROUTING
+# =============================================================================
+[routing]
+# Network zones
+[routing.zones]
+wan = "NIC1"
+lan = "NIC2"
+wifi = "NIC3"
+
+# Routing policies
+[routing.policies]
+lan_to_wan = "allow"
+lan_to_wifi = "allow"
+wifi_to_wan = "allow"
+wifi_to_lan = "deny"  # Guest isolation
+wifi_to_wifi = "deny" # Client isolation
+wan_to_lan = "deny"   # Unless port forwarded
+wan_to_wifi = "deny"
+
+# =============================================================================
+# DDOS MITIGATION
+# =============================================================================
+[ddos_protection]
+enabled = true
+
+# SYN flood protection
+syn_cookies_enabled = true
+syn_threshold_per_second = 1000
+
+# Rate limiting
+global_packet_rate_limit = 1000000  # 1M pps
+per_ip_rate_limit = 10000           # 10K pps per IP
+
+# Connection limits
+max_connections_per_ip = 1000
+max_half_open_connections = 10000
+
+# =============================================================================
+# PERFORMANCE SETTINGS
+# =============================================================================
+[performance]
+# Threading
+worker_threads = 16
+packet_queue_size = 100000
+
+# CPU affinity
+pin_workers = true
+worker_cpu_cores = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+# Packet processing
+batch_processing = true
+batch_size = 128
+
+# Rule caching
+rule_cache_size = 128  # MB
+cache_policy = "lru"
+
+# =============================================================================
+# LOGGING & ALERTS
+# =============================================================================
+[logging]
+# What to log
+log_allowed = false
+log_denied = true
+log_rejected = true
+
+# Log format
+log_format = "json"
+
+# Log destinations
+log_to_file = true
+log_to_syslog = false
+log_to_siem = true
+siem_endpoint = "tcp://siem.local:514"

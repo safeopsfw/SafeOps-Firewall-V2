@@ -1,0 +1,319 @@
+# SafeOps Backup & Restore Manager Configuration
+# Purpose: Automated system backups, configuration snapshots, and disaster recovery
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "backup_restore"
+listen_address = "0.0.0.0"
+grpc_port = 50060
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\backup_restore.log"
+enabled = true
+
+# =============================================================================
+# BACKUP STORAGE CONFIGURATION
+# =============================================================================
+[storage]
+# Primary backup location (local disk)
+primary_location = "C:\\SafeOps_Backups"
+primary_max_size_gb = 500
+
+# Secondary/remote backup location (network share, NAS)
+secondary_enabled = true
+secondary_location = "\\\\NAS\\SafeOps_Backups"
+secondary_credentials_file = "C:\\ProgramData\\SafeOps\\secrets\\nas_credentials.enc"
+
+# Cloud backup settings
+cloud_enabled = false
+cloud_provider = "azure"  # azure, aws, gcp
+cloud_region = "us-west-2"
+cloud_bucket = "safeops-backups"
+cloud_credentials_file = "C:\\ProgramData\\SafeOps\\secrets\\cloud_credentials.enc"
+
+# Compression settings
+compression_enabled = true
+compression_algorithm = "zstd"  # zstd, gzip, lz4
+compression_level = 3  # 1-22 for zstd
+
+# Encryption settings
+encryption_enabled = true
+encryption_algorithm = "aes-256-gcm"
+encryption_key_file = "C:\\Program Files\\SafeOps\\secrets\\backup_encryption.key"
+
+# =============================================================================
+# BACKUP SCHEDULE
+# =============================================================================
+[schedule]
+# Full backup schedule (weekly)
+full_backup_enabled = true
+full_backup_schedule = "0 2 * * 0"  # Every Sunday at 2 AM
+
+# Incremental backup schedule (daily)
+incremental_backup_enabled = true
+incremental_backup_schedule = "0 2 * * 1-6"  # Mon-Sat at 2 AM
+
+# Configuration snapshot schedule (every 6 hours)
+config_snapshot_enabled = true
+config_snapshot_schedule = "0 */6 * * *"
+
+# Database backup schedule (daily)
+database_backup_enabled = true
+database_backup_schedule = "0 3 * * *"  # Daily at 3 AM
+
+# Retention periods
+full_backup_retention_days = 90
+incremental_backup_retention_days = 30
+config_snapshot_retention_days = 14
+database_backup_retention_days = 30
+
+# =============================================================================
+# BACKUP SCOPE
+# =============================================================================
+[scope]
+# Configuration files
+backup_config_files = true
+config_paths = [
+    "C:\\Program Files\\SafeOps\\config",
+    "C:\\ProgramData\\SafeOps\\config",
+]
+
+# Certificates
+backup_certificates = true
+certificate_paths = [
+    "C:\\Program Files\\SafeOps\\certs",
+]
+
+# Firewall policies
+backup_firewall_policies = true
+policy_paths = [
+    "C:\\ProgramData\\SafeOps\\policies",
+]
+
+# Databases
+backup_databases = true
+databases = [
+    "safeops",
+    "safeops_threatintel",
+    "safeops_dns",
+]
+
+# User data
+backup_user_data = false
+user_data_paths = []
+
+# Exclusions
+exclude_paths = [
+    "C:\\ProgramData\\SafeOps\\logs",
+    "C:\\ProgramData\\SafeOps\\temp",
+    "C:\\ProgramData\\SafeOps\\cache",
+]
+
+exclude_patterns = [
+    "*.tmp",
+    "*.log",
+    "*.cache",
+]
+
+# =============================================================================
+# RESTORE CONFIGURATION
+# =============================================================================
+[restore]
+# Pre-restore validation
+validate_before_restore = true
+validate_checksums = true
+validate_encryption = true
+
+# Create restore point before restore
+create_restore_point = true
+
+# Restore modes
+allow_selective_restore = true
+allow_full_system_restore = true
+default_restore_mode = "selective"
+
+# Alternative restore paths
+allow_alternative_paths = true
+
+# Post-restore actions
+restart_services_after_restore = true
+verify_after_restore = true
+verify_timeout_minutes = 30
+
+# Integrity checks
+check_file_integrity = true
+check_database_integrity = true
+
+# =============================================================================
+# RETENTION POLICIES
+# =============================================================================
+[retention]
+# Retention strategy
+strategy = "gfs"  # gfs, simple, tower_of_hanoi
+
+# GFS (Grandfather-Father-Son) retention
+daily_retention_count = 7     # Keep 7 daily backups
+weekly_retention_count = 4    # Keep 4 weekly backups
+monthly_retention_count = 12  # Keep 12 monthly backups
+yearly_retention_count = 3    # Keep 3 yearly backups
+
+# Automatic cleanup
+auto_cleanup_enabled = true
+cleanup_schedule = "0 4 * * *"  # Daily at 4 AM
+
+# Low disk space handling
+low_space_threshold_percent = 10
+low_space_action = "alert"  # alert, stop_backups, delete_oldest
+
+# =============================================================================
+# BACKUP VERIFICATION
+# =============================================================================
+[verification]
+# Verify after backup
+verify_after_backup = true
+verification_method = "checksum"  # checksum, full_restore_test
+
+# Checksum algorithm
+checksum_algorithm = "sha256"
+
+# Test restore schedule
+test_restore_enabled = true
+test_restore_schedule = "0 5 * * 0"  # Weekly on Sunday at 5 AM
+test_restore_sample_size_percent = 10
+
+# Corruption detection
+detect_corruption = true
+quarantine_corrupted_backups = true
+
+# =============================================================================
+# DISASTER RECOVERY
+# =============================================================================
+[disaster_recovery]
+# DR plan
+dr_plan_enabled = true
+dr_plan_file = "C:\\Program Files\\SafeOps\\docs\\disaster_recovery_plan.pdf"
+
+# Recovery objectives
+rto_target_hours = 4   # Recovery Time Objective
+rpo_target_hours = 24  # Recovery Point Objective
+
+# Bare metal recovery
+bare_metal_recovery_enabled = true
+bmr_boot_media_path = "C:\\SafeOps_Backups\\BMR"
+bmr_update_schedule = "0 6 1 * *"  # Monthly on 1st at 6 AM
+
+# Emergency procedures
+emergency_restore_enabled = true
+emergency_restore_requires_approval = true
+emergency_contact_list_file = "C:\\ProgramData\\SafeOps\\config\\emergency_contacts.txt"
+
+# =============================================================================
+# NOTIFICATIONS
+# =============================================================================
+[notifications]
+# Email notifications
+email_enabled = false
+email_on_success = false
+email_on_failure = true
+email_recipients = [
+    "admin@example.com",
+]
+smtp_server = "smtp.example.com"
+smtp_port = 587
+
+# UI notifications
+ui_notifications_enabled = true
+ui_notify_success = false
+ui_notify_failure = true
+ui_notify_warnings = true
+
+# Webhook integration
+webhook_enabled = false
+webhook_url = ""
+webhook_on_events = ["backup_failed", "restore_completed", "low_space"]
+
+# Low space warnings
+low_space_warnings_enabled = true
+warning_threshold_percent = 20
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+[performance]
+# File operations
+max_concurrent_file_operations = 10
+backup_threads = 4
+
+# I/O throttling
+io_throttling_enabled = false
+max_read_mbps = 100
+max_write_mbps = 100
+
+# Network transfer
+network_throttling_enabled = false
+max_upload_mbps = 50
+max_download_mbps = 50
+
+# Resource limits
+max_cpu_percent = 50
+max_memory_mb = 4096
+
+# Process priority (Windows)
+process_priority = "below_normal"  # idle, below_normal, normal, above_normal, high
+
+# =============================================================================
+# AUDIT AND COMPLIANCE
+# =============================================================================
+[audit]
+# Audit logging
+audit_logging_enabled = true
+audit_log_file = "C:\\ProgramData\\SafeOps\\logs\\backup_audit.log"
+audit_log_all_operations = true
+
+# Compliance
+compliance_mode_enabled = false
+compliance_standard = "hipaa"  # hipaa, pci-dss, gdpr, sox
+
+# Immutable backups (WORM)
+immutable_backups_enabled = false
+immutable_retention_days = 365
+
+# Access control
+require_approval_for_restore = false
+approval_workflow_file = "C:\\ProgramData\\SafeOps\\config\\approval_workflow.yaml"
+
+# Restore operation logging
+log_restore_operations = true
+log_restore_details = true
+
+# =============================================================================
+# ADVANCED FEATURES
+# =============================================================================
+[advanced]
+# Deduplication
+deduplication_enabled = true
+deduplication_mode = "file-level"  # file-level, block-level
+deduplication_chunk_size_kb = 64
+
+# Delta backups
+delta_backups_enabled = true
+delta_algorithm = "rsync"
+
+# Backup catalog
+catalog_database_enabled = true
+catalog_database_path = "C:\\ProgramData\\SafeOps\\backup_catalog.db"
+catalog_maintenance_schedule = "0 5 * * 0"  # Weekly on Sunday
+
+# Windows VSS (Volume Shadow Copy)
+vss_enabled = true
+vss_timeout_seconds = 300
+
+# Snapshot technology
+snapshot_enabled = false
+snapshot_provider = ""  # vss, lvm, zfs
+
+# Parallel operations
+parallel_compression = true
+parallel_encryption = true
+parallel_upload = true

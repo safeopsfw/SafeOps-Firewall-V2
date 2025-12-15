@@ -1,0 +1,169 @@
+# ============================================================================
+# SafeOps Default Configuration - Home Network Profile
+# ============================================================================
+# Optimized for: Home users, 1-10 devices, simple network setup
+# Features: Basic protection, user-friendly, minimal maintenance
+# Resources: 2 cores, 2GB RAM minimum
+# ============================================================================
+
+[profile]
+name = "home_network"
+description = "Home network with basic protection"
+complexity = "simple"
+version = "2.0.0"
+
+# =============================================================================
+# SYSTEM
+# =============================================================================
+[system]
+hostname = "safeops-home"
+timezone = "UTC"
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+
+# =============================================================================
+# NETWORK
+# =============================================================================
+[network]
+topology = "2-nic"  # WAN + LAN (no separate WiFi NIC)
+
+[network.interfaces]
+wan = "NIC1"
+lan = "NIC2"
+
+[network.addressing]
+wan_mode = "dhcp"
+lan_ip = "192.168.1.1"
+lan_netmask = "255.255.255.0"
+lan_network = "192.168.1.0/24"
+
+# =============================================================================
+# SERVICES - MINIMAL SET
+# =============================================================================
+[services]
+kernel_driver = true
+network_logger = true
+firewall_engine = true
+ids_ips = true
+dns_server = true
+dhcp_server = true
+wifi_ap = false  # Often using ISP router
+tls_proxy = false  # Disabled for privacy
+certificate_manager = true
+threat_intel = true
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# =============================================================================
+# FIREWALL - SAFE MODE
+# =============================================================================
+[firewall]
+enabled = true
+default_action = "deny"
+log_denied = true
+log_allowed = false
+max_connections = 100000
+
+# Home-friendly features
+allow_upnp = true  # For gaming consoles
+allow_port_forwarding = false
+
+# =============================================================================
+# IDS/IPS - DETECTION ONLY
+# =============================================================================
+[ids_ips]
+enabled = true
+mode = "ids"  # Alert only, don't block (avoid false positives)
+signature_updates_enabled = true
+update_interval_hours = 6
+
+# Low sensitivity to reduce noise
+sensitivity = "low"
+
+# =============================================================================
+# DNS - WITH AD BLOCKING
+# =============================================================================
+[dns]
+enabled = true
+cache_enabled = true
+cache_size_mb = 128
+
+# Filtering
+block_malware_domains = true
+block_phishing_domains = true
+block_advertising = true
+block_tracking = true
+block_adult = false  # Parental control optional
+
+# Upstream
+upstream_servers = ["1.1.1.1", "1.0.0.1"]
+
+# =============================================================================
+# DHCP
+# =============================================================================
+[dhcp]
+enabled = true
+lan_enabled = true
+
+[dhcp.lan_pool]
+range_start = "192.168.1.100"
+range_end = "192.168.1.200"
+default_lease_hours = 24
+dns_servers = ["192.168.1.1"]
+
+# =============================================================================
+# THREAT INTELLIGENCE
+# =============================================================================
+[threat_intel]
+enabled = true
+auto_update_feeds = true
+update_interval_hours = 12
+feeds = ["free"]  # Use free feeds only
+
+# =============================================================================
+# BACKUP
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 3 * * 0"  # Weekly on Sunday at 3 AM
+retention_days = 30
+compression = true
+
+# =============================================================================
+# UPDATES
+# =============================================================================
+[updates]
+auto_check = true
+auto_install_security = true
+auto_install_signatures = true
+auto_install_software = false  # Manual approval
+channel = "stable"
+
+# =============================================================================
+# WEB UI
+# =============================================================================
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 120
+
+# =============================================================================
+# LOGGING - MINIMAL
+# =============================================================================
+[logging]
+log_level = "info"
+log_format = "json"
+log_rotation = true
+log_max_size_mb = 50
+log_retention_days = 30
+
+# =============================================================================
+# RESOURCE LIMITS - MINIMAL
+# =============================================================================
+[resource_limits]
+max_cpu_percent = 50
+max_memory_mb = 2048

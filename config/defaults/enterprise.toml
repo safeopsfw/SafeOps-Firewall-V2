@@ -1,0 +1,294 @@
+# ============================================================================
+# SafeOps Default Configuration - Enterprise Profile
+# ============================================================================
+# Optimized for: Large organizations, 100+ devices, data centers
+# Features: Maximum security, compliance, high availability
+# Resources: 16+ cores, 16GB+ RAM minimum
+# ============================================================================
+
+[profile]
+name = "enterprise"
+description = "Enterprise deployment with maximum security"
+complexity = "advanced"
+version = "2.0.0"
+
+# =============================================================================
+# SYSTEM
+# =============================================================================
+[system]
+hostname = "safeops-enterprise"
+timezone = "UTC"
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+
+# =============================================================================
+# HIGH AVAILABILITY
+# =============================================================================
+[ha]
+enabled = true
+mode = "active_active"
+cluster_size = 2
+heartbeat_interval_seconds = 1
+failover_timeout_seconds = 5
+vrrp_enabled = true
+
+# =============================================================================
+# NETWORK - MULTI-NIC
+# =============================================================================
+[network]
+topology = "3-nic"
+bonding_enabled = true
+lacp_enabled = true
+jumbo_frames = true
+
+[network.interfaces]
+wan = "NIC1"
+lan = "NIC2"
+wifi = "NIC3"
+
+[network.addressing]
+wan_mode = "static"
+wan_ip = ""  # Configure per deployment
+wan_netmask = ""
+wan_gateway = ""
+lan_ip = "10.100.1.1"
+lan_netmask = "255.255.0.0"
+lan_network = "10.100.0.0/16"
+wifi_ip = "10.200.1.1"
+wifi_netmask = "255.255.0.0"
+wifi_network = "10.200.0.0/16"
+
+# =============================================================================
+# VLANS
+# =============================================================================
+[vlans]
+enabled = true
+qinq_enabled = true
+
+[vlans.production]
+vlan_id = 100
+network = "10.100.0.0/16"
+description = "Production environment"
+priority = "high"
+
+[vlans.development]
+vlan_id = 200
+network = "10.200.0.0/16"
+description = "Development environment"
+priority = "medium"
+
+[vlans.dmz]
+vlan_id = 300
+network = "10.30.0.0/24"
+description = "Demilitarized zone"
+priority = "high"
+strict_filtering = true
+
+# =============================================================================
+# SERVICES - ALL ENABLED
+# =============================================================================
+[services]
+kernel_driver = true
+network_logger = true
+firewall_engine = true
+ids_ips = true
+dns_server = true
+dhcp_server = true
+wifi_ap = true
+tls_proxy = true
+certificate_manager = true
+threat_intel = true
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# =============================================================================
+# FIREWALL - ZERO TRUST
+# =============================================================================
+[firewall]
+enabled = true
+default_action = "deny"
+log_denied = true
+log_allowed = true  # Full visibility
+max_connections = 10000000
+
+# Advanced features
+stateful_inspection = true
+connection_tracking = true
+geo_blocking = true
+advanced_threat_protection = true
+application_control = true
+deep_packet_inspection = true
+
+# DDoS protection
+ddos_protection = true
+syn_flood_protection = true
+rate_limiting = true
+
+# =============================================================================
+# IDS/IPS - MAXIMUM DETECTION
+# =============================================================================
+[ids_ips]
+enabled = true
+mode = "ips"
+signature_updates_enabled = true
+update_interval_hours = 1
+
+# All detection methods
+signature_based = true
+anomaly_based = true
+behavior_based = true
+machine_learning = true
+
+# High sensitivity
+sensitivity = "high"
+
+# All rulesets
+all_rulesets = true
+threat_hunting = true
+
+# =============================================================================
+# TLS PROXY - FULL INSPECTION
+# =============================================================================
+[tls_proxy]
+enabled = true
+bypass_financial_sites = true
+bypass_healthcare_sites = true
+bypass_government_sites = true
+log_intercepted_domains = true
+dlp_enabled = true
+
+# =============================================================================
+# DNS - ENTERPRISE FEATURES
+# =============================================================================
+[dns]
+enabled = true
+cache_enabled = true
+cache_size_mb = 512
+
+# Filtering
+block_malware_domains = true
+block_phishing_domains = true
+block_advertising = false  # Usually handled by enterprise proxy
+block_tracking = true
+
+# Security
+dnssec_enabled = true
+dot_enabled = true
+doh_enabled = true
+
+# RPZ feeds
+rpz_feeds = true
+threat_intel_integration = true
+
+# =============================================================================
+# THREAT INTELLIGENCE - PREMIUM
+# =============================================================================
+[threat_intel]
+enabled = true
+auto_update_feeds = true
+update_interval_hours = 1
+feeds = ["free", "standard", "premium", "industry-specific"]
+ioc_sharing = true
+stix_taxii = true
+
+# =============================================================================
+# DLP (DATA LOSS PREVENTION)
+# =============================================================================
+[dlp]
+enabled = true
+content_inspection = true
+pii_detection = true
+compliance_rules = ["PCI-DSS", "HIPAA", "GDPR"]
+
+# =============================================================================
+# SIEM INTEGRATION
+# =============================================================================
+[siem]
+enabled = true
+protocol = "syslog-tls"
+format = "cef"
+server = "siem.corp.local"
+port = 6514
+
+# =============================================================================
+# BACKUP - HOURLY
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 * * * *"  # Hourly
+retention_days = 90
+compression = true
+encryption = true
+offsite_backup = true
+
+# =============================================================================
+# UPDATES - STAGED
+# =============================================================================
+[updates]
+auto_check = true
+auto_install_security = true
+auto_install_signatures = true
+auto_install_software = false
+channel = "stable"
+staged_rollout = true
+canary_deployment = true
+
+# =============================================================================
+# WEB UI - HIGH SECURITY
+# =============================================================================
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 30
+mfa_enabled = true
+mfa_required_for_admins = true
+certificate_pinning = true
+ip_whitelist = true
+
+# =============================================================================
+# LOGGING - FULL RETENTION
+# =============================================================================
+[logging]
+log_level = "debug"
+log_format = "json"
+log_rotation = true
+log_max_size_mb = 500
+log_retention_days = 365
+full_packet_capture = true
+pcap_retention_days = 7
+syslog_enabled = true
+encryption = true
+
+# =============================================================================
+# COMPLIANCE
+# =============================================================================
+[compliance]
+enabled = true
+frameworks = ["PCI-DSS", "HIPAA", "SOC2", "ISO27001", "GDPR"]
+audit_logging = true
+reporting = true
+data_retention_days = 365
+audit_log_retention_years = 7
+
+# =============================================================================
+# RESOURCE LIMITS
+# =============================================================================
+[resource_limits]
+max_cpu_percent = 80
+max_memory_mb = 16384
+
+# =============================================================================
+# MONITORING
+# =============================================================================
+[monitoring]
+metrics_enabled = true
+prometheus_endpoint = true
+grafana_dashboard = true
+alerting = true
+hardware_acceleration = true
+multi_threading = true
+dedicated_cpus = [4, 5, 6, 7, 8, 9, 10, 11]

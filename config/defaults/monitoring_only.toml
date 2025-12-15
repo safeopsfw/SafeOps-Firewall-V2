@@ -1,0 +1,200 @@
+# ============================================================================
+# SafeOps Default Configuration - Monitoring Only Profile
+# ============================================================================
+# Optimized for: Security monitoring, traffic analysis, no blocking
+# Features: Full visibility, passive mode, learning, forensics
+# Resources: 4 cores, 4GB RAM minimum
+# Use Case: Initial deployment, network discovery, incident response
+# ============================================================================
+
+[profile]
+name = "monitoring_only"
+description = "Passive monitoring without blocking"
+complexity = "moderate"
+version = "2.0.0"
+
+# =============================================================================
+# SYSTEM
+# =============================================================================
+[system]
+hostname = "safeops-monitor"
+timezone = "UTC"
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+
+# =============================================================================
+# OPERATIONAL MODE
+# =============================================================================
+[mode]
+passive = true
+learning = true
+blocking_disabled = true
+baseline_learning_days = 14
+
+# =============================================================================
+# NETWORK - SPAN/TAP MODE
+# =============================================================================
+[network]
+topology = "monitor"
+
+[network.interfaces]
+wan = "NIC1"
+lan = "NIC2"
+
+[network.monitoring]
+span_port = true
+tap_mode = false
+promiscuous_mode = true
+
+# =============================================================================
+# SERVICES - MONITORING FOCUS
+# =============================================================================
+[services]
+kernel_driver = true
+network_logger = true
+firewall_engine = false  # Disabled - monitoring only
+ids_ips = true
+dns_server = false  # Not needed for passive monitoring
+dhcp_server = false
+wifi_ap = false
+tls_proxy = false  # No interception
+certificate_manager = false
+threat_intel = true
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# =============================================================================
+# FIREWALL - DISABLED
+# =============================================================================
+[firewall]
+enabled = false
+log_all_traffic = true  # Log but don't block
+
+# =============================================================================
+# IDS/IPS - DETECTION ONLY
+# =============================================================================
+[ids_ips]
+enabled = true
+mode = "ids"  # Detection only, no blocking
+signature_updates_enabled = true
+update_interval_hours = 1
+
+# All detection methods
+signature_based = true
+anomaly_based = true
+behavior_based = true
+
+# Maximum sensitivity
+sensitivity = "high"
+all_signatures = true
+all_categories = true
+
+# Baseline learning
+baseline_learning = true
+learning_period_days = 14
+
+# =============================================================================
+# TRAFFIC ANALYSIS
+# =============================================================================
+[traffic_analysis]
+enabled = true
+flow_analysis = true
+protocol_decode = true
+session_tracking = true
+behavioral_profiling = true
+application_identification = true
+bandwidth_monitoring = true
+
+# =============================================================================
+# THREAT INTELLIGENCE
+# =============================================================================
+[threat_intel]
+enabled = true
+auto_update_feeds = true
+update_interval_hours = 4
+feeds = ["free", "standard"]
+matching_only = true  # Match and alert, don't block
+
+# =============================================================================
+# LOGGING - FULL CAPTURE
+# =============================================================================
+[logging]
+log_level = "debug"
+log_format = "json"
+log_rotation = true
+log_max_size_mb = 500
+log_retention_days = 30
+
+# Full packet capture
+full_packet_capture = true
+pcap_enabled = true
+pcap_path = "C:\\ProgramData\\SafeOps\\pcaps"
+pcap_max_size_gb = 100
+pcap_retention_days = 7
+
+# =============================================================================
+# ALERTS
+# =============================================================================
+[alerts]
+enabled = true
+severity_threshold = "low"  # Alert on everything
+all_categories = true
+
+# Notifications
+email_notifications = true
+ui_notifications = true
+
+# =============================================================================
+# STATISTICS AND ANALYTICS
+# =============================================================================
+[statistics]
+enabled = true
+real_time_stats = true
+historical_data = true
+export_interval_seconds = 60
+
+# Metrics
+track_bandwidth = true
+track_protocols = true
+track_applications = true
+track_top_talkers = true
+track_threats = true
+
+# =============================================================================
+# WEB UI
+# =============================================================================
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 120
+dashboard_focus = "analytics"
+
+# =============================================================================
+# BACKUP
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 3 * * *"  # Daily at 3 AM
+retention_days = 30
+compression = true
+
+# =============================================================================
+# UPDATES
+# =============================================================================
+[updates]
+auto_check = true
+auto_install_security = true
+auto_install_signatures = true
+auto_install_software = false
+channel = "stable"
+
+# =============================================================================
+# RESOURCE LIMITS
+# =============================================================================
+[resource_limits]
+max_cpu_percent = 60
+max_memory_mb = 4096

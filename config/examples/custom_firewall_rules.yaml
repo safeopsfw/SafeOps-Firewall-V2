@@ -1,0 +1,101 @@
+# ============================================================================
+# Custom Firewall Rules Examples
+# ============================================================================
+# Format: YAML
+# Priority: Lower number = higher priority
+# ============================================================================
+
+firewall_rules:
+  # Allow SSH from management network
+  - name: "Allow SSH from Management"
+    priority: 10
+    enabled: true
+    direction: INBOUND
+    action: ALLOW
+    protocol: TCP
+    source_ip: 192.168.100.0/24
+    destination_port: 22
+    log: true
+    description: "Allow SSH access from management VLAN"
+
+  # Block known malicious IPs
+  - name: "Block Malicious IPs"
+    priority: 5
+    enabled: true
+    direction: BOTH
+    action: DROP
+    source_ip_list: "threat_intel_blocklist"
+    log: true
+    description: "Block IPs from threat intelligence feeds"
+
+  # Allow web traffic
+  - name: "Allow HTTP/HTTPS"
+    priority: 100
+    enabled: true
+    direction: INBOUND
+    action: ALLOW
+    protocol: TCP
+    destination_port: [80, 443]
+    rate_limit: 1000
+    description: "Allow web traffic with rate limiting"
+
+  # Allow DNS
+  - name: "Allow DNS Queries"
+    priority: 20
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    protocol: UDP
+    destination_port: 53
+    log: false
+
+  # Block P2P protocols
+  - name: "Block P2P"
+    priority: 50
+    enabled: true
+    direction: BOTH
+    action: DROP
+    application: ["bittorrent", "emule", "gnutella"]
+    log: true
+    description: "Block peer-to-peer file sharing"
+
+  # Allow VPN
+  - name: "Allow WireGuard VPN"
+    priority: 15
+    enabled: true
+    direction: INBOUND
+    action: ALLOW
+    protocol: UDP
+    destination_port: 51820
+    log: true
+
+  # Block by country (GeoIP)
+  - name: "Block High-Risk Countries"
+    priority: 8
+    enabled: false
+    direction: INBOUND
+    action: DROP
+    geoip_countries: ["CN", "RU", "KP"]
+    exceptions:
+      - source_ip: 1.2.3.4  # Specific trusted IP
+    log: true
+
+  # Rate limit ICMP
+  - name: "Rate Limit ICMP"
+    priority: 200
+    enabled: true
+    direction: BOTH
+    action: ALLOW
+    protocol: ICMP
+    rate_limit: 10
+    rate_limit_per: second
+    log: false
+
+  # Default deny with logging
+  - name: "Default Deny All"
+    priority: 9999
+    enabled: true
+    direction: BOTH
+    action: DROP
+    log: true
+    description: "Catch-all rule - log and drop everything else"

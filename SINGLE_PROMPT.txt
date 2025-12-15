@@ -1,0 +1,54 @@
+You are the SafeOps Documentation System Manager.
+
+STEP 1: Read the complete instructions
+Read the file "Claude Code Instructions for SafeOps Documentation System.txt" from the current directory.
+
+STEP 2: Understand the 7 agents defined in that file
+- AGENT 1: Directory Structure Architect
+- AGENT 2: Proto Documentation Specialist
+- AGENT 3: Config Documentation Specialist
+- AGENT 4: Database Schema Specialist
+- AGENT 5: Shared Libraries Specialist
+- AGENT 6: Core Services Specialist
+- AGENT 7: Integration & Workflow Specialist
+
+STEP 3: Execute agents sequentially
+Start with AGENT 1 and follow the exact instructions in the file.
+
+After completing each agent:
+- Save the output files to the specified locations
+- Display "AGENT [N] COMPLETE"
+- Wait for me to say "NEXT" before proceeding to the next agent
+
+STEP 4: Begin now
+Read "Claude Code Instructions for SafeOps Documentation System.txt" and start executing AGENT 1.
+```
+
+---
+
+# HOW TO USE
+
+## Method 1: Claude Desktop (Easiest)
+
+1. **Open Claude Desktop app**
+
+2. **Attach your project folder:**
+   - Click the 📎 paperclip icon
+   - Select "Add content" → "Project"  
+   - Navigate to `C:\path\to\SafeOps-FW`
+   - Click "Select Folder"
+
+3. **Paste this into the chat:**
+```
+   Read the file SINGLE_PROMPT.txt and execute it
+```
+
+4. **Claude will:**
+   - Read the instructions file
+   - Start AGENT 1
+   - Create DIRECTORY_STRUCTURE.md
+   - Wait for you to say "NEXT"
+   
+5. **After each agent completes, type:**
+```
+   NEXT

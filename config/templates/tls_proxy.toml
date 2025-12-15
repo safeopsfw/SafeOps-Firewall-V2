@@ -1,0 +1,158 @@
+# SafeOps TLS Proxy Configuration
+# Purpose: Certificate generation, TLS interception, and HTTPS inspection
+# WARNING: TLS interception has legal and privacy implications
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "tls_proxy"
+listen_address = "0.0.0.0"
+grpc_port = 50053
+
+# TLS interception port
+https_port = 8888
+
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\tls_proxy.log"
+
+# =============================================================================
+# ROOT CA CONFIGURATION
+# =============================================================================
+[root_ca]
+# Root CA certificate (generated during install)
+ca_cert_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.crt"
+ca_key_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.key"
+
+# CA details
+ca_common_name = "SafeOps Root CA"
+ca_organization = "SafeOps Security Gateway"
+ca_country = "US"
+ca_validity_years = 20
+
+# =============================================================================
+# DYNAMIC CERTIFICATE GENERATION
+# =============================================================================
+[certificates]
+# Certificate generation
+algorithm = "ecdsa"  # rsa, ecdsa
+key_size = 256       # For ECDSA P-256
+
+# Certificate validity
+cert_validity_hours = 24
+
+# Certificate signing
+signature_algorithm = "SHA256"
+
+# =============================================================================
+# CERTIFICATE CACHE
+# =============================================================================
+[cache]
+# Redis cache
+redis_enabled = true
+redis_host = "localhost"
+redis_port = 6379
+redis_db = 2
+redis_ttl_seconds = 86400  # 24 hours
+
+# Memory cache
+memory_cache_enabled = true
+memory_cache_size = 100000  # 100K certificates
+memory_cache_ttl_seconds = 3600
+
+# Disk cache (optional)
+disk_cache_enabled = false
+disk_cache_path = "C:\\ProgramData\\SafeOps\\tls_proxy\\cert_cache"
+
+# =============================================================================
+# TLS SETTINGS
+# =============================================================================
+[tls]
+# Supported TLS versions
+min_tls_version = "1.2"
+max_tls_version = "1.3"
+
+# Cipher suites (prefer modern, secure ciphers)
+cipher_suites = [
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256",
+]
+
+# TLS optimizations
+session_tickets = true
+session_cache_size = 1000000
+
+# Hardware acceleration
+use_aes_ni = true
+
+# =============================================================================
+# INTERCEPTION POLICIES
+# =============================================================================
+[interception]
+# Global toggle
+enabled = true
+
+# Bypass list (don't intercept these domains)
+bypass_domains = [
+    "bank.com",
+    "paypal.com",
+    "*.gov",
+]
+
+# Bypass by category
+bypass_financial = true
+bypass_healthcare = true
+bypass_government = true
+
+# Certificate pinning detection
+detect_pinning = true
+bypass_pinned_certs = true
+
+# =============================================================================
+# CONNECTION POOLING
+# =============================================================================
+[connections]
+# Backend connection pool
+max_idle_connections = 1000
+max_connections_per_host = 100
+idle_timeout_seconds = 90
+
+# Connection reuse
+keep_alive = true
+keep_alive_timeout = 90
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+[performance]
+# Goroutine pool
+max_goroutines = 10000
+goroutine_stack_size_kb = 2
+
+# Buffer sizes
+read_buffer_size_kb = 4
+write_buffer_size_kb = 4
+
+# CPU affinity
+pin_to_cpu_cores = [6, 7, 8, 9]
+
+# =============================================================================
+# INSPECTION SETTINGS
+# =============================================================================
+[inspection]
+# Deep packet inspection
+inspect_http_headers = true
+inspect_http_body = true
+inspect_websockets = false
+
+# Content scanning
+scan_for_malware = true
+scan_file_types = [".exe", ".dll", ".zip", ".pdf"]
+max_scan_size_mb = 100
+
+# Data Loss Prevention (DLP)
+dlp_enabled = true
+scan_for_credit_cards = true
+scan_for_ssn = true
+scan_for_api_keys = true

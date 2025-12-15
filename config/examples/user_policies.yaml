@@ -1,0 +1,151 @@
+# ============================================================================
+# User Access Policies Configuration
+# ============================================================================
+
+policies:
+  # Internet Access Policy
+  - name: "Full Internet Access"
+    id: policy_internet_full
+    description: "Unrestricted internet access for trusted users"
+    priority: 100
+    enabled: true
+    rules:
+      - allow_all_protocols: true
+      - content_filter: false
+      - bandwidth_limit: null
+      - time_restrictions: null
+    assigned_to:
+      users: [admin, manager]
+      groups: [IT-Staff, Executives]
+
+  # Restricted Internet Policy
+  - name: "Restricted Internet"
+    id: policy_internet_restricted
+    description: "Limited internet for regular employees"
+    priority: 200
+    enabled: true
+    rules:
+      - allow_protocols: [HTTP, HTTPS, DNS, SMTP]
+      - block_protocols: [P2P, TORRENT]
+      - content_filter: true
+      - content_categories:
+          block: [adult, gambling, malware, phishing]
+          warn: [social-media, streaming]
+      - bandwidth_limit: 10mbps
+      - time_restrictions:
+          business_hours: "08:00-18:00"
+          allowed_days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+    assigned_to:
+      groups: [Employees]
+
+  # Guest Access Policy
+  - name: "Guest Access"
+    id: policy_guest
+    description: "Internet-only access for visitors"
+    priority: 300
+    enabled: true
+    rules:
+      - internet_only: true
+      - allow_protocols: [HTTP, HTTPS, DNS]
+      - block_lan_access: true
+      - bandwidth_limit: 5mbps
+      - session_timeout: 8h
+      - content_filter: true
+      - content_categories:
+          block: [adult, gambling, malware, phishing, weapons, drugs]
+    assigned_to:
+      group: [Guests]
+      networks: ["192.168.30.0/24"]
+
+  # VPN Remote Access
+  - name: "VPN Remote Workers"
+    id: policy_vpn_remote
+    description: "Policy for VPN connected remote workers"
+    priority: 150
+    enabled: true
+    rules:
+      - allow_protocols: [HTTP, HTTPS, DNS, SSH, RDP]
+      - mfa_required: true
+      - idle_timeout: 30m
+      - bandwidth_limit: 20mbps
+      - allowed_resources:
+          - 192.168.10.0/24  # Office VLAN
+          - 192.168.20.0/24  # Server VLAN
+      - content_filter: false
+    assigned_to:
+      groups: [Remote-Workers, VPN-Users]
+
+# Application Control Policies
+application_policies:
+  - name: "Block Unauthorized Apps"
+    enabled: true
+    mode: blacklist
+    applications:
+      block:
+        - TeamViewer
+        - AnyDesk
+        - uTorrent
+        - BitTorrent
+      allow:
+        - Zoom
+        - Microsoft Teams
+        - Slack
+        - Chrome
+        - Firefox
+
+  - name: "DLP - Prevent Data Exfiltration"
+    enabled: true
+    rules:
+      - block_file_upload: true
+      - allowed_destinations: [*.company.com, *.microsoft.com]
+      - scan_attachments: true
+      - block_pii: true
+      - alert_on_violation: true
+
+# Time-based Access
+time_policies:
+  - name: "Business Hours Only"
+    allowed_times:
+      - days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+        start: "08:00"
+        end: "18:00"
+    action_outside_hours: BLOCK
+
+  - name: "24/7 Access"
+    allowed_times:
+      - days: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+        start: "00:00"
+        end: "23:59"
+
+# Bandwidth Management
+bandwidth_policies:
+  - name: "Business Critical"
+    guaranteed_bandwidth: 50mbps
+    max_bandwidth: 100mbps
+    priority: HIGH
+    applications: [VoIP, Video-Conferencing]
+
+  - name: "Standard Traffic"
+    guaranteed_bandwidth: 10mbps
+    max_bandwidth: 50mbps
+    priority: MEDIUM
+
+  - name: "Best Effort"
+    guaranteed_bandwidth: 1mbps
+    max_bandwidth: 10mbps
+    priority: LOW
+    applications: [Streaming, Social-Media]
+
+# Device Compliance
+device_policies:
+  - name: "Corporate Devices Only"
+    require_device_registration: true
+    allowed_device_types: [Windows, macOS, Linux]
+    require_antivirus: true
+    require_encryption: true
+    patch_level: CURRENT
+
+  - name: "BYOD Policy"
+    require_device_registration: false
+    network_isolation: true
+    limited_access: true

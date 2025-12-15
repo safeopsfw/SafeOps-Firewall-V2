@@ -1,0 +1,61 @@
+[package]
+name = "safeops_shared"
+version = "2.0.0"
+edition = "2021"
+authors = ["SafeOps Security"]
+description = "Shared high-performance utilities for SafeOps firewall"
+license = "MIT"
+
+[lib]
+name = "safeops_shared"
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+# IP and network utilities
+ipnet = "2.9"
+cidr-utils = "0.6"
+
+# Hashing
+ahash = "0.8"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+
+# SIMD
+packed_simd_2 = "0.3"
+
+# Lock-free structures
+crossbeam = "0.8"
+parking_lot = "0.12"
+
+# Protobuf
+prost = "0.12"
+
+# Time
+chrono = "0.4"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Fast byte search
+memchr = "2.6"
+
+# Metrics
+prometheus = { version = "0.13", default-features = false }
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+
+[[bench]]
+name = "ip_parsing"
+harness = false
+
+[[bench]]
+name = "hash_performance"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

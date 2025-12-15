@@ -1,0 +1,212 @@
+# SafeOps Certificate Manager Configuration
+# Purpose: Root CA management, certificate generation, and distribution
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "certificate_manager"
+listen_address = "0.0.0.0"
+grpc_port = 50059
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\certificate_manager.log"
+
+# =============================================================================
+# ROOT CA CONFIGURATION
+# =============================================================================
+[root_ca]
+# Certificate paths
+cert_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.crt"
+key_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.key"
+
+# CA details
+common_name = "SafeOps Root CA"
+organization = "SafeOps Security Gateway"
+organizational_unit = "Certificate Authority"
+country = "US"
+state = "California"
+locality = "San Francisco"
+
+# Key configuration
+key_algorithm = "rsa"  # rsa, ecdsa
+key_size = 4096        # For RSA (2048, 4096)
+# key_curve = "P-384"  # For ECDSA (P-256, P-384, P-521)
+
+# Validity period
+validity_years = 20
+
+# Serial number
+serial_number = "random"  # random or specific number
+
+# Key usage
+key_usage = [
+    "certificate_signing",
+    "crl_signing",
+]
+
+# Basic constraints
+is_ca = true
+path_length = 1  # Max intermediate CAs
+
+# =============================================================================
+# INTERMEDIATE CA (OPTIONAL)
+# =============================================================================
+[intermediate_ca]
+enabled = false
+
+# If enabled, create intermediate CA for isolation
+cert_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-intermediate-ca.crt"
+key_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-intermediate-ca.key"
+
+common_name = "SafeOps Intermediate CA"
+validity_years = 10
+
+# =============================================================================
+# DYNAMIC CERTIFICATE GENERATION
+# =============================================================================
+[dynamic_certs]
+# Certificate generation for TLS proxy
+enabled = true
+
+# Key configuration
+key_algorithm = "ecdsa"  # Faster than RSA
+key_curve = "P-256"
+
+# Validity
+validity_hours = 24
+
+# Certificate fields
+organization = "SafeOps Intercepted"
+organizational_unit = "TLS Proxy"
+
+# Subject Alternative Names
+include_san = true
+include_wildcard = true  # *.example.com
+
+# Key usage
+key_usage = [
+    "digital_signature",
+    "key_encipherment",
+]
+
+extended_key_usage = [
+    "server_auth",
+    "client_auth",
+]
+
+# =============================================================================
+# CERTIFICATE STORAGE
+# =============================================================================
+[storage]
+# Database storage
+database_enabled = true
+postgres_host = "localhost"
+postgres_port = 5432
+postgres_database = "safeops"
+
+# File storage
+cert_directory = "C:\\ProgramData\\SafeOps\\certificates"
+
+# Storage format
+format = "pem"  # pem, der
+
+# Compression
+compress_old_certs = true
+compression_algorithm = "gzip"
+
+# =============================================================================
+# CERTIFICATE CACHE
+# =============================================================================
+[cache]
+# Redis cache for generated certificates
+redis_enabled = true
+redis_host = "localhost"
+redis_port = 6379
+redis_db = 4
+redis_ttl_seconds = 86400  # 24 hours
+
+# Memory cache
+memory_cache_enabled = true
+memory_cache_size = 100000  # 100K certificates
+
+# =============================================================================
+# CERTIFICATE DISTRIBUTION
+# =============================================================================
+[distribution]
+# Export directory for distribution packages
+export_directory = "C:\\ProgramData\\SafeOps\\certificates\\distribution"
+
+# Generate distribution packages
+generate_windows_installer = true
+generate_macos_profile = true
+generate_ios_profile = true
+generate_android_package = false
+generate_linux_script = true
+
+# GPO template
+generate_gpo_template = true
+gpo_template_path = "C:\\ProgramData\\SafeOps\\certificates\\gpo"
+
+# MDM profiles
+generate_mdm_profiles = true
+mdm_profile_path = "C:\\ProgramData\\SafeOps\\certificates\\mdm"
+
+# =============================================================================
+# CERTIFICATE REVOCATION
+# =============================================================================
+[revocation]
+# CRL (Certificate Revocation List)
+crl_enabled = true
+crl_url = "http://192.168.1.1/crl/safeops-root-ca.crl"
+crl_update_interval_days = 7
+crl_path = "C:\\Program Files\\SafeOps\\certs\\crl"
+
+# OCSP (Online Certificate Status Protocol)
+ocsp_enabled = false
+ocsp_url = "http://192.168.1.1/ocsp"
+ocsp_port = 8080
+
+# =============================================================================
+# EXPIRY MONITORING
+# =============================================================================
+[expiry_monitoring]
+enabled = true
+
+# Check frequency
+check_interval_hours = 24
+
+# Warning thresholds
+warning_days_before_expiry = [
+    365,  # 1 year
+    180,  # 6 months
+    90,   # 3 months
+    30,   # 1 month
+    7,    # 1 week
+]
+
+# Notifications
+send_email_alerts = false
+send_ui_alerts = true
+log_warnings = true
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+[security]
+# Private key protection
+encrypt_private_keys = true
+encryption_algorithm = "aes-256-cbc"
+
+# Key storage
+use_windows_dpapi = true  # Windows Data Protection API
+use_hsm = false           # Hardware Security Module
+hsm_provider = ""
+
+# Access control
+restrict_key_access = true
+allowed_services = ["tls_proxy"]
+
+# Audit logging
+log_key_access = true
+log_cert_generation = true
+log_cert_distribution = true

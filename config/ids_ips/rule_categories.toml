@@ -1,0 +1,292 @@
+# SafeOps IDS/IPS - Rule Categories Configuration
+# Purpose: Categorize and manage IDS/IPS detection rules
+
+# =============================================================================
+# RULE CATEGORIES
+# =============================================================================
+
+# Malware Detection Rules
+[[categories]]
+id = "malware"
+name = "Malware Detection"
+description = "Malware families, trojans, ransomware, and malicious payloads"
+enabled = true
+priority = "critical"
+default_action = "drop"
+rulesets = [
+    "emerging-malware",
+    "malware-cnc",
+    "ransomware",
+    "trojan",
+]
+
+# Exploit Detection Rules
+[[categories]]
+id = "exploits"
+name = "Exploit Detection"
+description = "Known exploits, CVEs, and vulnerability exploitation attempts"
+enabled = true
+priority = "critical"
+default_action = "drop"
+rulesets = [
+    "emerging-exploit",
+    "exploit-kit",
+    "cve-recent",
+]
+
+# Web Attack Detection
+[[categories]]
+id = "web_attacks"
+name = "Web Application Attacks"
+description = "SQL injection, XSS, command injection, and web exploits"
+enabled = true
+priority = "high"
+default_action = "drop"
+rulesets = [
+    "emerging-web_specific_apps",
+    "sql-injection",
+    "xss-attacks",
+    "command-injection",
+]
+
+# DDoS Detection
+[[categories]]
+id = "ddos"
+name = "DDoS Attacks"
+description = "Denial of Service and Distributed Denial of Service attacks"
+enabled = true
+priority = "high"
+default_action = "drop"
+rulesets = [
+    "dos-attacks",
+    "ddos-amplification",
+    "syn-flood",
+]
+
+# Botnet Detection
+[[categories]]
+id = "botnet"
+name = "Botnet Activity"
+description = "Command and control traffic, bot behavior"
+enabled = true
+priority = "high"
+default_action = "drop"
+rulesets = [
+    "emerging-botcc",
+    "compromised-hosts",
+    "c2-traffic",
+]
+
+# Scanning and Reconnaissance
+[[categories]]
+id = "scan"
+name = "Scanning and Reconnaissance"
+description = "Port scans, vulnerability scans, network enumeration"
+enabled = true
+priority = "medium"
+default_action = "alert"
+rulesets = [
+    "emerging-scan",
+    "port-scan",
+    "vuln-scan",
+]
+
+# Phishing and Social Engineering
+[[categories]]
+id = "phishing"
+name = "Phishing and Social Engineering"
+description = "Phishing sites, credential theft, social engineering"
+enabled = true
+priority = "high"
+default_action = "drop"
+rulesets = [
+    "phishing-sites",
+    "credential-theft",
+]
+
+# Policy Violations
+[[categories]]
+id = "policy"
+name = "Policy Violations"
+description = "Organizational policy violations, unauthorized protocols"
+enabled = true
+priority = "medium"
+default_action = "alert"
+rulesets = [
+    "policy-violation",
+    "inappropriate-content",
+    "p2p-traffic",
+]
+
+# Suspicious Traffic
+[[categories]]
+id = "suspicious"
+name = "Suspicious Traffic Patterns"
+description = "Anomalous behavior, suspicious protocols, odd patterns"
+enabled = true
+priority = "medium"
+default_action = "alert"
+rulesets = [
+    "emerging-dos",
+    "emerging-icmp",
+    "suspicious-traffic",
+]
+
+# Data Exfiltration
+[[categories]]
+id = "exfiltration"
+name = "Data Exfiltration"
+description = "Data leakage, unauthorized data transfer"
+enabled = true
+priority = "critical"
+default_action = "drop"
+rulesets = [
+    "data-exfiltration",
+    "dns-tunneling",
+    "covert-channels",
+]
+
+# =============================================================================
+# PROTOCOL-SPECIFIC RULES
+# =============================================================================
+
+# HTTP/HTTPS Rules
+[[protocols]]
+name = "http"
+enabled = true
+categories = ["web_attacks", "malware", "phishing"]
+inspect_request_headers = true
+inspect_request_body = true
+inspect_response = true
+max_request_size_kb = 1024
+
+# DNS Rules
+[[protocols]]
+name = "dns"
+enabled = true
+categories = ["malware", "exfiltration", "botnet"]
+detect_dns_tunneling = true
+detect_dga_domains = true
+max_query_length = 255
+
+# SSH Rules
+[[protocols]]
+name = "ssh"
+enabled = true
+categories = ["scan", "exploits"]
+detect_brute_force = true
+failed_auth_threshold = 5
+
+# SMB Rules
+[[protocols]]
+name = "smb"
+enabled = true
+categories = ["exploits", "malware"]
+detect_eternablue = true
+detect_ransomware = true
+
+# FTP Rules
+[[protocols]]
+name = "ftp"
+enabled = true
+categories = ["scan", "exploits", "exfiltration"]
+detect_brute_force = true
+
+# ICMP Rules
+[[protocols]]
+name = "icmp"
+enabled = true
+categories = ["scan", "ddos"]
+detect_ping_flood = true
+detect_smurf_attack = true
+
+# =============================================================================
+# RULE SOURCES
+# =============================================================================
+
+# Emerging Threats
+[[sources]]
+name = "emerging-threats"
+url = "https://rules.emergingthreats.net/open/suricata-6.0/emerging.rules.tar.gz"
+enabled = true
+update_interval_hours = 24
+trust_level = "high"
+
+# ET Pro (requires subscription)
+[[sources]]
+name = "et-pro"
+url = ""  # Requires API key
+enabled = false
+update_interval_hours = 6
+trust_level = "high"
+
+# Abuse.ch
+[[sources]]
+name = "abuse-ch"
+url = "https://sslbl.abuse.ch/blacklist/sslipblacklist_aggressive.rules"
+enabled = true
+update_interval_hours = 12
+trust_level = "high"
+
+# Custom Rules
+[[sources]]
+name = "custom"
+path = "C:\\Program Files\\SafeOps\\rules\\custom"
+enabled = true
+update_interval_hours = 0  # Manual updates only
+trust_level = "high"
+
+# =============================================================================
+# RULE TUNING
+# =============================================================================
+[tuning]
+# Suppress noisy rules
+suppress_noisy_rules = true
+noisy_threshold_per_hour = 1000
+
+# Auto-disable rules
+auto_disable_broken_rules = true
+
+# Rule testing
+test_new_rules = true
+test_period_days = 7
+
+# False positive handling
+track_false_positives = true
+auto_suppress_false_positives = false
+
+# =============================================================================
+# PERFORMANCE OPTIMIZATION
+# =============================================================================
+[performance]
+# Rule optimization
+optimize_rule_order = true
+group_similar_rules = true
+
+# Fast pattern matching
+use_fast_pattern = true
+min_pattern_length = 4
+
+# Prefiltering
+enable_prefilter = true
+prefilter_threshold = 0.1
+
+# =============================================================================
+# ALERTING
+# =============================================================================
+[alerting]
+# Alert frequency limits
+max_alerts_per_minute = 100
+duplicate_alert_suppression_seconds = 60
+
+# Alert priorities
+[alerting.priorities]
+critical = { email = true, ui = true, syslog = true }
+high = { email = true, ui = true, syslog = true }
+medium = { email = false, ui = true, syslog = true }
+low = { email = false, ui = false, syslog = true }
+
+# Alert enrichment
+enrich_with_threat_intel = true
+enrich_with_geoip = true
+enrich_with_whois = false

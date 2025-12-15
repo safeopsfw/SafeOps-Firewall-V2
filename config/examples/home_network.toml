@@ -1,0 +1,243 @@
+# SafeOps v2.0 - Home Network Configuration Example
+# Pre-configured for residential use (1-10 devices)
+# 
+# FEATURES:
+#   ✓ Basic firewall with safe defaults
+#   ✓ DNS-based ad and malware blocking
+#   ✓ Guest WiFi with network isolation
+#   ✓ Parental controls (optional)
+#   ✓ IDS monitoring mode (detection only)
+#   ✓ Minimal logging (30 days)
+#   ✓ Automatic updates enabled
+#   ✓ TLS inspection DISABLED (privacy)
+#
+# To use this config:
+#   1. Copy to C:\ProgramData\SafeOps\config\safeops.toml
+#   2. Adjust network interfaces to match your hardware
+#   3. Change WiFi passwords
+#   4. Run: safeops.exe validate
+#   5. Run: safeops.exe apply
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+[system]
+hostname = "home-router"
+timezone = "America/New_York"  # Change to your timezone
+admin_email = "admin@home.local"
+description = "Home Network Security Gateway"
+version = "2.0.0"
+
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+config_directory = "C:\\ProgramData\\SafeOps\\config"
+
+[system.resources]
+# Home networks need minimal resources
+max_cpu_cores = 2        # 2 cores is sufficient
+max_memory_mb = 2048     # 2GB RAM
+max_disk_gb = 50         # 50GB storage
+
+# =============================================================================
+# NETWORK CONFIGURATION
+# =============================================================================
+[network]
+topology = "2-nic"
+
+[network.interfaces]
+wan = "NIC1"    # WAN - Internet connection (from ISP)
+lan = "NIC2"    # LAN - Wired devices
+
+[network.addressing]
+wan_mode = "dhcp"
+lan_ip = "192.168.1.1"
+lan_netmask = "255.255.255.0"
+lan_network = "192.168.1.0/24"
+
+# Enable basic routing
+enable_ip_forwarding = true
+enable_nat = true
+enable_ipv6 = false
+
+# =============================================================================
+# SERVICE TOGGLES
+# =============================================================================
+[services]
+kernel_driver = true
+network_logger = false   # Disabled for privacy + resources
+firewall_engine = true
+tls_proxy = false        # DISABLED - Privacy first for homes
+ids_ips = true           # Monitor only, no blocking
+dns_server = true        # Enable for ad-blocking
+dhcp_server = true
+wifi_ap = false          # Enable if using SafeOps for WiFi
+certificate_manager = true
+threat_intel = true      # Free threat feeds
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# =============================================================================
+# FIREWALL CONFIGURATION
+# =============================================================================
+[firewall]
+enabled = true
+default_action = "deny"
+log_denied = true
+log_allowed = false
+max_connections = 100000
+allow_upnp = true
+
+# Basic DDoS protection
+[firewall.ddos_protection]
+enabled = true
+syn_flood_threshold = 500
+icmp_flood_threshold = 50
+
+# =============================================================================
+# DNS CONFIGURATION
+# =============================================================================
+[dns]
+enabled = true
+listen_port = 53
+upstream_servers = ["1.1.1.1", "1.0.0.1", "8.8.8.8"]
+cache_enabled = true
+cache_size_mb = 128
+
+[dns.filtering]
+enabled = true
+block_ads = true
+block_trackers = true
+block_malware_domains = true
+block_phishing_domains = true
+threat_intel_integration = true
+
+# Parental controls (uncomment to enable)
+# block_adult_content = true
+# block_gambling = true
+# block_social_media = false
+
+# =============================================================================
+# DHCP CONFIGURATION
+# =============================================================================
+[dhcp]
+enabled = true
+
+[dhcp.lan_pool]
+range_start = "192.168.1.10"
+range_end = "192.168.1.200"
+default_lease_hours = 24
+dns_servers = ["192.168.1.1"]
+
+# =============================================================================
+# IDS/IPS CONFIGURATION
+# Detection only - no auto-blocking for home use
+# =============================================================================
+[ids_ips]
+enabled = true
+mode = "ids"  # Detection only (not IPS)
+sensitivity = "low"
+
+[ids_ips.detection]
+signatures_path = "C:\\Program Files\\SafeOps\\rules\\suricata"
+enabled_categories = [
+    "malware",
+    "phishing",
+    "c2_communication",
+    "ransomware"
+]
+
+[ids_ips.prevention]
+auto_block = false  # Don't auto-block (might break things)
+
+# =============================================================================
+# THREAT INTELLIGENCE
+# Free feeds only - no API keys needed
+# =============================================================================
+[threat_intel]
+enabled = true
+update_interval_hours = 24
+
+[threat_intel.feeds]
+enabled_feeds = [
+    "abuse_urlhaus",
+    "spamhaus_drop",
+    "emerging_threats"
+]
+enable_free_feeds = true
+
+# =============================================================================
+# SECURITY SETTINGS
+# =============================================================================
+[security]
+tls_inspection_enabled = false
+auto_block_threats = false
+min_tls_version = "1.2"
+
+# =============================================================================
+# LOGGING
+# Minimal logging for privacy and storage
+# =============================================================================
+[logging]
+log_level = "info"
+log_format = "json"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+log_max_size_mb = 50
+log_max_files = 5
+compress_rotated = true
+retention_days = 30
+
+# =============================================================================
+# UPDATES
+# Auto-update for security patches
+# =============================================================================
+[updates]
+auto_check = true
+check_interval_hours = 24
+auto_download = true
+auto_install_security = true
+auto_install_signatures = true
+auto_install_software = true  # Auto-install for home use
+channel = "stable"
+
+[updates.maintenance_window]
+days = ["saturday", "sunday"]
+start_time = "03:00"
+end_time = "05:00"
+
+# =============================================================================
+# BACKUP
+# Weekly backups of configuration
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 2 * * 0"  # Sunday at 2 AM
+destination = "C:\\SafeOps_Backups"
+retention_days = 30
+max_backups = 4
+compression = true
+
+# =============================================================================
+# DATA RETENTION
+# Minimal retention for home use
+# =============================================================================
+[retention]
+network_traffic_days = 7
+firewall_logs_days = 30
+ids_alerts_days = 90
+system_logs_days = 30
+backup_retention_days = 30
+
+# =============================================================================
+# WEB UI
+# =============================================================================
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 120
+default_theme = "dark"

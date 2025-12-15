@@ -1,0 +1,347 @@
+# SafeOps Update Manager Configuration
+# Purpose: Software updates, security patches, threat signature updates, and system maintenance
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "update_manager"
+listen_address = "0.0.0.0"
+grpc_port = 50061
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\update_manager.log"
+enabled = true
+
+# =============================================================================
+# UPDATE SOURCES
+# =============================================================================
+[sources]
+# Primary update server
+primary_server = "https://updates.safeops.io"
+
+# Mirror servers (fallback)
+mirror_servers = [
+    "https://updates-eu.safeops.io",
+    "https://updates-asia.safeops.io",
+]
+
+# Local update cache
+cache_enabled = true
+cache_directory = "C:\\ProgramData\\SafeOps\\updates\\cache"
+cache_max_size_gb = 10
+
+# Proxy configuration
+use_system_proxy = true
+custom_proxy = ""
+proxy_credentials_file = ""
+
+# =============================================================================
+# UPDATE CHANNELS
+# =============================================================================
+[channels]
+# Active channel
+active_channel = "stable"  # stable, beta, development
+
+# Stable channel (weekly updates, requires approval)
+[channels.stable]
+enabled = true
+auto_install = false
+requires_approval = true
+check_interval_hours = 24
+
+# Beta channel (daily updates, testing phase)
+[channels.beta]
+enabled = false
+auto_install = false
+requires_approval = true
+check_interval_hours = 12
+
+# Development channel (on-demand, latest features)
+[channels.development]
+enabled = false
+auto_install = false
+requires_approval = true
+check_interval_hours = 4
+
+# =============================================================================
+# UPDATE SCHEDULE
+# =============================================================================
+[schedule]
+# Check for updates
+check_schedule = "0 */4 * * *"  # Every 4 hours
+
+# Download updates
+download_schedule = "0 2 * * *"  # Daily at 2 AM
+
+# Install updates
+install_schedule = "0 3 * * 0"  # Weekly, Sunday at 3 AM
+
+# Maintenance windows
+[schedule.maintenance_windows]
+enabled = true
+windows = [
+    { day = "sunday", start_time = "02:00", end_time = "06:00" },
+]
+
+# Check on startup
+check_on_startup = true
+
+# =============================================================================
+# UPDATE TYPES
+# =============================================================================
+[update_types]
+# Software updates (feature releases)
+[update_types.software]
+enabled = true
+auto_download = true
+auto_install = false
+requires_approval = true
+
+# Security patches (critical fixes)
+[update_types.security]
+enabled = true
+auto_download = true
+auto_install = true
+requires_approval = false
+
+# Signature updates (threat intelligence)
+[update_types.signatures]
+enabled = true
+auto_download = true
+auto_install = true
+check_interval_hours = 1
+
+# Configuration updates (policy changes)
+[update_types.configuration]
+enabled = true
+auto_download = true
+auto_install = false
+requires_approval = true
+
+# Driver updates (kernel driver updates)
+[update_types.drivers]
+enabled = true
+auto_download = true
+auto_install = false
+requires_approval = true
+
+# =============================================================================
+# UPDATE VALIDATION
+# =============================================================================
+[validation]
+# Signature verification
+signature_verification_enabled = true
+signature_algorithm = "ecdsa-sha256"
+public_key_file = "C:\\Program Files\\SafeOps\\keys\\update_signing.pub"
+
+# Checksum verification
+checksum_verification_enabled = true
+checksum_algorithm = "sha256"
+
+# Manifest validation
+manifest_validation_enabled = true
+
+# Security settings
+reject_unsigned_updates = true
+allow_test_certificates = false  # Development only
+
+# =============================================================================
+# ROLLBACK CONFIGURATION
+# =============================================================================
+[rollback]
+# Automatic rollback
+auto_rollback_enabled = true
+rollback_on_consecutive_failures = 3
+rollback_on_health_check_failure = true
+
+# Snapshot creation
+create_snapshot_before_update = true
+snapshot_retention_days = 30
+
+# Manual rollback
+allow_manual_rollback = true
+max_rollback_window_days = 30
+
+# =============================================================================
+# STAGED DEPLOYMENT
+# =============================================================================
+[staged_deployment]
+enabled = false
+
+# Deployment phases
+[staged_deployment.phases]
+pilot = { percentage = 10, duration_hours = 24 }
+phase1 = { percentage = 30, duration_hours = 48 }
+phase2 = { percentage = 60, duration_hours = 48 }
+production = { percentage = 100, duration_hours = 0 }
+
+# Canary deployment
+canary_enabled = false
+canary_percentage = 5
+canary_duration_hours = 12
+
+# Ring deployment
+ring_enabled = false
+rings = ["development", "testing", "production"]
+
+# Rollback on error
+rollback_on_error_rate_percent = 10
+
+# =============================================================================
+# COMPATIBILITY CHECKS
+# =============================================================================
+[compatibility]
+# Pre-update checks
+verify_compatibility = true
+check_dependencies = true
+
+# System requirements
+min_disk_space_gb = 5
+min_free_memory_mb = 1024
+max_cpu_usage_percent = 80
+
+# Service version checks
+verify_service_versions = true
+
+# Conflict detection
+detect_conflicts = true
+resolve_conflicts_automatically = false
+
+# =============================================================================
+# NOTIFICATIONS
+# =============================================================================
+[notifications]
+# Update available
+notify_on_update_available = true
+notify_on_security_update = true  # High priority
+
+# Installation notifications
+notify_before_installation = true
+notify_on_download_progress = false
+notify_on_install_progress = true
+
+# Failure notifications
+notify_on_failure = true
+
+# Email notifications
+email_enabled = false
+email_recipients = ["admin@example.com"]
+smtp_server = "smtp.example.com"
+smtp_port = 587
+
+# UI notifications
+ui_notifications_enabled = true
+
+# Webhook integration
+webhook_enabled = false
+webhook_url = ""
+webhook_events = ["update_available", "install_complete", "install_failed"]
+
+# =============================================================================
+# BANDWIDTH MANAGEMENT
+# =============================================================================
+[bandwidth]
+# Download throttling
+throttle_during_business_hours = true
+business_hours_start = "08:00"
+business_hours_end = "18:00"
+
+# Speed limits
+max_download_speed_mbps = 50  # 0 = unlimited
+throttled_download_speed_mbps = 10
+
+# Peer-to-peer distribution
+p2p_enabled = false
+p2p_lan_only = true
+
+# BITS (Background Intelligent Transfer Service)
+use_bits = true
+
+# =============================================================================
+# UPDATE APPROVAL WORKFLOW
+# =============================================================================
+[approval]
+# Approval requirements
+require_approval_for_software = true
+require_approval_for_security = false
+require_approval_for_drivers = true
+
+# Auto-approve conditions
+auto_approve_security_patches = true
+auto_approve_signature_updates = true
+
+# Approval timeout
+approval_timeout_hours = 168  # 7 days
+action_on_timeout = "reject"  # reject, auto_approve, defer
+
+# Required approvers
+required_approver_roles = ["admin", "security_officer"]
+min_approvals_required = 1
+
+# =============================================================================
+# UPDATE HISTORY AND REPORTING
+# =============================================================================
+[history]
+# History tracking
+track_update_history = true
+history_retention_days = 365
+
+# Metrics
+track_success_failure_rate = true
+track_installation_time = true
+
+# Reporting
+generate_reports = true
+report_schedule = "0 9 * * 1"  # Weekly on Monday at 9 AM
+report_format = "html"  # html, pdf, json
+report_recipients = ["admin@example.com"]
+report_directory = "C:\\ProgramData\\SafeOps\\reports\\updates"
+
+# =============================================================================
+# MAINTENANCE MODE
+# =============================================================================
+[maintenance_mode]
+# Enable during updates
+enable_during_major_updates = true
+
+# Services to manage
+stop_services_during_update = [
+    "firewall_engine",
+    "ids_ips",
+]
+
+resume_services_after_update = true
+
+# User access
+restrict_user_access = false
+maintenance_page_enabled = false
+maintenance_page_path = "C:\\Program Files\\SafeOps\\www\\maintenance.html"
+
+# =============================================================================
+# ADVANCED FEATURES
+# =============================================================================
+[advanced]
+# Delta updates (binary diff patching)
+delta_updates_enabled = true
+delta_algorithm = "bsdiff"
+
+# Parallel downloads
+parallel_downloads_enabled = true
+max_parallel_downloads = 3
+
+# Resume downloads
+resume_interrupted_downloads = true
+
+# Custom scripts
+[advanced.scripts]
+pre_update_script = ""
+post_update_script = ""
+script_timeout_seconds = 300
+
+# Metadata caching
+metadata_cache_enabled = true
+metadata_cache_ttl_hours = 24
+
+# Offline updates
+offline_update_support = true
+offline_package_directory = "C:\\SafeOps_Updates\\Offline"

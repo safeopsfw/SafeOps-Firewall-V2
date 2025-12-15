@@ -1,0 +1,143 @@
+# ============================================================================
+# Threat Feed Sources Configuration
+# ============================================================================
+# Format: YAML
+# All feeds from database/seeds/feed_sources_config.sql
+# ============================================================================
+
+threat_feeds:
+  # IP Reputation Feeds
+  ip_feeds:
+    - name: Firehol Level 1
+      url: https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset
+      type: IP
+      format: TXT
+      update_interval: 6h
+      priority: HIGH
+      enabled: true
+      categories: [malware, botnet, scanner]
+
+    - name: Feodo Tracker
+      url: https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.txt
+      type: IP
+      format: CSV
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      categories: [c2, botnet, emotet]
+
+    - name: Emerging Threats
+      url: https://rules.emergingthreats.net/blockrules/compromised-ips.txt
+      type: IP
+      format: TXT
+      update_interval: 24h
+      priority: HIGH
+      enabled: true
+      categories: [compromised, botnet]
+
+  # Domain/URL Feeds
+  domain_feeds:
+    - name: URLhaus Domains
+      url: https://urlhaus.abuse.ch/downloads/text/
+      type: DOMAIN
+      format: TXT
+      update_interval: 6h
+      priority: HIGH
+      enabled: true
+      categories: [malware, hosting]
+
+    - name: OpenPhish
+      url: https://openphish.com/feed.txt
+      type: URL
+      format: TXT
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      categories: [phishing, url]
+
+    - name: Phishing Army
+      url: https://phishing.army/download/phishing_army_blocklist_extended.txt
+      type: DOMAIN
+      format: TXT
+      update_interval: 6h
+      priority: HIGH
+      enabled: true
+      categories: [phishing, domain]
+
+  # Malware Hash Feeds
+  hash_feeds:
+    - name: MalwareBazaar Recent
+      url: https://bazaar.abuse.ch/export/csv/recent/
+      type: HASH
+      format: CSV
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      categories: [malware, hash, sha256]
+
+  # Anonymizer Feeds
+  anonymizer_feeds:
+    - name: Tor Exit Nodes
+      url: https://check.torproject.org/torbulkexitlist
+      type: IP
+      format: TXT
+      update_interval: 1h
+      priority: MEDIUM
+      enabled: true
+      categories: [tor, anonymizer, exit-node]
+
+    - name: VPN Gate
+      url: https://www.vpngate.net/api/iphone/
+      type: IP
+      format: CSV
+      update_interval: 12h
+      priority: LOW
+      enabled: true
+      categories: [vpn, proxy, anonymizer]
+
+  # IOC Feeds
+  ioc_feeds:
+    - name: ThreatFox
+      url: https://threatfox.abuse.ch/export/csv/recent/
+      type: IOC
+      format: CSV
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      categories: [ioc, mixed, malware, c2]
+
+    - name: AlienVault OTX
+      url: https://otx.alienvault.com/api/v1/pulses/subscribed
+      type: IOC
+      format: JSON
+      update_interval: 6h
+      priority: HIGH
+      enabled: false  # Requires API key
+      requires_api_key: true
+      categories: [ioc, threat-intel]
+
+# Feed Processing Options
+processing:
+  deduplication: true
+  normalization: true
+  validation: true
+  enrichment: true
+  
+# Storage Options
+storage:
+  database: postgresql
+  cache_enabled: true
+  cache_ttl: 3600
+
+# Error Handling
+error_handling:
+  retry_attempts: 3
+  retry_delay: 60
+  timeout: 30
+  skip_on_error: false
+
+# Notifications
+notifications:
+  on_update: false
+  on_error: true
+  webhook_url: ""

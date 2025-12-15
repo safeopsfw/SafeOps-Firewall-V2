@@ -1,0 +1,285 @@
+# SafeOps v2.0 - IDS/IPS Engine Configuration
+# Intrusion Detection and Prevention System
+# YAML format for Suricata rule compatibility
+
+# Service Configuration
+service:
+  name: "ids_ips"
+  listen_address: "127.0.0.1:50060"
+  log_level: "info"  # trace, debug, info, warn, error
+  enable_metrics: true
+  description: "Intrusion Detection and Prevention System"
+
+# Detection Engine
+detection:
+  enabled: true
+  # Mode: "IDS" (detect only) or "IPS" (detect and prevent)
+  mode: "IDS"  # Start with IDS, switch to IPS after tuning
+  # Path to Suricata compatible rules
+  signatures_path: "/etc/safeops/rules/suricata"
+  # Custom user-defined rules
+  custom_rules_path: "/etc/safeops/rules/custom"
+  # Rule reload interval (seconds)
+  rule_reload_interval: 3600  # 1 hour
+  # Maximum number of rules to load
+  max_rules: 50000
+  # Enable rule categories
+  enabled_categories:
+    - "malware"
+    - "exploit"
+    - "phishing"
+    - "c2_communication"
+    - "data_exfiltration"
+    - "lateral_movement"
+    - "privilege_escalation"
+    - "credential_theft"
+    - "dos_ddos"
+    - "web_attacks"
+    - "brute_force"
+    - "reconnaissance"
+    - "ransomware"
+
+# Signature Matching Engine
+signature_matching:
+  # Matching engine: "aho-corasick" or "hyperscan"
+  engine: "hyperscan"  # Hyperscan is faster for large rulesets
+  # Enable regex pattern matching
+  enable_regex: true
+  # Regex engine: "re2" (safer) or "pcre2" (more features)
+  regex_engine: "re2"
+  # Enable SIMD vectorization for pattern matching
+  enable_vectorization: true
+  # Pattern cache size (MB)
+  pattern_cache_size: 512
+  # Maximum pattern length (bytes)
+  max_pattern_length: 8192
+  # Enable multi-pattern matching optimization
+  enable_multi_pattern: true
+  # Compile rules on startup (faster matching, slower startup)
+  precompile_rules: true
+
+# Anomaly Detection (Machine Learning / Statistical)
+anomaly_detection:
+  enabled: true
+  # Baseline learning period (hours) - system learns "normal" traffic
+  baseline_learning_period: 168  # 1 week
+  # Sensitivity: "low", "medium", "high"
+  sensitivity: "medium"
+  # Detection methods
+  methods:
+    # Statistical deviation from baseline
+    statistical_deviation: true
+    # Entropy analysis (detect encrypted/compressed data)
+    entropy_analysis: true
+    # Time series anomaly detection
+    time_series_anomalies: true
+    # Behavioral analysis (user/host behavior)
+    behavioral_analysis: false  # Requires more resources
+  # Anomaly thresholds
+  thresholds:
+    # Standard deviations from baseline to trigger alert
+    std_deviation_multiplier: 3.0
+    # Minimum samples before alerting
+    min_samples: 100
+    # Decay factor for old data (0-1)
+    baseline_decay: 0.95
+
+# Protocol Analysis
+protocol_analysis:
+  # Analyze specific protocols for anomalies
+  analyze_http: true
+  analyze_dns: true
+  analyze_smtp: true
+  analyze_ftp: true
+  analyze_ssh: true
+  analyze_smb: true
+  analyze_tls: true
+  # Detect protocol anomalies (malformed packets, etc.)
+  detect_protocol_anomalies: true
+  # Protocol-specific settings
+  http:
+    max_uri_length: 8192
+    max_header_size: 65536
+    detect_sql_injection: true
+    detect_xss: true
+    detect_path_traversal: true
+    detect_command_injection: true
+  dns:
+    max_query_length: 255
+    detect_tunneling: true
+    detect_dga: true  # Domain Generation Algorithm
+    max_labels: 127
+  ssh:
+    detect_brute_force: true
+    max_auth_attempts: 5
+    auth_timeout: 120
+
+# Prevention Settings (IPS Mode)
+prevention:
+  # Automatically block detected threats
+  auto_block: true
+  # Block duration (seconds) - 0 for permanent
+  block_duration: 3600  # 1 hour
+  # Number of alerts before triggering block
+  alert_threshold: 3
+  # Whitelist IPs (never block)
+  whitelist_ips:
+    - "127.0.0.1"
+    - "::1"
+  # Maximum IPs to keep in block list
+  max_blocked_ips: 10000
+  # Block list cleanup interval (seconds)
+  cleanup_interval: 300
+  # Actions per severity
+  actions:
+    critical: "block"
+    high: "block"
+    medium: "alert"
+    low: "log"
+  # Sync blocks with firewall
+  sync_with_firewall: true
+
+# Performance Optimization
+performance:
+  # Worker threads for packet inspection
+  worker_threads: 8
+  # Matcher threads for signature matching
+  matcher_threads: 4
+  # Packets processed per batch
+  packets_per_batch: 128
+  # Enable GPU acceleration (requires CUDA/OpenCL)
+  enable_gpu_acceleration: false
+  # Bloom filter size (MB) - for fast negative lookups
+  bloom_filter_size: 64
+  # CPU affinity for worker threads
+  cpu_affinity: []  # Empty = auto
+  # Memory pool size (MB)
+  memory_pool_size: 1024
+  # Enable SIMD instructions
+  enable_simd: true
+  # Ring buffer size for packet processing (MB)
+  ring_buffer_size: 256
+
+# Alert Configuration
+alerts:
+  # Maximum alerts in queue
+  alert_queue_size: 100000
+  # Deduplication window (seconds) - suppress duplicate alerts
+  deduplication_window: 60
+  # Minimum severity to generate alerts: "low", "medium", "high", "critical"
+  severity_filter: "low"
+  # Rate limiting (alerts per second per rule)
+  rate_limiting: 100
+  # Alert aggregation
+  aggregation:
+    enabled: true
+    window: 60  # seconds
+    max_alerts_per_window: 1000
+  
+  # Syslog export
+  export_to_syslog: false
+  syslog_server: "127.0.0.1:514"
+  syslog_protocol: "udp"  # udp or tcp
+  syslog_facility: "local0"
+  
+  # Alert destinations
+  destinations:
+    file:
+      enabled: true
+      path: "/var/log/safeops/ids_alerts.log"
+      format: "json"
+    database:
+      enabled: true
+      batch_size: 1000
+      flush_interval: 5
+    webhook:
+      enabled: false
+      url: ""
+      method: "POST"
+
+# MITRE ATT&CK Mapping
+mitre_attack:
+  enabled: true
+  # Map alerts to MITRE ATT&CK framework
+  tactics:
+    - "TA0001"  # Initial Access
+    - "TA0002"  # Execution
+    - "TA0003"  # Persistence
+    - "TA0004"  # Privilege Escalation
+    - "TA0005"  # Defense Evasion
+    - "TA0006"  # Credential Access
+    - "TA0007"  # Discovery
+    - "TA0008"  # Lateral Movement
+    - "TA0009"  # Collection
+    - "TA0010"  # Exfiltration
+    - "TA0011"  # Command and Control
+    - "TA0040"  # Impact
+
+# Rule Sources
+rule_sources:
+  # Emerging Threats
+  - name: "emerging-threats"
+    url: "https://rules.emergingthreats.net/open/"
+    enabled: true
+    update_interval: 86400  # 24 hours
+  
+  # Suricata Community Rules
+  - name: "suricata-community"
+    url: "https://rules.emergingthreats.net/open/suricata-6.0/"
+    enabled: true
+    update_interval: 86400
+  
+  # Emerging Threats Suricata
+  - name: "et-suricata"
+    url: "https://rules.emergingthreats.net/open/suricata-6.0/emerging.rules.tar.gz"
+    enabled: true
+    update_interval: 0  # No auto-update
+
+# Statistics and Metrics
+metrics:
+  prometheus_enabled: true
+  prometheus_port: 9103
+  metrics_interval: 10
+  # Metrics to export
+  export_packet_stats: true
+  export_alert_stats: true
+  export_rule_stats: true
+  export_performance_stats: true
+  export_anomaly_stats: true
+
+# Health Check
+health:
+  health_check_interval: 30
+  # Alert thresholds
+  max_packet_queue: 50000
+  max_memory_usage: 4096  # MB
+  max_cpu_usage: 80  # percentage
+  max_alert_queue: 50000
+  # Alert on rule compilation errors
+  alert_on_rule_errors: true
+
+# Integration
+integration:
+  # Send alerts to orchestrator
+  send_to_orchestrator: true
+  # Query threat intelligence
+  query_threat_intel: true
+  threat_intel_cache_ttl: 300
+  # Send suspicious traffic to network logger
+  send_to_network_logger: true
+  # Sync blocked IPs with firewall
+  sync_with_firewall: true
+  # Send malware samples to sandbox
+  send_to_sandbox: false
+
+# Logging
+logging:
+  log_level: "info"
+  log_file: "/var/log/safeops/ids_ips.log"
+  log_format: "json"
+  # Log all matched rules
+  log_rule_matches: true
+  # Log performance statistics
+  log_performance_stats: false
+  # Log packet drops
+  log_packet_drops: true

@@ -1,0 +1,561 @@
+# SafeOps Web UI Configuration
+# Purpose: Browser-based management interface for dashboard, configuration, monitoring, and administration
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "web_ui"
+listen_address = "0.0.0.0"
+grpc_port = 50063
+
+# HTTP/HTTPS ports
+http_port = 8080
+https_port = 8443
+
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\web_ui.log"
+
+# Development mode (enables debug features)
+development_mode = false
+
+# =============================================================================
+# WEB SERVER CONFIGURATION
+# =============================================================================
+[web_server]
+# Server type
+server_type = "embedded"  # embedded, nginx
+
+# HTTPS enforcement
+https_enabled = true
+redirect_http_to_https = true
+
+# TLS configuration
+tls_cert_file = "${WEB_UI_TLS_CERT}"
+tls_key_file = "${WEB_UI_TLS_KEY}"
+tls_min_version = "1.2"
+tls_max_version = "1.3"
+
+# Cipher suites (modern, secure)
+cipher_suites = [
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+]
+
+# HTTP/2 support
+http2_enabled = true
+
+# HSTS (HTTP Strict Transport Security)
+hsts_enabled = true
+hsts_max_age_seconds = 31536000  # 1 year
+hsts_include_subdomains = true
+hsts_preload = true
+
+# =============================================================================
+# AUTHENTICATION
+# =============================================================================
+[authentication]
+# Authentication methods
+methods = ["local", "ldap"]  # local, ldap, saml, oauth2
+
+# Session management
+session_timeout_minutes = 30
+session_cookie_name = "safeops_session"
+session_cookie_secure = true
+session_cookie_httponly = true
+session_cookie_samesite = "strict"
+max_concurrent_sessions_per_user = 3
+
+# Password policy
+[authentication.password_policy]
+min_length = 12
+require_uppercase = true
+require_lowercase = true
+require_digits = true
+require_special_chars = true
+password_expiration_days = 90
+password_history_count = 5
+lockout_threshold = 5
+lockout_duration_minutes = 30
+
+# Multi-factor authentication
+[authentication.mfa]
+mfa_enabled = true
+mfa_required_for_admins = true
+totp_enabled = true
+sms_enabled = false
+email_enabled = true
+hardware_token_enabled = false
+
+# LDAP/Active Directory
+[authentication.ldap]
+enabled = false
+server = "ldap://dc.example.com"
+port = 389
+use_ssl = false
+base_dn = "DC=example,DC=com"
+user_filter = "(&(objectClass=user)(sAMAccountName={username}))"
+bind_dn = "CN=SafeOps Service,OU=ServiceAccounts,DC=example,DC=com"
+bind_password = ""
+
+# =============================================================================
+# AUTHORIZATION (RBAC)
+# =============================================================================
+[authorization]
+# Role-Based Access Control
+rbac_enabled = true
+
+# Built-in roles
+[authorization.roles.administrator]
+description = "Full system access"
+permissions = ["*"]
+
+[authorization.roles.security_admin]
+description = "Firewall, IDS/IPS, certificates"
+permissions = [
+    "firewall:*",
+    "ids_ips:*",
+    "certificate_manager:*",
+    "threat_intel:read",
+]
+
+[authorization.roles.network_admin]
+description = "Routing, DHCP, DNS, WiFi"
+permissions = [
+    "dns_server:*",
+    "dhcp_server:*",
+    "wifi_ap:*",
+    "network_logger:read",
+]
+
+[authorization.roles.auditor]
+description = "Read-only access to logs and reports"
+permissions = [
+    "*:read",
+    "logs:read",
+    "reports:read",
+]
+
+[authorization.roles.operator]
+description = "Start/stop services, view status"
+permissions = [
+    "services:start",
+    "services:stop",
+    "services:restart",
+    "services:read",
+    "dashboard:read",
+]
+
+# Custom role creation
+allow_custom_roles = true
+
+# Permission granularity
+permission_model = "service-level"  # service-level, feature-level
+
+# =============================================================================
+# DASHBOARD CONFIGURATION
+# =============================================================================
+[dashboard]
+# Default layout
+default_layout = "grid"  # grid, list
+
+# Widgets
+[dashboard.widgets.system_status]
+enabled = true
+refresh_interval_seconds = 5
+position = { row = 1, col = 1 }
+
+[dashboard.widgets.network_traffic]
+enabled = true
+refresh_interval_seconds = 2
+position = { row = 1, col = 2 }
+graph_type = "line"
+timespan_minutes = 60
+
+[dashboard.widgets.top_threats]
+enabled = true
+refresh_interval_seconds = 30
+position = { row = 2, col = 1 }
+limit = 10
+
+[dashboard.widgets.service_health]
+enabled = true
+refresh_interval_seconds = 10
+position = { row = 2, col = 2 }
+
+[dashboard.widgets.resource_utilization]
+enabled = true
+refresh_interval_seconds = 5
+position = { row = 3, col = 1 }
+
+[dashboard.widgets.recent_alerts]
+enabled = true
+refresh_interval_seconds = 5
+position = { row = 3, col = 2 }
+limit = 20
+
+# Customization
+allow_user_customization = true
+
+# Themes
+default_theme = "dark"  # dark, light
+allow_theme_switching = true
+
+# =============================================================================
+# USER INTERFACE SETTINGS
+# =============================================================================
+[ui]
+# Localization
+default_language = "en"  # en, es, fr, de, ja, zh
+available_languages = ["en", "es", "fr", "de"]
+
+# Timezone
+default_timezone = "UTC"
+allow_user_timezone = true
+
+# Date/time format
+date_format = "YYYY-MM-DD"
+time_format = "HH:mm:ss"
+datetime_format = "YYYY-MM-DD HH:mm:ss"
+
+# Number format
+decimal_separator = "."
+thousands_separator = ","
+
+# Table pagination
+default_page_size = 50
+page_size_options = [25, 50, 100, 200]
+
+# Responsiveness
+responsive_design = true
+mobile_support = true
+tablet_support = true
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+[api]
+# REST API
+rest_api_enabled = true
+api_base_path = "/api/v1"
+
+# Authentication
+api_auth_methods = ["bearer_token", "api_key"]
+
+# Rate limiting
+rate_limiting_enabled = true
+rate_limit_requests_per_hour = 1000
+
+# CORS
+cors_enabled = true
+cors_allowed_origins = ["http://localhost:3000", "https://safeops.local"]
+cors_allowed_methods = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+cors_allowed_headers = ["Authorization", "Content-Type"]
+cors_max_age_seconds = 86400
+
+# Versioning
+api_versioning_strategy = "url"  # url, header
+
+# Documentation
+openapi_enabled = true
+swagger_ui_path = "/api/docs"
+
+# =============================================================================
+# WEBSOCKET CONFIGURATION
+# =============================================================================
+[websocket]
+# WebSocket support
+enabled = true
+port = 8444
+
+# Real-time event streaming
+stream_log_entries = true
+stream_alerts = true
+stream_traffic_stats = true
+stream_service_status = true
+
+# Connection limits
+max_connections_per_user = 5
+
+# Message rate limiting
+max_messages_per_second = 100
+
+# =============================================================================
+# STATIC ASSET CONFIGURATION
+# =============================================================================
+[static_assets]
+# Static file directory
+static_dir = "C:\\Program Files\\SafeOps\\www\\static"
+
+# Caching
+cache_control_max_age_seconds = 86400  # 24 hours
+immutable_assets = true
+
+# Compression
+gzip_enabled = true
+brotli_enabled = true
+min_size_for_compression_bytes = 1024
+
+# CDN
+cdn_enabled = false
+cdn_url = ""
+
+# Cache busting
+cache_busting_enabled = true
+cache_busting_method = "hash"  # hash, query_string
+
+# =============================================================================
+# LOGGING AND AUDITING
+# =============================================================================
+[logging]
+# Access log
+access_log_enabled = true
+access_log_file = "C:\\ProgramData\\SafeOps\\logs\\web_ui_access.log"
+access_log_format = "combined"
+
+# Authentication log
+auth_log_enabled = true
+auth_log_file = "C:\\ProgramData\\SafeOps\\logs\\web_ui_auth.log"
+log_login_events = true
+log_logout_events = true
+log_failed_logins = true
+
+# Action audit log
+audit_log_enabled = true
+audit_log_file = "C:\\ProgramData\\SafeOps\\logs\\web_ui_audit.log"
+audit_config_changes = true
+audit_rule_modifications = true
+audit_user_management = true
+
+# Failed login tracking
+track_failed_logins = true
+failed_login_alert_threshold = 5
+
+# Suspicious activity detection
+detect_suspicious_activity = true
+suspicious_activity_patterns = [
+    "multiple_failed_logins",
+    "privilege_escalation_attempt",
+    "unusual_access_time",
+]
+
+# Retention
+log_retention_days = 365
+
+# SIEM integration
+siem_export_enabled = false
+siem_endpoint = "tcp://siem.local:514"
+siem_format = "cef"
+
+# =============================================================================
+# SECURITY HEADERS
+# =============================================================================
+[security_headers]
+# Content Security Policy
+csp_enabled = true
+csp_directives = {
+    "default-src" = "'self'",
+    "script-src" = "'self' 'unsafe-inline'",
+    "style-src" = "'self' 'unsafe-inline'",
+    "img-src" = "'self' data:",
+    "font-src" = "'self'",
+    "connect-src" = "'self' ws: wss:",
+    "frame-ancestors" = "'none'",
+}
+
+# X-Frame-Options (prevent clickjacking)
+x_frame_options = "DENY"
+
+# X-Content-Type-Options (prevent MIME sniffing)
+x_content_type_options = "nosniff"
+
+# X-XSS-Protection
+x_xss_protection = "1; mode=block"
+
+# Referrer-Policy
+referrer_policy = "strict-origin-when-cross-origin"
+
+# Permissions-Policy
+permissions_policy = {
+    "geolocation" = "()",
+    "microphone" = "()",
+    "camera" = "()",
+}
+
+# =============================================================================
+# SESSION STORAGE
+# =============================================================================
+[session_storage]
+# Session backend
+backend = "redis"  # memory, redis, database
+
+# Redis configuration
+[session_storage.redis]
+host = "localhost"
+port = 6379
+database = 5
+password = ""
+pool_size = 20
+connection_timeout_seconds = 5
+
+# Session encryption
+encryption_enabled = true
+encryption_key = "${SESSION_SECRET}"
+
+# =============================================================================
+# CONTENT DELIVERY
+# =============================================================================
+[content_delivery]
+# Compression
+page_compression_enabled = true
+compression_algorithm = "brotli"  # gzip, brotli
+
+# Minification
+minify_css = true
+minify_javascript = true
+minify_html = false
+
+# Asset bundling
+bundle_assets = true
+
+# Lazy loading
+lazy_load_enabled = true
+
+# Progressive Web App
+pwa_enabled = false
+pwa_manifest_path = "/manifest.json"
+pwa_service_worker_path = "/sw.js"
+
+# =============================================================================
+# MONITORING AND ANALYTICS
+# =============================================================================
+[monitoring]
+# User activity tracking
+track_user_activity = true
+track_page_views = true
+track_feature_usage = true
+
+# Performance monitoring
+track_page_load_times = true
+performance_budget_ms = 3000
+
+# Error tracking
+track_javascript_errors = true
+track_api_errors = true
+
+# Usage analytics
+analytics_enabled = true
+analytics_retention_days = 90
+
+# Export
+export_to_external_systems = false
+analytics_export_endpoint = ""
+
+# =============================================================================
+# CUSTOMIZATION
+# =============================================================================
+[customization]
+# Branding
+custom_branding_enabled = true
+company_name = "SafeOps Security Gateway"
+logo_path = "/static/logo.png"
+primary_color = "#2563eb"
+secondary_color = "#7c3aed"
+
+# Custom CSS
+custom_css_enabled = false
+custom_css_path = ""
+
+# Custom JavaScript
+custom_js_enabled = false
+custom_js_path = ""
+
+# White-label
+white_label_mode = false
+
+# Footer
+custom_footer_text = "© 2024 SafeOps. All rights reserved."
+show_version_in_footer = true
+
+# =============================================================================
+# HELP AND DOCUMENTATION
+# =============================================================================
+[help]
+# Integrated help system
+help_system_enabled = true
+
+# Context-sensitive help
+contextual_tooltips = true
+
+# Documentation links
+documentation_url = "https://docs.safeops.io"
+api_documentation_url = "https://docs.safeops.io/api"
+
+# Video tutorials
+video_tutorials_enabled = false
+video_tutorial_url = ""
+
+# Support
+support_email = "support@safeops.io"
+support_phone = "+1-800-SAFEOPS"
+
+# Release notes
+show_release_notes = true
+release_notes_url = "/release-notes"
+
+# =============================================================================
+# NOTIFICATIONS
+# =============================================================================
+[notifications]
+# In-app notifications
+in_app_notifications_enabled = true
+
+# Email notifications
+email_notifications_enabled = true
+smtp_server = "smtp.example.com"
+smtp_port = 587
+smtp_use_tls = true
+from_address = "noreply@safeops.local"
+
+# Desktop notifications (browser API)
+desktop_notifications_enabled = true
+
+# Notification preferences
+allow_user_preferences = true
+default_notification_channels = ["in_app", "email"]
+
+# Notification history
+notification_history_enabled = true
+notification_retention_days = 30
+
+# =============================================================================
+# PERFORMANCE OPTIMIZATION
+# =============================================================================
+[performance]
+# Connection pooling to backend services
+connection_pool_enabled = true
+pool_size_per_service = 10
+connection_timeout_seconds = 5
+
+# Query result caching
+query_cache_enabled = true
+query_cache_ttl_seconds = 300
+
+# Database query optimization
+use_prepared_statements = true
+query_timeout_seconds = 30
+
+# Lazy loading
+lazy_load_large_datasets = true
+lazy_load_threshold_rows = 100
+
+# Pagination
+force_pagination_above_rows = 1000
+
+# Background jobs
+background_jobs_enabled = true
+max_concurrent_jobs = 5
+job_timeout_minutes = 30

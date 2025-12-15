@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"D:\\SafeOpsFV2\\docs\" -Recurse -Filter \"*.md\")",
+      "Bash(Select-Object FullName)",
+      "Bash(Format-Table -HideTableHeaders)",
+      "Bash(mkdir -p \"D:\\SafeOpsFV2\\docs\\shared\\rust\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\config\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\logging\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\errors\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\health\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\metrics\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\utils\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\redis\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\postgres\" \"D:\\SafeOpsFV2\\docs\\shared\\go\\grpc_client\")"
+    ]
+  }
+}

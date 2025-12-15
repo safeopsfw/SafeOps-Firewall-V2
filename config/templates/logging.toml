@@ -1,0 +1,387 @@
+# SafeOps v2.0 - Global Logging Configuration
+# Centralized logging settings for all SafeOps services
+
+# =============================================================================
+# GLOBAL SETTINGS
+# =============================================================================
+[global]
+# Default log level for all services
+log_level = "info"  # trace, debug, info, warn, error, fatal
+
+# Log output format
+log_format = "json"  # json, text, logfmt
+
+# Timestamp format
+timestamp_format = "RFC3339"
+
+# Include caller information (file, line number)
+include_caller_info = false
+
+# Include stack traces for errors
+include_stack_traces = true
+
+# Include hostname in log entries
+include_hostname = true
+
+# Include process ID
+include_pid = true
+
+# Timezone for timestamps
+timezone = "UTC"
+
+# Maximum log message length (0 = unlimited)
+max_message_length = 0
+
+# Color output for console (development only)
+color_output = false
+
+# =============================================================================
+# LOG DESTINATIONS
+# =============================================================================
+[outputs]
+# Console (stdout/stderr) output
+console_enabled = true
+
+# File output
+file_enabled = true
+
+# Syslog output
+syslog_enabled = false
+
+# Windows Event Log
+windows_event_log_enabled = true
+
+# Remote logging (SIEM)
+remote_logging_enabled = false
+
+# =============================================================================
+# CONSOLE OUTPUT
+# =============================================================================
+[console_output]
+output_stream = "stdout"
+stderr_for_errors = true
+min_level = "info"
+colors = true
+
+# =============================================================================
+# FILE OUTPUT
+# =============================================================================
+[file_output]
+# Log directory (Windows)
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+
+# Log file name pattern
+log_file_name_pattern = "{service}_{date}.log"
+
+# Combined log file (all services)
+combined_log_enabled = true
+combined_log_file = "safeops.log"
+
+# Maximum file size before rotation (MB)
+max_file_size_mb = 100
+
+# Maximum number of rotated files to keep
+max_files = 10
+
+# Compress rotated log files
+compress_rotated = true
+compress_format = "gzip"
+
+# Rotation on time
+time_rotation = "daily"
+
+# Sync writes to disk
+sync_on_write = false
+
+# =============================================================================
+# WINDOWS EVENT LOG
+# =============================================================================
+[windows_event_log]
+enabled = true
+source = "SafeOps"
+log_name = "Application"
+min_level = "warn"  # Only warnings and above to Event Log
+
+# =============================================================================
+# SYSLOG OUTPUT
+# =============================================================================
+[syslog_output]
+enabled = false
+server_address = "127.0.0.1"
+port = 514
+protocol = "udp"  # udp, tcp, tls
+tls_enabled = false
+facility = "local0"
+tag_prefix = "safeops"
+format = "rfc5424"
+
+# =============================================================================
+# REMOTE LOGGING (SIEM)
+# =============================================================================
+[remote_logging]
+enabled = false
+type = "elasticsearch"  # elasticsearch, splunk, loki, datadog
+
+# Elasticsearch
+[remote_logging.elasticsearch]
+endpoint_url = "http://localhost:9200"
+index_pattern = "safeops-logs-{date}"
+batch_size = 1000
+flush_interval_seconds = 5
+tls_enabled = true
+tls_verify = true
+
+# Splunk HEC
+[remote_logging.splunk]
+hec_url = ""
+hec_token = ""  # Set via SAFEOPS_SPLUNK_HEC_TOKEN
+source = "safeops"
+sourcetype = "safeops:logs"
+index = "main"
+batch_size = 1000
+flush_interval_seconds = 5
+
+# Loki
+[remote_logging.loki]
+endpoint_url = ""
+tenant_id = ""
+labels = { app = "safeops", env = "production" }
+
+# =============================================================================
+# LOG ROTATION
+# =============================================================================
+[rotation]
+enabled = true
+
+# Rotation triggers
+max_size_mb = 100
+max_age_days = 7
+max_backups = 10
+
+# Compression
+compress_rotated = true
+compression_format = "gzip"
+
+# Rotation schedule
+rotate_daily = true
+rotation_time = "00:00"
+
+# =============================================================================
+# LOG RETENTION
+# =============================================================================
+[retention]
+# Retention periods by log type
+access_logs_days = 30
+error_logs_days = 90
+audit_logs_days = 365
+debug_logs_days = 7
+
+# Archive old logs
+archive_enabled = true
+archive_path = "C:\\ProgramData\\SafeOps\\logs\\archive"
+
+# Delete after retention period
+auto_delete = true
+
+# Cleanup schedule
+cleanup_schedule = "0 2 * * *"  # 2 AM daily
+
+# Minimum free disk space (GB)
+min_free_disk_gb = 5
+
+# =============================================================================
+# SERVICE-SPECIFIC LOGGING
+# =============================================================================
+[services]
+# Kernel Driver
+[services.kernel_driver]
+log_file = "kernel_driver.log"
+log_level = "warn"
+log_packet_drops = true
+
+# Network Logger
+[services.network_logger]
+log_file = "network_logger.log"
+log_level = "info"
+
+# Firewall Engine
+[services.firewall_engine]
+log_file = "firewall_engine.log"
+log_level = "info"
+log_denied_connections = true
+
+# TLS Proxy
+[services.tls_proxy]
+log_file = "tls_proxy.log"
+log_level = "info"
+log_intercepted_domains = true
+
+# IDS/IPS
+[services.ids_ips]
+log_file = "ids_ips.log"
+log_level = "info"
+log_all_alerts = true
+
+# DNS Server
+[services.dns_server]
+log_file = "dns_server.log"
+log_level = "info"
+log_blocked_queries = true
+
+# DHCP Server
+[services.dhcp_server]
+log_file = "dhcp_server.log"
+log_level = "info"
+log_lease_assignments = true
+
+# WiFi AP
+[services.wifi_ap]
+log_file = "wifi_ap.log"
+log_level = "info"
+log_client_connections = true
+
+# Certificate Manager
+[services.certificate_manager]
+log_file = "certificate_manager.log"
+log_level = "info"
+log_cert_operations = true
+
+# Threat Intelligence
+[services.threat_intel]
+log_file = "threat_intel.log"
+log_level = "info"
+log_feed_updates = true
+
+# Backup & Restore
+[services.backup_restore]
+log_file = "backup_restore.log"
+log_level = "info"
+log_backup_operations = true
+
+# Update Manager
+[services.update_manager]
+log_file = "update_manager.log"
+log_level = "info"
+log_update_operations = true
+
+# Orchestrator
+[services.orchestrator]
+log_file = "orchestrator.log"
+log_level = "info"
+log_service_events = true
+
+# Web UI
+[services.web_ui]
+log_file = "web_ui.log"
+access_log_file = "web_ui_access.log"
+error_log_file = "web_ui_error.log"
+log_level = "info"
+log_api_requests = true
+
+# =============================================================================
+# AUDIT LOGGING
+# =============================================================================
+[audit]
+enabled = true
+audit_log_file = "C:\\ProgramData\\SafeOps\\logs\\audit.log"
+separate_audit_log = true
+retention_days = 365
+
+# Events to audit
+audit_events = [
+    "config_change",
+    "rule_change",
+    "user_login",
+    "user_logout",
+    "certificate_issued",
+    "certificate_revoked",
+    "service_start",
+    "service_stop",
+    "firewall_rule_added",
+    "firewall_rule_deleted",
+    "block_action",
+    "threat_detected"
+]
+
+# Include before/after values in changes
+include_diff = true
+
+# Sign audit log entries (integrity)
+sign_entries = false
+# signing_key = "C:\\Program Files\\SafeOps\\keys\\audit_key.pem"
+
+# =============================================================================
+# SENSITIVE DATA HANDLING
+# =============================================================================
+[sensitive_data]
+# Redact sensitive information
+redact_passwords = true
+redact_tokens = true
+redact_credit_cards = true
+redact_ssn = true
+
+# Redaction pattern
+redaction_string = "[REDACTED]"
+
+# Fields to always redact
+redact_fields = [
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "private_key",
+    "passphrase"
+]
+
+# =============================================================================
+# PERFORMANCE OPTIMIZATION
+# =============================================================================
+[performance]
+# Asynchronous logging
+async_logging = true
+async_buffer_size = 10000
+
+# Batching
+batch_writes = true
+batch_size = 100
+batch_timeout_ms = 1000
+
+# Buffer sizes
+file_buffer_size_kb = 64
+network_buffer_size_kb = 128
+
+# Drop on overflow or block
+drop_on_overflow = true
+
+# Sampling rate for debug logs
+sampling_enabled = false
+sampling_rate = 1.0
+
+# =============================================================================
+# LOG FILTERING
+# =============================================================================
+[filtering]
+enabled = true
+
+# Exclude noisy log messages
+exclude_patterns = [
+    "health.*check",
+    "keepalive"
+]
+
+# Rate limiting for repeated messages
+rate_limit_enabled = true
+rate_limit_messages_per_minute = 100
+
+# =============================================================================
+# METRICS
+# =============================================================================
+[metrics]
+# Prometheus metrics for logging
+prometheus_enabled = true
+prometheus_port = 9199
+
+# Export log statistics
+export_log_stats = true
+export_error_counts = true
+export_buffer_stats = true

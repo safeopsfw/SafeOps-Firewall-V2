@@ -1,0 +1,648 @@
+# SafeOps v2.0 - Firewall Configuration
+# Packet filtering, NAT, and connection tracking
+# High-performance stateful firewall engine
+
+[service]
+# Service identification
+name = "firewall_engine"
+# gRPC listen address
+listen_address = "127.0.0.1:50054"
+# Log level: "trace", "debug", "info", "warn", "error"
+log_level = "info"
+# Enable Prometheus metrics endpoint
+enable_metrics = true
+# Service description
+description = "Stateful packet filtering firewall"
+
+[engine]
+# Firewall engine configuration
+# Default policy: "ALLOW" or "DENY"
+default_policy = "DENY"
+# Connection timeout for idle connections (seconds)
+connection_timeout = 3600  # 1 hour
+# Protocol-specific timeouts
+tcp_timeout = 86400  # 24 hours for established TCP
+udp_timeout = 300    # 5 minutes for UDP
+icmp_timeout = 30    # 30 seconds for ICMP
+# Maximum tracked connections
+max_connections = 1000000  # 1 million
+# Connection table size (hash table buckets)
+connection_table_size = 262144  # 256K buckets
+# Enable connection tracking
+enable_connection_tracking = true
+# Enable NAT tracking
+enable_nat_tracking = true
+# Conntrack helpers (FTP, SIP, etc.)
+enable_conntrack_helpers = true
+
+[global]
+# Global firewall settings
+# SECURITY: Default DROP is recommended for production
+default_input = "DROP"
+default_output = "ACCEPT"
+default_forward = "DROP"
+# Enable stateful firewall (connection tracking)
+enable_stateful = true
+# Log dropped packets
+log_drops = true
+# Log accepted packets (WARNING: very verbose)
+log_accepts = false
+# Log invalid packets
+log_invalid = true
+
+[global.performance]
+# Firewall performance settings
+# Maximum number of tracked connections
+max_connections = 100000
+# Connection timeout for established connections (seconds)
+timeout_established = 86400  # 24 hours
+# Connection timeout for half-open connections
+timeout_syn_sent = 120
+# Connection timeout for closing connections
+timeout_close_wait = 60
+# Enable connection tracking helpers (FTP, SIP, etc.)
+enable_conntrack_helpers = true
+
+[interfaces]
+# Interface configuration
+# Trusted interfaces (no filtering)
+# trusted = ["lo"]
+# External (WAN) interface
+external = "eth0"
+# Internal (LAN) interfaces
+internal = ["eth1"]
+# DMZ interfaces
+# dmz = ["eth2"]
+
+[processing]
+# Packet processing configuration
+# Worker threads for packet processing
+worker_threads = 8
+# Packets to process per batch
+packets_per_batch = 128
+# Enable SIMD packet parsing (AVX2/SSE4)
+enable_simd = true
+# Enable memory prefetching
+enable_prefetch = true
+# CPU affinity - pin threads to specific cores
+cpu_affinity = []  # Empty = no pinning, e.g., [0, 1, 2, 3, 4, 5, 6, 7]
+# Rule cache size (MB) - LRU cache for frequently matched rules
+rule_cache_size = 256  # 256MB
+# Enable rule cache
+enable_rule_cache = true
+# Flow director (hardware flow classification)
+enable_flow_director = false
+# Hash table algorithm: "jenkins", "murmur3", "xxhash"
+hash_algorithm = "xxhash"
+
+[nat]
+# Network Address Translation configuration
+enabled = false
+# Ephemeral port range for NAT
+port_range_start = 49152
+port_range_end = 65535
+# Maximum NAT sessions
+max_sessions = 100000
+# NAT session timeout (seconds)
+session_timeout = 300  # 5 minutes
+# Enable hairpin NAT (LAN-to-LAN via public IP)
+hairpin_nat_enabled = false
+# NAT mapping mode: "endpoint-independent", "address-dependent", "address-port-dependent"
+mapping_mode = "endpoint-independent"
+# Enable port preservation (try to use same port)
+port_preservation = true
+
+[nat.masquerade]
+# Source NAT (masquerading) for internet access
+# Enable masquerading on external interface
+enabled = false
+interface = "eth0"
+# Source networks to masquerade
+src_networks = ["192.168.1.0/24"]
+
+[nat.port_forwarding]
+# Destination NAT (port forwarding)
+# Example: forward external port 8080 to internal server port 80
+# [[nat.port_forwarding.rule]]
+# external_port = 8080
+# internal_ip = "192.168.1.100"
+# internal_port = 80
+# protocol = "tcp"
+# enabled = true
+
+[ddos_protection]
+# DDoS protection and flood mitigation
+enabled = true
+# SYN flood threshold (SYN packets per second)
+syn_flood_threshold = 1000
+# ICMP flood threshold (ICMP packets per second)
+icmp_flood_threshold = 100
+# UDP flood threshold (UDP packets per second)
+udp_flood_threshold = 1000
+# Connection rate limit (new connections per second per IP)
+connection_rate_limit = 50
+# Enable automatic blacklisting of attackers
+auto_blacklist_enabled = true
+# Blacklist duration (seconds)
+blacklist_duration = 3600  # 1 hour
+# Enable SYN cookies (kernel must support it)
+enable_syn_cookies = true
+# Connection tracking limits per IP
+max_connections_per_ip = 1000
+# Half-open connection limit per IP
+max_half_open_per_ip = 100
+
+[rules]
+# Firewall rules are processed in order (first match wins)
+# Each rule has: priority (lower = higher priority), action, protocol, src, dst, ports
+
+# Rules configuration
+# Path to rules database file
+rules_file_path = "/etc/safeops/firewall_rules.db"
+# Automatically reload rules when file changes
+auto_reload = true
+# Reload check interval (seconds)
+reload_interval = 10
+# Maximum number of rules
+max_rules = 100000
+# Rule priority enforcement: "strict" or "loose"
+rule_priority_enforcement = "strict"
+# Enable rule statistics
+enable_rule_stats = true
+# Rule optimization (reorder for performance)
+enable_rule_optimization = true
+
+# Allow established/related connections (stateful firewall)
+[[rules.rule]]
+priority = 100
+name = "allow-established"
+action = "ACCEPT"
+state = ["ESTABLISHED", "RELATED"]
+enabled = true
+
+# Allow loopback
+[[rules.rule]]
+priority = 200
+name = "allow-loopback"
+action = "ACCEPT"
+interface_in = "lo"
+enabled = true
+
+# Allow ICMP (ping)
+[[rules.rule]]
+priority = 300
+name = "allow-icmp"
+action = "ACCEPT"
+protocol = "icmp"
+# Limit ICMP to prevent ping floods
+rate_limit = "10/second"
+enabled = true
+
+# Allow SSH from specific network (adjust as needed)
+[[rules.rule]]
+priority = 400
+name = "allow-ssh-admin"
+action = "ACCEPT"
+protocol = "tcp"
+dst_port = 22
+src_network = "10.0.0.0/24"
+enabled = true
+
+# Allow DNS
+[[rules.rule]]
+priority = 500
+name = "allow-dns"
+action = "ACCEPT"
+protocol = "udp"
+dst_port = 53
+enabled = true
+
+# Allow HTTP/HTTPS
+[[rules.rule]]
+priority = 600
+name = "allow-http"
+action = "ACCEPT"
+protocol = "tcp"
+dst_port = [80, 443]
+enabled = true
+
+# Allow SafeOps gRPC (localhost only)
+[[rules.rule]]
+priority = 700
+name = "allow-grpc"
+action = "ACCEPT"
+protocol = "tcp"
+dst_port = [50051, 50052, 50053, 50054, 50055, 50056, 50057, 50058, 50059, 50060, 50061, 50062, 50063]
+src_address = "127.0.0.1"
+dst_address = "127.0.0.1"
+enabled = true
+
+# Block known bad ports
+[[rules.rule]]
+priority = 800
+name = "block-bad-ports"
+action = "DROP"
+protocol = "tcp"
+dst_port = [23, 135, 139, 445, 1433, 3389]  # Telnet, NetBIOS, SMB, RDP, etc.
+log = true
+enabled = true
+
+# Anti-spoofing: drop packets from external interface with internal source
+[[rules.rule]]
+priority = 900
+name = "anti-spoofing"
+action = "DROP"
+interface_in = "eth0"
+src_network = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+log = true
+enabled = true
+
+# Drop invalid packets
+[[rules.rule]]
+priority = 1000
+name = "drop-invalid"
+action = "DROP"
+state = ["INVALID"]
+log = true
+enabled = true
+
+[conntrack]
+# Connection tracking settings
+enabled = true
+# Track TCP connections
+track_tcp = true
+# Track UDP connections
+track_udp = true
+# Track ICMP connections
+track_icmp = true
+# Enable connection tracking accounting
+enable_accounting = true
+# Connection tracking table size
+table_size = 100000
+
+[conntrack.timeouts]
+# Connection tracking timeouts (seconds)
+tcp_syn_sent = 120
+tcp_syn_recv = 60
+tcp_established = 432000  # 5 days
+tcp_fin_wait = 120
+tcp_time_wait = 120
+tcp_close = 10
+udp = 30
+udp_stream = 180
+icmp = 30
+
+[logging]
+# Firewall logging configuration
+# Log all packets (very verbose, not recommended)
+log_all_packets = false
+# Log dropped packets
+log_dropped_packets = true
+# Log accepted packets
+log_accepted_packets = false
+# Log rate-limited packets
+log_rate_limited_packets = true
+# Maximum log rate (logs per second) to prevent log flooding
+max_log_rate = 1000
+# Log file
+log_file = "/var/log/safeops/firewall.log"
+# Log format: "text", "json"
+log_format = "json"
+# Log rotation size (MB)
+log_rotation_size_mb = 100
+# Keep N log files
+log_retention_files = 10
+
+[logging.verbosity]
+# What to log
+log_dropped_packets = true
+log_accepted_packets = false
+log_blocked_ips = true
+log_rate_limits = true
+log_nat_translations = false
+
+[rate_limiting]
+# Rate limiting / DDoS protection
+enabled = true
+# Global rate limits
+max_connections_per_ip = 100
+max_new_connections_per_sec = 50
+max_icmp_per_sec = 10
+max_udp_per_sec = 100
+
+[rate_limiting.syn_flood]
+# SYN flood protection
+enabled = true
+# Maximum half-open connections per IP
+max_syn_per_ip = 20
+# SYN cookies (kernel must support it)
+enable_syn_cookies = true
+
+[rate_limiting.port_scan]
+# Port scan detection
+enabled = true
+# Threshold: ports per second
+threshold = 15
+# Block duration in seconds
+block_duration = 3600
+
+[blacklist]
+# IP blacklist
+enabled = true
+# Blacklist file (one IP/network per line)
+file = "/etc/safeops/blacklist.txt"
+# Auto-update from threat intelligence
+auto_update = true
+# Update interval in hours
+update_interval_hours = 6
+
+[whitelist]
+# IP whitelist (always allow)
+enabled = true
+# Whitelist file
+file = "/etc/safeops/whitelist.txt"
+# IPs/networks that bypass all firewall rules
+bypass_ips = ["127.0.0.1", "::1"]
+
+[metrics]
+# Prometheus metrics configuration
+prometheus_enabled = true
+prometheus_port = 9101
+# Metrics update interval (seconds)
+metrics_interval = 10
+# Export connection table statistics
+export_connection_table_stats = true
+# Export NAT table statistics
+export_nat_table_stats = true
+# Export rule statistics
+export_rule_stats = true
+# Export performance statistics
+export_performance_stats = true
+# Export dropped packet statistics
+export_drop_stats = true
+
+[integration]
+# Integration with other SafeOps services
+# Send dropped packets to IDS/IPS for analysis
+send_drops_to_ids = true
+# Query threat intelligence before allowing
+query_threat_intel = true
+# Cache threat intelligence results (seconds)
+threat_intel_cache_ttl = 300
+
+# Global firewall settings
+# Default policy for chains: "ACCEPT", "DROP", "REJECT"
+# SECURITY: Default DROP is recommended for production
+default_input = "DROP"
+default_output = "ACCEPT"
+default_forward = "DROP"
+# Enable stateful firewall (connection tracking)
+enable_stateful = true
+# Log dropped packets
+log_drops = true
+# Log accepted packets (WARNING: very verbose)
+log_accepts = false
+# Log invalid packets
+log_invalid = true
+
+[global.performance]
+# Firewall performance settings
+# Maximum number of tracked connections
+max_connections = 100000
+# Connection timeout for established connections (seconds)
+timeout_established = 86400  # 24 hours
+# Connection timeout for half-open connections
+timeout_syn_sent = 120
+# Connection timeout for closing connections
+timeout_close_wait = 60
+# Enable connection tracking helpers (FTP, SIP, etc.)
+enable_conntrack_helpers = true
+
+[interfaces]
+# Interface configuration
+# Trusted interfaces (no filtering)
+# trusted = ["lo"]
+# External (WAN) interface
+external = "eth0"
+# Internal (LAN) interfaces
+internal = ["eth1"]
+# DMZ interfaces
+# dmz = ["eth2"]
+
+[rules]
+# Firewall rules are processed in order (first match wins)
+# Each rule has: priority (lower = higher priority), action, protocol, src, dst, ports
+
+# Allow established/related connections (stateful firewall)
+[[rules.rule]]
+priority = 100
+name = "allow-established"
+action = "ACCEPT"
+state = ["ESTABLISHED", "RELATED"]
+enabled = true
+
+# Allow loopback
+[[rules.rule]]
+priority = 200
+name = "allow-loopback"
+action = "ACCEPT"
+interface_in = "lo"
+enabled = true
+
+# Allow ICMP (ping)
+[[rules.rule]]
+priority = 300
+name = "allow-icmp"
+action = "ACCEPT"
+protocol = "icmp"
+# Limit ICMP to prevent ping floods
+rate_limit = "10/second"
+enabled = true
+
+# Allow SSH from specific network (adjust as needed)
+[[rules.rule]]
+priority = 400
+name = "allow-ssh-admin"
+action = "ACCEPT"
+protocol = "tcp"
+dst_port = 22
+src_network = "10.0.0.0/24"
+enabled = true
+
+# Allow DNS
+[[rules.rule]]
+priority = 500
+name = "allow-dns"
+action = "ACCEPT"
+protocol = "udp"
+dst_port = 53
+enabled = true
+
+# Allow HTTP/HTTPS
+[[rules.rule]]
+priority = 600
+name = "allow-http"
+action = "ACCEPT"
+protocol = "tcp"
+dst_port = [80, 443]
+enabled = true
+
+# Allow SafeOps gRPC (localhost only)
+[[rules.rule]]
+priority = 700
+name = "allow-grpc"
+action = "ACCEPT"
+protocol = "tcp"
+dst_port = [50051, 50052, 50053, 50054, 50055, 50056, 50057, 50058, 50059, 50060, 50061, 50062, 50063]
+src_address = "127.0.0.1"
+dst_address = "127.0.0.1"
+enabled = true
+
+# Block known bad ports
+[[rules.rule]]
+priority = 800
+name = "block-bad-ports"
+action = "DROP"
+protocol = "tcp"
+dst_port = [23, 135, 139, 445, 1433, 3389]  # Telnet, NetBIOS, SMB, RDP, etc.
+log = true
+enabled = true
+
+# Anti-spoofing: drop packets from external interface with internal source
+[[rules.rule]]
+priority = 900
+name = "anti-spoofing"
+action = "DROP"
+interface_in = "eth0"
+src_network = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+log = true
+enabled = true
+
+# Drop invalid packets
+[[rules.rule]]
+priority = 1000
+name = "drop-invalid"
+action = "DROP"
+state = ["INVALID"]
+log = true
+enabled = true
+
+[nat]
+# Network Address Translation configuration
+enabled = false
+
+[nat.masquerade]
+# Source NAT (masquerading) for internet access
+# Enable masquerading on external interface
+enabled = false
+interface = "eth0"
+# Source networks to masquerade
+src_networks = ["192.168.1.0/24"]
+
+[nat.port_forwarding]
+# Destination NAT (port forwarding)
+# Example: forward external port 8080 to internal server port 80
+# [[nat.port_forwarding.rule]]
+# external_port = 8080
+# internal_ip = "192.168.1.100"
+# internal_port = 80
+# protocol = "tcp"
+# enabled = true
+
+[conntrack]
+# Connection tracking settings
+enabled = true
+# Track TCP connections
+track_tcp = true
+# Track UDP connections
+track_udp = true
+# Track ICMP connections
+track_icmp = true
+# Enable connection tracking accounting
+enable_accounting = true
+# Connection tracking table size
+table_size = 100000
+
+[conntrack.timeouts]
+# Connection tracking timeouts (seconds)
+tcp_syn_sent = 120
+tcp_syn_recv = 60
+tcp_established = 432000  # 5 days
+tcp_fin_wait = 120
+tcp_time_wait = 120
+tcp_close = 10
+udp = 30
+udp_stream = 180
+icmp = 30
+
+[rate_limiting]
+# Rate limiting / DDoS protection
+enabled = true
+# Global rate limits
+max_connections_per_ip = 100
+max_new_connections_per_sec = 50
+max_icmp_per_sec = 10
+max_udp_per_sec = 100
+
+[rate_limiting.syn_flood]
+# SYN flood protection
+enabled = true
+# Maximum half-open connections per IP
+max_syn_per_ip = 20
+# SYN cookies (kernel must support it)
+enable_syn_cookies = true
+
+[rate_limiting.port_scan]
+# Port scan detection
+enabled = true
+# Threshold: ports per second
+threshold = 15
+# Block duration in seconds
+block_duration = 3600
+
+[blacklist]
+# IP blacklist
+enabled = true
+# Blacklist file (one IP/network per line)
+file = "/etc/safeops/blacklist.txt"
+# Auto-update from threat intelligence
+auto_update = true
+# Update interval in hours
+update_interval_hours = 6
+
+[whitelist]
+# IP whitelist (always allow)
+enabled = true
+# Whitelist file
+file = "/etc/safeops/whitelist.txt"
+# IPs/networks that bypass all firewall rules
+bypass_ips = ["127.0.0.1", "::1"]
+
+[logging]
+# Firewall logging
+log_level = "info"
+# Log file
+log_file = "/var/log/safeops/firewall.log"
+# Log format: "text", "json"
+log_format = "json"
+# Log rotation size (MB)
+log_rotation_size_mb = 100
+# Keep N log files
+log_retention_files = 10
+
+[logging.verbosity]
+# What to log
+log_dropped_packets = true
+log_accepted_packets = false
+log_blocked_ips = true
+log_rate_limits = true
+log_nat_translations = false
+
+[integration]
+# Integration with other SafeOps services
+# Send dropped packets to IDS/IPS for analysis
+send_drops_to_ids = true
+# Query threat intelligence before allowing
+query_threat_intel = true
+# Cache threat intelligence results (seconds)
+threat_intel_cache_ttl = 300

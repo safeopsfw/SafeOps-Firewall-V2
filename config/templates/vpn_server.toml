@@ -1,0 +1,356 @@
+# ============================================================================
+# SafeOps VPN Server Configuration
+# ============================================================================
+# Purpose: VPN configuration for remote access and site-to-site
+# Protocols: WireGuard, OpenVPN, IPsec
+# ============================================================================
+
+version: "1.0.0"
+metadata:
+  service: "vpn_server"
+  description: "Multi-protocol VPN configuration"
+  last_updated: "2025-12-13"
+
+# ============================================================================
+# WireGuard VPN Configuration (Recommended)
+# ============================================================================
+wireguard:
+  enabled: true
+  listen_port: 51820
+  interface_name: wg0
+  
+  # Server Configuration
+  server:
+    private_key_file: /etc/safeops/vpn/wireguard/private.key
+    public_key: "SERVER_PUBLIC_KEY_HERE"
+    address: 10.8.0.1/24
+    listen_address: 0.0.0.0
+    
+  # Network Settings
+  network:
+    allowed_ips_to_clients: ["10.8.0.0/24"]
+    forward_to_networks: ["192.168.10.0/24", "192.168.20.0/24"]
+    dns_servers: ["192.168.10.1", "8.8.8.8"]
+    mtu: 1420
+    persistent_keepalive: 25
+  
+  #Client Configurations
+  clients:
+    - name: "admin-laptop"
+      public_key: "CLIENT1_PUBLIC_KEY"
+      allowed_ips: ["10.8.0.2/32"]
+      endpoint: null  # Road warrior (no fixed endpoint)
+      preshared_key_file: /etc/safeops/vpn/wireguard/psk/client1.psk
+      enabled: true
+      max_bandwidth_mbps: 100
+      
+    - name: "mobile-phone"
+      public_key: "CLIENT2_PUBLIC_KEY"
+      allowed_ips: ["10.8.0.3/32"]
+      endpoint: null
+      enabled: true
+      
+    - name: "remote-office"
+      public_key: "CLIENT3_PUBLIC_KEY"
+      allowed_ips: ["10.8.0.4/32", "10.10.0.0/24"]  # Site-to-site
+      endpoint: "203.0.114.10:51820"
+      enabled: true
+  
+  # Firewall Integration
+  firewall:
+    allow_forwarding: true
+    masquerade: true
+    kill_switch: false  # Block internet if VPN down
+    
+  # Logging
+  logging:
+    enabled: true
+    log_file: /var/log/safeops/wireguard.log
+    log_level: INFO
+
+# ============================================================================
+# OpenVPN Configuration (Legacy Support)
+# ============================================================================
+openvpn:
+  enabled: false
+  protocol: udp  # udp, tcp
+  listen_port: 1194
+  interface_name: tun0
+  
+  # Server Configuration
+  server:
+    mode: server  # server, client, peer-to-peer
+    network: 10.9.0.0
+    netmask: 255.255.255.0
+    topology: subnet  # subnet, net30, p2p
+    
+  # Encryption
+  encryption:
+    cipher: AES-256-GCM
+    auth: SHA512
+    tls_version_min: "1.2"
+    tls_cipher: TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384
+    
+  # Certificates
+  certificates:
+    ca_cert: /etc/safeops/vpn/openvpn/ca.crt
+    server_cert: /etc/safeops/vpn/openvpn/server.crt
+    server_key: /etc/safeops/vpn/openvpn/server.key
+    dh_params: /etc/safeops/vpn/openvpn/dh2048.pem
+    tls_auth_key: /etc/safeops/vpn/openvpn/ta.key
+    crl_verify: /etc/safeops/vpn/openvpn/crl.pem
+  
+  # Network Settings
+  network:
+    push_routes:
+      - "192.168.10.0 255.255.255.0"
+      - "192.168.20.0 255.255.255.0"
+    push_dns: ["192.168.10.1", "8.8.8.8"]
+    redirect_gateway: false
+    duplicate_cn: false  # Allow multiple connections with same cert
+    
+  # Client Configuration
+  client_config_dir: /etc/safeops/vpn/openvpn/ccd
+  
+  # Connection Limits
+  max_clients: 100
+  
+  # Keep-alive
+  keepalive:
+    ping: 10
+    ping_restart: 120
+  
+  # Compression
+  compression: lz4-v2  # lz4-v2, lzo, none
+  
+  # Logging
+  logging:
+    enabled: true
+    log_file: /var/log/safeops/openvpn.log
+    verb_level: 3  # 0-11
+
+# ============================================================================
+# IPsec/IKEv2 Configuration
+# ============================================================================
+ipsec:
+  enabled: false
+  
+  # IKE Phase 1 (Main Mode)
+  ike:
+    version: ikev2  # ikev1, ikev2
+    encryption: aes256
+    integrity: sha256
+    dh_group: modp2048
+    lifetime: 28800  # 8 hours
+  
+  # ESP Phase 2 (Quick Mode)
+  esp:
+    encryption: aes256-gcm16
+    integrity: null  # GCM mode includes integrity
+    pfs_group: modp2048
+    lifetime: 3600  # 1 hour
+  
+  # Authentication
+  authentication:
+    method: psk  # psk, rsa, eap
+    psk_file: /etc/safeops/vpn/ipsec/ipsec.secrets
+    
+  # Site-to-Site Connections
+  connections:
+    - name: remote-office-1
+      left: "%any"  # Local endpoint (any for road warrior)
+      left_subnet: 192.168.10.0/24
+      right: 203.0.114.20
+      right_subnet: 10.20.0.0/24
+      auto: start  # start, add, ignore
+      
+# ============================================================================
+# VPN Authentication
+# ============================================================================
+authentication:
+  # Local User Database
+  local_users:
+    enabled: true
+    users:
+      - username: admin
+        password_hash: "$2y$10$..."  # bcrypt hash
+        allowed_ips: ["10.8.0.2"]
+        enabled: true
+        
+      - username: john.doe
+        password_hash: "$2y$10$..."
+        allowed_ips: ["10.8.0.10"]
+        enabled: true
+        two_factor: true
+  
+  # LDAP/Active Directory
+  ldap:
+    enabled: false
+    server: ldap://ad.example.com
+    port: 389
+    use_ssl: true
+    bind_dn: "CN=vpn-service,OU=Services,DC=example,DC=com"
+    bind_password_file: /etc/safeops/vpn/ldap_password
+    base_dn: "OU=Users,DC=example,DC=com"
+    filter: "(&(objectClass=user)(memberOf=CN=VPN-Users,OU=Groups,DC=example,DC=com))"
+  
+  # RADIUS
+  radius:
+    enabled: false
+    server: 192.168.100.30
+    port: 1812
+    secret_file: /etc/safeops/vpn/radius_secret
+    timeout: 5
+    retries: 3
+  
+  # Two-Factor Authentication
+  two_factor:
+    enabled: true
+    method: totp  # totp, sms, email
+    issuer: SafeOps VPN
+    window: 1  # Allow 1 time step before/after
+
+# ============================================================================
+# Access Control
+# ============================================================================
+access_control:
+  # IP-based ACLs
+  allowed_source_ips:
+    - 0.0.0.0/0  # Allow from anywhere (or restrict to specific countries)
+  
+  # Geo-blocking
+  geo_blocking:
+    enabled: true
+    block_countries: []  # ["CN", "RU", "KP"]
+    allow_countries: []
+  
+  # Group-based Access
+  groups:
+    - name: admins
+      allowed_networks: ["192.168.0.0/16", "10.8.0.0/24"]
+      bandwidth_limit_mbps: 0  # Unlimited
+      
+    - name: users
+      allowed_networks: ["192.168.10.0/24", "192.168.40.0/24"]  # Office & Library
+      bandwidth_limit_mbps: 50
+
+# ============================================================================
+# Security Settings
+# ============================================================================
+security:
+  # Kill Switch (block internet if VPN disconnects)
+  kill_switch:
+    enabled: false
+    whitelist_ips: ["192.168.1.1"]  # Local gateway
+  
+  # DNS Leak Protection
+  dns_leak_protection: true
+  
+  # IPv6 Support
+  ipv6:
+    enabled: false
+    server_address: "fddd:1194:1194:1194::1/64"
+  
+  # Port Knocking
+  port_knocking:
+    enabled: false
+    sequence: [7000, 8000, 9000]
+    timeout: 5
+
+# ============================================================================
+# Monitoring & Logging
+# ============================================================================
+monitoring:
+  # Connection Tracking
+  track_connections: true
+  max_session_duration_hours: 24
+  idle_timeout_minutes: 60
+  
+  # Bandwidth Monitoring
+  bandwidth_monitoring:
+    enabled: true
+    per_user: true
+    alert_threshold_gbps: 10
+  
+  # Health Checks
+  health_checks:
+    enabled: true
+    ping_interval: 60
+    ping_timeout: 10
+  
+  # Metrics
+  metrics:
+    enabled: true
+    prometheus_endpoint: true
+    port: 9586
+
+# Logging
+logging:
+  enabled: true
+  log_connections: true
+  log_disconnections: true
+  log_authentication: true
+  log_file: /var/log/safeops/vpn.log
+  max_size_mb: 500
+  rotation: weekly
+  retention_days: 90
+  syslog_enabled: true
+
+# ============================================================================
+# High Availability
+# ============================================================================
+high_availability:
+  enabled: false
+  mode: active-passive  # active-passive, active-active
+  peer_address: 192.168.100.2
+  sync_interval_seconds: 60
+  failover_timeout_seconds: 30
+
+# ============================================================================
+# Client Configuration Templates
+# ============================================================================
+client_templates:
+  wireguard:
+    config: |
+      [Interface]
+      PrivateKey = CLIENT_PRIVATE_KEY
+      Address = 10.8.0.X/24
+      DNS = 192.168.10.1
+      
+      [Peer]
+      PublicKey = SERVER_PUBLIC_KEY
+      Endpoint = vpn.example.com:51820
+      AllowedIPs = 0.0.0.0/0
+      PersistentKeepalive = 25
+  
+  openvpn:
+    config: |
+      client
+      dev tun
+      proto udp
+      remote vpn.example.com 1194
+      resolv-retry infinite
+      nobind
+      cipher AES-256-GCM
+      auth SHA512
+      remote-cert-tls server
+      verb 3
+
+# ============================================================================
+# Integration
+# ============================================================================
+integration:
+  # Firewall Auto-configuration
+  firewall:
+    auto_create_rules: true
+    allow_vpn_to_lan: true
+  
+  # SIEM Logging
+  siem:
+    enabled: true
+    export_connection_logs: true
+  
+  # IPAM Integration
+  ipam:
+    enabled: true
+    auto_assign_ips: true

@@ -1,0 +1,122 @@
+# ============================================================================
+# Network Interfaces Configuration Examples
+# ============================================================================
+
+network_interfaces:
+  # WAN Interface (Internet)
+  - name: eth0
+    alias: WAN
+    type: ethernet
+    role: wan
+    dhcp: true
+    mtu: 1500
+    enabled: true
+    monitoring: true
+
+  # LAN Interface (Internal Network)
+  - name: eth1
+    alias: LAN
+    type: ethernet
+    role: lan
+    static_ip: 192.168.1.1
+    netmask: 255.255.255.0
+    mtu: 1500
+    enabled: true
+    
+  # Management Interface
+  - name: eth2
+    alias: MGMT
+    type: ethernet
+    role: management
+    static_ip: 192.168.100.1
+    netmask: 255.255.255.0
+    vlan_id: 100
+    enabled: true
+    restricted_access: true
+
+  # WiFi Access Point
+  - name: wlan0
+    alias: WiFi-Internal
+    type: wireless
+    role: lan
+    ssid: SafeOps-Secure
+    security: WPA3
+    password: "CHANGE_ME"
+    channel: auto
+    bandwidth: "80MHz"
+    enabled: false
+
+  # Guest WiFi
+  - name: wlan1
+    alias: WiFi-Guest
+    type: wireless
+    role: guest
+    ssid: SafeOps-Guest
+    security: WPA2
+    password: "CHANGE_ME"
+    channel: auto
+    isolation: true
+    vlan_id: 30
+    enabled: false
+
+# VLAN Configuration
+vlans:
+  - vlan_id: 10
+    name: Office
+    description: "Main office network"
+    network: 192.168.10.0/24
+    gateway: 192.168.10.1
+    dhcp: true
+    
+  - vlan_id: 20
+    name: Servers
+    description: "Server infrastructure"
+    network: 192.168.20.0/24
+    gateway: 192.168.20.1
+    dhcp: false
+    
+  - vlan_id: 30
+    name: Guest
+    description: "Guest network"
+    network: 192.168.30.0/24
+    gateway: 192.168.30.1
+    dhcp: true
+    isolation: true
+    internet_only: true
+
+  - vlan_id: 100
+    name: Management
+    description: "Management interface"
+    network: 192.168.100.0/24
+    gateway: 192.168.100.1
+    dhcp: false
+    restricted: true
+
+# Bonding/Link Aggregation
+bonds:
+  - name: bond0
+    type: LACP
+    mode: 802.3ad
+    slaves: [eth3, eth4]
+    mtu: 9000
+    enabled: false
+
+# Bridges
+bridges:
+  - name: br0
+    type: bridge
+    interfaces: [eth1, tap0]
+    stp_enabled: true
+    enabled: false
+
+# Routes
+static_routes:
+  - destination: 10.0.0.0/8
+    gateway: 192.168.1.254
+    metric: 10
+    interface: eth1
+    
+  - destination: 172.16.0.0/12
+    gateway: 192.168.1.254
+    metric: 10
+    interface: eth1

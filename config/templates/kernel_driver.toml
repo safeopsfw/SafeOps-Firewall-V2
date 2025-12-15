@@ -1,0 +1,169 @@
+# SafeOps Windows Kernel Driver Configuration
+# Purpose: Packet capture, ring buffer, and NIC binding settings
+
+# =============================================================================
+# DRIVER CONFIGURATION
+# =============================================================================
+[driver]
+name = "SafeOps Network Driver"
+version = "2.0.0"
+
+# Installation paths (C: drive only for kernel drivers)
+driver_path = "C:\\Windows\\System32\\drivers\\safeops.sys"
+inf_path = "C:\\Windows\\System32\\drivers\\safeops.inf"
+
+# Service registration
+service_name = "SafeOpsDriver"
+display_name = "SafeOps Network Capture Driver"
+service_type = "kernel"
+start_type = "system"  # boot, system, auto, demand
+
+# =============================================================================
+# NETWORK INTERFACE CONFIGURATION
+# =============================================================================
+[interfaces]
+# NIC binding
+bind_all_adapters = false
+
+# Specific NICs to monitor (leave empty to auto-detect)
+monitored_nics = [
+    "WAN",   # NIC 1 - Internet-facing
+    "LAN",   # NIC 2 - Local network
+    "WIFI"   # NIC 3 - Wireless AP
+]
+
+# NIC detection
+auto_detect_wan = true
+auto_detect_lan = true
+auto_detect_wifi = true
+
+# NIC tagging for packet metadata
+tag_packets_by_nic = true
+
+# =============================================================================
+# PACKET CAPTURE SETTINGS
+# =============================================================================
+[capture]
+# Capture modes
+capture_mode = "all"  # all, ingress, egress
+
+# Packet filtering at driver level
+capture_ipv4 = true
+capture_ipv6 = true
+capture_tcp = true
+capture_udp = true
+capture_icmp = true
+capture_other = false
+
+# Packet size limits
+max_packet_size = 65535  # Maximum packet size to capture
+snap_length = 262        # Capture only first N bytes (0 = full)
+
+# Performance
+enable_hardware_offload = true
+enable_rss = true  # Receive Side Scaling
+enable_checksum_offload = true
+
+# =============================================================================
+# RING BUFFER CONFIGURATION
+# =============================================================================
+[ring_buffer]
+# Shared memory size (2 GB default)
+size_bytes = 2147483648
+
+# Per-NIC queue sizes
+nic_queue_size = 524288  # 512 KB per NIC
+
+# Buffer management
+overwrite_on_full = false  # Drop packets instead of overwriting
+packet_slots = 16777216    # Number of packet slots
+
+# Memory mapping
+memory_mapped = true
+lock_pages_in_memory = true
+
+# Performance tuning
+batch_size = 128          # Packets per batch write
+coalesce_writes = true
+
+# =============================================================================
+# WINDOWS FILTERING PLATFORM (WFP) INTEGRATION
+# =============================================================================
+[wfp]
+enabled = true
+
+# Filter layers to hook
+layer_inbound_ipv4 = true
+layer_inbound_ipv6 = true
+layer_outbound_ipv4 = true
+layer_outbound_ipv6 = true
+layer_forward = true
+
+# Filter priority
+filter_weight = 0xFFFFFF00  # High priority
+
+# Action on filter match
+default_action = "permit"  # permit, block, callout
+
+# =============================================================================
+# NDIS FILTER CONFIGURATION
+# =============================================================================
+[ndis]
+# Filter type
+filter_type = "monitoring"  # monitoring, modifying
+
+# Filter characteristics
+filter_class = "compression"
+
+# Packet indication
+indicate_packets = true
+indicate_status = true
+
+# Filter pause/restart
+pause_restart_enabled = true
+
+# =============================================================================
+# PERFORMANCE & MONITORING
+# =============================================================================
+[performance]
+# CPU affinity for driver threads
+cpu_affinity_mask = 0xFF  # All CPUs (bitmask)
+
+# Interrupt coalescing
+interrupt_moderation = true
+interrupt_interval_usec = 100
+
+# Statistics
+collect_statistics = true
+statistics_interval_seconds = 60
+
+# =============================================================================
+# LOGGING & DEBUGGING
+# =============================================================================
+[logging]
+# Kernel debug logging
+debug_enabled = false
+log_level = "error"  # trace, debug, info, warn, error
+
+# Event tracing
+etw_enabled = true
+etw_provider_guid = "{12345678-1234-1234-1234-123456789012}"
+
+# Debug output
+output_debug_string = false
+
+# =============================================================================
+# SAFETY & RECOVERY
+# =============================================================================
+[safety]
+# Watchdog timer
+watchdog_enabled = true
+watchdog_timeout_seconds = 30
+
+# Panic handling
+bugcheck_on_panic = false
+safe_mode_disable = true
+
+# Resource limits
+max_memory_mb = 512
+max_cpu_percent = 50

@@ -1,0 +1,540 @@
+// ============================================================================
+// SafeOps Network Management Service
+// ============================================================================
+// Purpose: gRPC service for managing network topology, interfaces, and routing
+// ============================================================================
+
+syntax = "proto3";
+
+package safeops.network;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/safeops/proto/network";
+
+// ============================================================================
+// Network Management Service
+// ============================================================================
+
+service NetworkManager {
+  // Topology Management
+  rpc GetNetworkTopology(GetTopologyRequest) returns (NetworkTopology);
+  rpc UpdateNetworkTopology(NetworkTopology) returns (UpdateTopologyResponse);
+  
+  // WAN Management
+  rpc ListWANConnections(ListWANRequest) returns (ListWANResponse);
+  rpc GetWANConnection(GetWANRequest) returns (WANConnection);
+  rpc UpdateWANConnection(WANConnection) returns (UpdateResponse);
+  rpc TestWANConnection(TestWANRequest) returns (TestWANResponse);
+  
+  // Network Segments (VLANs)
+  rpc ListNetworkSegments(ListSegmentsRequest) returns (ListSegmentsResponse);
+  rpc GetNetworkSegment(GetSegmentRequest) returns (NetworkSegment);
+  rpc CreateNetworkSegment(NetworkSegment) returns (CreateResponse);
+  rpc UpdateNetworkSegment(NetworkSegment) returns (UpdateResponse);
+  rpc DeleteNetworkSegment(DeleteSegmentRequest) returns (DeleteResponse);
+  
+  // Switch Management
+  rpc ListSwitches(ListSwitchesRequest) returns (ListSwitchesResponse);
+  rpc GetSwitch(GetSwitchRequest) returns (Switch);
+  rpc UpdateSwitch(Switch) returns (UpdateResponse);
+  
+  // NAT Policies
+  rpc ListNATPolicies(ListNATRequest) returns (ListNATResponse);
+  rpc CreateNATPolicy(NATPolicy) returns (CreateResponse);
+  rpc UpdateNATPolicy(NATPolicy) returns (UpdateResponse);
+  rpc DeleteNATPolicy(DeleteNATRequest) returns (DeleteResponse);
+  
+  // Routing Policies
+  rpc ListRoutingPolicies(ListRoutingRequest) returns (ListRoutingResponse);
+  rpc CreateRoutingPolicy(RoutingPolicy) returns (CreateResponse);
+  rpc UpdateRoutingPolicy(RoutingPolicy) returns (UpdateResponse);
+  
+  // IDS/IPS Variable Generation
+  rpc GenerateIDSVariables(GenerateIDSVarsRequest) returns (IDSVariables);
+  
+  // Real-time Monitoring
+  rpc StreamNetworkStatus(google.protobuf.Empty) returns (stream NetworkStatus);
+}
+
+// ============================================================================
+// Messages
+// ============================================================================
+
+message GetTopologyRequest {
+  bool include_switches = 1;
+  bool include_segments = 2;
+  bool include_wan = 3;
+}
+
+message NetworkTopology {
+  string version = 1;
+  TopologyMetadata metadata = 2;
+  repeated WANConnection wan_connections = 3;
+  LoadBalancing load_balancing = 4;
+  repeated NetworkSegment network_segments = 5;
+  repeated Switch switches = 6;
+  NATConfiguration nat_policies = 7;
+  repeated RoutingPolicy routing_policies = 8;
+  IDSVariables ids_ips_variables = 9;
+  FirewallZones firewall_zones = 10;
+}
+
+message TopologyMetadata {
+  string organization = 1;
+  string location = 2;
+  google.protobuf.Timestamp last_updated = 3;
+  string admin_contact = 4;
+}
+
+// ============================================================================
+// WAN Connection
+// ============================================================================
+
+message WANConnection {
+  string id = 1;
+  string name = 2;
+  string provider = 3;
+  string interface = 4;
+  
+  enum ConnectionType {
+    FIBER = 0;
+    CABLE = 1;
+    DSL = 2;
+    CELLULAR = 3;
+    SATELLITE = 4;
+  }
+  ConnectionType type = 5;
+  
+  int32 bandwidth_mbps = 6;
+  
+  enum IPType {
+    STATIC = 0;
+    DHCP = 1;
+    PPPOE = 2;
+  }
+  IPType ip_type = 7;
+  
+  string public_ip = 8;
+  string gateway = 9;
+  string dns_primary = 10;
+  string dns_secondary = 11;
+  string subnet_mask = 12;
+  int32 vlan_id = 13;
+  int32 priority = 14;
+  string failover_group = 15;
+  int32 load_balance_weight = 16;
+  
+  WANMonitoring monitoring = 17;
+  double cost_per_month = 18;
+  google.protobuf.Timestamp contract_end_date = 19;
+  string notes = 20;
+  
+  // Runtime status
+  WANStatus status = 21;
+}
+
+message WANMonitoring {
+  bool enabled = 1;
+  string ping_target = 2;
+  int32 check_interval_seconds = 3;
+  double latency_ms = 4;
+  double packet_loss_percent = 5;
+  google.protobuf.Timestamp last_check = 6;
+}
+
+message WANStatus {
+  enum State {
+    UP = 0;
+    DOWN = 1;
+    DEGRADED = 2;
+    TESTING = 3;
+  }
+  State state = 1;
+  double uptime_percent = 2;
+  int64 bytes_sent = 3;
+  int64 bytes_received = 4;
+  int32 active_connections = 5;
+}
+
+// ============================================================================
+// Load Balancing
+// ============================================================================
+
+message LoadBalancing {
+  bool enabled = 1;
+  
+  enum Mode {
+    ROUND_ROBIN = 0;
+    WEIGHTED_ROUND_ROBIN = 1;
+    LEAST_CONNECTIONS = 2;
+    SOURCE_IP_HASH = 3;
+  }
+  Mode mode = 2;
+  
+  HealthCheck health_check = 3;
+  FailoverConfig failover = 4;
+}
+
+message HealthCheck {
+  enum Method {
+    ICMP_PING = 0;
+    TCP_CONNECT = 1;
+    HTTP_GET = 2;
+  }
+  Method method = 1;
+  int32 interval_seconds = 2;
+  int32 timeout_seconds = 3;
+  int32 failure_threshold = 4;
+  int32 recovery_threshold = 5;
+}
+
+message FailoverConfig {
+  bool automatic = 1;
+  bool failback = 2;
+  int32 failback_delay_seconds = 3;
+}
+
+// ============================================================================
+// Network Segments (VLANs)
+// ============================================================================
+
+message NetworkSegment {
+  string id = 1;
+  string name = 2;
+  int32 vlan_id = 3;
+  string description = 4;
+  string subnet = 5;
+  string gateway = 6;
+  string interface = 7;
+  string zone = 8;
+  
+  DHCPConfig dhcp = 9;
+  
+  enum SecurityLevel {
+    LOW = 0;
+    MEDIUM = 1;
+    HIGH = 2;
+    CRITICAL = 3;
+  }
+  SecurityLevel security_level = 10;
+  
+  bool isolation = 11;
+  AccessControl access_control = 12;
+  repeated string services = 13;
+  repeated string connected_switches = 14;
+  int32 device_count_estimate = 15;
+  
+  // Runtime metrics
+  int32 active_devices = 16;
+  int64 bytes_in = 17;
+  int64 bytes_out = 18;
+}
+
+message DHCPConfig {
+  bool enabled = 1;
+  string range_start = 2;
+  string range_end = 3;
+  int32 lease_time_hours = 4;
+  repeated string dns_servers = 5;
+  string domain_name = 6;
+}
+
+message AccessControl {
+  repeated string allow_from = 1;
+  repeated string deny_from = 2;
+  bool allow_to_internet = 3;
+  bool allow_to_servers = 4;
+  bool deny_to_management = 5;
+  int32 bandwidth_limit_mbps = 6;
+  TimeRestrictions time_restrictions = 7;
+}
+
+message TimeRestrictions {
+  string active_hours = 1;
+  repeated string allowed_days = 2;
+}
+
+// ============================================================================
+// Switches
+// ============================================================================
+
+message Switch {
+  string id = 1;
+  string name = 2;
+  
+  enum SwitchType {
+    CORE = 0;
+    DISTRIBUTION = 1;
+    ACCESS = 2;
+    WIRELESS_AP = 3;
+  }
+  SwitchType type = 3;
+  
+  string model = 4;
+  string management_ip = 5;
+  string location = 6;
+  int32 port_count = 7;
+  repeated int32 uplink_interfaces = 8;
+  int32 uplink_speed_gbps = 9;
+  repeated int32 vlans = 10;
+  bool spanning_tree = 11;
+  repeated string connected_to = 12;
+  bool poe_enabled = 13;
+  bool link_aggregation = 14;
+  
+  // Status
+  SwitchStatus status = 15;
+}
+
+message SwitchStatus {
+  bool online = 1;
+  double uptime_hours = 2;
+  int32 active_ports = 3;
+  double cpu_usage_percent = 4;
+  double memory_usage_percent = 5;
+  double temperature_celsius = 6;
+}
+
+// ============================================================================
+// NAT Policies
+// ============================================================================
+
+message NATConfiguration {
+  repeated SourceNAT source_nat = 1;
+  repeated DestinationNAT destination_nat = 2;
+}
+
+message SourceNAT {
+  string id = 1;
+  string name = 2;
+  repeated int32 source_vlans = 3;
+  string destination = 4;
+  string wan_interface = 5;
+  
+  enum NATType {
+    MASQUERADE = 0;
+    STATIC = 1;
+    DYNAMIC = 2;
+  }
+  NATType nat_type = 6;
+  
+  string nat_pool = 7;
+  bool preserve_port_ranges = 8;
+}
+
+message DestinationNAT {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string wan_interface = 4;
+  string protocol = 5;
+  string external_ip = 6;
+  repeated int32 external_ports = 7;
+  string internal_ip = 8;
+  repeated int32 internal_ports = 9;
+  bool enabled = 10;
+  
+  // Statistics
+  int64 connection_count = 11;
+  int64 bytes_transferred = 12;
+}
+
+message NATPolicy {
+  oneof policy {
+    SourceNAT source = 1;
+    DestinationNAT destination = 2;
+  }
+}
+
+// ============================================================================
+// Routing Policies
+// ============================================================================
+
+message RoutingPolicy {
+  string id = 1;
+  string name = 2;
+  int32 priority = 3;
+  
+  RoutingMatch match = 4;
+  RoutingAction action = 5;
+}
+
+message RoutingMatch {
+  repeated string protocols = 1;
+  repeated int32 ports = 2;
+  repeated int32 source_vlans = 3;
+  repeated string dscp = 4;
+}
+
+message RoutingAction {
+  string wan_connection = 1;
+  repeated string wan_connections = 2;
+  bool load_balance = 3;
+  
+  enum QoSPriority {
+    LOW = 0;
+    MEDIUM = 1;
+    HIGH = 2;
+    CRITICAL = 3;
+  }
+  QoSPriority qos_priority = 4;
+  
+  int32 guaranteed_bandwidth_mbps = 5;
+  int32 bandwidth_limit_mbps = 6;
+}
+
+// ============================================================================
+// IDS/IPS Variables
+// ============================================================================
+
+message IDSVariables {
+  repeated string home_net = 1;
+  string external_net = 2;
+  repeated string http_servers = 3;
+  repeated string smtp_servers = 4;
+  repeated string dns_servers = 5;
+  repeated string ssh_servers = 6;
+  map<string, string> custom_vars = 7;
+}
+
+message GenerateIDSVarsRequest {
+  enum Format {
+    SURICATA_YAML = 0;
+    SNORT_CONF = 1;
+    JSON = 2;
+  }
+  Format format = 1;
+}
+
+// ============================================================================
+// Firewall Zones
+// ============================================================================
+
+message FirewallZones {
+  repeated FirewallZone zones = 1;
+  repeated ZonePolicy zone_policies = 2;
+}
+
+message FirewallZone {
+  string name = 1;
+  string description = 2;
+  repeated string interfaces = 3;
+  repeated int32 vlans = 4;
+  string default_policy = 5;
+}
+
+message ZonePolicy {
+  string from = 1;
+  repeated string to = 2;
+  string policy = 3;
+}
+
+// ============================================================================
+// Network Status (Real-time streaming)
+// ============================================================================
+
+message NetworkStatus {
+  google.protobuf.Timestamp timestamp = 1;
+  repeated WANConnection wan_status = 2;
+  repeated NetworkSegment segment_status = 3;
+  repeated Switch switch_status = 4;
+  NetworkMetrics overall_metrics = 5;
+}
+
+message NetworkMetrics {
+  int64 total_bytes_in = 1;
+  int64 total_bytes_out = 2;
+  int32 total_connections = 3;
+  int32 total_devices = 4;
+  double average_latency_ms = 5;
+  double packet_loss_percent = 6;
+}
+
+// ============================================================================
+// Common Response Messages
+// ============================================================================
+
+message ListWANRequest {}
+message ListWANResponse {
+  repeated WANConnection connections = 1;
+}
+
+message GetWANRequest {
+  string id = 1;
+}
+
+message TestWANRequest {
+  string id = 1;
+}
+
+message TestWANResponse {
+  bool success = 1;
+  double latency_ms = 2;
+  string error_message = 3;
+}
+
+message ListSegmentsRequest {
+  string zone = 1;
+}
+
+message ListSegmentsResponse {
+  repeated NetworkSegment segments = 1;
+}
+
+message GetSegmentRequest {
+  string id = 1;
+}
+
+message DeleteSegmentRequest {
+  string id = 1;
+}
+
+message ListSwitchesRequest {
+  string type = 1;
+}
+
+message ListSwitchesResponse {
+  repeated Switch switches = 1;
+}
+
+message GetSwitchRequest {
+  string id = 1;
+}
+
+message ListNATRequest {}
+message ListNATResponse {
+  NATConfiguration nat_config = 1;
+}
+
+message DeleteNATRequest {
+  string id = 1;
+}
+
+message ListRoutingRequest {}
+message ListRoutingResponse {
+  repeated RoutingPolicy policies = 1;
+}
+
+message UpdateResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CreateResponse {
+  bool success = 1;
+  string id = 2;
+  string message = 3;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateTopologyResponse {
+  bool success = 1;
+  string message = 2;
+  google.protobuf.Timestamp applied_at = 3;
+}

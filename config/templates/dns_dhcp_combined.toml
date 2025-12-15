@@ -1,0 +1,438 @@
+# ============================================================================
+# SafeOps DNS & DHCP Server Configuration
+# ============================================================================
+# Purpose: Complete configuration for DNS and DHCP services
+# Supports: BIND9-compatible DNS, ISC DHCP, dnsmasq
+# ============================================================================
+
+version: "1.0.0"
+metadata:
+  service: "dns_dhcp_server"
+  description: "Integrated DNS and DHCP configuration"
+  last_updated: "2025-12-13"
+
+# ============================================================================
+# DNS Server Configuration
+# ============================================================================
+dns:
+  enabled: true
+  server_type: bind9  # bind9, dnsmasq, unbound
+  listen_addresses:
+    - 192.168.10.1
+    - 192.168.20.1
+    - 192.168.30.1
+    - 192.168.40.1
+    - 192.168.100.1
+  listen_port: 53
+  
+  # DNS Security
+  dnssec:
+    enabled: true
+    validation: true
+    key_directory: /etc/safeops/dns/keys
+  
+  dns_over_tls:
+    enabled: true
+    port: 853
+    certificate: /etc/safeops/certs/dns-tls.crt
+    private_key: /etc/safeops/certs/dns-tls.key
+  
+  dns_over_https:
+    enabled: true
+    port: 443
+    path: /dns-query
+    certificate: /etc/safeops/certs/dns-https.crt
+    private_key: /etc/safeops/certs/dns-https.key
+  
+  # Forwarding & Recursion
+  forwarders:
+    - name: "Google DNS"
+      ips: [8.8.8.8, 8.8.4.4]
+      priority: 1
+      enabled: true
+    
+    - name: "Cloudflare DNS"
+      ips: [1.1.1.1, 1.0.0.1]
+      priority: 2
+      enabled: true
+    
+    - name: "Quad9"
+      ips: [9.9.9.9, 149.112.112.112]
+      priority: 3
+      enabled: false
+  
+  recursion:
+    enabled: true
+    allow_from:
+      - 192.168.0.0/16
+      - 127.0.0.1
+    cache_size_mb: 512
+    cache_ttl_seconds: 3600
+  
+  # Local Zones
+  zones:
+    - name: office.local
+      type: master
+      file: /etc/safeops/dns/zones/office.local.zone
+      auto_dnssec: true
+      allow_update: []
+      allow_transfer:
+        - 192.168.100.10
+      notify: true
+      records:
+        # A Records
+        - type: A
+          name: gateway
+          value: 192.168.10.1
+          ttl: 300
+        
+        - type: A
+          name: webserver
+          value: 192.168.20.100
+          ttl: 300
+        
+        - type: A
+          name: mailserver
+          value: 192.168.20.101
+          ttl: 300
+        
+        # CNAME Records
+        - type: CNAME
+          name: www
+          value: webserver.office.local.
+          ttl: 300
+        
+        - type: CNAME
+          name: mail
+          value: mailserver.office.local.
+          ttl: 300
+        
+        # MX Records
+        - type: MX
+          name: "@"
+          value: mailserver.office.local.
+          priority: 10
+          ttl: 300
+        
+        # TXT Records (SPF, DKIM, DMARC)
+        - type: TXT
+          name: "@"
+          value: "v=spf1 mx ~all"
+          ttl: 300
+        
+        - type: TXT
+          name: _dmarc
+          value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@office.local"
+          ttl: 300
+    
+    # Reverse Zone for 192.168.10.0/24
+    - name: 10.168.192.in-addr.arpa
+      type: master
+      file: /etc/safeops/dns/zones/10.168.192.in-addr.arpa.zone
+      records:
+        - type: PTR
+          name: "1"
+          value: gateway.office.local.
+          ttl: 300
+        
+        - type: PTR
+          name: "100"
+          value: webserver.office.local.
+          ttl: 300
+  
+  # Conditional Forwarding
+  conditional_forwarding:
+    - domain: corp.example.com
+      forwarders: [10.0.0.1, 10.0.0.2]
+      description: "Corporate domain forwarding"
+  
+  # Filtering & Security
+  filtering:
+    enabled: true
+    
+    # Ad Blocking
+    ad_blocking:
+      enabled: true
+      blocklist_sources:
+        - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+        - https://v.firebog.net/hosts/AdguardDNS.txt
+        - https://v.firebog.net/hosts/Easylist.txt
+      update_interval_hours: 24
+    
+    # Malware Blocking
+    malware_blocking:
+      enabled: true
+      threat_intel_sources:
+        - urlhaus
+        - phishing_army
+        - malwaredomains
+      action: NXDOMAIN  # NXDOMAIN, REFUSED, custom_ip
+    
+    # Content Categories
+    category_filtering:
+      enabled: true
+      blocked_categories:
+        - adult
+        - gambling
+        - weapons
+        - drugs
+      action: NXDOMAIN
+    
+    # Whitelist
+    whitelist:
+      - google.com
+      - microsoft.com
+      - github.com
+      - "*.office.local"
+    
+    # Blacklist
+    blacklist:
+      - "*.malicious.com"
+      - "evil-domain.net"
+  
+  # Response Policy Zones (RPZ)
+  rpz:
+    enabled: true
+    zones:
+      - name: rpz.local
+        action: NXDOMAIN  # NXDOMAIN, NODATA, PassThru, DROP, TCP-Only
+        file: /etc/safeops/dns/rpz/rpz.local.zone
+  
+  # Logging
+  logging:
+    enabled: true
+    log_queries: true
+    log_responses: false
+    log_file: /var/log/safeops/dns.log
+    max_size_mb: 500
+    rotation: daily
+    retention_days: 30
+
+# ============================================================================
+# DHCP Server Configuration
+# ============================================================================
+dhcp:
+  enabled: true
+  server_type: isc-dhcp  # isc-dhcp, dnsmasq, kea
+  authoritative: true
+  
+  # Global Settings
+  global:
+    default_lease_time_seconds: 86400  # 24 hours
+    max_lease_time_seconds: 604800     # 7 days
+    ping_check: true
+    ping_timeout_ms: 1000
+    update_static_leases: true
+    update_dns: true
+    ddns_update_style: interim
+    ddns_domainname: office.local
+  
+  # Network Scopes (per VLAN)
+  scopes:
+    # Office Network (VLAN 10)
+    - name: Office-Main
+      vlan_id: 10
+      subnet: 192.168.10.0
+      netmask: 255.255.255.0
+      range_start: 192.168.10.100
+      range_end: 192.168.10.200
+      gateway: 192.168.10.1
+      dns_servers:
+        - 192.168.10.1
+        - 8.8.8.8
+      ntp_servers:
+        - time.google.com
+        - pool.ntp.org
+      domain_name: office.local
+      domain_search: [office.local, example.com]
+      lease_time_seconds: 86400
+      
+      # DHCP Options
+      options:
+        - code: 42   # NTP servers
+          value: 192.168.10.1
+        - code: 66   # TFTP server (for PXE)
+          value: 192.168.10.50
+        - code: 150  # Cisco IP Phone option
+          value: 192.168.10.60
+    
+    # Server Network (VLAN 20) - No DHCP, static only
+    - name: Servers
+      vlan_id: 20
+      subnet: 192.168.20.0
+      netmask: 255.255.255.0
+      enabled: false
+      notes: "Static IP assignments only"
+    
+    # Guest Network (VLAN 30)
+    - name: Guest-WiFi
+      vlan_id: 30
+      subnet: 192.168.30.0
+      netmask: 255.255.255.0
+      range_start: 192.168.30.10
+      range_end: 192.168.30.250
+      gateway: 192.168.30.1
+      dns_servers:
+        - 192.168.30.1
+        - 1.1.1.1
+      domain_name: guest.local
+      lease_time_seconds: 14400  # 4 hours
+      
+      # Guest-specific options
+      options:
+        - code: 252  # WPAD (disable for security)
+          value: ""
+    
+    # Library Network (VLAN 40)
+    - name: Library
+      vlan_id: 40
+      subnet: 192.168.40.0
+      netmask: 255.255.255.0
+      range_start: 192.168.40.50
+      range_end: 192.168.40.150
+      gateway: 192.168.40.1
+      dns_servers:
+        - 192.168.40.1
+      domain_name: library.local
+      lease_time_seconds: 43200  # 12 hours
+    
+    # IoT Network (VLAN 50)
+    - name: IoT-Devices
+      vlan_id: 50
+      subnet: 192.168.50.0
+      netmask: 255.255.255.0
+      range_start: 192.168.50.10
+      range_end: 192.168.50.200
+      gateway: 192.168.50.1
+      dns_servers:
+        - 192.168.50.1
+      ntp_servers:
+        - 192.168.50.1
+      lease_time_seconds: 604800  # 7 days (IoT devices rarely change)
+  
+  # Static Reservations (MAC → IP)
+  reservations:
+    # Servers
+    - name: webserver
+      mac_address: "00:11:22:33:44:55"
+      ip_address: 192.168.20.100
+      hostname: webserver.office.local
+      vlan_id: 20
+    
+    - name: mailserver
+      mac_address: "00:11:22:33:44:66"
+      ip_address: 192.168.20.101
+      hostname: mailserver.office.local
+      vlan_id: 20
+    
+    # Printers
+    - name: office-printer-01
+      mac_address: "AA:BB:CC:DD:EE:01"
+      ip_address: 192.168.10.50
+      hostname: printer01.office.local
+      vlan_id: 10
+    
+    # IP Phones
+    - name: ip-phone-reception
+      mac_address: "CC:DD:EE:FF:00:11"
+      ip_address: 192.168.10.60
+      hostname: phone-reception.office.local
+      vlan_id: 10
+      options:
+        - code: 150
+          value: 192.168.10.60
+  
+  # DHCP Relay (for VLANs on different subnets)
+  relay:
+    enabled: true
+    interfaces:
+      - vlan10
+      - vlan30
+      - vlan40
+      - vlan50
+    servers:
+      - 192.168.100.1
+  
+  # Failover / High Availability
+  failover:
+    enabled: false
+    role: primary  # primary, secondary
+    peer_address: 192.168.100.2
+    peer_port: 647
+    max_response_delay: 60
+    max_unacked_updates: 10
+    split: 128  # 50/50 split
+  
+  # Logging
+  logging:
+    enabled: true
+    log_leases: true
+    log_renewals: false
+    log_file: /var/log/safeops/dhcp.log
+    max_size_mb: 200
+    rotation: weekly
+    retention_days: 90
+
+# ============================================================================
+# Integration Settings
+# ============================================================================
+integration:
+  # Threat Intelligence Integration
+  threat_intel:
+    enabled: true
+    block_malicious_domains: true
+    update_interval_hours: 6
+  
+  # IPAM Integration
+  ipam:
+    enabled: true
+    sync_leases: true
+    sync_interval_minutes: 15
+  
+  # SIEM Integration
+  siem:
+    enabled: true
+    export_dns_logs: true
+    export_dhcp_logs: true
+    syslog_server: 192.168.100.20
+    syslog_port: 514
+
+# ============================================================================
+# Monitoring & Health
+# ============================================================================
+monitoring:
+  health_checks:
+    dns_query_test:
+      enabled: true
+      test_domain: google.com
+      interval_seconds: 60
+    
+    dhcp_scope_utilization:
+      enabled: true
+      alert_threshold_percent: 90
+      interval_seconds: 300
+  
+  metrics:
+    enabled: true
+    prometheus_endpoint: true
+    port: 9153
+
+# ============================================================================
+# Application Integration Notes
+# ============================================================================
+# This configuration can be:
+# 1. Loaded via Web UI for editing
+# 2. Modified through gRPC API
+# 3. Validated against JSON schema
+# 4. Applied to DNS/DHCP services
+# 5. Backed up and versioned
+#
+# To add new DNS records:
+#   POST /api/dns/zones/{zone}/records
+#
+# To add DHCP reservation:
+#   POST /api/dhcp/reservations
+#
+# To modify scope:
+#   PUT /api/dhcp/scopes/{vlan_id}
+# ============================================================================

@@ -1,0 +1,813 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://safeops.io/schemas/firewall-rules.json",
+    "title": "SafeOps Firewall Rules Schema",
+    "description": "JSON Schema for creating firewall rules with advanced filtering capabilities",
+    "type": "object",
+    "required": [
+        "rules"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "description": "Schema version",
+            "default": "1.0.0"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "modified": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "description": {
+                    "type": "string"
+                }
+            }
+        },
+        "rules": {
+            "type": "array",
+            "description": "Array of firewall rules",
+            "items": {
+                "$ref": "#/definitions/rule"
+            }
+        }
+    },
+    "definitions": {
+        "rule": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "action",
+                "direction"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "description": "Unique rule ID",
+                    "minimum": 1
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Human-readable rule name",
+                    "minLength": 1,
+                    "maxLength": 100
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Detailed rule description",
+                    "maxLength": 500
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether rule is active"
+                },
+                "priority": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9999,
+                    "default": 1000,
+                    "description": "Rule priority (lower number = higher priority)"
+                },
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "ALLOW",
+                        "DENY",
+                        "DROP",
+                        "REJECT",
+                        "LIMIT",
+                        "LOG"
+                    ],
+                    "description": "Action to take when rule matches"
+                },
+                "direction": {
+                    "type": "string",
+                    "enum": [
+                        "INBOUND",
+                        "OUTBOUND",
+                        "BOTH",
+                        "FORWARD"
+                    ],
+                    "description": "Traffic direction"
+                },
+                "source": {
+                    "$ref": "#/definitions/endpoint",
+                    "description": "Source specifications"
+                },
+                "destination": {
+                    "$ref": "#/definitions/endpoint",
+                    "description": "Destination specifications"
+                },
+                "protocol": {
+                    "type": "object",
+                    "description": "Protocol matching",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "TCP",
+                                "UDP",
+                                "ICMP",
+                                "ICMPv6",
+                                "ESP",
+                                "AH",
+                                "GRE",
+                                "ALL"
+                            ],
+                            "default": "TCP"
+                        },
+                        "tcp_flags": {
+                            "type": "object",
+                            "description": "TCP flags matching",
+                            "properties": {
+                                "syn": {
+                                    "type": "boolean"
+                                },
+                                "ack": {
+                                    "type": "boolean"
+                                },
+                                "fin": {
+                                    "type": "boolean"
+                                },
+                                "rst": {
+                                    "type": "boolean"
+                                },
+                                "psh": {
+                                    "type": "boolean"
+                                },
+                                "urg": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "icmp_type": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255,
+                            "description": "ICMP type code"
+                        },
+                        "icmp_code": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255,
+                            "description": "ICMP code"
+                        }
+                    }
+                },
+                "time": {
+                    "type": "object",
+                    "description": "Time-based rule activation",
+                    "properties": {
+                        "start_time": {
+                            "type": "string",
+                            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+                            "description": "Start time in HH:MM format"
+                        },
+                        "end_time": {
+                            "type": "string",
+                            "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$",
+                            "description": "End time in HH:MM format"
+                        },
+                        "days_of_week": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "Monday",
+                                    "Tuesday",
+                                    "Wednesday",
+                                    "Thursday",
+                                    "Friday",
+                                    "Saturday",
+                                    "Sunday"
+                                ]
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                        },
+                        "timezone": {
+                            "type": "string",
+                            "default": "UTC"
+                        }
+                    }
+                },
+                "rate_limit": {
+                    "type": "object",
+                    "description": "Rate limiting settings",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "per": {
+                            "type": "string",
+                            "enum": [
+                                "second",
+                                "minute",
+                                "hour"
+                            ],
+                            "default": "second"
+                        },
+                        "burst": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                },
+                "connection_limit": {
+                    "type": "object",
+                    "description": "Connection limiting",
+                    "properties": {
+                        "max_connections": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "per_source": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                },
+                "logging": {
+                    "type": "object",
+                    "description": "Logging configuration",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "log_prefix": {
+                            "type": "string",
+                            "maxLength": 29
+                        },
+                        "log_level": {
+                            "type": "string",
+                            "enum": [
+                                "DEBUG",
+                                "INFO",
+                                "WARN",
+                                "ERROR"
+                            ]
+                        },
+                        "log_rate_limit": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                },
+                "nat": {
+                    "type": "object",
+                    "description": "NAT configuration",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "SNAT",
+                                "DNAT",
+                                "MASQUERADE",
+                                "NONE"
+                            ],
+                            "default": "NONE"
+                        },
+                        "to_address": {
+                            "type": "string",
+                            "pattern": "^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"
+                        },
+                        "to_port": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 65535
+                        }
+                    }
+                },
+                "stateful": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable connection tracking"
+                },
+                "return_traffic": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Allow return traffic for established connections"
+                },
+                "geo_ip": {
+                    "type": "object",
+                    "description": "GeoIP filtering",
+                    "properties": {
+                        "countries": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[A-Z]{2}$"
+                            },
+                            "description": "ISO 3166-1 alpha-2 country codes"
+                        },
+                        "mode": {
+                            "type": "string",
+                            "enum": [
+                                "ALLOW",
+                                "DENY"
+                            ],
+                            "default": "DENY"
+                        }
+                    }
+                },
+                "application": {
+                    "type": "object",
+                    "description": "Application-layer filtering",
+                    "properties": {
+                        "names": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Application names to match"
+                        },
+                        "categories": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Application categories"
+                        }
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Rule tags for organization"
+                }
+            }
+        },
+        "endpoint": {
+            "type": "object",
+            "properties": {
+                "addresses": {
+                    "type": "array",
+                    "description": "IP addresses or ranges",
+                    "items": {
+                        "type": "string",
+                        "description": "IP address, CIDR, or 'any'"
+                    },
+                    "minItems": 1
+                },
+                "address_groups": {
+                    "type": "array",
+                    "description": "Named address groups",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ports": {
+                    "type": "array",
+                    "description": "Port numbers or ranges",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535
+                            },
+                            {
+                                "type": "string",
+                                "pattern": "^\\d+:\\d+$"
+                            },
+                            {
+                                "type": "string",
+                                "const": "any"
+                            }
+                        ]
+                    }
+                },
+                "port_groups": {
+                    "type": "array",
+                    "description": "Named port groups",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "interfaces": {
+                    "type": "array",
+                    "description": "Network interfaces",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "zones": {
+                    "type": "array",
+                    "description": "Security zones",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "trusted",
+                            "untrusted",
+                            "dmz",
+                            "wan",
+                            "lan"
+                        ]
+                    }
+                },
+                "mac_addresses": {
+                    "type": "array",
+                    "description": "MAC addresses",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
+                    }
+                },
+                "negate": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Negate the match (NOT)"
+                }
+            }
+        }
+    },
+    "examples": [
+        {
+            "version": "1.0.0",
+            "metadata": {
+                "author": "SafeOps Security Team",
+                "description": "Example firewall rules for common scenarios",
+                "created": "2025-12-13T14:30:00Z"
+            },
+            "rules": [
+                {
+                    "id": 1,
+                    "name": "Allow SSH from Management VLAN",
+                    "description": "Allow SSH access from management network only",
+                    "enabled": true,
+                    "priority": 100,
+                    "action": "ALLOW",
+                    "direction": "INBOUND",
+                    "source": {
+                        "addresses": [
+                            "192.168.100.0/24"
+                        ],
+                        "zones": [
+                            "trusted"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ],
+                        "ports": [
+                            22
+                        ]
+                    },
+                    "protocol": {
+                        "type": "TCP"
+                    },
+                    "stateful": true,
+                    "return_traffic": true,
+                    "logging": {
+                        "enabled": true,
+                        "log_prefix": "SSH-MGMT",
+                        "log_level": "INFO"
+                    },
+                    "tags": [
+                        "ssh",
+                        "management",
+                        "admin"
+                    ]
+                },
+                {
+                    "id": 2,
+                    "name": "Block Known Malicious Countries",
+                    "description": "Block traffic from high-risk countries",
+                    "enabled": true,
+                    "priority": 10,
+                    "action": "DROP",
+                    "direction": "INBOUND",
+                    "source": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "protocol": {
+                        "type": "ALL"
+                    },
+                    "geo_ip": {
+                        "countries": [
+                            "CN",
+                            "RU",
+                            "KP"
+                        ],
+                        "mode": "DENY"
+                    },
+                    "logging": {
+                        "enabled": true,
+                        "log_prefix": "GEO-BLOCK",
+                        "log_level": "WARN"
+                    },
+                    "tags": [
+                        "geoip",
+                        "security",
+                        "block"
+                    ]
+                },
+                {
+                    "id": 3,
+                    "name": "Allow Web Traffic",
+                    "description": "Allow HTTP and HTTPS with rate limiting",
+                    "enabled": true,
+                    "priority": 200,
+                    "action": "ALLOW",
+                    "direction": "INBOUND",
+                    "source": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "192.168.1.100"
+                        ],
+                        "ports": [
+                            80,
+                            443
+                        ]
+                    },
+                    "protocol": {
+                        "type": "TCP"
+                    },
+                    "rate_limit": {
+                        "enabled": true,
+                        "limit": 1000,
+                        "per": "second",
+                        "burst": 2000
+                    },
+                    "stateful": true,
+                    "logging": {
+                        "enabled": false
+                    },
+                    "tags": [
+                        "web",
+                        "http",
+                        "https"
+                    ]
+                },
+                {
+                    "id": 4,
+                    "name": "Port Forward to Web Server",
+                    "description": "Forward external port 80 to internal web server",
+                    "enabled": true,
+                    "priority": 50,
+                    "action": "ALLOW",
+                    "direction": "INBOUND",
+                    "source": {
+                        "addresses": [
+                            "any"
+                        ],
+                        "zones": [
+                            "wan"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ],
+                        "ports": [
+                            80
+                        ]
+                    },
+                    "protocol": {
+                        "type": "TCP"
+                    },
+                    "nat": {
+                        "type": "DNAT",
+                        "to_address": "192.168.1.100",
+                        "to_port": 80
+                    },
+                    "stateful": true,
+                    "return_traffic": true,
+                    "tags": [
+                        "nat",
+                        "port-forward",
+                        "web"
+                    ]
+                },
+                {
+                    "id": 5,
+                    "name": "Block P2P Applications",
+                    "description": "Block peer-to-peer file sharing",
+                    "enabled": true,
+                    "priority": 300,
+                    "action": "DROP",
+                    "direction": "BOTH",
+                    "source": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "protocol": {
+                        "type": "ALL"
+                    },
+                    "application": {
+                        "names": [
+                            "BitTorrent",
+                            "eMule",
+                            "Gnutella"
+                        ],
+                        "categories": [
+                            "p2p"
+                        ]
+                    },
+                    "logging": {
+                        "enabled": true,
+                        "log_prefix": "P2P-BLOCK",
+                        "log_level": "INFO"
+                    },
+                    "tags": [
+                        "p2p",
+                        "policy",
+                        "block"
+                    ]
+                },
+                {
+                    "id": 6,
+                    "name": "Rate Limit ICMP",
+                    "description": "Allow ICMP ping with rate limiting",
+                    "enabled": true,
+                    "priority": 400,
+                    "action": "ALLOW",
+                    "direction": "INBOUND",
+                    "source": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "protocol": {
+                        "type": "ICMP",
+                        "icmp_type": 8,
+                        "icmp_code": 0
+                    },
+                    "rate_limit": {
+                        "enabled": true,
+                        "limit": 10,
+                        "per": "second"
+                    },
+                    "logging": {
+                        "enabled": false
+                    },
+                    "tags": [
+                        "icmp",
+                        "ping"
+                    ]
+                },
+                {
+                    "id": 7,
+                    "name": "Business Hours Internet Access",
+                    "description": "Allow internet access only during business hours",
+                    "enabled": true,
+                    "priority": 500,
+                    "action": "ALLOW",
+                    "direction": "OUTBOUND",
+                    "source": {
+                        "addresses": [
+                            "192.168.10.0/24"
+                        ],
+                        "zones": [
+                            "lan"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ],
+                        "ports": [
+                            80,
+                            443
+                        ]
+                    },
+                    "protocol": {
+                        "type": "TCP"
+                    },
+                    "time": {
+                        "start_time": "08:00",
+                        "end_time": "18:00",
+                        "days_of_week": [
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday"
+                        ],
+                        "timezone": "America/New_York"
+                    },
+                    "stateful": true,
+                    "tags": [
+                        "policy",
+                        "time-based",
+                        "business-hours"
+                    ]
+                },
+                {
+                    "id": 8,
+                    "name": "Block SYN Flood",
+                    "description": "Protect against SYN flood attacks",
+                    "enabled": true,
+                    "priority": 20,
+                    "action": "DROP",
+                    "direction": "INBOUND",
+                    "source": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "protocol": {
+                        "type": "TCP",
+                        "tcp_flags": {
+                            "syn": true,
+                            "ack": false
+                        }
+                    },
+                    "connection_limit": {
+                        "max_connections": 50,
+                        "per_source": true
+                    },
+                    "logging": {
+                        "enabled": true,
+                        "log_prefix": "SYN-FLOOD",
+                        "log_level": "WARN",
+                        "log_rate_limit": 10
+                    },
+                    "tags": [
+                        "dos",
+                        "syn-flood",
+                        "security"
+                    ]
+                },
+                {
+                    "id": 9999,
+                    "name": "Default Deny All",
+                    "description": "Catch-all rule - deny everything else",
+                    "enabled": true,
+                    "priority": 9999,
+                    "action": "DROP",
+                    "direction": "BOTH",
+                    "source": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "destination": {
+                        "addresses": [
+                            "any"
+                        ]
+                    },
+                    "protocol": {
+                        "type": "ALL"
+                    },
+                    "logging": {
+                        "enabled": true,
+                        "log_prefix": "DEFAULT-DENY",
+                        "log_level": "INFO",
+                        "log_rate_limit": 100
+                    },
+                    "tags": [
+                        "default",
+                        "deny-all"
+                    ]
+                }
+            ]
+        }
+    ]
+}

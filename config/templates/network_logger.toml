@@ -1,0 +1,129 @@
+# SafeOps Network Logger Service Configuration
+# Purpose: Reading from kernel ring buffer, processing packets, and database logging
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "network_logger"
+listen_address = "0.0.0.0"
+grpc_port = 50051
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\network_logger.log"
+
+# =============================================================================
+# RING BUFFER READER
+# =============================================================================
+[ring_buffer]
+# Connection to kernel shared memory
+shared_memory_path = "Global\\SafeOpsRingBuffer"
+reader_priority = "high"  # realtime, high, normal, low
+
+# Reading strategy
+polling_interval_usec = 10  # Microseconds
+batch_read_size = 128       # Packets per read
+
+# Thread affinity
+pin_to_cpu = 1  # Pin reader thread to CPU core 1
+
+# =============================================================================
+# 5-MINUTE CIRCULAR BUFFER
+# =============================================================================
+[circular_buffer]
+enabled = true
+duration_seconds = 300  # 5 minutes
+
+# Buffer sizing
+estimated_packets_per_second = 500000
+buffer_size_packets = 150000000  # 5min × 500K pps
+
+# Memory management
+use_memory_pool = true
+pool_size_mb = 2048
+
+# =============================================================================
+# PACKET PROCESSING
+# =============================================================================
+[processing]
+# Worker pool
+worker_threads = 8
+work_queue_size = 100000
+
+# Parsing
+parse_layer2 = true
+parse_layer3 = true
+parse_layer4 = true
+parse_layer7 = false  # Application layer (expensive)
+
+# Enrichment
+enable_geoip_lookup = false  # Done by threat intel service
+enable_dns_resolution = false
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+[database]
+postgres_host = "localhost"
+postgres_port = 5432
+postgres_database = "safeops"
+postgres_user = "safeops"
+postgres_password = "${POSTGRES_PASSWORD}"
+
+# Connection pooling
+pool_size = 32
+max_overflow = 10
+
+# =============================================================================
+# BULK INSERT SETTINGS
+# =============================================================================
+[bulk_insert]
+enabled = true
+batch_size = 10000
+flush_interval_seconds = 1
+
+# Use PostgreSQL COPY protocol
+use_copy_protocol = true
+
+# Async writes
+async_mode = true
+max_pending_batches = 10
+
+# =============================================================================
+# REDIS SESSION CACHE
+# =============================================================================
+[session_cache]
+enabled = true
+redis_host = "localhost"
+redis_port = 6379
+redis_db = 1
+
+# Session tracking
+session_timeout_seconds = 300
+max_sessions = 1000000
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+[performance]
+# Zero-copy optimizations
+zero_copy_enabled = true
+
+# Memory allocation
+preallocate_buffers = true
+buffer_pool_size = 1000000
+
+# CPU affinity for workers
+worker_cpu_affinity = [2, 3, 4, 5, 6, 7, 8, 9]
+
+# =============================================================================
+# STATISTICS & MONITORING
+# =============================================================================
+[monitoring]
+collect_stats = true
+stats_interval_seconds = 10
+
+# Metrics to track
+track_packet_rate = true
+track_byte_rate = true
+track_protocol_distribution = true
+track_top_talkers = true

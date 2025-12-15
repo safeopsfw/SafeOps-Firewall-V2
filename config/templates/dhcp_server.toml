@@ -1,0 +1,206 @@
+# SafeOps DHCP Server Configuration
+# Purpose: IP address assignment for LAN and WiFi networks
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "dhcp_server"
+listen_address = "0.0.0.0"
+grpc_port = 50057
+
+# DHCP listening port
+dhcp_port = 67
+
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\dhcp_server.log"
+
+# =============================================================================
+# LAN DHCP POOL (NIC 2)
+# =============================================================================
+[lan_pool]
+enabled = true
+interface = "NIC2"
+interface_name = "LAN"
+
+# Network configuration
+subnet = "192.168.1.0"
+netmask = "255.255.255.0"
+gateway = "192.168.1.1"
+
+# DHCP range
+range_start = "192.168.1.10"
+range_end = "192.168.1.200"
+
+# DNS servers
+dns_servers = [
+    "192.168.1.1",  # SafeOps DNS
+    "1.1.1.1",      # Cloudflare backup
+]
+
+# Lease times
+default_lease_seconds = 86400      # 24 hours
+max_lease_seconds = 604800         # 7 days
+
+# Domain name
+domain_name = "lan.local"
+
+# NTP servers
+ntp_servers = [
+    "pool.ntp.org",
+]
+
+# =============================================================================
+# WIFI DHCP POOL (NIC 3)
+# =============================================================================
+[wifi_pool]
+enabled = true
+interface = "NIC3"
+interface_name = "WiFi"
+
+# Network configuration
+subnet = "192.168.2.0"
+netmask = "255.255.255.0"
+gateway = "192.168.2.1"
+
+# DHCP range
+range_start = "192.168.2.10"
+range_end = "192.168.2.200"
+
+# DNS servers
+dns_servers = [
+    "192.168.2.1",  # SafeOps DNS
+    "1.1.1.1",      # Cloudflare backup
+]
+
+# Shorter lease for guest WiFi
+default_lease_seconds = 3600       # 1 hour
+max_lease_seconds = 86400          # 24 hours
+
+# Domain name
+domain_name = "guest.local"
+
+# Captive portal redirect
+captive_portal_enabled = false
+captive_portal_url = "http://192.168.2.1/portal"
+
+# =============================================================================
+# STATIC RESERVATIONS
+# =============================================================================
+[reservations]
+# LAN static assignments
+[[reservations.lan]]
+mac_address = "AA:BB:CC:DD:EE:01"
+ip_address = "192.168.1.100"
+hostname = "desktop-pc"
+
+[[reservations.lan]]
+mac_address = "AA:BB:CC:DD:EE:02"
+ip_address = "192.168.1.101"
+hostname = "nas-server"
+
+[[reservations.lan]]
+mac_address = "AA:BB:CC:DD:EE:03"
+ip_address = "192.168.1.102"
+hostname = "ip-camera"
+
+# WiFi static assignments (optional)
+[[reservations.wifi]]
+mac_address = "AA:BB:CC:DD:EE:04"
+ip_address = "192.168.2.100"
+hostname = "smart-tv"
+
+# =============================================================================
+# ADVANCED OPTIONS
+# =============================================================================
+[options]
+# DHCP options to send
+send_hostname = true
+send_netbios_name_servers = false
+send_netbios_node_type = false
+
+# Option 252 - WPAD/PAC file
+wpad_url = "http://192.168.1.1/proxy.pac"
+
+# Option 66 - TFTP server (for PXE boot)
+tftp_server = ""
+
+# Option 67 - Boot filename
+boot_filename = ""
+
+# Option 150 - TFTP server list
+tftp_server_list = []
+
+# =============================================================================
+# DATABASE LOGGING
+# =============================================================================
+[database]
+enabled = true
+postgres_host = "localhost"
+postgres_port = 5432
+postgres_database = "safeops"
+postgres_user = "safeops"
+
+# What to log
+log_lease_assignments = true
+log_lease_renewals = true
+log_lease_releases = true
+log_lease_expiry = true
+log_dhcp_discover = false
+log_dhcp_request = true
+log_dhcp_ack = true
+log_dhcp_nak = false
+
+# =============================================================================
+# LEASE MANAGEMENT
+# =============================================================================
+[lease_management]
+# Lease persistence
+lease_file = "C:\\ProgramData\\SafeOps\\dhcp\\dhcp_leases.db"
+save_interval_seconds = 60
+
+# Lease cleanup
+expired_lease_cleanup = true
+cleanup_interval_seconds = 3600
+
+# Lease conflict detection
+conflict_detection = true
+ping_check = true
+ping_timeout_milliseconds = 100
+
+# ARP checking
+arp_check = true
+arp_timeout_milliseconds = 500
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+[security]
+# DHCP snooping (prevent rogue DHCP servers)
+dhcp_snooping = true
+
+# MAC filtering
+mac_filtering_enabled = false
+mac_whitelist_file = "C:\\ProgramData\\SafeOps\\dhcp\\mac_whitelist.txt"
+mac_blacklist_file = "C:\\ProgramData\\SafeOps\\dhcp\\mac_blacklist.txt"
+
+# Rate limiting
+rate_limit_enabled = true
+max_requests_per_mac_per_minute = 10
+
+# Prevent IP spoofing
+verify_mac_address = true
+
+# =============================================================================
+# PERFORMANCE
+# =============================================================================
+[performance]
+# Threading
+worker_threads = 2
+
+# Buffer sizes
+recv_buffer_size = 65535
+send_buffer_size = 65535
+
+# Cache
+lease_cache_size = 10000

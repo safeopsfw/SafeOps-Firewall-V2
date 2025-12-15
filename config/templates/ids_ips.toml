@@ -1,0 +1,254 @@
+# SafeOps IDS/IPS Engine Configuration
+# Purpose: Signature detection, anomaly detection, and threat response
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "ids_ips"
+listen_address = "0.0.0.0"
+grpc_port = 50054
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\ids_ips.log"
+
+# =============================================================================
+# DETECTION MODES
+# =============================================================================
+[detection]
+# Detection types
+signature_based = true
+anomaly_based = true
+behavior_based = true
+
+# Operating mode
+mode = "ips"  # ids (alert only), ips (block threats)
+
+# =============================================================================
+# SIGNATURE ENGINE
+# =============================================================================
+[signatures]
+# Rule files
+rules_directory = "C:\\Program Files\\SafeOps\\rules"
+
+# Snort rules
+snort_rules_enabled = true
+snort_rules_path = "C:\\Program Files\\SafeOps\\rules\\snort"
+
+# Suricata rules
+suricata_rules_enabled = false
+suricata_rules_path = "C:\\Program Files\\SafeOps\\rules\\suricata"
+
+# Custom rules
+custom_rules_path = "C:\\Program Files\\SafeOps\\rules\\custom"
+
+# Rule updates
+auto_update = true
+update_interval_hours = 24
+update_source = "https://rules.emergingthreats.net"
+
+# Rule limits
+max_rules = 50000
+
+# =============================================================================
+# PATTERN MATCHING ENGINE
+# =============================================================================
+[pattern_matching]
+# Engine type
+engine = "hyperscan"  # hyperscan, aho-corasick, regex
+
+# Hyperscan settings (Intel optimized)
+hyperscan_mode = "stream"
+hyperscan_cache_size_mb = 512
+
+# Performance
+enable_simd = true
+enable_avx2 = true
+vectorize_matching = true
+
+# =============================================================================
+# ANOMALY DETECTION
+# =============================================================================
+[anomaly_detection]
+enabled = true
+
+# Baseline learning
+learning_period_hours = 168  # 1 week
+baseline_update_interval_hours = 24
+
+# Statistical thresholds
+deviation_threshold = 3.0  # Standard deviations
+confidence_threshold = 0.95
+
+# Detected anomalies
+detect_port_scans = true
+detect_brute_force = true
+detect_ddos = true
+detect_data_exfiltration = true
+detect_unusual_protocols = true
+
+# =============================================================================
+# BEHAVIOR ANALYSIS
+# =============================================================================
+[behavior_analysis]
+enabled = true
+
+# Behavior tracking
+track_connection_patterns = true
+track_data_transfer_patterns = true
+track_protocol_usage = true
+track_time_patterns = true
+
+# Suspicious behaviors
+detect_beaconing = true
+detect_c2_communication = true
+detect_lateral_movement = true
+detect_privilege_escalation = false  # Requires endpoint data
+
+# =============================================================================
+# PROTOCOL ANALYSIS
+# =============================================================================
+[protocol_analysis]
+# HTTP/HTTPS
+http_enabled = true
+http_max_request_size = 1048576  # 1 MB
+detect_sql_injection = true
+detect_xss = true
+detect_command_injection = true
+
+# DNS
+dns_enabled = true
+detect_dns_tunneling = true
+detect_dga_domains = true
+
+# SSH
+ssh_enabled = true
+detect_ssh_brute_force = true
+
+# FTP
+ftp_enabled = true
+detect_ftp_brute_force = true
+
+# SMB
+smb_enabled = true
+detect_smb_attacks = true
+
+# =============================================================================
+# RESPONSE ACTIONS
+# =============================================================================
+[response]
+# IPS mode actions
+block_on_detection = true
+block_duration_seconds = 3600  # 1 hour
+block_entire_flow = true
+
+# Alert generation
+generate_alerts = true
+alert_severity_threshold = "medium"  # low, medium, high, critical
+
+# Integration with firewall
+firewall_integration = true
+auto_add_firewall_rules = true
+
+# Send to SIEM
+siem_integration = true
+siem_endpoint = "tcp://siem.local:514"
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+[performance]
+# Worker threads
+inspection_threads = 12
+
+# CPU affinity
+pin_threads = true
+thread_cpu_cores = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+
+# Packet queue
+packet_queue_size = 100000
+
+# Memory limits
+max_memory_mb = 8192
+
+# =============================================================================
+# ALERT MANAGEMENT
+# =============================================================================
+[alerts]
+# Alert storage
+store_alerts = true
+max_alerts_in_memory = 100000
+
+# Alert deduplication
+deduplicate_alerts = true
+deduplication_window_seconds = 300
+
+# Alert aggregation
+aggregate_similar_alerts = true
+aggregation_threshold = 10  # Alert if same signature triggered 10+ times
+
+# Alert priorities
+[alerts.priority_mapping]
+critical = 1
+high = 2
+medium = 3
+low = 4
+info = 5
+
+# Alert enrichment
+enrich_with_geoip = true
+enrich_with_reputation = true
+enrich_with_whois = false
+
+# =============================================================================
+# FALSE POSITIVE MANAGEMENT
+# =============================================================================
+[false_positives]
+# Whitelist management
+whitelist_enabled = true
+whitelist_path = "C:\\Program Files\\SafeOps\\rules\\whitelist.yaml"
+
+# Auto-learning
+auto_whitelist_enabled = false
+auto_whitelist_threshold = 100  # Same alert 100+ times without incident
+
+# Tuning
+suppress_noisy_rules = true
+noisy_rule_threshold = 1000  # Alerts per hour
+
+# =============================================================================
+# LOGGING & FORENSICS
+# =============================================================================
+[logging]
+# Packet capture for forensics
+pcap_enabled = true
+pcap_path = "C:\\ProgramData\\SafeOps\\pcaps"
+pcap_max_size_mb = 10000
+pcap_retention_days = 7
+
+# Full packet logging on alerts
+log_full_packets_on_alert = true
+max_packet_size_kb = 64
+
+# Flow logging
+log_flows = true
+flow_timeout_seconds = 60
+
+# =============================================================================
+# INTEGRATION SETTINGS
+# =============================================================================
+[integrations]
+# Threat Intelligence
+threat_intel_enabled = true
+threat_intel_endpoint = "localhost:50055"
+threat_intel_timeout_ms = 100
+
+# Firewall
+firewall_enabled = true
+firewall_endpoint = "localhost:50052"
+
+# SIEM forwarding
+siem_enabled = true
+siem_protocol = "syslog"  # syslog, json, cef
+siem_host = "siem.local"
+siem_port = 514
+siem_format = "cef"  # Common Event Format

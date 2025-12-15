@@ -1,0 +1,225 @@
+# ============================================================================
+# SafeOps Default Configuration - Small Business Profile
+# ============================================================================
+# Optimized for: 10-50 employees, multiple VLANs, moderate security
+# Features: Business protection, network segmentation, compliance logging
+# Resources: 4 cores, 4GB RAM minimum
+# ============================================================================
+
+[profile]
+name = "small_business"
+description = "Small business with enhanced security"
+complexity = "moderate"
+version = "2.0.0"
+
+# =============================================================================
+# SYSTEM
+# =============================================================================
+[system]
+hostname = "safeops-business"
+timezone = "UTC"
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+
+# =============================================================================
+# NETWORK - 3 NIC CONFIGURATION
+# =============================================================================
+[network]
+topology = "3-nic"
+
+[network.interfaces]
+wan = "NIC1"
+lan = "NIC2"
+wifi = "NIC3"
+
+[network.addressing]
+wan_mode = "dhcp"
+lan_ip = "192.168.1.1"
+lan_netmask = "255.255.255.0"
+lan_network = "192.168.1.0/24"
+wifi_ip = "192.168.2.1"
+wifi_netmask = "255.255.255.0"
+wifi_network = "192.168.2.0/24"
+
+# =============================================================================
+# SERVICES - FULL SET
+# =============================================================================
+[services]
+kernel_driver = true
+network_logger = true
+firewall_engine = true
+ids_ips = true
+dns_server = true
+dhcp_server = true
+wifi_ap = true
+tls_proxy = true  # Enable for business visibility
+certificate_manager = true
+threat_intel = true
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# =============================================================================
+# FIREWALL - STRICT MODE
+# =============================================================================
+[firewall]
+enabled = true
+default_action = "deny"
+log_denied = true
+log_allowed = false
+max_connections = 1000000
+
+# Stateful inspection
+stateful_inspection = true
+connection_tracking = true
+
+# DDoS protection
+ddos_protection = true
+syn_flood_protection = true
+
+# =============================================================================
+# IDS/IPS - PREVENTION MODE
+# =============================================================================
+[ids_ips]
+enabled = true
+mode = "ips"  # Block threats
+signature_updates_enabled = true
+update_interval_hours = 1
+
+# Categories
+signature_based = true
+anomaly_based = true
+behavior_based = true
+
+# Sensitivity
+sensitivity = "medium"
+
+# =============================================================================
+# TLS PROXY - ENABLED
+# =============================================================================
+[tls_proxy]
+enabled = true
+bypass_financial_sites = true
+bypass_healthcare_sites = true
+bypass_government_sites = true
+log_intercepted_domains = true
+
+# =============================================================================
+# DNS - WITH FILTERING
+# =============================================================================
+[dns]
+enabled = true
+cache_enabled = true
+cache_size_mb = 256
+
+# Filtering
+block_malware_domains = true
+block_phishing_domains = true
+block_advertising = true
+block_tracking = true
+
+# Security
+dnssec_enabled = true
+dot_enabled = true
+
+# Upstream
+upstream_servers = ["1.1.1.1", "1.0.0.1", "8.8.8.8"]
+
+# =============================================================================
+# DHCP - DUAL POOLS
+# =============================================================================
+[dhcp]
+enabled = true
+lan_enabled = true
+wifi_enabled = true
+
+[dhcp.lan_pool]
+range_start = "192.168.1.50"
+range_end = "192.168.1.200"
+default_lease_hours = 24
+dns_servers = ["192.168.1.1"]
+
+[dhcp.wifi_pool]
+range_start = "192.168.2.50"
+range_end = "192.168.2.200"
+default_lease_hours = 4  # Shorter for guests
+dns_servers = ["192.168.2.1"]
+
+# =============================================================================
+# WIFI - GUEST ISOLATION
+# =============================================================================
+[wifi]
+enabled = true
+ssid = "Business-WiFi"
+security = "wpa3"
+client_isolation = true
+max_clients = 50
+
+# =============================================================================
+# THREAT INTELLIGENCE
+# =============================================================================
+[threat_intel]
+enabled = true
+auto_update_feeds = true
+update_interval_hours = 6
+feeds = ["free", "standard"]
+
+# =============================================================================
+# BACKUP - DAILY
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 2 * * *"  # Daily at 2 AM
+retention_days = 90
+compression = true
+encryption = true
+
+# =============================================================================
+# UPDATES
+# =============================================================================
+[updates]
+auto_check = true
+auto_install_security = true
+auto_install_signatures = true
+auto_install_software = false  # Manual approval
+channel = "stable"
+maintenance_day = "sunday"
+maintenance_start_time = "02:00"
+
+# =============================================================================
+# WEB UI
+# =============================================================================
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 60
+mfa_enabled = false  # Optional for small business
+
+# =============================================================================
+# LOGGING - 90 DAYS
+# =============================================================================
+[logging]
+log_level = "info"
+log_format = "json"
+log_rotation = true
+log_max_size_mb = 100
+log_retention_days = 90
+syslog_enabled = false
+
+# =============================================================================
+# RESOURCE LIMITS
+# =============================================================================
+[resource_limits]
+max_cpu_percent = 70
+max_memory_mb = 4096
+
+# =============================================================================
+# COMPLIANCE
+# =============================================================================
+[compliance]
+enabled = false
+audit_logging = true
+data_retention_days = 90

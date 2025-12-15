@@ -1,0 +1,814 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema#",
+    "$id": "https://safeops.io/schemas/config/v2.0",
+    "title": "SafeOps Configuration Schema",
+    "description": "JSON Schema for validating SafeOps v2.0 configuration files",
+    "type": "object",
+    "definitions": {
+        "ipv4Address": {
+            "type": "string",
+            "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+            "description": "IPv4 address in dotted decimal notation"
+        },
+        "cidrBlock": {
+            "type": "string",
+            "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\/(?:3[0-2]|[12]?[0-9])$",
+            "description": "CIDR notation (e.g., 192.168.1.0/24)"
+        },
+        "macAddress": {
+            "type": "string",
+            "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
+            "description": "MAC address (XX:XX:XX:XX:XX:XX)"
+        },
+        "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "Valid port number (1-65535)"
+        },
+        "privilegedPort": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1023,
+            "description": "Privileged port (1-1023)"
+        },
+        "unixPath": {
+            "type": "string",
+            "pattern": "^/[a-zA-Z0-9_./-]+$",
+            "description": "Unix-style absolute path"
+        },
+        "windowsPath": {
+            "type": "string",
+            "pattern": "^[A-Za-z]:\\\\[a-zA-Z0-9_.\\\\-]+$",
+            "description": "Windows-style absolute path"
+        },
+        "logLevel": {
+            "type": "string",
+            "enum": [
+                "TRACE",
+                "DEBUG",
+                "INFO",
+                "WARNING",
+                "ERROR",
+                "CRITICAL",
+                "trace",
+                "debug",
+                "info",
+                "warn",
+                "warning",
+                "error",
+                "critical"
+            ],
+            "description": "Log level setting"
+        },
+        "tlsVersion": {
+            "type": "string",
+            "enum": [
+                "1.0",
+                "1.1",
+                "1.2",
+                "1.3"
+            ],
+            "description": "TLS protocol version"
+        },
+        "keyAlgorithm": {
+            "type": "string",
+            "enum": [
+                "RSA",
+                "ECDSA",
+                "Ed25519"
+            ],
+            "description": "Cryptographic key algorithm"
+        },
+        "duration": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Duration in seconds"
+        },
+        "percentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percentage value (0-100)"
+        },
+        "hostname": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9-]{0,62}$",
+            "description": "Valid hostname (RFC 1123)"
+        },
+        "domain": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-.]+[a-zA-Z0-9]$",
+            "description": "Valid domain name"
+        },
+        "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+        },
+        "timezone": {
+            "type": "string",
+            "pattern": "^[A-Za-z]+/[A-Za-z_]+$",
+            "description": "IANA timezone (e.g., America/New_York)"
+        },
+        "cronExpression": {
+            "type": "string",
+            "pattern": "^(\\*|[0-9,\\-\\/]+)\\s+(\\*|[0-9,\\-\\/]+)\\s+(\\*|[0-9,\\-\\/]+)\\s+(\\*|[0-9,\\-\\/]+)\\s+(\\*|[0-9,\\-\\/]+)$",
+            "description": "Cron expression (minute hour day month weekday)"
+        },
+        "interfaceName": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$",
+            "minLength": 1,
+            "maxLength": 15,
+            "description": "Network interface name"
+        }
+    },
+    "properties": {
+        "system": {
+            "type": "object",
+            "description": "System-wide configuration",
+            "properties": {
+                "hostname": {
+                    "$ref": "#/definitions/hostname"
+                },
+                "timezone": {
+                    "$ref": "#/definitions/timezone"
+                },
+                "admin_email": {
+                    "$ref": "#/definitions/email"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 256
+                },
+                "installation_dir": {
+                    "$ref": "#/definitions/unixPath"
+                },
+                "data_dir": {
+                    "$ref": "#/definitions/unixPath"
+                },
+                "log_dir": {
+                    "$ref": "#/definitions/unixPath"
+                },
+                "temp_dir": {
+                    "$ref": "#/definitions/unixPath"
+                },
+                "config_dir": {
+                    "$ref": "#/definitions/unixPath"
+                }
+            },
+            "required": [
+                "hostname"
+            ]
+        },
+        "system.resources": {
+            "type": "object",
+            "properties": {
+                "max_cpu_cores": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 128,
+                    "default": 0
+                },
+                "max_memory_mb": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1048576,
+                    "default": 0
+                },
+                "max_disk_gb": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000,
+                    "default": 100
+                }
+            }
+        },
+        "network": {
+            "type": "object",
+            "description": "Network interface configuration",
+            "properties": {
+                "wan_interface": {
+                    "$ref": "#/definitions/interfaceName"
+                },
+                "wan_mode": {
+                    "type": "string",
+                    "enum": [
+                        "dhcp",
+                        "static"
+                    ]
+                },
+                "wan_static_ip": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "wan_subnet_mask": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "wan_gateway": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "wan_dns_servers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ipv4Address"
+                    }
+                },
+                "lan_interface": {
+                    "$ref": "#/definitions/interfaceName"
+                },
+                "lan_ip": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "lan_subnet_mask": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "lan_dhcp_enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "lan_dhcp_range_start": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "lan_dhcp_range_end": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "wifi_interface": {
+                    "$ref": "#/definitions/interfaceName"
+                },
+                "wifi_ip": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "wifi_subnet_mask": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "wifi_dhcp_enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "enable_ip_forwarding": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "enable_nat": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "enable_ipv6": {
+                    "type": "boolean",
+                    "default": false
+                }
+            },
+            "required": [
+                "wan_interface",
+                "lan_interface"
+            ]
+        },
+        "grpc": {
+            "type": "object",
+            "description": "gRPC server configuration",
+            "properties": {
+                "listen_address": {
+                    "$ref": "#/definitions/ipv4Address"
+                },
+                "port": {
+                    "$ref": "#/definitions/port"
+                },
+                "enable_tls": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "tls_cert_path": {
+                    "$ref": "#/definitions/unixPath"
+                },
+                "tls_key_path": {
+                    "$ref": "#/definitions/unixPath"
+                },
+                "max_message_size_mb": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10
+                },
+                "connection_timeout_sec": {
+                    "$ref": "#/definitions/duration"
+                },
+                "keepalive_interval_sec": {
+                    "$ref": "#/definitions/duration"
+                }
+            }
+        },
+        "services": {
+            "type": "object",
+            "description": "Service configuration",
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "port": {
+                        "$ref": "#/definitions/port"
+                    },
+                    "log_level": {
+                        "$ref": "#/definitions/logLevel"
+                    },
+                    "auto_restart": {
+                        "type": "boolean",
+                        "default": true
+                    },
+                    "restart_delay": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 300,
+                        "default": 5
+                    },
+                    "max_restarts": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "default": 3
+                    }
+                },
+                "required": [
+                    "enabled"
+                ]
+            }
+        },
+        "firewall": {
+            "type": "object",
+            "description": "Firewall configuration",
+            "properties": {
+                "default_policy": {
+                    "type": "string",
+                    "enum": [
+                        "ALLOW",
+                        "DENY",
+                        "DROP",
+                        "REJECT"
+                    ],
+                    "default": "DENY"
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            "priority": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535
+                            },
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "ACCEPT",
+                                    "DROP",
+                                    "REJECT",
+                                    "LOG"
+                                ]
+                            },
+                            "protocol": {
+                                "type": "string",
+                                "enum": [
+                                    "tcp",
+                                    "udp",
+                                    "icmp",
+                                    "any"
+                                ]
+                            },
+                            "src_address": {
+                                "$ref": "#/definitions/ipv4Address"
+                            },
+                            "dst_address": {
+                                "$ref": "#/definitions/ipv4Address"
+                            },
+                            "src_port": {
+                                "$ref": "#/definitions/port"
+                            },
+                            "dst_port": {
+                                "$ref": "#/definitions/port"
+                            },
+                            "enabled": {
+                                "type": "boolean",
+                                "default": true
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "action"
+                        ]
+                    }
+                }
+            }
+        },
+        "dns": {
+            "type": "object",
+            "description": "DNS server configuration",
+            "properties": {
+                "listen_port": {
+                    "$ref": "#/definitions/port",
+                    "default": 53
+                },
+                "upstream_servers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ipv4Address"
+                    },
+                    "minItems": 1
+                },
+                "cache_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10240,
+                    "default": 256
+                },
+                "enable_dnssec": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        },
+        "tls_proxy": {
+            "type": "object",
+            "description": "TLS proxy configuration",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "interception": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "listen_port": {
+                            "$ref": "#/definitions/port",
+                            "default": 443
+                        },
+                        "min_tls_version": {
+                            "$ref": "#/definitions/tlsVersion"
+                        },
+                        "max_tls_version": {
+                            "$ref": "#/definitions/tlsVersion"
+                        }
+                    }
+                },
+                "certificate": {
+                    "type": "object",
+                    "properties": {
+                        "key_algorithm": {
+                            "$ref": "#/definitions/keyAlgorithm"
+                        },
+                        "cert_validity_days": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 825
+                        }
+                    }
+                }
+            }
+        },
+        "ids_ips": {
+            "type": "object",
+            "description": "IDS/IPS configuration",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "IDS",
+                        "IPS"
+                    ],
+                    "default": "IDS"
+                },
+                "detection": {
+                    "type": "object",
+                    "properties": {
+                        "signatures_path": {
+                            "$ref": "#/definitions/unixPath"
+                        },
+                        "max_rules": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000000,
+                            "default": 50000
+                        }
+                    }
+                },
+                "prevention": {
+                    "type": "object",
+                    "properties": {
+                        "auto_block": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "block_duration": {
+                            "$ref": "#/definitions/duration"
+                        }
+                    }
+                }
+            }
+        },
+        "security": {
+            "type": "object",
+            "description": "Security settings",
+            "properties": {
+                "tls_inspection_enabled": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "ids_enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "threat_intel_enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "firewall_default_policy": {
+                    "type": "string",
+                    "enum": [
+                        "allow",
+                        "deny"
+                    ],
+                    "default": "deny"
+                },
+                "auto_block_threats": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "block_duration": {
+                    "$ref": "#/definitions/duration"
+                },
+                "min_tls_version": {
+                    "$ref": "#/definitions/tlsVersion"
+                }
+            }
+        },
+        "logging": {
+            "type": "object",
+            "description": "Logging configuration",
+            "properties": {
+                "level": {
+                    "$ref": "#/definitions/logLevel"
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "json",
+                        "text"
+                    ],
+                    "default": "json"
+                },
+                "file_output": {
+                    "type": "object",
+                    "properties": {
+                        "log_directory": {
+                            "$ref": "#/definitions/unixPath"
+                        },
+                        "max_file_size": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 10240
+                        },
+                        "max_files": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000
+                        },
+                        "compress_rotated": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                },
+                "retention": {
+                    "type": "object",
+                    "properties": {
+                        "retention_days": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 3650,
+                            "default": 30
+                        },
+                        "auto_delete": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                }
+            }
+        },
+        "retention": {
+            "type": "object",
+            "description": "Data retention policies",
+            "properties": {
+                "network_traffic_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650,
+                    "default": 30
+                },
+                "firewall_logs_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650,
+                    "default": 90
+                },
+                "ids_alerts_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650,
+                    "default": 365
+                },
+                "system_logs_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650,
+                    "default": 30
+                },
+                "backup_retention_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650,
+                    "default": 30
+                }
+            }
+        },
+        "database": {
+            "type": "object",
+            "description": "Database configuration",
+            "properties": {
+                "postgres_host": {
+                    "type": "string"
+                },
+                "postgres_port": {
+                    "$ref": "#/definitions/port",
+                    "default": 5432
+                },
+                "postgres_database": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]*$"
+                },
+                "postgres_user": {
+                    "type": "string"
+                },
+                "postgres_pool_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10
+                },
+                "redis_host": {
+                    "type": "string"
+                },
+                "redis_port": {
+                    "$ref": "#/definitions/port",
+                    "default": 6379
+                },
+                "redis_pool_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 20
+                }
+            }
+        },
+        "performance": {
+            "type": "object",
+            "description": "Performance tuning",
+            "properties": {
+                "worker_threads": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 256
+                },
+                "io_threads": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 64
+                },
+                "ring_buffer_size": {
+                    "type": "integer",
+                    "minimum": 1048576,
+                    "description": "Ring buffer size in bytes"
+                },
+                "packet_batch_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1024,
+                    "default": 128
+                },
+                "database_batch_size": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 100000,
+                    "default": 10000
+                },
+                "enable_hardware_offload": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "enable_rss": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        },
+        "updates": {
+            "type": "object",
+            "description": "Update configuration",
+            "properties": {
+                "auto_check": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "check_interval_hours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 168,
+                    "default": 24
+                },
+                "auto_download": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "auto_install": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "channel": {
+                    "type": "string",
+                    "enum": [
+                        "stable",
+                        "beta",
+                        "dev"
+                    ],
+                    "default": "stable"
+                }
+            }
+        },
+        "backup": {
+            "type": "object",
+            "description": "Backup configuration",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "schedule": {
+                    "$ref": "#/definitions/cronExpression"
+                },
+                "destination": {
+                    "type": "string"
+                },
+                "retention_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "default": 30
+                },
+                "max_backups": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "default": 10
+                },
+                "compress": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        }
+    },
+    "required": [
+        "system",
+        "network"
+    ],
+    "examples": [
+        {
+            "system": {
+                "hostname": "safeops-gateway",
+                "timezone": "UTC",
+                "admin_email": "admin@example.com"
+            },
+            "network": {
+                "wan_interface": "eth0",
+                "wan_mode": "dhcp",
+                "lan_interface": "eth1",
+                "lan_ip": "192.168.1.1",
+                "lan_subnet_mask": "255.255.255.0"
+            }
+        }
+    ]
+}

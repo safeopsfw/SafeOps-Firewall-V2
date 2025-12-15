@@ -1,0 +1,134 @@
+# ============================================================================
+# Suricata Variables Configuration
+# ============================================================================
+# Generated from: network_topology.yaml
+# Purpose: Define network variables for IDS/IPS rule matching
+# Location: /etc/suricata/vars.yaml or include in suricata.yaml
+# ============================================================================
+
+vars:
+  # ============================================================================
+  # Address Groups
+  # ============================================================================
+  address-groups:
+    # Internal Networks (HOME_NET)
+    HOME_NET: "[192.168.10.0/24,192.168.20.0/24,192.168.30.0/24,192.168.40.0/24,192.168.50.0/24,192.168.100.0/24]"
+    
+    # External Networks
+    EXTERNAL_NET: "!$HOME_NET"
+    
+    # Specific Network Segments
+    OFFICE_NET: "[192.168.10.0/24]"
+    SERVER_NET: "[192.168.20.0/24]"
+    GUEST_NET: "[192.168.30.0/24]"
+    LIBRARY_NET: "[192.168.40.0/24]"
+    IOT_NET: "[192.168.50.0/24]"
+    MGMT_NET: "[192.168.100.0/24]"
+    
+    # Trusted vs Untrusted
+    TRUSTED_NET: "[192.168.10.0/24,192.168.40.0/24]"
+    UNTRUSTED_NET: "[192.168.30.0/24,192.168.50.0/24]"
+    DMZ_NET: "[192.168.20.0/24]"
+    
+    # Service-specific servers
+    HTTP_SERVERS: "[192.168.20.100]"
+    SMTP_SERVERS: "[192.168.20.101]"
+    DNS_SERVERS: "[192.168.10.1,192.168.20.1,192.168.30.1,192.168.40.1]"
+    DHCP_SERVERS: "[192.168.10.1,192.168.20.1,192.168.30.1,192.168.40.1]"
+    SSH_SERVERS: "[192.168.20.0/24,192.168.100.0/24]"
+    TELNET_SERVERS: "any"
+    SQL_SERVERS: "[192.168.20.102,192.168.20.103]"
+    FTP_SERVERS: "[192.168.20.104]"
+    
+    # WAN interfaces (public IPs)
+    WAN1_PUBLIC: "[203.0.113.10]"
+    WAN2_PUBLIC: "[198.51.100.20]"
+    ALL_WAN_PUBLIC: "[203.0.113.10,198.51.100.20]"
+    
+    # Special purpose
+    MANAGEMENT_SERVERS: "[192.168.100.10,192.168.100.11]"
+    MONITORING_SERVERS: "[192.168.100.20]"
+    
+  # ============================================================================
+  # Port Groups
+  # ============================================================================
+  port-groups:
+    HTTP_PORTS: "80,443,8080,8443"
+    HTTPS_PORTS: "443,8443"
+    SHELLCODE_PORTS: "!80"
+    ORACLE_PORTS: "1521"
+    SSH_PORTS: "22"
+    FTP_PORTS: "21,20"
+    MAIL_PORTS: "25,110,143,587,993,995"
+    DNS_PORTS: "53"
+    DHCP_PORTS: "67,68"
+    RDP_PORTS: "3389"
+    VNC_PORTS: "5900"
+    SMB_PORTS: "139,445"
+    LDAP_PORTS: "389,636"
+    MYSQL_PORTS: "3306"
+    MSSQL_PORTS: "1433"
+    POSTGRESQL_PORTS: "5432"
+    MONGODB_PORTS: "27017"
+    
+# ============================================================================
+# Flow Settings
+# ============================================================================
+flow:
+  memcap: 128mb
+  hash-size: 65536
+  prealloc: 10000
+  emergency-recovery: 30
+
+# ============================================================================
+# Stream Engine Settings
+# ============================================================================
+stream:
+  memcap: 64mb
+  checksum-validation: yes
+  inline: auto
+  reassembly:
+    memcap: 256mb
+    depth: 1mb
+    toserver-chunk-size: 2560
+    toclient-chunk-size: 2560
+    randomize-chunk-size: yes
+
+# ============================================================================
+# Application Layer Protocol Settings
+# ============================================================================
+app-layer:
+  protocols:
+    tls:
+      enabled: yes
+      detection-ports:
+        dp: 443
+    http:
+      enabled: yes
+      memcap: 64mb
+    smtp:
+      enabled: yes
+      detection-ports:
+        dp: 25,587
+    dns:
+      tcp:
+        enabled: yes
+        detection-ports:
+          dp: 53
+      udp:
+        enabled: yes
+        detection-ports:
+          dp: 53
+    ssh:
+      enabled: yes
+    smb:
+      enabled: yes
+      detection-ports:
+        dp: 139,445
+
+# ============================================================================
+# Example Usage in Rules:
+# ============================================================================
+# alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"Web Attack";)
+# alert tcp $GUEST_NET any -> $SERVER_NET any (msg:"Guest to Server";)
+# alert tcp any any -> $MGMT_NET $SSH_PORTS (msg:"SSH to Management";)

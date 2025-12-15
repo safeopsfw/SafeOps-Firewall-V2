@@ -1,0 +1,195 @@
+# SafeOps WiFi Access Point Configuration
+# Purpose: Turn NIC 3 into a wireless hotspot with WPA3 security
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "wifi_ap"
+listen_address = "0.0.0.0"
+grpc_port = 50058
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\wifi_ap.log"
+
+# =============================================================================
+# ACCESS POINT SETTINGS
+# =============================================================================
+[access_point]
+# Wireless interface
+interface = "NIC3"
+
+# SSID configuration
+ssid = "SafeOps-Secure"
+hidden_ssid = false
+
+# WiFi standard
+hw_mode = "g"  # a = 5GHz, g = 2.4GHz, a/g = dual band
+ieee80211n = true   # WiFi 4
+ieee80211ac = true  # WiFi 5
+ieee80211ax = true  # WiFi 6
+
+# Channel selection
+channel = 6  # Auto-select best channel if 0
+channel_width = 40  # 20, 40, 80, 160 MHz
+
+# Country code (regulatory)
+country_code = "US"
+
+# Transmission power
+tx_power_dbm = 20  # Max power in dBm
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+[security]
+# Authentication
+auth_algs = "wpa3"  # open, wpa2, wpa3, wpa2+wpa3
+
+# WPA3 settings
+wpa_key_mgmt = "SAE"  # SAE = WPA3-Personal
+sae_password = "${WIFI_PASSWORD}"  # Environment variable
+sae_pwe = 2  # Password element derivation (0=loop, 1=hash, 2=both)
+
+# WPA2 fallback (for older devices)
+wpa2_fallback = true
+wpa_passphrase = "${WIFI_PASSWORD}"
+wpa_key_mgmt_fallback = "WPA-PSK"
+
+# Encryption
+rsn_pairwise = "CCMP"  # AES-CCMP
+wpa_pairwise = "CCMP"
+
+# Group cipher
+group_cipher = "CCMP"
+
+# PMF (Protected Management Frames)
+ieee80211w = 2  # 0=disabled, 1=optional, 2=required
+
+# Key rotation
+wpa_group_rekey = 600  # Seconds
+wpa_ptk_rekey = 600    # Seconds
+
+# =============================================================================
+# CLIENT ISOLATION
+# =============================================================================
+[isolation]
+# Prevent WiFi clients from talking to each other
+ap_isolate = true
+
+# Block WiFi -> LAN traffic (guest network)
+block_lan_access = true
+
+# Allow specific LAN services
+allow_dns = true          # 192.168.1.1:53
+allow_dhcp = true         # 192.168.1.1:67
+allow_gateway = true      # Internet access
+allow_lan_services = []   # Additional IPs/ports
+
+# =============================================================================
+# CAPTIVE PORTAL
+# =============================================================================
+[captive_portal]
+enabled = false
+
+# Portal settings
+portal_url = "http://192.168.2.1/portal"
+portal_page = "C:\\Program Files\\SafeOps\\www\\portal.html"
+
+# Authentication methods
+auth_method = "accept_terms"  # accept_terms, password, social_login
+
+# Session management
+session_timeout_minutes = 240  # 4 hours
+max_sessions_per_device = 1
+
+# Redirect after authentication
+redirect_url = "http://www.google.com"
+
+# =============================================================================
+# CLIENT MANAGEMENT
+# =============================================================================
+[client_management]
+# Connection limits
+max_clients = 50
+max_clients_per_mac = 1
+
+# Bandwidth limiting (per client)
+bandwidth_limit_enabled = false
+download_limit_kbps = 5000  # 5 Mbps
+upload_limit_kbps = 1000    # 1 Mbps
+
+# Idle timeout
+idle_timeout_minutes = 30
+
+# Blacklist
+blacklist_enabled = false
+blacklist_file = "C:\\ProgramData\\SafeOps\\wifi\\blacklist.txt"
+
+# Whitelist (MAC filtering)
+whitelist_enabled = false
+whitelist_file = "C:\\ProgramData\\SafeOps\\wifi\\whitelist.txt"
+
+# =============================================================================
+# QUALITY OF SERVICE (QoS)
+# =============================================================================
+[qos]
+enabled = true
+
+# WMM (WiFi Multimedia)
+wmm_enabled = true
+
+# Traffic prioritization
+priority_voice = 7
+priority_video = 5
+priority_best_effort = 3
+priority_background = 1
+
+# Application QoS
+prioritize_voip = true
+prioritize_video_streaming = true
+
+# =============================================================================
+# MONITORING & LOGGING
+# =============================================================================
+[monitoring]
+# Client tracking
+track_connected_clients = true
+track_connection_duration = true
+track_bandwidth_usage = true
+
+# Database logging
+database_enabled = true
+postgres_host = "localhost"
+postgres_port = 5432
+postgres_database = "safeops"
+
+# Metrics
+collect_metrics = true
+metrics_interval_seconds = 60
+
+# Signal strength monitoring
+monitor_signal_strength = true
+min_rssi_dbm = -75  # Disconnect if weaker
+
+# =============================================================================
+# ADVANCED SETTINGS
+# =============================================================================
+[advanced]
+# Beacon interval
+beacon_interval = 100  # Milliseconds
+
+# DTIM period
+dtim_period = 2
+
+# RTS/CTS threshold
+rts_threshold = 2347
+
+# Fragmentation threshold
+fragmentation_threshold = 2346
+
+# Preamble
+preamble = "short"  # short, long
+
+# Hostapd configuration
+hostapd_config_file = "C:\\Program Files\\SafeOps\\wifi\\hostapd.conf"
+hostapd_binary = "C:\\Program Files\\SafeOps\\bin\\hostapd.exe"

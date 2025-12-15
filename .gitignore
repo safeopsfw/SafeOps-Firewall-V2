@@ -1,0 +1,166 @@
+﻿# SafeOps v2.0 - Git Ignore Configuration
+
+# =====================================
+# Build Outputs
+# =====================================
+build/
+*.exe
+*.dll
+*.sys
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.map
+*.wixobj
+*.wixpdb
+*.msi
+
+# =====================================
+# Kernel Driver Build Artifacts
+# =====================================
+src/kernel_driver/*.sys
+src/kernel_driver/*.inf
+src/kernel_driver/*.cat
+src/kernel_driver/objfre_*
+src/kernel_driver/objchk_*
+*.cer
+*.pvk
+
+# =====================================
+# Rust Build Artifacts
+# =====================================
+target/
+**/*.rs.bk
+Cargo.lock
+
+# =====================================
+# Go Build Artifacts
+# =====================================
+*.test
+*.prof
+bin/
+vendor/
+
+# =====================================
+# Node.js / JavaScript
+# =====================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+.next/
+out/
+package-lock.json
+yarn.lock
+
+# =====================================
+# IDE and Editor Files
+# =====================================
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+
+# =====================================
+# Runtime Files
+# =====================================
+logs/*.log
+logs/**/*.log
+feeds/threat_feeds/*
+!feeds/threat_feeds/.gitkeep
+certs/distribution/*
+!certs/distribution/.gitkeep
+*.tmp
+*.temp
+*.cache
+
+# =====================================
+# Database Files
+# =====================================
+*.db
+*.sqlite
+*.sqlite3
+
+# =====================================
+# Sensitive Data
+# =====================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.pfx
+secrets/
+credentials/
+
+# =====================================
+# Operating System Files
+# =====================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# =====================================
+# Test and Coverage
+# =====================================
+coverage/
+*.cover
+.coverage
+.pytest_cache/
+htmlcov/
+
+# =====================================
+# Documentation Build
+# =====================================
+docs/_build/
+*.pdf
+!docs/**/*.pdf
+
+# =====================================
+# Temporary and Backup Files
+# =====================================
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# =====================================
+# Generated Proto Files
+# =====================================
+build/proto/**/*.go
+build/proto/**/*.rs
+build/proto/**/*.ts
+
+# =====================================
+# Scripts (Planned/Private)
+# =====================================
+safeops_structure_generator.ps1
+rebuild_structure.ps1
+
+# =====================================
+# Keep Empty Directories
+# =====================================
+!**/.gitkeep

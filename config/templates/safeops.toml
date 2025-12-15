@@ -1,0 +1,343 @@
+# SafeOps v2.0 - Main System Configuration
+# This is the primary configuration file for the SafeOps firewall system.
+# All settings have secure defaults. Uncomment and modify as needed.
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+[system]
+# System identification
+hostname = "safeops-gateway"
+timezone = "UTC"
+admin_email = "admin@example.com"
+description = "SafeOps Network Security Gateway"
+version = "2.0.0"
+
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+config_directory = "C:\\ProgramData\\SafeOps\\config"
+temp_directory = "C:\\ProgramData\\SafeOps\\temp"
+
+[system.resources]
+# Maximum CPU cores to use (0 = all available)
+max_cpu_cores = 0
+# Maximum memory in MB (0 = 80% of available)
+max_memory_mb = 0
+# Maximum disk space for logs/data in GB
+max_disk_gb = 100
+
+# =============================================================================
+# NETWORK CONFIGURATION
+# =============================================================================
+[network]
+# Network topology
+topology = "3-nic"  # single-nic, 2-nic, 3-nic
+
+# WAN (Wide Area Network - Internet-facing interface)
+[network.wan]
+interface = "NIC1"
+mode = "dhcp"  # dhcp or static
+# Static WAN configuration (only used if mode = "static")
+static_ip = "203.0.113.10"
+subnet_mask = "255.255.255.0"
+gateway = "203.0.113.1"
+dns_servers = ["8.8.8.8", "1.1.1.1"]
+
+# LAN (Local Area Network - Internal wired network)
+[network.lan]
+interface = "NIC2"
+ip = "192.168.1.1"
+subnet_mask = "255.255.255.0"
+network = "192.168.1.0/24"
+dhcp_enabled = true
+dhcp_range_start = "192.168.1.10"
+dhcp_range_end = "192.168.1.200"
+dns_servers = ["192.168.1.1"]
+gateway = "192.168.1.1"
+domain = "local"
+
+# WiFi (Wireless Network - Optional third interface)
+[network.wifi]
+interface = "NIC3"
+ip = "192.168.2.1"
+subnet_mask = "255.255.255.0"
+network = "192.168.2.0/24"
+dhcp_enabled = true
+dhcp_range_start = "192.168.2.10"
+dhcp_range_end = "192.168.2.200"
+dns_servers = ["192.168.2.1"]
+gateway = "192.168.2.1"
+domain = "wifi.local"
+client_isolation = false
+
+# Advanced network settings
+[network.advanced]
+enable_ip_forwarding = true
+enable_nat = true
+enable_ipv6 = false
+mtu_wan = 1500
+mtu_lan = 1500
+mtu_wifi = 1500
+
+# =============================================================================
+# gRPC CONFIGURATION
+# =============================================================================
+[grpc]
+listen_address = "127.0.0.1"
+port = 50051
+enable_tls = true
+tls_cert_path = "C:\\Program Files\\SafeOps\\certs\\server.crt"
+tls_key_path = "C:\\Program Files\\SafeOps\\certs\\server.key"
+max_message_size_mb = 10
+connection_timeout_seconds = 30
+keepalive_interval_seconds = 60
+
+[grpc.reflection]
+enabled = false  # Disable in production
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[services]
+# Each service can be individually enabled/disabled
+
+[services.kernel_driver]
+enabled = true
+log_level = "warn"
+critical = true
+
+[services.network_logger]
+enabled = true
+port = 50051
+log_level = "info"
+auto_restart = true
+
+[services.firewall_engine]
+enabled = true
+port = 50052
+log_level = "info"
+auto_restart = true
+critical = true
+
+[services.tls_proxy]
+enabled = false  # Disabled by default for privacy
+port = 50053
+log_level = "info"
+auto_restart = true
+
+[services.ids_ips]
+enabled = true
+port = 50054
+log_level = "info"
+auto_restart = true
+critical = true
+
+[services.threat_intel]
+enabled = true
+port = 50055
+log_level = "info"
+auto_restart = true
+
+[services.dns_server]
+enabled = true
+port = 50056
+log_level = "info"
+auto_restart = true
+critical = true
+
+[services.dhcp_server]
+enabled = true
+port = 50057
+log_level = "info"
+auto_restart = true
+
+[services.wifi_ap]
+enabled = false  # Requires WiFi hardware
+port = 50058
+log_level = "info"
+auto_restart = true
+
+[services.certificate_manager]
+enabled = true
+port = 50059
+log_level = "info"
+auto_restart = true
+
+[services.backup_restore]
+enabled = true
+port = 50060
+log_level = "info"
+auto_restart = true
+
+[services.update_manager]
+enabled = true
+port = 50061
+log_level = "info"
+auto_restart = true
+
+[services.orchestrator]
+enabled = true
+port = 50062
+log_level = "info"
+auto_restart = true
+
+[services.web_ui]
+enabled = true
+port = 50063
+log_level = "info"
+auto_restart = true
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+[database]
+# PostgreSQL (primary database)
+postgres_host = "localhost"
+postgres_port = 5432
+postgres_database = "safeops"
+postgres_user = "safeops"
+postgres_password = "${POSTGRES_PASSWORD}"
+postgres_pool_size = 10
+postgres_timeout_seconds = 5
+postgres_ssl_enabled = false
+
+# Redis (cache and session storage)
+redis_host = "localhost"
+redis_port = 6379
+redis_password = "${REDIS_PASSWORD}"
+redis_pool_size = 20
+redis_database = 0
+redis_ssl_enabled = false
+redis_timeout_seconds = 3
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+[security]
+# TLS inspection (disabled by default for privacy)
+tls_inspection_enabled = false
+
+# IDS/IPS mode
+ids_enabled = true
+ids_mode = "ips"  # ids (detect only) or ips (prevent)
+
+# Threat intelligence
+threat_intel_enabled = true
+
+# Firewall default policy
+firewall_default_policy = "deny"
+
+# Auto-blocking
+auto_block_threats = true
+block_duration_seconds = 3600
+
+# TLS settings
+min_tls_version = "1.2"
+max_tls_version = "1.3"
+
+# Authentication
+max_login_attempts = 5
+lockout_duration_minutes = 30
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+[logging]
+level = "info"
+format = "json"
+output = "file"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+log_file = "safeops.log"
+
+# =============================================================================
+# UPDATES CONFIGURATION
+# =============================================================================
+[updates]
+auto_check = true
+check_interval_hours = 24
+auto_download = true
+auto_install_security = true
+auto_install_signatures = true
+auto_install_software = false
+channel = "stable"
+
+[updates.maintenance_window]
+days = ["saturday", "sunday"]
+start_hour = 2
+end_hour = 6
+
+# =============================================================================
+# BACKUP CONFIGURATION
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 3 * * *"  # Daily at 3 AM
+destination = "C:\\SafeOps_Backups"
+retention_days = 30
+max_backups = 10
+compression = true
+encryption = true
+include_logs = false
+
+# =============================================================================
+# MONITORING CONFIGURATION
+# =============================================================================
+[monitoring]
+metrics_enabled = true
+metrics_address = "127.0.0.1"
+metrics_port = 9090
+healthcheck_enabled = true
+healthcheck_port = 8080
+
+[monitoring.alerts]
+cpu_threshold_percent = 80
+memory_threshold_percent = 85
+disk_threshold_percent = 90
+cooldown_minutes = 15
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+[api]
+enabled = true
+listen_address = "127.0.0.1"
+port = 8443
+https_enabled = true
+https_cert_path = "C:\\Program Files\\SafeOps\\certs\\api.crt"
+https_key_path = "C:\\Program Files\\SafeOps\\certs\\api.key"
+cors_enabled = false
+rate_limit_rpm = 100
+
+# =============================================================================
+# PERFORMANCE CONFIGURATION
+# =============================================================================
+[performance]
+worker_threads = 0  # 0 = auto-detect
+io_threads = 4
+ring_buffer_size_gb = 2
+packet_batch_size = 128
+database_batch_size = 10000
+enable_hardware_offload = true
+enable_rss = true
+enable_profiling = false
+
+# =============================================================================
+# DATA RETENTION
+# =============================================================================
+[retention]
+network_traffic_days = 30
+firewall_logs_days = 90
+ids_alerts_days = 365
+system_logs_days = 30
+backup_retention_days = 30
+dns_logs_days = 30
+dhcp_logs_days = 90
+tls_proxy_logs_days = 7
+threat_intel_days = 90
+
+# Auto-cleanup
+enable_auto_cleanup = true
+cleanup_schedule = "0 4 * * *"
+compress_before_cleanup = false

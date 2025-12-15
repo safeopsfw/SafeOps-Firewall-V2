@@ -1,0 +1,517 @@
+# SafeOps Service Orchestrator Configuration
+# Purpose: Master coordinator for all SafeOps services - manages lifecycle, dependencies, health, and stability
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+[service]
+name = "orchestrator"
+listen_address = "0.0.0.0"
+grpc_port = 50062
+management_api_port = 8080
+log_level = "info"
+log_file = "C:\\ProgramData\\SafeOps\\logs\\orchestrator.log"
+
+# Windows service configuration
+run_as_service = true
+service_name = "SafeOpsOrchestrator"
+service_display_name = "SafeOps Service Orchestrator"
+
+# =============================================================================
+# SERVICE REGISTRY
+# =============================================================================
+[registry]
+# Configuration and binary directories
+config_directory = "C:\\ProgramData\\SafeOps\\config"
+binary_directory = "C:\\Program Files\\SafeOps\\bin"
+
+# Managed services
+[registry.services.kernel_driver]
+name = "kernel_driver"
+executable = "safeops_driver.sys"
+type = "kernel"
+enabled = true
+critical = true
+
+[registry.services.network_logger]
+name = "network_logger"
+executable = "network_logger.exe"
+type = "userspace"
+enabled = true
+critical = true
+
+[registry.services.firewall_engine]
+name = "firewall_engine"
+executable = "firewall_engine.exe"
+type = "userspace"
+enabled = true
+critical = true
+
+[registry.services.tls_proxy]
+name = "tls_proxy"
+executable = "tls_proxy.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+[registry.services.ids_ips]
+name = "ids_ips"
+executable = "ids_ips.exe"
+type = "userspace"
+enabled = true
+critical = true
+
+[registry.services.dns_server]
+name = "dns_server"
+executable = "dns_server.exe"
+type = "userspace"
+enabled = true
+critical = true
+
+[registry.services.dhcp_server]
+name = "dhcp_server"
+executable = "dhcp_server.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+[registry.services.wifi_ap]
+name = "wifi_ap"
+executable = "wifi_ap.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+[registry.services.certificate_manager]
+name = "certificate_manager"
+executable = "cert_manager.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+[registry.services.threat_intel]
+name = "threat_intel"
+executable = "threat_intel.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+[registry.services.backup_restore]
+name = "backup_restore"
+executable = "backup_restore.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+[registry.services.update_manager]
+name = "update_manager"
+executable = "update_manager.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+[registry.services.web_ui]
+name = "web_ui"
+executable = "web_ui.exe"
+type = "userspace"
+enabled = true
+critical = false
+
+# =============================================================================
+# SERVICE DEPENDENCIES
+# =============================================================================
+[dependencies]
+# kernel_driver: no dependencies, start first
+[dependencies.kernel_driver]
+depends_on = []
+start_order = 1
+critical = true
+
+# network_logger: depends on kernel_driver
+[dependencies.network_logger]
+depends_on = ["kernel_driver"]
+start_order = 2
+critical = true
+
+# firewall_engine: depends on kernel_driver + network_logger
+[dependencies.firewall_engine]
+depends_on = ["kernel_driver", "network_logger"]
+start_order = 3
+critical = true
+
+# certificate_manager: no dependencies (needed by others)
+[dependencies.certificate_manager]
+depends_on = []
+start_order = 4
+critical = false
+
+# tls_proxy: depends on kernel_driver + network_logger + certificate_manager
+[dependencies.tls_proxy]
+depends_on = ["kernel_driver", "network_logger", "certificate_manager"]
+start_order = 5
+critical = false
+
+# threat_intel: minimal dependencies
+[dependencies.threat_intel]
+depends_on = []
+start_order = 5
+critical = false
+
+# ids_ips: depends on kernel_driver + network_logger + threat_intel
+[dependencies.ids_ips]
+depends_on = ["kernel_driver", "network_logger", "threat_intel"]
+start_order = 6
+critical = true
+
+# dns_server: depends on threat_intel
+[dependencies.dns_server]
+depends_on = ["threat_intel"]
+start_order = 7
+critical = true
+
+# dhcp_server: depends on dns_server
+[dependencies.dhcp_server]
+depends_on = ["dns_server"]
+start_order = 8
+critical = false
+
+# wifi_ap: depends on dhcp_server + dns_server
+[dependencies.wifi_ap]
+depends_on = ["dhcp_server", "dns_server"]
+start_order = 9
+critical = false
+
+# backup_restore: low priority
+[dependencies.backup_restore]
+depends_on = []
+start_order = 10
+critical = false
+
+# update_manager: low priority
+[dependencies.update_manager]
+depends_on = []
+start_order = 10
+critical = false
+
+# web_ui: depends on firewall_engine + network_logger, start last
+[dependencies.web_ui]
+depends_on = ["firewall_engine", "network_logger"]
+start_order = 11
+critical = false
+
+# =============================================================================
+# STARTUP CONFIGURATION
+# =============================================================================
+[startup]
+# Start on system boot
+start_on_boot = true
+startup_delay_seconds = 5
+
+# Parallel startup
+parallel_startup_enabled = true
+max_parallel_starts = 3
+
+# Startup timeouts
+default_startup_timeout_seconds = 60
+critical_service_timeout_seconds = 120
+
+# Retry configuration
+retry_failed_starts = true
+max_startup_retries = 3
+retry_delay_seconds = 10
+
+# Critical service failure handling
+stop_all_on_critical_failure = true
+
+# =============================================================================
+# SHUTDOWN CONFIGURATION
+# =============================================================================
+[shutdown]
+# Graceful shutdown
+graceful_shutdown_timeout_seconds = 30
+respect_dependencies_on_shutdown = true  # Reverse start order
+
+# Forceful termination
+force_kill_after_timeout_seconds = 60
+
+# Pre-shutdown hooks
+execute_pre_shutdown_hooks = true
+pre_shutdown_hook_timeout_seconds = 30
+
+# =============================================================================
+# HEALTH MONITORING
+# =============================================================================
+[health]
+# Health check interval
+check_interval_seconds = 30
+
+# Health check methods
+[health.methods]
+grpc_health_check = true
+process_monitoring = true
+resource_monitoring = true
+api_endpoint_check = true
+
+# Health check timeout
+check_timeout_seconds = 10
+
+# Failure thresholds
+consecutive_failures_threshold = 3
+
+# Actions on unhealthy service
+action_on_unhealthy = "restart"  # restart, alert, none
+
+# Restart policy
+max_restart_attempts = 5
+restart_backoff_initial_seconds = 10
+restart_backoff_multiplier = 2.0
+restart_backoff_max_seconds = 300
+
+# =============================================================================
+# RESOURCE MONITORING
+# =============================================================================
+[resources]
+# CPU monitoring
+monitor_cpu = true
+cpu_alert_threshold_percent = 80
+cpu_critical_threshold_percent = 95
+
+# Memory monitoring
+monitor_memory = true
+memory_alert_threshold_mb = 2048
+memory_critical_threshold_mb = 4096
+
+# Memory leak detection
+detect_memory_leaks = true
+leak_detection_interval_minutes = 30
+leak_threshold_growth_percent = 50
+
+# Thread monitoring
+monitor_thread_count = true
+thread_count_alert_threshold = 200
+
+# Actions on resource limits
+action_on_alert = "log"       # log, throttle, restart, alert
+action_on_critical = "restart"  # restart, stop, alert
+
+# =============================================================================
+# SERVICE LIFECYCLE MANAGEMENT
+# =============================================================================
+[lifecycle]
+# Auto-restart on failure
+auto_restart_on_failure = true
+restart_delay_seconds = 10
+
+# Restart rate limiting
+max_restarts_per_hour = 10
+
+# Rolling restart
+rolling_restart_enabled = true
+
+# Service updates
+coordinate_updates = true
+rolling_update_strategy = "one_at_a_time"
+update_wait_time_seconds = 30
+
+# Maintenance mode
+[lifecycle.maintenance_mode]
+enabled = false
+allow_critical_services = true
+critical_services = ["kernel_driver", "network_logger", "firewall_engine"]
+
+# =============================================================================
+# INTER-SERVICE COMMUNICATION
+# =============================================================================
+[communication]
+# Protocol
+protocol = "grpc"
+
+# TLS encryption
+tls_enabled = true
+tls_cert_file = "C:\\Program Files\\SafeOps\\certs\\orchestrator.crt"
+tls_key_file = "C:\\Program Files\\SafeOps\\certs\\orchestrator.key"
+tls_ca_file = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.crt"
+
+# Service discovery
+discovery_method = "static"  # static, consul, etcd
+
+# Connection pooling
+connection_pool_size = 10
+connection_timeout_seconds = 5
+
+# Retry policy
+retry_enabled = true
+retry_max_attempts = 3
+retry_backoff_initial_ms = 100
+retry_backoff_multiplier = 2.0
+
+# Circuit breaker
+circuit_breaker_enabled = true
+circuit_breaker_failure_threshold = 5
+circuit_breaker_timeout_seconds = 60
+
+# =============================================================================
+# CONFIGURATION MANAGEMENT
+# =============================================================================
+[config_management]
+# Centralized configuration
+centralized_config_enabled = false
+config_server_url = ""
+
+# Hot reload
+hot_reload_enabled = true
+watch_config_files = true
+reload_on_change = true
+
+# Validation
+validate_before_reload = true
+rollback_invalid_config = true
+
+# Synchronization
+sync_config_across_services = true
+
+# Version tracking
+track_config_versions = true
+config_version_retention_count = 10
+
+# =============================================================================
+# LOGGING AND AUDITING
+# =============================================================================
+[logging]
+# Orchestrator logging
+log_level = "info"
+log_format = "json"
+
+# Log rotation
+log_rotation_enabled = true
+log_max_size_mb = 100
+log_max_files = 10
+
+# Service event logging
+log_service_starts = true
+log_service_stops = true
+log_service_restarts = true
+log_health_check_failures = true
+log_resource_alerts = true
+
+# Audit logging
+audit_logging_enabled = true
+audit_log_file = "C:\\ProgramData\\SafeOps\\logs\\orchestrator_audit.log"
+audit_config_changes = true
+audit_manual_interventions = true
+
+# =============================================================================
+# API AND MANAGEMENT INTERFACE
+# =============================================================================
+[api]
+# REST API
+rest_api_enabled = true
+api_port = 8080
+api_bind_address = "0.0.0.0"
+
+# Authentication
+require_authentication = true
+auth_method = "token"  # token, basic, none
+token_file = "C:\\ProgramData\\SafeOps\\secrets\\api_token.txt"
+
+# Rate limiting
+rate_limiting_enabled = true
+rate_limit_requests_per_minute = 100
+
+# CORS
+cors_enabled = true
+cors_allowed_origins = ["http://localhost:3000", "https://safeops.local"]
+
+# Available endpoints (documented)
+# /api/v1/services - list all services
+# /api/v1/services/{id}/start - start service
+# /api/v1/services/{id}/stop - stop service
+# /api/v1/services/{id}/restart - restart service
+# /api/v1/services/{id}/health - health status
+# /api/v1/services/{id}/logs - service logs
+# /api/v1/system/status - overall system status
+
+# =============================================================================
+# ALERTING AND NOTIFICATIONS
+# =============================================================================
+[alerting]
+# Alert configuration
+alerts_enabled = true
+
+# Email alerts
+email_alerts_enabled = false
+email_recipients = ["admin@example.com"]
+smtp_server = "smtp.example.com"
+smtp_port = 587
+
+# UI notifications
+ui_notifications_enabled = true
+
+# Syslog integration
+syslog_enabled = false
+syslog_server = "syslog.local"
+syslog_port = 514
+
+# Webhook alerts
+webhook_alerts_enabled = false
+webhook_url = ""
+webhook_events = ["service_down", "service_restart", "resource_critical"]
+
+# Alert severity levels
+alert_levels = ["info", "warning", "error", "critical"]
+
+# Alert aggregation
+aggregate_alerts = true
+aggregation_window_seconds = 300
+
+# =============================================================================
+# DISTRIBUTED ORCHESTRATION (OPTIONAL)
+# =============================================================================
+[distributed]
+# Cluster mode
+cluster_mode_enabled = false
+
+# Leader election
+leader_election_enabled = false
+consensus_algorithm = "raft"
+
+# Multi-node coordination
+node_id = "node1"
+cluster_nodes = ["node1", "node2", "node3"]
+
+# State replication
+replicate_state = false
+replication_interval_seconds = 5
+
+# Failover
+auto_failover_enabled = false
+failover_timeout_seconds = 30
+
+# Split-brain prevention
+split_brain_detection = true
+quorum_size = 2
+
+# =============================================================================
+# PERFORMANCE METRICS
+# =============================================================================
+[metrics]
+# Metrics collection
+collect_metrics = true
+collection_interval_seconds = 60
+
+# Prometheus export
+prometheus_enabled = true
+prometheus_port = 9108
+prometheus_path = "/metrics"
+
+# Retention
+metrics_retention_days = 30
+
+# Performance dashboards
+enable_dashboards = true
+
+# Latency tracking
+track_service_latency = true
+
+# Resource trends
+track_resource_utilization = true
