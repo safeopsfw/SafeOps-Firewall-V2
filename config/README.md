@@ -1,276 +1,379 @@
-# SafeOps v2.0 Configuration Directory
+# SafeOps v2.0 Configuration Guide
 
-> **Configuration Version:** 2.0.0  
-> **Last Updated:** December 13, 2024  
-> **Total Files:** 35+ configuration files  
-> **Total Lines:** ~15,000+ lines of configuration and documentation
+## 📋 Overview
 
-This directory contains all configuration files, templates, schemas, network topology, and documentation for SafeOps v2.0 Network Security Gateway.
+This directory contains all configuration files for SafeOps v2.0. This guide covers file organization, customization workflows, validation procedures, and troubleshooting.
 
 ---
 
-## Quick Overview
+## 📁 Configuration Hierarchy
 
 ```
 config/
-├── templates/           # 20 service configuration templates (TOML/YAML)
-├── defaults/            # 5 deployment profiles
-├── examples/            # 7 example configurations
-├── schemas/             # 6 JSON/YAML validation schemas
-├── ids_ips/             # 2 IDS/IPS specific configurations
-├── network_topology.yaml
-├── config_validator.ps1
-├── HOW_TO_MANAGE_NETWORK.md
-└── README.md (this file)
+├── safeops.toml              # Master configuration (entry point)
+├── presets/                  # Pre-configured environments
+│   ├── home_user.toml        # Home/personal use
+│   ├── small_business.toml   # Small office (10-50 users)
+│   └── enterprise.toml       # Large organizations
+├── templates/                # Service-specific configurations
+│   ├── firewall_engine.toml  # Firewall rules engine
+│   ├── threat_intel.toml     # Threat intelligence feeds
+│   ├── dns_server.toml       # DNS/DHCP services
+│   └── ...                   # Other service configs
+├── examples/                 # Reference configurations
+├── ids_ips/                  # IDS/IPS specific configs
+├── security/                 # Certificates and secrets
+└── config_validator.ps1      # Validation script
 ```
 
----
+### Configuration Loading Order
 
-## 📁 Service Templates (`templates/`)
+1. **Master Config** (`safeops.toml`) - Loaded first
+2. **Preset** - Based on `preset =` value in master config
+3. **Service Configs** - Individual service templates
+4. **Overrides** - Custom overrides from `overrides/` directory
 
-### Core Configuration Files
+> [!NOTE]
+> Later configurations override earlier ones. Service-specific settings take precedence over preset defaults.
 
-| File | Service | gRPC Port | Purpose |
-|------|---------|-----------|---------|
-| `safeops.toml` | Main Config | N/A | Master system configuration |
-| `kernel_driver.toml` | Kernel Driver | N/A | WFP/NDIS packet capture, ring buffer |
-| `network_logger.toml` | Network Logger | 50051 | Ring buffer reader, PostgreSQL bulk inserts |
-| `firewall.toml` | Firewall Rules | N/A | Rule definitions and policies |
-| `firewall_engine.toml` | Firewall Engine | 50052 | Rule engine, NAT, connection tracking |
-| `tls_proxy.toml` | TLS Proxy | 50053 | TLS interception, dynamic certs |
-| `ids_ips.toml` | IDS/IPS Engine | 50054 | Signature/anomaly detection |
-| `ids_ips.yaml` | IDS/IPS Rules | N/A | Suricata rule configurations |
-| `threat_intel.toml` | Threat Intel | 50055 | Feed aggregation, reputation scoring |
-| `dns_server.toml` | DNS Server | 50056 | Forwarding, caching, filtering, DNSSEC |
-| `dns_dhcp_combined.toml` | DNS+DHCP | N/A | Integrated DNS/DHCP configuration |
-| `dhcp_server.toml` | DHCP Server | 50057 | Dual pools, static reservations |
-| `wifi_ap.toml` | WiFi AP | 50058 | WiFi 6, WPA3, client isolation |
-| `vpn_server.toml` | VPN Server | N/A | WireGuard/OpenVPN/IPsec |
-| `certificate_manager.toml` | Cert Manager | 50059 | Root CA, dynamic certs, CRL/OCSP |
-| `backup_restore.toml` | Backup & Restore | 50060 | GFS retention, VSS, multi-tier storage |
-| `update_manager.toml` | Update Manager | 50061 | Multi-channel updates, delta updates |
-| `orchestrator.toml` | Orchestrator | 50062 | Master coordinator, service management |
-| `web_ui.toml` | Web UI | 50063 | RBAC, real-time dashboard, MFA |
-| `logging.toml` | Logging | N/A | Centralized logging configuration |
+### Hot-Reload Capabilities
+
+| Config Type | Hot Reload | Restart Required |
+|-------------|------------|------------------|
+| Firewall rules | ✅ Yes | No |
+| DNS records | ✅ Yes | No |
+| Threat feeds | ✅ Yes | No |
+| Network topology | ❌ No | Yes |
+| Kernel driver | ❌ No | Yes (reboot) |
 
 ---
 
-## 📋 Default Profiles (`defaults/`)
+## 🚀 Quick Start
 
-| File | Profile | Use Case | Key Features |
-|------|---------|----------|--------------|
-| `application_settings.toml` | **Default** | Standard deployment | Main default values |
-| `home_network.toml` | Home | 1-10 devices | IDS only, DNS ad-blocking |
-| `small_business.toml` | Business | 10-50 devices | VLANs, IPS, TLS inspection |
-| `enterprise.toml` | Enterprise | 100+ devices | HA, compliance, SIEM |
-| `monitoring_only.toml` | Monitoring | Any size | Passive detection only |
+### Step 1: Choose a Preset
 
----
-
-## 🎯 Example Configurations (`examples/`)
-
-| File | Purpose |
-|------|---------|
-| `home_network.toml` | Complete home network setup |
-| `small_business.toml` | Small business with VLANs and IPS |
-| `enterprise.toml` | Enterprise with compliance and SIEM |
-| `custom_firewall_rules.yaml` | Firewall rule examples |
-| `threat_feed_sources.yaml` | Threat feed configurations |
-| `network_interfaces.yaml` | Interface configurations |
-| `user_policies.yaml` | User access policies |
-
----
-
-## 📐 Validation Schemas (`schemas/`)
-
-| File | Purpose |
-|------|---------|
-| `config_schema.json` | JSON Schema for main config validation |
-| `firewall_rules_schema.json` | Firewall rules validation |
-| `ids_ips_rules_schema.json` | IDS/IPS rules validation |
-| `ids_ips_suricata.rules` | Native Suricata format rules |
-| `suricata_rules_format.md` | Suricata syntax documentation |
-| `validation_rules.md` | Human-readable validation rules |
-
----
-
-## 🔍 IDS/IPS Configuration (`ids_ips/`)
-
-| File | Purpose |
-|------|---------|
-| `suricata_vars.yaml` | Auto-generated Suricata variables |
-| `rule_categories.toml` | Rule categories (malware, exploits, etc.) |
-
----
-
-## Service Dependency Graph
-
-```
-orchestrator.toml (Master Coordinator - Port 50062)
-    │
-    ├── kernel_driver.toml (Start Order: 1, Critical)
-    │       └── WFP/NDIS driver, ring buffer
-    │
-    ├── network_logger.toml (Start Order: 2, Critical)
-    │       └── Depends on: kernel_driver
-    │
-    ├── firewall_engine.toml (Start Order: 3, Critical)
-    │       └── Depends on: kernel_driver, network_logger
-    │
-    ├── certificate_manager.toml (Start Order: 4)
-    │       └── No dependencies (needed by TLS proxy)
-    │
-    ├── threat_intel.toml (Start Order: 5)
-    │       └── No dependencies (needed by IDS/IPS, DNS)
-    │
-    ├── tls_proxy.toml (Start Order: 5)
-    │       └── Depends on: kernel_driver, network_logger, certificate_manager
-    │
-    ├── ids_ips.toml (Start Order: 6, Critical)
-    │       └── Depends on: kernel_driver, network_logger, threat_intel
-    │
-    ├── dns_server.toml (Start Order: 7, Critical)
-    │       └── Depends on: threat_intel
-    │
-    ├── dhcp_server.toml (Start Order: 8)
-    │       └── Depends on: dns_server
-    │
-    ├── wifi_ap.toml (Start Order: 9)
-    │       └── Depends on: dhcp_server, dns_server
-    │
-    ├── backup_restore.toml (Start Order: 10)
-    │       └── Low priority
-    │
-    ├── update_manager.toml (Start Order: 10)
-    │       └── Low priority
-    │
-    └── web_ui.toml (Start Order: 11, Last)
-            └── Depends on: firewall_engine, network_logger
+```toml
+# In safeops.toml, set your environment type:
+preset = "small_business"  # Options: home_user, small_business, enterprise
 ```
 
----
+| Preset | Use Case | Default Security Level |
+|--------|----------|----------------------|
+| `home_user` | Personal use, 1-5 devices | Medium |
+| `small_business` | Small office, 10-50 users | High |
+| `enterprise` | Large org, 100+ users | Maximum |
 
-## gRPC Port Assignments
+### Step 2: Customize Network Settings
 
-| Port | Service | Description |
-|------|---------|-------------|
-| 50051 | network_logger | Packet logging and queries |
-| 50052 | firewall_engine | Rule management and stats |
-| 50053 | tls_proxy | Certificate management |
-| 50054 | ids_ips | Alert management |
-| 50055 | threat_intel | Reputation lookups |
-| 50056 | dns_server | DNS queries and config |
-| 50057 | dhcp_server | Lease management |
-| 50058 | wifi_ap | AP control |
-| 50059 | certificate_manager | PKI operations |
-| 50060 | backup_restore | Backup scheduling |
-| 50061 | update_manager | Update control |
-| 50062 | orchestrator | Service management |
-| 50063 | web_ui | UI backend |
+Edit `config/network_topology.yaml`:
 
----
+```yaml
+networks:
+  - name: "Office LAN"
+    network: "192.168.1.0/24"
+    gateway: "192.168.1.1"
+    vlan_id: 10
+```
 
-## Getting Started
-
-### Quick Start (Windows)
+### Step 3: Validate Configuration
 
 ```powershell
-# 1. Copy main config
-Copy-Item "config\templates\safeops.toml" "C:\ProgramData\SafeOps\config\safeops.toml"
+# Run the configuration validator
+.\config_validator.ps1 -Full
 
-# 2. Copy service templates
-Copy-Item "config\templates\*.toml" "C:\ProgramData\SafeOps\config\"
-
-# 3. Edit network settings
-notepad "C:\ProgramData\SafeOps\config\safeops.toml"
-
-# 4. Validate configuration
-.\config\config_validator.ps1
-
-# 5. Start services
-safeops.exe start
+# Validate specific file
+.\config_validator.ps1 -ConfigFile "templates\firewall_engine.toml"
 ```
 
-### Environment Variables
-
-Set sensitive values via environment variables:
+### Step 4: Apply Configuration
 
 ```powershell
-$env:POSTGRES_PASSWORD = "your_db_password"
-$env:REDIS_PASSWORD = "your_redis_password"
-$env:WIFI_PASSWORD = "your_wifi_password"
-$env:WEB_UI_TLS_CERT = "C:\Program Files\SafeOps\certs\web.crt"
-$env:WEB_UI_TLS_KEY = "C:\Program Files\SafeOps\certs\web.key"
+# Apply with backup
+safeops-cli config apply --backup
+
+# Test mode (validates without applying)
+safeops-cli config apply --dry-run
+```
+
+> [!IMPORTANT]
+> Always backup before making changes:
+> ```powershell
+> safeops-cli config backup --output "backup_$(Get-Date -Format 'yyyyMMdd').zip"
+> ```
+
+---
+
+## 📚 Configuration Files Reference
+
+### Master Configuration: `safeops.toml`
+
+The entry point for all SafeOps configuration.
+
+```toml
+[general]
+preset = "small_business"
+log_level = "INFO"
+data_directory = "C:\\SafeOps\\data"
+
+[services]
+firewall_engine = { enabled = true, config = "templates/firewall_engine.toml" }
+threat_intel = { enabled = true, config = "templates/threat_intel.toml" }
+dns_server = { enabled = true, config = "templates/dns_server.toml" }
+ids_ips = { enabled = true, config = "templates/ids_ips.toml" }
+
+[performance]
+max_threads = 8
+memory_limit = "4GB"
+```
+
+### Service Configurations
+
+| File | Purpose | Key Settings |
+|------|---------|--------------|
+| `firewall_engine.toml` | Packet filtering engine | Default action, rule sets, logging |
+| `threat_intel.toml` | Threat intelligence | Feed sources, update intervals |
+| `dns_server.toml` | DNS resolution | Upstream servers, caching, blocking |
+| `dhcp_server.toml` | IP assignment | Pools, reservations, lease times |
+| `ids_ips.toml` | Intrusion detection | Rule categories, actions |
+| `tls_proxy.toml` | TLS inspection | Certificate paths, bypass lists |
+| `vpn_gateway.toml` | VPN services | WireGuard/OpenVPN settings |
+
+---
+
+## ✅ Best Practices
+
+### Security Hardening Checklist
+
+- [ ] Change default admin password
+- [ ] Enable TLS for all management interfaces
+- [ ] Restrict management access to specific IPs
+- [ ] Enable comprehensive logging
+- [ ] Configure log rotation and retention
+- [ ] Set up automated backups
+- [ ] Enable threat intelligence feeds
+- [ ] Review firewall rules quarterly
+
+### Performance Tuning
+
+```toml
+# For high-traffic networks (>1 Gbps)
+[performance]
+max_threads = 16
+packet_buffer_size = "256MB"
+connection_table_size = 1000000
+
+# Enable hardware offloading if available
+[hardware]
+rx_checksum_offload = true
+tx_checksum_offload = true
+segmentation_offload = true
+```
+
+### Version Control
+
+Store configurations in Git for change tracking:
+
+```bash
+cd C:\SafeOps\config
+git init
+git add .
+git commit -m "Initial configuration"
 ```
 
 ---
 
-## Directory Paths (Windows)
+## 🔧 Common Tasks
 
-| Path | Purpose |
-|------|---------|
-| `C:\Program Files\SafeOps\` | Application binaries |
-| `C:\Program Files\SafeOps\bin\` | Service executables |
-| `C:\Program Files\SafeOps\certs\` | Certificates and keys |
-| `C:\Program Files\SafeOps\rules\` | IDS/IPS rules |
-| `C:\ProgramData\SafeOps\` | Runtime data |
-| `C:\ProgramData\SafeOps\config\` | Active configuration |
-| `C:\ProgramData\SafeOps\logs\` | Log files |
-| `C:\SafeOps_Backups\` | Backup storage |
+### Adding Firewall Rules
 
----
-
-## Configuration Hierarchy
-
-```
-1. Default values (built into SafeOps binaries)
-2. defaults/application_settings.toml (base profile)
-3. templates/*.toml (service-specific settings)
-4. Environment variables (SAFEOPS_*)
-5. Command-line arguments
+**Via Configuration File:**
+```yaml
+# In config/examples/custom_firewall_rules.yaml
+- rule_name: "Allow HTTPS"
+  action: ALLOW
+  protocol: TCP
+  destination_port: 443
+  source: internal
 ```
 
-Later sources override earlier ones.
+**Via CLI:**
+```powershell
+safeops-cli firewall add-rule --name "Allow HTTPS" --action ALLOW --port 443
+```
+
+### Configuring DHCP Pools
+
+```toml
+# In templates/dhcp_server.toml
+[[dhcp.pools]]
+pool_name = "Office Network"
+network = "192.168.10.0/24"
+range_start = "192.168.10.100"
+range_end = "192.168.10.200"
+gateway = "192.168.10.1"
+dns_servers = ["192.168.10.1", "8.8.8.8"]
+lease_time = 86400
+```
+
+### Setting Up VPN Access
+
+```toml
+# In templates/vpn_gateway.toml
+[wireguard]
+enabled = true
+listen_port = 51820
+interface = "wg0"
+address = "10.0.0.1/24"
+
+[[wireguard.peers]]
+name = "remote-user"
+public_key = "PUBLIC_KEY_HERE"
+allowed_ips = ["10.0.0.2/32"]
+```
+
+### Integrating Threat Feeds
+
+```toml
+# In templates/threat_intel.toml
+[[feeds]]
+name = "Emerging Threats"
+url = "https://rules.emergingthreats.net/open/suricata/emerging.rules.tar.gz"
+update_interval = 3600
+enabled = true
+```
 
 ---
 
-## Version History
+## 🔍 Variable Substitution
 
-### v2.0.0 (December 13, 2024)
+Use environment variables in configuration files:
 
-**Complete configuration suite for SafeOps v2.0**
+```toml
+# Reference environment variables with ${VAR_NAME}
+data_directory = "${SAFEOPS_DATA_DIR}"
+admin_email = "${ADMIN_EMAIL}"
+api_key = "${THREAT_INTEL_API_KEY}"
+```
 
-#### Templates Created (20 files)
-- ✅ `safeops.toml` - Main system configuration
-- ✅ `kernel_driver.toml` - Windows kernel driver
-- ✅ `network_logger.toml` - Packet capture
-- ✅ `firewall.toml` + `firewall_engine.toml` - Firewall
-- ✅ `tls_proxy.toml` - TLS interception
-- ✅ `ids_ips.toml` + `ids_ips.yaml` - IDS/IPS
-- ✅ `threat_intel.toml` - Threat intelligence
-- ✅ `dns_server.toml` + `dns_dhcp_combined.toml` - DNS
-- ✅ `dhcp_server.toml` - DHCP
-- ✅ `wifi_ap.toml` - WiFi AP
-- ✅ `vpn_server.toml` - VPN
-- ✅ `certificate_manager.toml` - PKI
-- ✅ `backup_restore.toml` - Backup
-- ✅ `update_manager.toml` - Updates
-- ✅ `orchestrator.toml` - Orchestrator
-- ✅ `web_ui.toml` - Web UI
-- ✅ `logging.toml` - Logging
-
-#### Default Profiles (5 files)
-- ✅ `application_settings.toml`, `home_network.toml`, `small_business.toml`, `enterprise.toml`, `monitoring_only.toml`
-
-#### Example Configurations (7 files)
-- ✅ Updated with Windows paths and v2.0 structure
+Set environment variables:
+```powershell
+$env:SAFEOPS_DATA_DIR = "D:\SafeOps\data"
+$env:ADMIN_EMAIL = "admin@company.com"
+```
 
 ---
 
-## License
+## ✔️ Schema Validation
 
-SafeOps is licensed under [Apache 2.0](../LICENSE).
+### Using the Validator
+
+```powershell
+# Full validation with dependency checks
+.\config_validator.ps1 -Full
+
+# Export validation report
+.\config_validator.ps1 -Full -ExportReport -ReportPath "report.json"
+
+# Quiet mode (errors only)
+.\config_validator.ps1 -Quiet
+```
+
+### Validation Checks Performed
+
+| Check | Description |
+|-------|-------------|
+| Syntax | TOML/YAML syntax errors |
+| Required Fields | All mandatory fields present |
+| Value Ranges | Values within acceptable limits |
+| File References | Referenced files exist |
+| Network Config | Valid IPs, no overlaps |
+| Dependencies | Service dependencies met |
 
 ---
 
-*Configuration Version 2.0.0 - Last Updated December 13, 2024*
+## 🛠️ Troubleshooting
+
+### Configuration Validation Errors
+
+**Error: "Missing required field"**
+```
+Solution: Add the missing field to the configuration file
+Example: Add 'enabled = true' to the [service] section
+```
+
+**Error: "Invalid CIDR format"**
+```
+Solution: Use correct CIDR notation (e.g., 192.168.1.0/24)
+Check: Network address matches the subnet mask
+```
+
+### Service Startup Failures
+
+```powershell
+# Check service status
+safeops-cli service status --all
+
+# View detailed logs
+Get-Content "C:\SafeOps\logs\safeops.log" -Tail 100
+
+# Validate configuration before restart
+.\config_validator.ps1 -Full
+safeops-cli service restart firewall_engine
+```
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Service won't start | Config syntax error | Run validator, check logs |
+| Rules not applying | Hot-reload disabled | Restart service |
+| High memory usage | Buffer too large | Reduce `packet_buffer_size` |
+| Slow DNS | Upstream timeout | Check upstream DNS servers |
+
+---
+
+## 📦 Migration Guide
+
+### Upgrading from v1.x to v2.0
+
+1. **Backup existing configuration**
+   ```powershell
+   safeops-cli config backup --output "v1_backup.zip"
+   ```
+
+2. **Run migration tool**
+   ```powershell
+   safeops-cli migrate --from-version 1.x --config-path "C:\SafeOps\config"
+   ```
+
+3. **Validate migrated configuration**
+   ```powershell
+   .\config_validator.ps1 -Full
+   ```
+
+4. **Review and apply**
+   ```powershell
+   safeops-cli config apply --dry-run
+   safeops-cli config apply
+   ```
+
+### Breaking Changes in v2.0
+
+| v1.x Setting | v2.0 Equivalent |
+|--------------|-----------------|
+| `firewall.rules_file` | `firewall_engine.rules_path` |
+| `dns.upstream` | `dns_server.forwarders` |
+| `logging.file` | `logging.outputs.file.path` |
+
+---
+
+## 📞 Getting Help
+
+- **Documentation:** `docs/` directory
+- **CLI Help:** `safeops-cli --help`
+- **Validate Configs:** `.\config_validator.ps1 -Full`
+- **Support:** See `SUPPORT.md` in root directory
+
+---
+
+*Last Updated: December 2025 | SafeOps v2.0*
