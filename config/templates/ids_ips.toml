@@ -1,254 +1,593 @@
-# SafeOps IDS/IPS Engine Configuration
-# Purpose: Signature detection, anomaly detection, and threat response
+# SafeOps IDS/IPS Configuration
+# Intrusion Detection and Prevention System
+#
+# Monitors network traffic for malicious activity, protocol violations,
+# and suspicious patterns. Provides signature-based detection, anomaly detection,
+# and automated threat response.
 
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Service Configuration
+# ============================================================================
 [service]
-name = "ids_ips"
-listen_address = "0.0.0.0"
-grpc_port = 50054
-log_level = "info"
-log_file = "C:\\ProgramData\\SafeOps\\logs\\ids_ips.log"
+# Service identifier for orchestrator registration
+service_name = "ids_ips"
 
-# =============================================================================
-# DETECTION MODES
-# =============================================================================
-[detection]
-# Detection types
-signature_based = true
-anomaly_based = true
-behavior_based = true
+# Detection mode
+# Valid values: "IDS_ONLY", "IPS_INLINE", "HYBRID"
+# IDS_ONLY: Passive monitoring, alerts only
+# IPS_INLINE: Active blocking of threats
+# HYBRID: IDS with selective IPS blocking
+# Can be overridden with ${IDS_MODE}
+operating_mode = "IDS_ONLY"
 
-# Operating mode
-mode = "ips"  # ids (alert only), ips (block threats)
+# gRPC management API address
+grpc_listen_address = "127.0.0.1:50055"
 
-# =============================================================================
-# SIGNATURE ENGINE
-# =============================================================================
-[signatures]
-# Rule files
-rules_directory = "C:\\Program Files\\SafeOps\\rules"
+# Maximum concurrent API clients
+grpc_max_connections = 50
 
-# Snort rules
-snort_rules_enabled = true
-snort_rules_path = "C:\\Program Files\\SafeOps\\rules\\snort"
+# Where to receive packets
+# Valid values: "KERNEL_DRIVER", "NETWORK_LOGGER", "PCAP", "AF_PACKET"
+packet_source = "NETWORK_LOGGER"
 
-# Suricata rules
-suricata_rules_enabled = false
-suricata_rules_path = "C:\\Program Files\\SafeOps\\rules\\suricata"
+# gRPC address of packet source
+packet_source_address = "127.0.0.1:50052"
 
-# Custom rules
-custom_rules_path = "C:\\Program Files\\SafeOps\\rules\\custom"
+# Self-health check frequency (seconds)
+health_check_interval = 30
 
-# Rule updates
-auto_update = true
-update_interval_hours = 24
-update_source = "https://rules.emergingthreats.net"
+# Enable Prometheus metrics export
+metrics_enabled = true
+metrics_port = 9095
 
-# Rule limits
-max_rules = 50000
+# ============================================================================
+# Detection Engine Configuration
+# ============================================================================
+[detection_engine]
+# Enable signature-based detection
+detection_engine_enabled = true
 
-# =============================================================================
-# PATTERN MATCHING ENGINE
-# =============================================================================
-[pattern_matching]
-# Engine type
-engine = "hyperscan"  # hyperscan, aho-corasick, regex
+# Detection engine type
+# Valid values: "SURICATA", "SNORT", "CUSTOM"
+engine_type = "SURICATA"
 
-# Hyperscan settings (Intel optimized)
-hyperscan_mode = "stream"
-hyperscan_cache_size_mb = 512
+# Suricata binary path (if using Suricata)
+suricata_binary_path = "C:\\Program Files\\Suricata\\bin\\suricata.exe"
 
-# Performance
-enable_simd = true
-enable_avx2 = true
-vectorize_matching = true
+# Signature rule files
+[[detection_engine.signature_files]]
+file_path = "D:\\SafeOpsFV2\\rules\\emerging-threats.rules"
+enabled = true
+category = "malware"
 
-# =============================================================================
-# ANOMALY DETECTION
-# =============================================================================
+[[detection_engine.signature_files]]
+file_path = "D:\\SafeOpsFV2\\rules\\exploit-kit.rules"
+enabled = true
+category = "exploit"
+
+[[detection_engine.signature_files]]
+file_path = "D:\\SafeOpsFV2\\rules\\web-attacks.rules"
+enabled = true
+category = "web-application"
+
+[[detection_engine.signature_files]]
+file_path = "D:\\SafeOpsFV2\\rules\\policy-violations.rules"
+enabled = true
+category = "policy"
+
+# Auto-reload signatures (minutes, 0=disabled)
+signature_reload_interval = 60
+
+# Validate rules on load
+rule_validation_enabled = true
+
+# Optimize rule order for performance
+rule_optimization_enabled = true
+
+# ============================================================================
+# Signature Management
+# ============================================================================
+[signature_management]
+# Signature update sources
+
+[[signature_management.signature_sources]]
+source_name = "EMERGING_THREATS_OPEN"
+source_url = "https://rules.emergingthreats.net/open/suricata-6.0/emerging.rules.tar.gz"
+source_type = "SURICATA"
+enabled = true
+update_interval = 24  # hours
+description = "Emerging Threats Open ruleset"
+
+[[signature_management.signature_sources]]
+source_name = "ABUSE_CH_SSL_FINGERPRINTS"
+source_url = "https://sslbl.abuse.ch/blacklist/sslblacklist.rules"
+source_type = "SURICATA"
+enabled = true
+update_interval = 12
+description = "SSL Blacklist from abuse.ch"
+
+# Allow custom user-defined rules
+custom_rules_enabled = true
+
+# Directory for custom rule files
+custom_rules_directory = "D:\\SafeOpsFV2\\rules\\custom"
+
+# ============================================================================
+# Rule Categories and Priorities
+# ============================================================================
+[rule_categories]
+# Enabled rule categories
+enabled_categories = [
+    "malware",
+    "exploit",
+    "trojan",
+    "backdoor",
+    "web-application",
+    "sql-injection",
+    "xss",
+    "dos",
+    "scan",
+    "recon",
+    "brute-force",
+    "policy-violation",
+    "data-exfiltration",
+    "c2-communication"
+]
+
+# Category priority mapping (1-255, lower = higher priority)
+[rule_categories.category_priorities]
+malware = 1
+exploit = 2
+backdoor = 3
+c2-communication = 4
+data-exfiltration = 5
+web-application = 10
+sql-injection = 10
+xss = 15
+brute-force = 20
+scan = 30
+policy-violation = 50
+
+# Default action per category
+[rule_categories.category_actions]
+malware = "DROP"
+exploit = "DROP"
+backdoor = "DROP"
+c2-communication = "DROP"
+data-exfiltration = "ALERT"
+web-application = "ALERT"
+scan = "ALERT"
+policy-violation = "ALERT"
+
+# Rule filtering
+[rule_categories.rule_filtering]
+# Disable specific signature IDs
+disabled_sids = []
+
+# Enable only specific SIDs (empty = all enabled)
+enabled_sids = []
+
+# ============================================================================
+# Anomaly Detection
+# ============================================================================
 [anomaly_detection]
-enabled = true
+# Enable behavioral anomaly detection
+anomaly_detection_enabled = true
 
-# Baseline learning
-learning_period_hours = 168  # 1 week
-baseline_update_interval_hours = 24
+# Baseline learning configuration
+[anomaly_detection.baselines]
+# Training mode
+# Valid values: "AUTO", "MANUAL", "SCHEDULED"
+training_mode = "AUTO"
 
-# Statistical thresholds
-deviation_threshold = 3.0  # Standard deviations
-confidence_threshold = 0.95
+# Training period duration (hours)
+training_duration = 168  # 1 week
 
-# Detected anomalies
-detect_port_scans = true
-detect_brute_force = true
-detect_ddos = true
-detect_data_exfiltration = true
-detect_unusual_protocols = true
+# Re-train baseline frequency (days)
+baseline_update_interval = 30
 
-# =============================================================================
-# BEHAVIOR ANALYSIS
-# =============================================================================
-[behavior_analysis]
-enabled = true
+# Anomaly detection thresholds
+[anomaly_detection.thresholds]
+# Connections per second per host
+connection_rate = 100
 
-# Behavior tracking
-track_connection_patterns = true
-track_data_transfer_patterns = true
-track_protocol_usage = true
-track_time_patterns = true
+# Bytes per second per host (MB/s)
+bandwidth_usage = 50
 
-# Suspicious behaviors
-detect_beaconing = true
-detect_c2_communication = true
-detect_lateral_movement = true
-detect_privilege_escalation = false  # Requires endpoint data
+# Protocol distribution deviation (percentage)
+protocol_distribution_deviation = 30
 
-# =============================================================================
-# PROTOCOL ANALYSIS
-# =============================================================================
+# Unique ports accessed per minute (port scanning)
+port_scanning_threshold = 50
+
+# Failed authentication attempts per 5 minutes
+failed_login_threshold = 10
+
+# Overall anomaly sensitivity
+# Valid values: "LOW", "MEDIUM", "HIGH", "CUSTOM"
+anomaly_sensitivity = "MEDIUM"
+
+# ============================================================================
+# Protocol Analysis
+# ============================================================================
 [protocol_analysis]
-# HTTP/HTTPS
-http_enabled = true
-http_max_request_size = 1048576  # 1 MB
-detect_sql_injection = true
-detect_xss = true
-detect_command_injection = true
+# Enable deep protocol inspection
+protocol_analysis_enabled = true
 
-# DNS
-dns_enabled = true
-detect_dns_tunneling = true
-detect_dga_domains = true
+# Protocols to analyze
+analyzed_protocols = [
+    "HTTP",
+    "HTTPS",
+    "DNS",
+    "DHCP",
+    "FTP",
+    "SSH",
+    "SMB",
+    "RDP",
+    "SMTP",
+    "IMAP",
+    "POP3"
+]
 
-# SSH
-ssh_enabled = true
-detect_ssh_brute_force = true
+# HTTP-specific inspection
+[protocol_analysis.http]
+# Inspect HTTP methods
+inspect_methods = ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"]
 
-# FTP
-ftp_enabled = true
-detect_ftp_brute_force = true
+# Header validation
+inspect_headers = true
 
-# SMB
-smb_enabled = true
-detect_smb_attacks = true
+# Inspect request/response bodies
+inspect_body = true
 
-# =============================================================================
-# RESPONSE ACTIONS
-# =============================================================================
-[response]
-# IPS mode actions
-block_on_detection = true
-block_duration_seconds = 3600  # 1 hour
-block_entire_flow = true
+# Maximum body size to inspect (KB)
+max_body_size = 1024
 
-# Alert generation
-generate_alerts = true
-alert_severity_threshold = "medium"  # low, medium, high, critical
+# Decode compression before inspection
+decode_compression = true
 
-# Integration with firewall
-firewall_integration = true
-auto_add_firewall_rules = true
+# Detect HTTP evasion techniques
+detect_evasion = true
 
-# Send to SIEM
-siem_integration = true
-siem_endpoint = "tcp://siem.local:514"
+# TLS/HTTPS analysis
+[protocol_analysis.tls]
+# Inspect TLS handshakes
+inspect_handshakes = true
 
-# =============================================================================
-# PERFORMANCE TUNING
-# =============================================================================
-[performance]
-# Worker threads
-inspection_threads = 12
+# Extract and log certificate information
+extract_certificates = true
 
-# CPU affinity
-pin_threads = true
-thread_cpu_cores = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+# Detect weak cipher suites
+detect_weak_ciphers = true
 
-# Packet queue
-packet_queue_size = 100000
+# Detect certificate anomalies
+detect_cert_anomalies = true
 
-# Memory limits
-max_memory_mb = 8192
+# DNS analysis
+[protocol_analysis.dns]
+# Inspect DNS queries and responses
+inspect_queries = true
 
-# =============================================================================
-# ALERT MANAGEMENT
-# =============================================================================
-[alerts]
-# Alert storage
-store_alerts = true
-max_alerts_in_memory = 100000
+# Detect DNS tunneling
+detect_tunneling = true
 
-# Alert deduplication
-deduplicate_alerts = true
-deduplication_window_seconds = 300
+# Detect DGA domains
+detect_dga = true
 
-# Alert aggregation
-aggregate_similar_alerts = true
-aggregation_threshold = 10  # Alert if same signature triggered 10+ times
+# Detect DNS amplification attacks
+detect_amplification = true
 
-# Alert priorities
-[alerts.priority_mapping]
-critical = 1
-high = 2
-medium = 3
-low = 4
-info = 5
+# ============================================================================
+# Alert Configuration
+# ============================================================================
+[alerting]
+# Enable alert generation
+alert_generation_enabled = true
 
-# Alert enrichment
-enrich_with_geoip = true
-enrich_with_reputation = true
-enrich_with_whois = false
+# Alert aggregation settings
+[alerting.alert_threshold]
+# Suppress duplicate alerts
+suppress_duplicates = true
 
-# =============================================================================
-# FALSE POSITIVE MANAGEMENT
-# =============================================================================
-[false_positives]
-# Whitelist management
-whitelist_enabled = true
-whitelist_path = "C:\\Program Files\\SafeOps\\rules\\whitelist.yaml"
+# Duplicate detection window (seconds)
+suppression_window = 60
 
-# Auto-learning
-auto_whitelist_enabled = false
-auto_whitelist_threshold = 100  # Same alert 100+ times without incident
+# Maximum alerts per second (rate limiting)
+alert_rate_limit = 100
 
-# Tuning
-suppress_noisy_rules = true
-noisy_rule_threshold = 1000  # Alerts per hour
+# Alert severity mapping (priority to severity)
+[alerting.severity_mapping]
+critical = [1, 2, 3]      # Priority 1-3
+high = [4, 5, 6]          # Priority 4-6
+medium = [7, 8, 9, 10]    # Priority 7-10
+low = [11, 12, 13, 14, 15]  # Priority 11+
 
-# =============================================================================
-# LOGGING & FORENSICS
-# =============================================================================
-[logging]
-# Packet capture for forensics
-pcap_enabled = true
-pcap_path = "C:\\ProgramData\\SafeOps\\pcaps"
-pcap_max_size_mb = 10000
-pcap_retention_days = 7
+# Alert destinations
+[[alerting.alert_destinations]]
+destination_type = "SYSLOG"
+destination_address = "localhost:514"
+enabled = true
+min_severity = "MEDIUM"
+protocol = "UDP"
 
-# Full packet logging on alerts
-log_full_packets_on_alert = true
-max_packet_size_kb = 64
+[[alerting.alert_destinations]]
+destination_type = "DATABASE"
+destination_address = "localhost:5432"
+enabled = true
+min_severity = "LOW"
+database_name = "safeops"
+table_name = "ids_alerts"
 
-# Flow logging
-log_flows = true
-flow_timeout_seconds = 60
+[[alerting.alert_destinations]]
+destination_type = "WEBHOOK"
+destination_address = "${ALERT_WEBHOOK}"
+enabled = false
+min_severity = "HIGH"
 
-# =============================================================================
-# INTEGRATION SETTINGS
-# =============================================================================
-[integrations]
-# Threat Intelligence
+# ============================================================================
+# IPS Blocking and Response
+# ============================================================================
+[ips]
+# Enable inline prevention (IPS mode)
+# Only effective if operating_mode = "IPS_INLINE" or "HYBRID"
+ips_enabled = false
+
+# Default action for detected threats
+# Valid values: "DROP", "REJECT", "LOG_ONLY"
+default_block_action = "LOG_ONLY"
+
+# How long to block offending IPs (seconds, 0=permanent)
+block_duration = 3600
+
+# Automatically block on detection
+auto_blocking_enabled = false
+
+# IPs to never block (trusted hosts)
+whitelist_addresses = [
+    "127.0.0.0/8",
+    "192.168.1.0/24",  # LAN
+    "192.168.2.0/24"   # WiFi
+]
+
+# IPs to always block
+blacklist_addresses = []
+
+# Firewall integration for blocking
+[ips.firewall_integration]
+# Send block commands to firewall
+enabled = false
+
+# Firewall service endpoint
+firewall_grpc_address = "127.0.0.1:50053"
+
+# Timeout for firewall commands (milliseconds)
+block_timeout = 5000
+
+# ============================================================================
+# Threat Intelligence Integration
+# ============================================================================
+[threat_intel]
+# Enable threat intel lookups
 threat_intel_enabled = true
-threat_intel_endpoint = "localhost:50055"
-threat_intel_timeout_ms = 100
 
-# Firewall
-firewall_enabled = true
-firewall_endpoint = "localhost:50052"
+# threat_intel service endpoint
+threat_intel_grpc_address = "127.0.0.1:50054"
 
-# SIEM forwarding
-siem_enabled = true
-siem_protocol = "syslog"  # syslog, json, cef
-siem_host = "siem.local"
-siem_port = 514
-siem_format = "cef"  # Common Event Format
+# Cache reputation results (seconds)
+threat_intel_cache_ttl = 3600
+
+# Actions based on threat scores
+[threat_intel.actions]
+# Action for threat score > 80
+high_threat_action = "ALERT"
+
+# Action for threat score 50-80
+medium_threat_action = "ALERT"
+
+# Action for threat score < 50
+low_threat_action = "LOG"
+
+# Match against known IOCs
+ioc_matching_enabled = true
+
+# Detect command-and-control traffic
+c2_detection_enabled = true
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+[performance]
+# Number of packet inspection threads
+# 0 = auto-detect (CPU cores)
+worker_threads = 0
+
+# Input queue size per thread
+packet_queue_size = 5000
+
+# Inspection depth
+# Valid values: "FAST", "BALANCED", "DEEP"
+# FAST: Quick pattern matching only
+# BALANCED: Pattern matching + basic protocol analysis
+# DEEP: Full protocol decoding and state tracking
+inspection_mode = "BALANCED"
+
+# Maximum time per packet (microseconds)
+max_packet_inspection_time = 1000
+
+# Reassemble TCP streams
+stream_reassembly_enabled = true
+
+# Maximum stream size to reassemble (MB)
+stream_reassembly_size = 10
+
+# Extract files from streams
+file_extraction_enabled = false
+
+# Maximum file size to extract (MB)
+max_file_size = 50
+
+# Packet buffer pool size
+packet_buffer_pool = 10000
+
+# ============================================================================
+# Logging and Forensics
+# ============================================================================
+[logging]
+# Log all alerts
+alert_logging_enabled = true
+
+# Alert log format
+# Valid values: "JSON", "EVE_JSON", "FAST", "UNIFIED2"
+alert_log_format = "EVE_JSON"
+
+# Alert log file path
+alert_log_path = "D:\\SafeOpsFV2\\logs\\ids_alerts.log"
+
+# Log full packets for alerts
+packet_logging_enabled = true
+
+# Packet log format
+# Valid values: "PCAP", "PCAP_NG"
+packet_log_format = "PCAP"
+
+# Packet capture file path
+packet_log_path = "D:\\SafeOpsFV2\\logs\\ids_packets.pcap"
+
+# Maximum PCAP file size (MB)
+max_pcap_size = 1000
+
+# Rotate PCAP files
+pcap_rotation_enabled = true
+
+# HTTP transaction logging
+http_log_enabled = true
+http_log_path = "D:\\SafeOpsFV2\\logs\\ids_http.log"
+
+# TLS handshake logging
+tls_log_enabled = true
+tls_log_path = "D:\\SafeOpsFV2\\logs\\ids_tls.log"
+
+# DNS query logging
+dns_log_enabled = true
+dns_log_path = "D:\\SafeOpsFV2\\logs\\ids_dns.log"
+
+# ============================================================================
+# Suricata-Specific Settings
+# ============================================================================
+[suricata]
+# Suricata operating mode
+# Valid values: "IDS", "IPS", "AF_PACKET", "PCAP"
+suricata_mode = "IDS"
+
+# Path to suricata.yaml config file
+suricata_yaml_path = "D:\\SafeOpsFV2\\config\\suricata.yaml"
+
+# Suricata variable overrides
+[suricata.variables]
+# Internal network (can use ${HOME_NET})
+HOME_NET = "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+
+# External network
+EXTERNAL_NET = "!$HOME_NET"
+
+# HTTP servers
+HTTP_SERVERS = "$HOME_NET"
+
+# SMTP servers
+SMTP_SERVERS = "$HOME_NET"
+
+# DNS servers
+DNS_SERVERS = "$HOME_NET"
+
+# Stream tracking settings
+[suricata.stream_settings]
+# Memory cap for stream tracking (MB)
+memcap = 256
+
+# Checksum validation
+# Valid values: "yes", "no", "auto"
+checksum_validation = "auto"
+
+# Inline mode for IPS
+# Valid values: "yes", "no", "auto"
+inline = "no"
+
+# ============================================================================
+# Statistics and Monitoring
+# ============================================================================
+[statistics]
+# Enable statistics collection
+statistics_enabled = true
+
+# Statistics interval (seconds)
+stats_interval = 60
+
+# Metrics to track
+track_metrics = [
+    "packets_processed",
+    "packets_dropped",
+    "alerts_generated",
+    "signatures_matched",
+    "streams_tracked",
+    "files_extracted"
+]
+
+# Export stats via Prometheus
+export_to_prometheus = true
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Enable machine learning-based detection
+ml_detection_enabled = false
+
+# ML model path
+# ml_model_path = "D:\\SafeOpsFV2\\models\\ids-ml-model.onnx"
+
+# Enable protocol fuzzing detection
+fuzzing_detection_enabled = true
+
+# Enable encrypted traffic analysis (metadata only)
+encrypted_traffic_analysis = true
+
+# Detect SSL/TLS tampering
+ssl_tampering_detection = true
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# IDS_MODE - Override operating_mode
+# SIGNATURE_UPDATE_URL - Override signature source URL
+# THREAT_INTEL_ENDPOINT - Threat intelligence service address
+# FIREWALL_ENDPOINT - Firewall service address for blocking
+# ALERT_WEBHOOK - Webhook URL for alert notifications
+# HOME_NET - Suricata HOME_NET variable
+# EXTERNAL_NET - Suricata EXTERNAL_NET variable
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The ids_ips service validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. Signature files must exist and be readable
+# 2. Suricata binary must exist if engine_type = "SURICATA"
+# 3. packet_source_address must be reachable
+# 4. firewall_grpc_address must be reachable if IPS enabled
+# 5. threat_intel_grpc_address must be reachable if enabled
+# 6. Log directories must exist and be writable
+# 7. worker_threads must be positive after auto-detection
+# 8. Rule categories must be valid
+# 9. Alert destinations must be accessible
+# 10. Whitelist addresses must not overlap with blacklist
+#
+# CRITICAL: Test in IDS_ONLY mode before enabling IPS to avoid
+# accidentally blocking legitimate traffic.
+#
+# Use the validator: safeops-cli config validate ids_ips.toml
+# ============================================================================

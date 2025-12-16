@@ -1,158 +1,488 @@
 # SafeOps TLS Proxy Configuration
-# Purpose: Certificate generation, TLS interception, and HTTPS inspection
-# WARNING: TLS interception has legal and privacy implications
+# TLS interception proxy for man-in-the-middle SSL/TLS decryption
+#
+# This service enables deep packet inspection of encrypted traffic by
+# intercepting TLS connections, decrypting them, and re-encrypting to clients.
+#
+# WARNING: TLS interception has privacy and legal implications. Ensure proper
+# user notification and compliance with local regulations.
 
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Service Configuration
+# ============================================================================
 [service]
-name = "tls_proxy"
+# Service identifier for orchestrator registration
+service_name = "tls_proxy"
+
+# Proxy operating mode
+# Valid values: "TRANSPARENT", "EXPLICIT", "BUMP_IN_THE_WIRE"
+# TRANSPARENT: Invisible to clients, uses firewall redirect
+# EXPLICIT: Clients configure proxy settings manually
+# BUMP_IN_THE_WIRE: Inline network appliance mode
+operating_mode = "TRANSPARENT"
+
+# Proxy listen address for intercepted connections
 listen_address = "0.0.0.0"
-grpc_port = 50053
 
-# TLS interception port
-https_port = 8888
+# Proxy listen port
+# 8443 for explicit proxy, 443 for transparent
+listen_port = 8443
 
-log_level = "info"
-log_file = "C:\\ProgramData\\SafeOps\\logs\\tls_proxy.log"
+# gRPC management API address
+grpc_listen_address = "127.0.0.1:50058"
 
-# =============================================================================
-# ROOT CA CONFIGURATION
-# =============================================================================
-[root_ca]
-# Root CA certificate (generated during install)
-ca_cert_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.crt"
-ca_key_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.key"
+# Self-health check frequency (seconds)
+health_check_interval = 30
 
-# CA details
-ca_common_name = "SafeOps Root CA"
-ca_organization = "SafeOps Security Gateway"
-ca_country = "US"
-ca_validity_years = 20
+# Enable Prometheus metrics export
+metrics_enabled = true
 
-# =============================================================================
-# DYNAMIC CERTIFICATE GENERATION
-# =============================================================================
-[certificates]
-# Certificate generation
-algorithm = "ecdsa"  # rsa, ecdsa
-key_size = 256       # For ECDSA P-256
+# HTTP port for /metrics endpoint
+metrics_port = 9098
 
-# Certificate validity
-cert_validity_hours = 24
+# ============================================================================
+# TLS Interception Configuration
+# ============================================================================
+[interception]
+# Enable TLS interception (MITM)
+# false = pass-through mode (no decryption)
+interception_enabled = true
 
-# Certificate signing
-signature_algorithm = "SHA256"
+# Interception mode
+# Valid values: "DECRYPT_REENCRYPT", "DECRYPT_FORWARD_PLAIN", "PASS_THROUGH"
+# DECRYPT_REENCRYPT: Full MITM, re-encrypt to client
+# DECRYPT_FORWARD_PLAIN: Decrypt and forward as HTTP (not recommended)
+# PASS_THROUGH: No decryption, metadata only
+interception_mode = "DECRYPT_REENCRYPT"
 
-# =============================================================================
-# CERTIFICATE CACHE
-# =============================================================================
-[cache]
-# Redis cache
-redis_enabled = true
-redis_host = "localhost"
-redis_port = 6379
-redis_db = 2
-redis_ttl_seconds = 86400  # 24 hours
-
-# Memory cache
-memory_cache_enabled = true
-memory_cache_size = 100000  # 100K certificates
-memory_cache_ttl_seconds = 3600
-
-# Disk cache (optional)
-disk_cache_enabled = false
-disk_cache_path = "C:\\ProgramData\\SafeOps\\tls_proxy\\cert_cache"
-
-# =============================================================================
-# TLS SETTINGS
-# =============================================================================
-[tls]
 # Supported TLS versions
-min_tls_version = "1.2"
-max_tls_version = "1.3"
+# Valid values: "TLS1.0", "TLS1.1", "TLS1.2", "TLS1.3"
+supported_tls_versions = ["TLS1.2", "TLS1.3"]
 
-# Cipher suites (prefer modern, secure ciphers)
+# Minimum TLS version to accept
+# Production: "TLS1.2" minimum (TLS 1.0/1.1 are insecure)
+min_tls_version = "TLS1.2"
+
+# Maximum TLS version to offer
+max_tls_version = "TLS1.3"
+
+# Allowed cipher suites (TLS 1.3 and 1.2)
 cipher_suites = [
-    "TLS_AES_128_GCM_SHA256",
+    # TLS 1.3 (mandatory)
     "TLS_AES_256_GCM_SHA384",
     "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_AES_128_GCM_SHA256",
+    
+    # TLS 1.2 (for compatibility)
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"
 ]
 
-# TLS optimizations
-session_tickets = true
-session_cache_size = 1000000
+# Elliptic curves for ECDHE
+supported_curves = ["X25519", "P-256", "P-384"]
 
-# Hardware acceleration
-use_aes_ni = true
+# ============================================================================
+# Certificate Management Integration
+# ============================================================================
+[certificate_management]
+# Use certificate_manager service for CA operations
+cert_manager_enabled = true
 
-# =============================================================================
-# INTERCEPTION POLICIES
-# =============================================================================
-[interception]
-# Global toggle
+# certificate_manager service endpoint
+# Can be overridden with ${CERT_MANAGER_ENDPOINT}
+cert_manager_grpc_address = "127.0.0.1:50061"
+
+# Root CA certificate for signing intercepted certs
+# Can be overridden with ${TLS_CA_CERT}
+ca_certificate_path = "D:\\SafeOpsFV2\\certs\\ca\\root-ca.crt"
+
+# Root CA private key
+# Can be overridden with ${TLS_CA_KEY}
+ca_private_key_path = "D:\\SafeOpsFV2\\certs\\ca\\root-ca.key"
+
+# CA private key passphrase (if encrypted)
+# ca_key_passphrase = ""  # Or use ${CA_KEY_PASSPHRASE}
+
+# Cache generated certificates
+cert_cache_enabled = true
+
+# Maximum cached certificates
+cert_cache_size = 10000
+
+# Certificate cache lifetime (hours)
+cert_cache_ttl = 24
+
+# Certificate generation mode
+# Valid values: "ON_DEMAND", "PRE_GENERATE", "WILDCARD"
+# ON_DEMAND: Generate cert when first connection seen (recommended)
+# PRE_GENERATE: Pre-generate based on common domains
+# WILDCARD: Use wildcard certs (less secure, faster)
+cert_generation_mode = "ON_DEMAND"
+
+# Certificate validity duration (days)
+generated_cert_validity = 365
+
+# Include Subject Alternative Names (SAN)
+include_san = true
+
+# ============================================================================
+# Interception Policies
+# ============================================================================
+# Rules for which connections to intercept
+
+[[interception_policies]]
+policy_name = "bypass_banking"
 enabled = true
+action = "BYPASS"
+description = "Bypass financial/banking sites for PCI-DSS compliance"
+destination_domains = [
+    "*.bank.com",
+    "*.paypal.com",
+    "*.chase.com",
+    "*.wellsfargo.com",
+    "*.bankofamerica.com"
+]
+category = "banking"
 
-# Bypass list (don't intercept these domains)
-bypass_domains = [
-    "bank.com",
-    "paypal.com",
+[[interception_policies]]
+policy_name = "bypass_medical"
+enabled = true
+action = "BYPASS"
+description = "Bypass medical/health sites for HIPAA compliance"
+destination_domains = [
+    "*.healthsystem.org",
+    "*.hospital.org",
+    "*.webmd.com"
+]
+category = "medical"
+
+[[interception_policies]]
+policy_name = "bypass_government"
+enabled = true
+action = "BYPASS"
+description = "Bypass government portals"
+destination_domains = [
     "*.gov",
+    "*.mil"
+]
+category = "government"
+
+[[interception_policies]]
+policy_name = "intercept_social_media"
+enabled = true
+action = "INTERCEPT"
+description = "Intercept social media for content filtering"
+destination_domains = [
+    "*.facebook.com",
+    "*.twitter.com",
+    "*.instagram.com",
+    "*.tiktok.com"
+]
+category = "social_media"
+
+[[interception_policies]]
+policy_name = "intercept_cloud_storage"
+enabled = true
+action = "INTERCEPT"
+description = "Intercept cloud storage for DLP"
+destination_domains = [
+    "*.dropbox.com",
+    "*.box.com",
+    "drive.google.com"
+]
+category = "cloud_storage"
+
+# Default policy for unmatched traffic
+# Valid values: "INTERCEPT", "BYPASS"
+default_policy = "INTERCEPT"
+
+# ============================================================================
+# SSL/TLS Validation
+# ============================================================================
+[validation]
+# Validate upstream server certificates
+# Protects against MITM attacks on upstream connections
+validate_server_certs = true
+
+# Certificate validation level
+# Valid values: "STRICT", "PERMISSIVE", "NONE"
+# STRICT: Full validation (recommended for production)
+# PERMISSIVE: Allow minor issues (expired, self-signed)
+# NONE: No validation (testing only)
+cert_validation_mode = "STRICT"
+
+# Path to trusted CA certificate bundle
+# Can be overridden with ${TRUSTED_CA_BUNDLE}
+trusted_ca_bundle = "D:\\SafeOpsFV2\\certs\\ca-bundle.crt"
+
+# Accept self-signed certificates (development only)
+allow_self_signed = false
+
+# Accept expired certificates (not recommended)
+allow_expired = false
+
+# Verify certificate hostname matches SNI
+hostname_verification = true
+
+# Check OCSP for certificate revocation
+ocsp_checking_enabled = true
+
+# OCSP request timeout (milliseconds)
+ocsp_timeout = 2000
+
+# Check CRL for certificate revocation
+crl_checking_enabled = false
+
+# CRL download timeout (seconds)
+crl_timeout = 10
+
+# ============================================================================
+# SNI Filtering
+# ============================================================================
+[sni_filtering]
+# Enable SNI-based filtering
+sni_filtering_enabled = true
+
+# Domains to block based on SNI (before TLS handshake)
+sni_block_list = [
+    "malware.example.com",
+    "phishing.example.com"
 ]
 
-# Bypass by category
-bypass_financial = true
-bypass_healthcare = true
-bypass_government = true
+# Domains to always allow (bypass all filters)
+sni_allow_list = [
+    "*.microsoft.com",
+    "*.apple.com",
+    "*.google.com"
+]
 
-# Certificate pinning detection
-detect_pinning = true
-bypass_pinned_certs = true
+# Block by content category
+sni_category_blocking = ["malware", "phishing", "adult"]
 
-# =============================================================================
-# CONNECTION POOLING
-# =============================================================================
-[connections]
-# Backend connection pool
-max_idle_connections = 1000
-max_connections_per_host = 100
-idle_timeout_seconds = 90
+# How to handle Encrypted SNI (ESNI) / Encrypted ClientHello (ECH)
+# Valid values: "BLOCK", "ALLOW", "INSPECT"
+# BLOCK: Block all ESNI/ECH connections
+# ALLOW: Allow without inspection
+# INSPECT: Attempt inspection (may fail)
+encrypted_sni_handling = "BLOCK"
 
-# Connection reuse
-keep_alive = true
-keep_alive_timeout = 90
+# ============================================================================
+# Connection Handling
+# ============================================================================
+[connection_handling]
+# Maximum simultaneous TLS connections
+max_concurrent_connections = 10000
 
-# =============================================================================
-# PERFORMANCE TUNING
-# =============================================================================
+# Idle connection timeout (seconds)
+connection_timeout = 300
+
+# TLS handshake timeout (seconds)
+handshake_timeout = 30
+
+# Enable TCP keep-alive
+keep_alive_enabled = true
+
+# Keep-alive probe interval (seconds)
+keep_alive_interval = 60
+
+# TCP socket buffer size (bytes)
+tcp_buffer_size = 65536
+
+# Enable TLS session resumption
+session_cache_enabled = true
+
+# Maximum cached sessions
+session_cache_size = 20000
+
+# Session cache timeout (seconds)
+session_cache_timeout = 3600
+
+# Enable TLS session tickets (RFC 5077)
+session_ticket_enabled = true
+
+# Session ticket rotation interval (hours)
+session_ticket_rotation = 24
+
+# ============================================================================
+# Content Inspection Integration
+# ============================================================================
+[content_inspection]
+# Send decrypted traffic to IDS/IPS
+inspection_enabled = true
+
+# IDS/IPS service endpoint
+# Can be overridden with ${IDS_ENDPOINT}
+ids_ips_grpc_address = "127.0.0.1:50055"
+
+# Inspection mode
+# Valid values: "INLINE", "PASSIVE"
+# INLINE: Block connection if IDS blocks
+# PASSIVE: Log only, don't block
+inspection_mode = "INLINE"
+
+# Send encrypted packets to IDS for metadata analysis
+# IDS can still analyze TLS handshake, certificates, etc.
+reinspect_encrypted = true
+
+# Extract HTTP from decrypted TLS
+http_extraction_enabled = true
+
+# Extract files from decrypted streams
+file_extraction_enabled = true
+
+# Maximum file size to extract (MB)
+max_file_extraction_size = 100
+
+# Timeout for IDS inspection (milliseconds)
+inspection_timeout = 5000
+
+# ============================================================================
+# Logging and Monitoring
+# ============================================================================
+[logging]
+# Log all TLS connections
+connection_logging_enabled = true
+
+# Log successful TLS handshakes
+log_successful_handshakes = true
+
+# Log TLS errors and failures
+log_failed_handshakes = true
+
+# Log connections bypassed (not intercepted)
+log_bypassed_connections = true
+
+# Include certificate subject/issuer in logs
+log_certificate_info = true
+
+# Include negotiated cipher suite in logs
+log_cipher_info = true
+
+# Log full decrypted packets (high volume, privacy concern)
+full_packet_logging = false
+
+# Separate log file for TLS connections
+tls_log_file = "D:\\SafeOpsFV2\\logs\\tls_proxy.log"
+
+# Log SNI values
+log_sni = true
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
 [performance]
-# Goroutine pool
-max_goroutines = 10000
-goroutine_stack_size_kb = 2
+# Number of TLS processing worker threads
+# 0 = auto-detect (CPU cores)
+worker_threads = 0
 
-# Buffer sizes
-read_buffer_size_kb = 4
-write_buffer_size_kb = 4
+# Use asynchronous I/O operations
+async_io_enabled = true
 
-# CPU affinity
-pin_to_cpu_cores = [6, 7, 8, 9]
+# Minimize memory copies
+zero_copy_enabled = true
 
-# =============================================================================
-# INSPECTION SETTINGS
-# =============================================================================
-[inspection]
-# Deep packet inspection
-inspect_http_headers = true
-inspect_http_body = true
-inspect_websockets = false
+# Use hardware acceleration (AES-NI, etc.)
+hardware_acceleration = true
 
-# Content scanning
-scan_for_malware = true
-scan_file_types = [".exe", ".dll", ".zip", ".pdf"]
-max_scan_size_mb = 100
+# Enable OpenSSL session cache
+ssl_session_cache = true
 
-# Data Loss Prevention (DLP)
-dlp_enabled = true
-scan_for_credit_cards = true
-scan_for_ssn = true
-scan_for_api_keys = true
+# Pool upstream connections for reuse
+connection_pool_enabled = true
+
+# Maximum pooled connections per upstream host
+max_pooled_connections_per_host = 50
+
+# Pooled connection idle timeout (seconds)
+pooled_connection_timeout = 60
+
+# ============================================================================
+# Privacy and Compliance
+# ============================================================================
+[privacy]
+# Don't intercept HIPAA-regulated medical sites
+bypass_medical_sites = true
+
+# Don't intercept PCI-DSS financial sites
+bypass_financial_sites = true
+
+# Don't intercept government portals
+bypass_government_sites = true
+
+# Data retention policy for decrypted data
+# Valid values: "NONE", "SESSION_ONLY", "24_HOURS", "7_DAYS", "30_DAYS"
+# Production: "NONE" or "SESSION_ONLY" for privacy
+data_retention_policy = "SESSION_ONLY"
+
+# Redact PII from logs (credit cards, SSN, etc.)
+pii_redaction_enabled = true
+
+# Enable detailed audit trail for compliance
+audit_logging_enabled = true
+
+# Audit log file
+audit_log_file = "D:\\SafeOpsFV2\\logs\\tls_proxy_audit.log"
+
+# Notify users about TLS interception (legal requirement in many jurisdictions)
+user_notification_enabled = true
+user_notification_message = "Your connection is being monitored for security purposes."
+
+# ============================================================================
+# Failover and Error Handling
+# ============================================================================
+[failover]
+# Action on TLS interception failure
+# Valid values: "BYPASS", "BLOCK", "RETRY"
+# BYPASS: Allow connection without interception
+# BLOCK: Terminate connection
+# RETRY: Attempt interception again
+on_interception_failure = "BYPASS"
+
+# Maximum retry attempts
+max_retry_attempts = 3
+
+# Action on certificate generation failure
+# Valid values: "BYPASS", "BLOCK"
+on_cert_generation_failure = "BLOCK"
+
+# Action on upstream connection failure
+# Valid values: "BLOCK", "RETURN_ERROR"
+on_upstream_failure = "RETURN_ERROR"
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# TLS_CA_CERT - Override ca_certificate_path
+# TLS_CA_KEY - Override ca_private_key_path
+# CA_KEY_PASSPHRASE - CA private key passphrase
+# CERT_MANAGER_ENDPOINT - Override cert_manager_grpc_address
+# IDS_ENDPOINT - Override ids_ips_grpc_address
+# TRUSTED_CA_BUNDLE - Override trusted_ca_bundle
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The TLS proxy validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. ca_certificate_path and ca_private_key_path must exist
+# 2. Root CA certificate must be valid and not expired
+# 3. CA private key must match CA certificate
+# 4. min_tls_version must not be lower than TLS 1.2
+# 5. cipher_suites must contain at least one cipher
+# 6. cert_manager_grpc_address must be reachable if enabled
+# 7. ids_ips_grpc_address must be reachable if inspection enabled
+# 8. Policy domains must be valid patterns
+# 9. trusted_ca_bundle must exist if validation enabled
+# 10. Listen port must be available (not in use)
+#
+# IMPORTANT: Root CA certificate must be installed on all client devices
+# for TLS interception to work without browser warnings.
+#
+# Use the validator: safeops-cli config validate tls_proxy.toml
+# ============================================================================

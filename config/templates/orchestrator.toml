@@ -1,517 +1,486 @@
-# SafeOps Service Orchestrator Configuration
-# Purpose: Master coordinator for all SafeOps services - manages lifecycle, dependencies, health, and stability
+# SafeOps Orchestrator Configuration
+# Central control plane for the entire SafeOps system
+#
+# The orchestrator manages service lifecycle, distributes configurations,
+# performs health monitoring, aggregates metrics, and coordinates dependencies.
+# This is the first service to start and the last to stop.
 
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Service Configuration
+# ============================================================================
 [service]
-name = "orchestrator"
-listen_address = "0.0.0.0"
-grpc_port = 50062
-management_api_port = 8080
-log_level = "info"
-log_file = "C:\\ProgramData\\SafeOps\\logs\\orchestrator.log"
-
-# Windows service configuration
-run_as_service = true
-service_name = "SafeOpsOrchestrator"
-service_display_name = "SafeOps Service Orchestrator"
-
-# =============================================================================
-# SERVICE REGISTRY
-# =============================================================================
-[registry]
-# Configuration and binary directories
-config_directory = "C:\\ProgramData\\SafeOps\\config"
-binary_directory = "C:\\Program Files\\SafeOps\\bin"
-
-# Managed services
-[registry.services.kernel_driver]
-name = "kernel_driver"
-executable = "safeops_driver.sys"
-type = "kernel"
-enabled = true
-critical = true
-
-[registry.services.network_logger]
-name = "network_logger"
-executable = "network_logger.exe"
-type = "userspace"
-enabled = true
-critical = true
-
-[registry.services.firewall_engine]
-name = "firewall_engine"
-executable = "firewall_engine.exe"
-type = "userspace"
-enabled = true
-critical = true
-
-[registry.services.tls_proxy]
-name = "tls_proxy"
-executable = "tls_proxy.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-[registry.services.ids_ips]
-name = "ids_ips"
-executable = "ids_ips.exe"
-type = "userspace"
-enabled = true
-critical = true
-
-[registry.services.dns_server]
-name = "dns_server"
-executable = "dns_server.exe"
-type = "userspace"
-enabled = true
-critical = true
-
-[registry.services.dhcp_server]
-name = "dhcp_server"
-executable = "dhcp_server.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-[registry.services.wifi_ap]
-name = "wifi_ap"
-executable = "wifi_ap.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-[registry.services.certificate_manager]
-name = "certificate_manager"
-executable = "cert_manager.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-[registry.services.threat_intel]
-name = "threat_intel"
-executable = "threat_intel.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-[registry.services.backup_restore]
-name = "backup_restore"
-executable = "backup_restore.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-[registry.services.update_manager]
-name = "update_manager"
-executable = "update_manager.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-[registry.services.web_ui]
-name = "web_ui"
-executable = "web_ui.exe"
-type = "userspace"
-enabled = true
-critical = false
-
-# =============================================================================
-# SERVICE DEPENDENCIES
-# =============================================================================
-[dependencies]
-# kernel_driver: no dependencies, start first
-[dependencies.kernel_driver]
-depends_on = []
-start_order = 1
-critical = true
-
-# network_logger: depends on kernel_driver
-[dependencies.network_logger]
-depends_on = ["kernel_driver"]
-start_order = 2
-critical = true
-
-# firewall_engine: depends on kernel_driver + network_logger
-[dependencies.firewall_engine]
-depends_on = ["kernel_driver", "network_logger"]
-start_order = 3
-critical = true
-
-# certificate_manager: no dependencies (needed by others)
-[dependencies.certificate_manager]
-depends_on = []
-start_order = 4
-critical = false
-
-# tls_proxy: depends on kernel_driver + network_logger + certificate_manager
-[dependencies.tls_proxy]
-depends_on = ["kernel_driver", "network_logger", "certificate_manager"]
-start_order = 5
-critical = false
-
-# threat_intel: minimal dependencies
-[dependencies.threat_intel]
-depends_on = []
-start_order = 5
-critical = false
-
-# ids_ips: depends on kernel_driver + network_logger + threat_intel
-[dependencies.ids_ips]
-depends_on = ["kernel_driver", "network_logger", "threat_intel"]
-start_order = 6
-critical = true
-
-# dns_server: depends on threat_intel
-[dependencies.dns_server]
-depends_on = ["threat_intel"]
-start_order = 7
-critical = true
-
-# dhcp_server: depends on dns_server
-[dependencies.dhcp_server]
-depends_on = ["dns_server"]
-start_order = 8
-critical = false
-
-# wifi_ap: depends on dhcp_server + dns_server
-[dependencies.wifi_ap]
-depends_on = ["dhcp_server", "dns_server"]
-start_order = 9
-critical = false
-
-# backup_restore: low priority
-[dependencies.backup_restore]
-depends_on = []
-start_order = 10
-critical = false
-
-# update_manager: low priority
-[dependencies.update_manager]
-depends_on = []
-start_order = 10
-critical = false
-
-# web_ui: depends on firewall_engine + network_logger, start last
-[dependencies.web_ui]
-depends_on = ["firewall_engine", "network_logger"]
-start_order = 11
-critical = false
-
-# =============================================================================
-# STARTUP CONFIGURATION
-# =============================================================================
-[startup]
-# Start on system boot
-start_on_boot = true
-startup_delay_seconds = 5
-
-# Parallel startup
-parallel_startup_enabled = true
-max_parallel_starts = 3
-
-# Startup timeouts
-default_startup_timeout_seconds = 60
-critical_service_timeout_seconds = 120
-
-# Retry configuration
-retry_failed_starts = true
-max_startup_retries = 3
-retry_delay_seconds = 10
-
-# Critical service failure handling
-stop_all_on_critical_failure = true
-
-# =============================================================================
-# SHUTDOWN CONFIGURATION
-# =============================================================================
-[shutdown]
-# Graceful shutdown
-graceful_shutdown_timeout_seconds = 30
-respect_dependencies_on_shutdown = true  # Reverse start order
-
-# Forceful termination
-force_kill_after_timeout_seconds = 60
-
-# Pre-shutdown hooks
-execute_pre_shutdown_hooks = true
-pre_shutdown_hook_timeout_seconds = 30
-
-# =============================================================================
-# HEALTH MONITORING
-# =============================================================================
-[health]
-# Health check interval
-check_interval_seconds = 30
-
-# Health check methods
-[health.methods]
-grpc_health_check = true
-process_monitoring = true
-resource_monitoring = true
-api_endpoint_check = true
-
-# Health check timeout
-check_timeout_seconds = 10
-
-# Failure thresholds
-consecutive_failures_threshold = 3
-
-# Actions on unhealthy service
-action_on_unhealthy = "restart"  # restart, alert, none
-
-# Restart policy
-max_restart_attempts = 5
-restart_backoff_initial_seconds = 10
-restart_backoff_multiplier = 2.0
-restart_backoff_max_seconds = 300
-
-# =============================================================================
-# RESOURCE MONITORING
-# =============================================================================
-[resources]
-# CPU monitoring
-monitor_cpu = true
-cpu_alert_threshold_percent = 80
-cpu_critical_threshold_percent = 95
-
-# Memory monitoring
-monitor_memory = true
-memory_alert_threshold_mb = 2048
-memory_critical_threshold_mb = 4096
-
-# Memory leak detection
-detect_memory_leaks = true
-leak_detection_interval_minutes = 30
-leak_threshold_growth_percent = 50
-
-# Thread monitoring
-monitor_thread_count = true
-thread_count_alert_threshold = 200
-
-# Actions on resource limits
-action_on_alert = "log"       # log, throttle, restart, alert
-action_on_critical = "restart"  # restart, stop, alert
-
-# =============================================================================
-# SERVICE LIFECYCLE MANAGEMENT
-# =============================================================================
-[lifecycle]
-# Auto-restart on failure
-auto_restart_on_failure = true
-restart_delay_seconds = 10
-
-# Restart rate limiting
-max_restarts_per_hour = 10
-
-# Rolling restart
-rolling_restart_enabled = true
-
-# Service updates
-coordinate_updates = true
-rolling_update_strategy = "one_at_a_time"
-update_wait_time_seconds = 30
-
-# Maintenance mode
-[lifecycle.maintenance_mode]
-enabled = false
-allow_critical_services = true
-critical_services = ["kernel_driver", "network_logger", "firewall_engine"]
-
-# =============================================================================
-# INTER-SERVICE COMMUNICATION
-# =============================================================================
-[communication]
-# Protocol
-protocol = "grpc"
-
-# TLS encryption
-tls_enabled = true
-tls_cert_file = "C:\\Program Files\\SafeOps\\certs\\orchestrator.crt"
-tls_key_file = "C:\\Program Files\\SafeOps\\certs\\orchestrator.key"
-tls_ca_file = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.crt"
-
-# Service discovery
-discovery_method = "static"  # static, consul, etcd
-
-# Connection pooling
-connection_pool_size = 10
-connection_timeout_seconds = 5
-
-# Retry policy
-retry_enabled = true
-retry_max_attempts = 3
-retry_backoff_initial_ms = 100
-retry_backoff_multiplier = 2.0
-
-# Circuit breaker
-circuit_breaker_enabled = true
-circuit_breaker_failure_threshold = 5
-circuit_breaker_timeout_seconds = 60
-
-# =============================================================================
-# CONFIGURATION MANAGEMENT
-# =============================================================================
-[config_management]
-# Centralized configuration
-centralized_config_enabled = false
-config_server_url = ""
-
-# Hot reload
-hot_reload_enabled = true
-watch_config_files = true
-reload_on_change = true
-
-# Validation
-validate_before_reload = true
-rollback_invalid_config = true
-
-# Synchronization
-sync_config_across_services = true
-
-# Version tracking
-track_config_versions = true
-config_version_retention_count = 10
-
-# =============================================================================
-# LOGGING AND AUDITING
-# =============================================================================
+# Service identifier (always "orchestrator")
+service_name = "orchestrator"
+
+# Management API address
+# 0.0.0.0 allows external management tools to connect
+grpc_listen_address = "0.0.0.0:50051"
+
+# Maximum concurrent management clients
+grpc_max_connections = 100
+
+# HTTP server for metrics and health endpoints
+http_listen_address = "0.0.0.0"
+http_port = 8081
+
+# Path to master configuration file
+# Can be overridden with ${MASTER_CONFIG_PATH}
+master_config_path = "D:\\SafeOpsFV2\\config\\templates\\safeops.toml"
+
+# Self-health check frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+
+# ============================================================================
+# Service Registry and Supervision
+# ============================================================================
+# Services are loaded from safeops.toml at runtime
+# This section configures supervision behavior
+
+[service_supervision]
+# Enable service supervision
+supervision_enabled = true
+
+# Supervision check interval (seconds)
+supervision_interval = 10
+
+# Default restart policy for all services
+# Valid values: "ALWAYS", "ON_FAILURE", "NEVER"
+# Can be overridden per service in safeops.toml
+default_restart_policy = "ON_FAILURE"
+
+# Default maximum consecutive restart attempts
+default_max_restart_attempts = 5
+
+# Default delay between restart attempts (seconds)
+default_restart_delay = 10
+
+# Default graceful shutdown timeout (seconds)
+default_graceful_shutdown_timeout = 30
+
+# Kill services that don't stop gracefully
+force_kill_on_timeout = true
+
+# Track service uptime and statistics
+track_service_statistics = true
+
+# ============================================================================
+# Configuration Distribution
+# ============================================================================
+[config_distribution]
+# Enable automatic configuration distribution
+config_distribution_enabled = true
+
+# Watch config files for changes
+config_watch_enabled = true
+
+# File modification check frequency (seconds)
+config_watch_interval = 60
+
+# Validate configs before distribution
+config_validation_enabled = true
+
+# Validation schema directory
+config_schema_path = "D:\\SafeOpsFV2\\config\\schemas"
+
+# Allow runtime configuration updates
+config_hot_reload_enabled = true
+
+# Hot reload strategy
+# Valid values: "GRACEFUL", "IMMEDIATE", "SCHEDULED"
+# GRACEFUL: Reload during next service restart
+# IMMEDIATE: Reload immediately (may cause brief disruption)
+# SCHEDULED: Reload during maintenance window
+config_reload_strategy = "GRACEFUL"
+
+# Backup configs before updates
+config_backup_enabled = true
+
+# Number of backup versions to keep
+config_backup_retention = 5
+
+# Backup directory
+config_backup_path = "D:\\SafeOpsFV2\\config\\backups"
+
+# ============================================================================
+# Health Monitoring
+# ============================================================================
+[health_monitoring]
+# Enable health monitoring system
+health_monitoring_enabled = true
+
+# Check services concurrently (faster)
+health_check_parallel = true
+
+# Number of concurrent health checkers
+health_check_workers = 4
+
+# Consecutive failures before marking unhealthy
+unhealthy_threshold = 3
+
+# Consecutive successes to mark healthy again
+healthy_threshold = 2
+
+# Cache health status (seconds)
+# Reduces overhead for frequent status queries
+status_cache_ttl = 5
+
+# Send alerts when service becomes unhealthy
+alert_on_unhealthy = true
+
+# Automatically restart unhealthy services
+auto_restart_unhealthy = true
+
+# Wait before restarting unhealthy service (seconds)
+restart_unhealthy_delay = 30
+
+# Health check timeout multiplier
+# Actual timeout = service.health_check_timeout * multiplier
+timeout_multiplier = 1.5
+
+# ============================================================================
+# Metrics Aggregation
+# ============================================================================
+[metrics_aggregation]
+# Collect metrics from all services
+metrics_aggregation_enabled = true
+
+# Scrape frequency (seconds)
+metrics_collection_interval = 15
+
+# How long to retain metrics in memory (hours)
+metrics_retention_duration = 24
+
+# Allow Prometheus to scrape aggregated metrics
+prometheus_scrape_enabled = true
+
+# HTTP path for Prometheus endpoint
+prometheus_scrape_path = "/metrics"
+
+# Support service-specific custom metrics
+custom_metrics_enabled = true
+
+# Metrics export format
+# Valid values: "PROMETHEUS", "OPENMETRICS", "JSON"
+metrics_export_format = "PROMETHEUS"
+
+# Aggregate metrics by label
+aggregate_by_labels = ["service", "instance", "environment"]
+
+# ============================================================================
+# Dependency Management
+# ============================================================================
+[dependency_management]
+# Verify dependencies before starting service
+dependency_checking_enabled = true
+
+# Wait for dependencies to be ready
+dependency_wait_enabled = true
+
+# Maximum wait for dependencies (seconds)
+dependency_wait_timeout = 300
+
+# Detect and prevent circular dependencies
+circular_dependency_detection = true
+
+# Validate dependency graph on startup
+dependency_graph_validation = true
+
+# Start independent services in parallel
+parallel_start_enabled = true
+
+# Maximum services to start simultaneously
+max_parallel_starts = 4
+
+# Stop services in reverse dependency order
+reverse_stop_order = true
+
+# ============================================================================
+# Logging and Diagnostics
+# ============================================================================
 [logging]
-# Orchestrator logging
-log_level = "info"
-log_format = "json"
+# Orchestrator-specific log level
+# Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR"
+orchestrator_log_level = "INFO"
 
-# Log rotation
-log_rotation_enabled = true
-log_max_size_mb = 100
-log_max_files = 10
+# Capture stdout/stderr from supervised services
+service_output_capture = true
 
-# Service event logging
-log_service_starts = true
-log_service_stops = true
-log_service_restarts = true
-log_health_check_failures = true
-log_resource_alerts = true
+# Combine service logs into single stream
+service_log_aggregation = false
 
-# Audit logging
-audit_logging_enabled = true
-audit_log_file = "C:\\ProgramData\\SafeOps\\logs\\orchestrator_audit.log"
-audit_config_changes = true
-audit_manual_interventions = true
+# Directory for captured service logs
+service_log_path = "D:\\SafeOpsFV2\\logs\\services"
 
-# =============================================================================
-# API AND MANAGEMENT INTERFACE
-# =============================================================================
-[api]
-# REST API
-rest_api_enabled = true
-api_port = 8080
-api_bind_address = "0.0.0.0"
+# Log all orchestrator events (start/stop/health changes)
+event_log_enabled = true
 
-# Authentication
-require_authentication = true
-auth_method = "token"  # token, basic, none
-token_file = "C:\\ProgramData\\SafeOps\\secrets\\api_token.txt"
+# Event log file path
+event_log_path = "D:\\SafeOpsFV2\\logs\\orchestrator_events.log"
 
-# Rate limiting
-rate_limiting_enabled = true
-rate_limit_requests_per_minute = 100
+# Log all management API calls
+audit_log_enabled = true
 
-# CORS
-cors_enabled = true
-cors_allowed_origins = ["http://localhost:3000", "https://safeops.local"]
+# Audit log file path
+audit_log_path = "D:\\SafeOpsFV2\\logs\\orchestrator_audit.log"
 
-# Available endpoints (documented)
-# /api/v1/services - list all services
-# /api/v1/services/{id}/start - start service
-# /api/v1/services/{id}/stop - stop service
-# /api/v1/services/{id}/restart - restart service
-# /api/v1/services/{id}/health - health status
-# /api/v1/services/{id}/logs - service logs
-# /api/v1/system/status - overall system status
+# Include stack traces in error logs
+include_stack_traces = true
 
-# =============================================================================
-# ALERTING AND NOTIFICATIONS
-# =============================================================================
-[alerting]
-# Alert configuration
-alerts_enabled = true
+# ============================================================================
+# API Security
+# ============================================================================
+[api_security]
+# Require authentication for API calls
+api_authentication_enabled = true
 
-# Email alerts
-email_alerts_enabled = false
-email_recipients = ["admin@example.com"]
+# Authentication method
+# Valid values: "JWT", "API_KEY", "MTLS", "NONE"
+api_auth_method = "JWT"
+
+# JWT signing secret
+# Can be overridden with ${ORCHESTRATOR_JWT_SECRET}
+api_jwt_secret = "${ORCHESTRATOR_JWT_SECRET}"
+
+# JWT token validity duration (hours)
+api_jwt_expiry = 24
+
+# API key for service-to-service communication
+# Can be overridden with ${ORCHESTRATOR_API_KEY}
+# api_key = "${ORCHESTRATOR_API_KEY}"
+
+# IP whitelist for management API (empty = allow all)
+# Production: Restrict to admin IPs only
+api_allowed_ips = ["127.0.0.1", "::1"]
+
+# Rate limit API calls
+api_rate_limiting_enabled = true
+
+# Maximum calls per minute per client
+api_rate_limit = 1000
+
+# Enable role-based access control
+rbac_enabled = false
+
+# RBAC policy file
+# rbac_policy_path = "D:\\SafeOpsFV2\\config\\rbac_policies.yaml"
+
+# ============================================================================
+# Failover and High Availability
+# ============================================================================
+[high_availability]
+# Enable high availability mode
+ha_enabled = false
+
+# HA mode
+# Valid values: "ACTIVE_PASSIVE", "ACTIVE_ACTIVE"
+ha_mode = "ACTIVE_PASSIVE"
+
+# Peer orchestrator gRPC address
+# Can be overridden with ${HA_PEER_ADDRESS}
+# ha_peer_address = "192.168.1.2:50051"
+
+# Heartbeat frequency (seconds)
+ha_heartbeat_interval = 5
+
+# Time before triggering failover (seconds)
+ha_failover_timeout = 15
+
+# Synchronize state with peer
+ha_state_sync_enabled = true
+
+# State sync interval (seconds)
+ha_state_sync_interval = 10
+
+# Use leader election (vs manual primary designation)
+ha_leader_election = true
+
+# Leader election timeout (seconds)
+ha_election_timeout = 30
+
+# ============================================================================
+# Backup and Recovery
+# ============================================================================
+[state_persistence]
+# Persist orchestrator state to disk
+state_persistence_enabled = true
+
+# Path to state file
+# Can be overridden with ${STATE_FILE_PATH}
+state_file_path = "D:\\SafeOpsFV2\\data\\orchestrator_state.json"
+
+# How often to write state to disk (seconds)
+state_sync_interval = 60
+
+# Auto-recover services on orchestrator restart
+auto_recovery_enabled = true
+
+# Wait before starting recovery (seconds)
+# Allows system to stabilize
+recovery_delay = 10
+
+# Restore services in original start order
+service_order_preservation = true
+
+# Backup state file before updates
+state_backup_enabled = true
+
+# Number of state backup versions
+state_backup_retention = 10
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+[performance]
+# Thread pool size for management tasks
+# 0 = auto-detect (CPU cores * 2)
+worker_threads = 0
+
+# Internal event queue size
+event_queue_size = 10000
+
+# gRPC keepalive interval (seconds)
+grpc_keepalive_time = 30
+
+# gRPC keepalive timeout (seconds)
+grpc_keepalive_timeout = 10
+
+# gRPC connection pool per service
+connection_pool_size = 5
+
+# Maximum gRPC message size (MB)
+max_message_size = 100
+
+# Enable gRPC compression
+grpc_compression_enabled = true
+
+# Buffer size for service stdout/stderr capture
+output_buffer_size = 8192
+
+# ============================================================================
+# Notification and Alerting
+# ============================================================================
+[notifications]
+# Send notifications for orchestrator events
+notification_enabled = true
+
+# Notification methods
+[[notifications.methods]]
+method = "EMAIL"
+enabled = false
 smtp_server = "smtp.example.com"
 smtp_port = 587
+from_address = "orchestrator@example.com"
+to_addresses = ["admin@example.com"]
+events = ["SERVICE_FAILED", "SERVICE_UNHEALTHY", "ORCHESTRATOR_STARTED"]
 
-# UI notifications
-ui_notifications_enabled = true
+[[notifications.methods]]
+method = "WEBHOOK"
+enabled = false
+webhook_url = "https://webhook.example.com/orchestrator"
+events = ["SERVICE_FAILED", "SERVICE_STARTED", "SERVICE_STOPPED"]
 
-# Syslog integration
-syslog_enabled = false
-syslog_server = "syslog.local"
-syslog_port = 514
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Allow services to be managed individually via API
+individual_service_control = true
 
-# Webhook alerts
-webhook_alerts_enabled = false
-webhook_url = ""
-webhook_events = ["service_down", "service_restart", "resource_critical"]
+# Prevent shutdown if critical services are running
+safe_shutdown_enabled = true
 
-# Alert severity levels
-alert_levels = ["info", "warning", "error", "critical"]
+# Critical services that must be stopped first
+critical_services = ["orchestrator"]
 
-# Alert aggregation
-aggregate_alerts = true
-aggregation_window_seconds = 300
+# Environment variable prefix for service configs
+env_var_prefix = "SAFEOPS_"
 
-# =============================================================================
-# DISTRIBUTED ORCHESTRATION (OPTIONAL)
-# =============================================================================
-[distributed]
-# Cluster mode
-cluster_mode_enabled = false
+# Service binary search paths
+service_binary_paths = [
+    "D:\\SafeOpsFV2\\services",
+    "D:\\SafeOpsFV2\\bin"
+]
 
-# Leader election
-leader_election_enabled = false
-consensus_algorithm = "raft"
+# Default environment variables for all services
+[advanced.default_environment]
+SAFEOPS_ENV = "production"
+SAFEOPS_DATA_DIR = "D:\\SafeOpsFV2\\data"
+SAFEOPS_LOG_DIR = "D:\\SafeOpsFV2\\logs"
 
-# Multi-node coordination
-node_id = "node1"
-cluster_nodes = ["node1", "node2", "node3"]
+# ============================================================================
+# Startup Behavior
+# ============================================================================
+[startup]
+# Auto-start all enabled services on orchestrator startup
+auto_start_services = true
 
-# State replication
-replicate_state = false
-replication_interval_seconds = 5
+# Wait for all services to be healthy before considering startup complete
+wait_for_healthy = true
 
-# Failover
-auto_failover_enabled = false
-failover_timeout_seconds = 30
+# Maximum wait for all services to become healthy (seconds)
+startup_timeout = 600
 
-# Split-brain prevention
-split_brain_detection = true
-quorum_size = 2
+# Continue startup even if some services fail
+continue_on_failure = true
 
-# =============================================================================
-# PERFORMANCE METRICS
-# =============================================================================
-[metrics]
-# Metrics collection
-collect_metrics = true
-collection_interval_seconds = 60
+# Services to start even if disabled in safeops.toml
+# (useful for maintenance/recovery)
+force_start_services = []
 
-# Prometheus export
-prometheus_enabled = true
-prometheus_port = 9108
-prometheus_path = "/metrics"
+# ============================================================================
+# Shutdown Behavior
+# ============================================================================
+[shutdown]
+# Stop all services on orchestrator shutdown
+stop_services_on_shutdown = true
 
-# Retention
-metrics_retention_days = 30
+# Timeout for complete shutdown (seconds)
+shutdown_timeout = 120
 
-# Performance dashboards
-enable_dashboards = true
+# Send shutdown signal to all services simultaneously
+parallel_shutdown = false
 
-# Latency tracking
-track_service_latency = true
+# Wait for each service to stop before proceeding to next
+sequential_shutdown = true
 
-# Resource trends
-track_resource_utilization = true
+# Kill remaining services after timeout
+force_kill_remaining = true
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# ORCHESTRATOR_API_KEY - API authentication key
+# ORCHESTRATOR_JWT_SECRET - JWT signing secret
+# MASTER_CONFIG_PATH - Override path to safeops.toml
+# HA_PEER_ADDRESS - High availability peer address
+# STATE_FILE_PATH - Override state persistence file path
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The orchestrator validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. master_config_path must exist and be readable
+# 2. All service binaries in safeops.toml must exist
+# 3. Service dependencies must not form circular references
+# 4. Health check endpoints must be reachable
+# 5. State file directory must be writable
+# 6. Log directories must exist and be writable
+# 7. JWT secret must be set if api_authentication_enabled
+# 8. HA peer address must be reachable if ha_enabled
+# 9. Port bindings must not conflict with other services
+# 10. Resource limits must be within system capacity
+#
+# The orchestrator is the master control service. Ensure this configuration
+# is correct before starting the SafeOps system.
+#
+# Use the validator: safeops-cli config validate orchestrator.toml
+# ============================================================================

@@ -1,75 +1,274 @@
-# SafeOps v2.0 - Default Application Settings
-# Purpose: Main configuration template for system-wide settings and application behavior
-# This file defines the core operational parameters for a standard SafeOps deployment
+# ============================================================================
+# SafeOps Application-Wide Default Settings
+# ============================================================================
+# PURPOSE:
+#   Provides conservative, secure default settings that apply across all
+#   deployment types. This file contains baseline parameters that rarely
+#   need customization and serves as the foundation upon which deployment-
+#   specific presets build.
+#
+# USAGE:
+#   This file is referenced by all other preset configurations as the base
+#   layer. Deployment-specific presets (home_network, small_business,
+#   enterprise) override these defaults with optimized values.
+#
+# PHILOSOPHY:
+#   • Security First - Conservative defaults prioritize security
+#   • Performance Baseline - Tuned for typical hardware (4-8 cores, 8-16GB RAM)
+#   • Cross-Platform - Works on all supported Windows versions
+#   • Override Friendly - All settings can be overridden by specific configs
+#
+# VERSION: 2.0.0
+# ============================================================================
 
-# =============================================================================
-# SYSTEM INFORMATION
-# =============================================================================
-[system]
-profile = "default"
+[profile]
+name = "application_defaults"
+description = "System-wide default settings for all SafeOps deployments"
 version = "2.0.0"
-deployment_date = ""
+profile_type = "BASE_DEFAULTS"
+
+# ============================================================================
+# SYSTEM INFORMATION
+# ============================================================================
+
+[system]
+# Basic identification
 hostname = "safeops-gateway"
 domain = "local"
 timezone = "UTC"
+deployment_date = ""  # Auto-populated on installation
 
-# Installation paths
+# Installation paths (Windows standard locations)
 install_directory = "C:\\Program Files\\SafeOps"
 data_directory = "C:\\ProgramData\\SafeOps"
 log_directory = "C:\\ProgramData\\SafeOps\\logs"
 config_directory = "C:\\ProgramData\\SafeOps\\config"
+runtime_directory = "C:\\ProgramData\\SafeOps\\run"
+temp_directory = "C:\\ProgramData\\SafeOps\\temp"
 
-# =============================================================================
-# GLOBAL SETTINGS
-# =============================================================================
+# ============================================================================
+# GLOBAL APPLICATION SETTINGS
+# ============================================================================
+
 [global]
-mode = "production"
-default_log_level = "info"
-enable_all_services = true
+# Operation mode
+mode = "production"  # Options: production, development, debug
+environment = "standard"
+
+# Service management
 run_as_windows_services = true
 start_on_boot = true
+enable_all_services = true
+graceful_shutdown_timeout = 30  # Seconds
 
-# =============================================================================
-# NETWORK CONFIGURATION
-# =============================================================================
-[network]
-topology = "3-nic"
+# Default logging
+default_log_level = "INFO"  # ERROR, WARN, INFO, DEBUG, TRACE
+default_log_format = "JSON"  # JSON, TEXT
 
-[network.interfaces]
-wan = "NIC1"
-lan = "NIC2"
-wifi = "NIC3"
+# ============================================================================
+# TIMEOUT DEFAULTS
+# ============================================================================
 
-[network.addressing]
-wan_mode = "dhcp"
-lan_ip = "192.168.1.1"
-lan_netmask = "255.255.255.0"
-lan_network = "192.168.1.0/24"
-wifi_ip = "192.168.2.1"
-wifi_netmask = "255.255.255.0"
-wifi_network = "192.168.2.0/24"
+[timeouts]
+# Network timeouts (seconds)
+connect_timeout = 10
+read_timeout = 30
+write_timeout = 30
+idle_timeout = 300  # 5 minutes
+keepalive_timeout = 60
 
-# =============================================================================
-# DATABASE CONFIGURATION
-# =============================================================================
+# Service timeouts
+service_start_timeout = 60
+service_stop_timeout = 30
+service_health_check_timeout = 5
+
+# API timeouts
+api_request_timeout = 30
+api_long_poll_timeout = 120
+
+# Database timeouts
+db_connect_timeout = 10
+db_query_timeout = 30
+db_transaction_timeout = 60
+
+# ============================================================================
+# BUFFER AND QUEUE DEFAULTS
+# ============================================================================
+
+[buffers]
+# Packet processing
+packet_buffer_size = 50000
+analysis_buffer_size = 25000
+log_buffer_size = 10000
+
+# Network buffers
+tcp_recv_buffer = 262144  # 256 KB
+tcp_send_buffer = 262144  # 256 KB
+udp_recv_buffer = 524288  # 512 KB
+
+# Queue depths
+work_queue_depth = 10000
+event_queue_depth = 5000
+alert_queue_depth = 1000
+
+# ============================================================================
+# THREAD AND WORKER DEFAULTS
+# ============================================================================
+
+[threading]
+# Default thread counts (auto-adjusted based on CPU cores)
+default_worker_threads = 4
+default_io_threads = 2
+default_analysis_threads = 2
+
+# Thread pool sizes
+min_thread_pool_size = 4
+max_thread_pool_size = 32
+thread_pool_queue_size = 1000
+
+# Thread priorities (Windows priority levels)
+critical_thread_priority = "HIGH"  # Real-time packet processing
+worker_thread_priority = "NORMAL"
+background_thread_priority = "LOW"
+
+# ============================================================================
+# PORT ASSIGNMENTS (STANDARD)
+# ============================================================================
+
+[ports]
+# Service ports (gRPC)
+orchestrator_grpc = 50051
+network_logger_grpc = 50052
+firewall_engine_grpc = 50053
+threat_intel_grpc = 50054
+ids_ips_grpc = 50055
+dns_server_grpc = 50056
+dhcp_server_grpc = 50057
+tls_proxy_grpc = 50058
+wifi_ap_grpc = 50059
+backup_restore_grpc = 50060
+certificate_manager_grpc = 50061
+update_manager_grpc = 50062
+kernel_driver_grpc = 50063
+userspace_service_grpc = 50064
+
+# HTTP/HTTPS ports
+orchestrator_http = 8081
+web_ui_http = 8080
+web_ui_https = 8443
+tls_proxy_http = 8888
+certificate_manager_http = 8090
+
+# Metrics ports (Prometheus)
+orchestrator_metrics = 9090
+network_logger_metrics = 9092
+firewall_engine_metrics = 9093
+threat_intel_metrics = 9094
+ids_ips_metrics = 9095
+dns_server_metrics = 9096
+dhcp_server_metrics = 9097
+tls_proxy_metrics = 9098
+wifi_ap_metrics = 9099
+backup_restore_metrics = 9100
+certificate_manager_metrics = 9101
+update_manager_metrics = 9102
+
+# Standard network services
+dns_port = 53
+dhcp_server_port = 67
+dhcp_client_port = 68
+ntp_port = 123
+
+# ============================================================================
+# SECURITY DEFAULTS
+# ============================================================================
+
+[security]
+# TLS/SSL settings
+tls_min_version = "1.2"
+tls_max_version = "1.3"
+tls_prefer_server_ciphers = true
+enforce_strong_ciphers = true
+
+# Recommended cipher suites (TLS 1.2/1.3)
+tls_cipher_suites = [
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"
+]
+
+# Password requirements
+min_password_length = 12
+require_password_complexity = true
+password_expiry_days = 90
+password_history_count = 5
+max_failed_login_attempts = 5
+account_lockout_duration_minutes = 30
+
+# Session management
+session_timeout_minutes = 30
+session_absolute_timeout_minutes = 480  # 8 hours
+session_inactivity_timeout_minutes = 30
+max_concurrent_sessions = 3
+
+# API security
+api_rate_limit_requests_per_minute = 100
+api_rate_limit_burst = 20
+api_key_length = 32
+jwt_expiry_minutes = 60
+jwt_refresh_expiry_days = 7
+
+# Encryption defaults
+default_encryption_algorithm = "AES-256-GCM"
+default_hash_algorithm = "SHA-256"
+default_key_derivation = "PBKDF2"
+pbkdf2_iterations = 100000
+
+# ============================================================================
+# DATABASE DEFAULTS (PostgreSQL)
+# ============================================================================
+
 [database]
+# Connection settings
 postgres_host = "localhost"
 postgres_port = 5432
 postgres_database = "safeops"
 postgres_user = "safeops"
 postgres_password = "${POSTGRES_PASSWORD}"
+postgres_ssl_mode = "prefer"  # disable, allow, prefer, require
+
+# Connection pooling
 pool_min_connections = 5
 pool_max_connections = 50
+pool_max_idle_time_seconds = 300
+pool_max_lifetime_seconds = 1800
 
-# =============================================================================
-# REDIS CONFIGURATION
-# =============================================================================
+# Query settings
+statement_timeout_ms = 30000  # 30 seconds
+idle_in_transaction_timeout_ms = 60000  # 1 minute
+
+# Performance
+shared_buffers_mb = 256
+effective_cache_size_mb = 1024
+work_mem_mb = 16
+maintenance_work_mem_mb = 64
+
+# ============================================================================
+# CACHE DEFAULTS (Redis)
+# ============================================================================
+
 [redis]
+# Connection settings
 host = "localhost"
 port = 6379
 password = "${REDIS_PASSWORD}"
-pool_size = 50
+ssl_enabled = false
+connection_pool_size = 50
 
+# Database assignments (0-15)
 [redis.databases]
 general = 0
 network_logger = 1
@@ -77,109 +276,372 @@ tls_proxy = 2
 dns_server = 3
 certificate_manager = 4
 web_ui = 5
+threat_intel = 6
+ids_ips = 7
+sessions = 8
 
-# =============================================================================
-# SECURITY DEFAULTS
-# =============================================================================
-[security]
-default_firewall_action = "deny"
-enable_ids_ips = true
-ids_ips_mode = "ips"
-tls_min_version = "1.2"
-tls_max_version = "1.3"
-enforce_strong_ciphers = true
-min_password_length = 12
+# Cache settings
+default_ttl_seconds = 3600  # 1 hour
+max_memory_policy = "allkeys-lru"  # Eviction policy
 
-# =============================================================================
-# LOGGING CONFIGURATION
-# =============================================================================
+# ============================================================================
+# LOGGING DEFAULTS
+# ============================================================================
+
 [logging]
-log_format = "json"
-log_rotation = true
-log_max_size_mb = 100
+# Log format and output
+log_format = "JSON"  # JSON, TEXT, LOGFMT
+log_output = "FILE"  # FILE, CONSOLE, BOTH
+console_log_level = "WARN"
+file_log_level = "INFO"
+
+# Log rotation
+log_rotation_enabled = true
+log_rotation_time = "daily"  # hourly, daily, weekly
+log_rotation_size_mb = 100
 log_max_files = 10
-syslog_enabled = false
+log_max_age_days = 30
+compress_rotated_logs = true
 
-# =============================================================================
-# MONITORING AND METRICS
-# =============================================================================
-[monitoring]
-metrics_enabled = true
-health_check_enabled = true
-health_check_interval_seconds = 30
-cpu_alert_threshold_percent = 80
-memory_alert_threshold_percent = 80
-disk_alert_threshold_percent = 90
+# Async logging
+async_logging = true
+async_log_buffer_size = 10000
+async_log_flush_interval_seconds = 5
 
-# =============================================================================
-# BACKUP AND UPDATES
-# =============================================================================
-[backup]
-backup_enabled = true
-backup_schedule = "0 2 * * *"
-primary_backup_path = "C:\\SafeOps_Backups"
-backup_compression = true
-backup_encryption = true
+# Log categories (can be overridden per service)
+default_log_categories = [
+    "security", "network", "system", "application", "audit"
+]
 
-[updates]
-auto_check_updates = true
-update_channel = "stable"
-auto_install_security_updates = true
-auto_install_signature_updates = true
+# Sensitive data handling
+redact_pii = true
+redact_passwords = true
+redact_tokens = true
+redact_credit_cards = true
 
-# =============================================================================
-# SERVICE DEFAULTS
-# =============================================================================
+# ============================================================================
+# NETWORK DEFAULTS
+# ============================================================================
+
+[network]
+# MTU settings
+default_mtu = 1500
+jumbo_frames_mtu = 9000
+enable_jumbo_frames = false
+
+# TCP settings
+tcp_nodelay = true  # Disable Nagle's algorithm
+tcp_keepalive_enabled = true
+tcp_keepalive_idle_seconds = 60
+tcp_keepalive_interval_seconds = 10
+tcp_keepalive_probes = 3
+
+# UDP settings
+udp_recv_buffer_size = 524288  # 512 KB
+
+# DNS resolver settings
+dns_resolver_timeout_seconds = 5
+dns_resolver_attempts = 3
+dns_cache_ttl_seconds = 300
+
+# Connection limits
+max_connections_per_service = 10000
+max_connections_per_ip = 100
+connection_timeout_seconds = 60
+
+# ============================================================================
+# FIREWALL DEFAULTS
+# ============================================================================
+
 [firewall]
-enabled = true
-default_action = "deny"
-log_denied = true
-max_connections = 10000000
+# Default policy
+default_policy = "DENY"
+default_inbound_action = "DROP"
+default_outbound_action = "ALLOW"
 
-[dns]
-enabled = true
-cache_enabled = true
-block_malware_domains = true
-block_phishing_domains = true
+# Connection tracking
+connection_tracking_enabled = true
+connection_tracking_table_size = 1000000
+connection_timeout_tcp = 3600  # 1 hour
+connection_timeout_udp = 180  # 3 minutes
+connection_timeout_icmp = 30  # 30 seconds
 
-[dhcp]
-enabled = true
-lan_enabled = true
-wifi_enabled = true
+# Logging
+log_dropped_packets = true
+log_accepted_packets = false
+log_invalid_packets = true
 
-[wifi]
-enabled = true
-ssid = "SafeOps-Secure"
-security = "wpa3"
-client_isolation = true
+# Rate limiting
+enable_rate_limiting = true
+default_rate_limit_pps = 1000  # Packets per second
+syn_rate_limit_pps = 100
+
+# ============================================================================
+# IDS/IPS DEFAULTS
+# ============================================================================
 
 [ids_ips]
-enabled = true
-mode = "ips"
-signature_updates_enabled = true
+# Operation mode
+default_mode = "IDS"  # IDS, IPS
+signature_update_interval_hours = 2
 
-[threat_intel]
-enabled = true
-auto_update_feeds = true
+# Detection settings
+signature_based_detection = true
+anomaly_based_detection = true
+protocol_anomaly_detection = true
 
-[tls_proxy]
-enabled = false
-bypass_financial_sites = true
+# Performance
+max_packet_inspection_size = 65535
+inline_processing_timeout_ms = 100
 
-# =============================================================================
-# FEATURE FLAGS
-# =============================================================================
-[features]
-enable_behavioral_analysis = true
-enable_ddos_protection = true
-enable_content_filtering = true
-enable_machine_learning = false
-enable_cloud_sync = false
+# ============================================================================
+# MONITORING DEFAULTS
+# ============================================================================
 
-# =============================================================================
+[monitoring]
+# Health checks
+health_check_enabled = true
+health_check_interval_seconds = 30
+health_check_timeout_seconds = 5
+health_check_failure_threshold = 3
+health_check_success_threshold = 2
+
+# Metrics
+metrics_enabled = true
+metrics_interval_seconds = 15
+metrics_retention_hours = 24
+
+# Resource monitoring
+cpu_alert_threshold_percent = 80
+memory_alert_threshold_percent = 85
+disk_alert_threshold_percent = 90
+network_utilization_threshold_percent = 80
+
+# Service monitoring
+monitor_service_restarts = true
+monitor_service_crashes = true
+monitor_resource_usage = true
+
+# ============================================================================
+# BACKUP DEFAULTS
+# ============================================================================
+
+[backup]
+# Backup settings
+backup_enabled = true
+backup_schedule = "0 2 * * *"  # Daily at 2 AM
+backup_compression = true
+backup_compression_level = 6  # 1-9 (gzip)
+backup_encryption = true
+
+# Retention
+backup_retention_days = 30
+backup_max_copies = 10
+
+# Backup scope
+backup_configs = true
+backup_database = true
+backup_logs = false  # Too large
+backup_certificates = true
+
+# Verification
+verify_backups = true
+test_restore_enabled = false
+
+# ============================================================================
+# UPDATE DEFAULTS
+# ============================================================================
+
+[updates]
+# Update checking
+auto_check_updates = true
+update_check_interval_hours = 24
+update_channel = "stable"  # stable, beta, dev
+
+# Automatic updates
+auto_install_security_updates = true
+auto_install_signature_updates = true
+auto_install_software_updates = false  # Require approval
+
+# Update verification
+verify_update_signatures = true
+verify_update_checksums = true
+
+# Rollback
+enable_auto_rollback = true
+rollback_timeout_minutes = 30
+
+# ============================================================================
+# PERFORMANCE DEFAULTS
+# ============================================================================
+
+[performance]
+# CPU affinity
+enable_cpu_affinity = false
+dedicated_cpu_cores = []
+
+# Memory management
+enable_huge_pages = false
+enable_numa_awareness = false
+
+# I/O optimization
+enable_async_io = true
+enable_direct_io = false
+io_scheduler = "default"  # default, noop, deadline, cfq
+
+# Network optimization
+enable_zero_copy = false
+enable_batch_processing = true
+batch_size = 32
+
+# ============================================================================
 # RESOURCE LIMITS
-# =============================================================================
+# ============================================================================
+
 [resource_limits]
+# CPU limits
 max_cpu_percent = 80
-max_memory_mb = 16384
+reserved_cpu_percent = 20
+
+# Memory limits
+max_memory_mb = 16384  # 16GB
+reserved_memory_mb = 2048  # 2GB
+
+# Disk limits
 max_disk_space_gb = 100
+reserved_disk_space_gb = 10
+
+# File limits
+max_open_files = 65536
+max_file_size_mb = 1024
+
+# Process limits
+max_processes = 512
+max_threads_per_process = 1024
+
+# ============================================================================
+# FEATURE FLAGS
+# ============================================================================
+
+[features]
+# Security features
+enable_ddos_protection = true
+enable_geo_blocking = false
+enable_content_filtering = true
+enable_ssl_inspection = false
+
+# Advanced features
+enable_behavioral_analysis = true
+enable_machine_learning = false
+enable_threat_hunting = false
+enable_sandbox_integration = false
+
+# Integration features
+enable_cloud_sync = false
+enable_siem_integration = false
+enable_api_access = true
+
+# Experimental features
+enable_ipv6 = false
+enable_quic = false
+enable_http3 = false
+
+# ============================================================================
+# COMPLIANCE DEFAULTS
+# ============================================================================
+
+[compliance]
+# Audit logging
+audit_logging_enabled = true
+audit_all_changes = true
+audit_user_actions = true
+audit_api_calls = true
+
+# Data retention (days)
+audit_log_retention_days = 365
+security_log_retention_days = 90
+system_log_retention_days = 30
+
+# Privacy
+anonymize_ip_addresses = false
+gdpr_mode = false
+ccpa_mode = false
+
+# ============================================================================
+# ALERTING DEFAULTS
+# ============================================================================
+
+[alerting]
+# Alert settings
+alerts_enabled = true
+alert_throttle_seconds = 300  # 5 minutes
+max_alerts_per_hour = 100
+
+# Alert channels
+email_alerts = false
+webhook_alerts = false
+syslog_alerts = false
+
+# Alert severities
+alert_on_critical = true
+alert_on_high = true
+alert_on_medium = false
+alert_on_low = false
+
+# ============================================================================
+# API DEFAULTS
+# ============================================================================
+
+[api]
+# API settings
+api_enabled = true
+api_version = "v1"
+api_base_path = "/api/v1"
+
+# Authentication
+api_authentication_required = true
+api_authentication_method = "JWT"  # JWT, API_KEY, BASIC
+
+# Rate limiting
+api_rate_limiting_enabled = true
+api_rate_limit_requests_per_minute = 100
+api_rate_limit_burst = 20
+
+# CORS
+api_cors_enabled = false
+api_cors_allowed_origins = []
+
+# ============================================================================
+# DEPLOYMENT VALIDATION
+# ============================================================================
+
+[validation]
+# Config validation
+validate_on_load = true
+strict_validation = true
+fail_on_unknown_keys = false
+
+# Service checks
+check_dependencies = true
+check_ports_available = true
+check_disk_space = true
+check_permissions = true
+
+# ============================================================================
+# SELF-CHECK DEFAULTS
+# ============================================================================
+# These default settings ensure:
+#
+# [✓] Conservative security defaults (deny-by-default, TLS 1.2+)
+# [✓] Reasonable resource allocation (up to 80% CPU, 16GB RAM)
+# [✓] Standard port assignments for all services
+# [✓] Comprehensive logging with rotation and retention
+# [✓] Automatic security and signature updates
+# [✓] Daily backups with 30-day retention
+# [✓] Session timeouts and password policies
+# [✓] Connection pooling and caching defaults
+# [✓] Health monitoring and alerting thresholds
+# [✓] Cross-platform compatibility (Windows paths)
+#
+# All settings can be overridden by deployment-specific presets.
+# ============================================================================

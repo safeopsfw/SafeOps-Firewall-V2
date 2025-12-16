@@ -1,212 +1,479 @@
 # SafeOps Certificate Manager Configuration
-# Purpose: Root CA management, certificate generation, and distribution
+# Certificate Authority (CA) service for PKI management
+#
+# This service handles certificate generation, signing, renewal, revocation,
+# and storage for TLS interception, service-to-service communication, and
+# user authentication.
 
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Service Configuration
+# ============================================================================
 [service]
-name = "certificate_manager"
-listen_address = "0.0.0.0"
-grpc_port = 50059
-log_level = "info"
-log_file = "C:\\ProgramData\\SafeOps\\logs\\certificate_manager.log"
+# Service identifier for orchestrator registration
+service_name = "certificate_manager"
 
-# =============================================================================
-# ROOT CA CONFIGURATION
-# =============================================================================
+# gRPC certificate API address
+grpc_listen_address = "127.0.0.1:50061"
+
+# Maximum concurrent certificate requests
+grpc_max_connections = 100
+
+# HTTP server for OCSP and CRL endpoints
+http_listen_address = "0.0.0.0"
+http_port = 8090
+
+# Self-health check frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+metrics_port = 9101
+
+# ============================================================================
+# Root CA Configuration
+# ============================================================================
 [root_ca]
-# Certificate paths
-cert_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.crt"
-key_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-root-ca.key"
+# Enable root CA functionality
+root_ca_enabled = true
 
-# CA details
+# Path to root CA certificate
+root_ca_certificate_path = "D:\\SafeOpsFV2\\certs\\ca\\root-ca.crt"
+
+# Path to root CA private key
+root_ca_private_key_path = "D:\\SafeOpsFV2\\certs\\ca\\root-ca.key"
+
+# Root CA private key passphrase
+# Can be overridden with ${ROOT_CA_PASSWORD}
+# root_ca_key_password = "${ROOT_CA_PASSWORD}"
+
+# Root CA subject Distinguished Name
+[root_ca.subject]
 common_name = "SafeOps Root CA"
-organization = "SafeOps Security Gateway"
-organizational_unit = "Certificate Authority"
+organization = "SafeOps"
+organizational_unit = "Security Operations"
 country = "US"
 state = "California"
 locality = "San Francisco"
 
-# Key configuration
-key_algorithm = "rsa"  # rsa, ecdsa
-key_size = 4096        # For RSA (2048, 4096)
-# key_curve = "P-384"  # For ECDSA (P-256, P-384, P-521)
+# Root CA key configuration
+root_ca_key_algorithm = "RSA"  # RSA or ECDSA
+root_ca_key_size = 4096        # RSA: 2048/4096, ECDSA: 256/384/521
 
-# Validity period
-validity_years = 20
+# Root CA certificate validity (years)
+root_ca_validity_years = 20
 
-# Serial number
-serial_number = "random"  # random or specific number
-
-# Key usage
-key_usage = [
-    "certificate_signing",
-    "crl_signing",
-]
-
-# Basic constraints
-is_ca = true
-path_length = 1  # Max intermediate CAs
-
-# =============================================================================
-# INTERMEDIATE CA (OPTIONAL)
-# =============================================================================
+# ============================================================================
+# Intermediate CA Configuration
+# ============================================================================
 [intermediate_ca]
-enabled = false
+# Use intermediate CA for operational signing (recommended)
+# Protects root CA private key
+intermediate_ca_enabled = true
 
-# If enabled, create intermediate CA for isolation
-cert_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-intermediate-ca.crt"
-key_path = "C:\\Program Files\\SafeOps\\certs\\ca\\safeops-intermediate-ca.key"
+# Path to intermediate CA certificate
+intermediate_ca_certificate_path = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.crt"
 
+# Path to intermediate CA private key
+intermediate_ca_private_key_path = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.key"
+
+# Intermediate CA private key passphrase
+# Can be overridden with ${INTERMEDIATE_CA_PASSWORD}
+# intermediate_ca_key_password = "${INTERMEDIATE_CA_PASSWORD}"
+
+# Intermediate CA subject
+[intermediate_ca.subject]
 common_name = "SafeOps Intermediate CA"
-validity_years = 10
+organization = "SafeOps"
+organizational_unit = "Certificate Services"
+country = "US"
+state = "California"
+locality = "San Francisco"
 
-# =============================================================================
-# DYNAMIC CERTIFICATE GENERATION
-# =============================================================================
-[dynamic_certs]
-# Certificate generation for TLS proxy
-enabled = true
+# Full certificate chain file (root + intermediate)
+intermediate_ca_chain_path = "D:\\SafeOpsFV2\\certs\\ca\\ca-chain.pem"
 
-# Key configuration
-key_algorithm = "ecdsa"  # Faster than RSA
-key_curve = "P-256"
+# Intermediate CA certificate validity (years)
+intermediate_ca_validity_years = 10
 
-# Validity
-validity_hours = 24
+# Auto-renew intermediate CA before expiry
+auto_renew_intermediate = true
 
-# Certificate fields
-organization = "SafeOps Intercepted"
-organizational_unit = "TLS Proxy"
+# Renew when remaining validity < N days
+intermediate_renewal_threshold = 365
 
-# Subject Alternative Names
-include_san = true
-include_wildcard = true  # *.example.com
+# ============================================================================
+# Certificate Generation
+# ============================================================================
+[certificate_generation]
+# Default certificate validity (days)
+default_validity_days = 365
 
-# Key usage
-key_usage = [
-    "digital_signature",
-    "key_encipherment",
-]
+# Default key algorithm
+# Valid values: "RSA", "ECDSA"
+default_key_algorithm = "RSA"
 
-extended_key_usage = [
-    "server_auth",
-    "client_auth",
-]
+# Default key size
+# RSA: 2048 or 4096, ECDSA: 256, 384, or 521
+default_key_size = 2048
 
-# =============================================================================
-# CERTIFICATE STORAGE
-# =============================================================================
+# Allowed algorithms clients can request
+allowed_key_algorithms = ["RSA", "ECDSA"]
+
+# Allowed key sizes clients can request
+allowed_key_sizes = [2048, 4096, 256, 384]
+
+# Maximum certificate validity allowed (days)
+max_validity_days = 825  # ~2 years (CA/Browser Forum limit)
+
+# Require Subject Alternative Name (SAN)
+san_required = true
+
+# Allow wildcard certificate generation
+wildcard_certificates_allowed = true
+
+# Allow self-signed certificate generation (development only)
+self_signed_allowed = false
+
+# ============================================================================
+# Certificate Storage
+# ============================================================================
 [storage]
-# Database storage
-database_enabled = true
-postgres_host = "localhost"
-postgres_port = 5432
-postgres_database = "safeops"
+# Storage backend
+# Valid values: "DATABASE", "FILESYSTEM", "BOTH"
+# DATABASE: PostgreSQL (recommended)
+# FILESYSTEM: Files on disk
+# BOTH: PostgreSQL + filesystem backup
+storage_backend = "BOTH"
 
-# File storage
-cert_directory = "C:\\ProgramData\\SafeOps\\certificates"
+# PostgreSQL database configuration
+database_host = "localhost"
+database_port = 5432
+database_name = "safeops"
+database_user = "safeops"
+database_password = "${POSTGRES_PASSWORD}"
 
-# Storage format
-format = "pem"  # pem, der
+# Connection pool size
+database_connection_pool = 10
 
-# Compression
-compress_old_certs = true
-compression_algorithm = "gzip"
+# Filesystem storage path
+filesystem_path = "D:\\SafeOpsFV2\\data\\certificates"
 
-# =============================================================================
-# CERTIFICATE CACHE
-# =============================================================================
-[cache]
-# Redis cache for generated certificates
-redis_enabled = true
-redis_host = "localhost"
-redis_port = 6379
-redis_db = 4
-redis_ttl_seconds = 86400  # 24 hours
+# Certificate storage format
+# Valid values: "PEM", "DER", "PKCS12"
+certificate_format = "PEM"
 
-# Memory cache
-memory_cache_enabled = true
-memory_cache_size = 100000  # 100K certificates
+# Store private keys (requires encryption)
+include_private_keys = true
 
-# =============================================================================
-# CERTIFICATE DISTRIBUTION
-# =============================================================================
-[distribution]
-# Export directory for distribution packages
-export_directory = "C:\\ProgramData\\SafeOps\\certificates\\distribution"
+# ============================================================================
+# Automatic Renewal
+# ============================================================================
+[auto_renewal]
+# Enable automatic certificate renewal
+auto_renewal_enabled = true
 
-# Generate distribution packages
-generate_windows_installer = true
-generate_macos_profile = true
-generate_ios_profile = true
-generate_android_package = false
-generate_linux_script = true
+# How often to check for expiring certificates (hours)
+renewal_check_interval = 24
 
-# GPO template
-generate_gpo_template = true
-gpo_template_path = "C:\\ProgramData\\SafeOps\\certificates\\gpo"
+# Renew certificates when remaining validity < N days
+renewal_threshold_days = 30
 
-# MDM profiles
-generate_mdm_profiles = true
-mdm_profile_path = "C:\\ProgramData\\SafeOps\\certificates\\mdm"
+# Start renewal attempts N days before expiry
+# Provides buffer for failed renewals
+renewal_window_days = 45
 
-# =============================================================================
-# CERTIFICATE REVOCATION
-# =============================================================================
+# Maximum retry attempts for failed renewals
+renewal_retry_attempts = 5
+
+# Retry interval (hours)
+renewal_retry_interval = 6
+
+# Notify before/after renewals
+renewal_notification_enabled = true
+
+# Notify N days before expiry
+renewal_notification_threshold = 14
+
+# Notification methods (email, webhook)
+renewal_notification_methods = ["EMAIL", "WEBHOOK"]
+
+# ============================================================================
+# Certificate Revocation
+# ============================================================================
 [revocation]
-# CRL (Certificate Revocation List)
+# Enable certificate revocation
+revocation_enabled = true
+
+# Generate Certificate Revocation Lists (CRL)
 crl_enabled = true
-crl_url = "http://192.168.1.1/crl/safeops-root-ca.crl"
-crl_update_interval_days = 7
-crl_path = "C:\\Program Files\\SafeOps\\certs\\crl"
 
-# OCSP (Online Certificate Status Protocol)
-ocsp_enabled = false
-ocsp_url = "http://192.168.1.1/ocsp"
-ocsp_port = 8080
+# CRL distribution point URL (included in certificates)
+crl_distribution_point = "http://crl.safeops.local/root-ca.crl"
 
-# =============================================================================
-# EXPIRY MONITORING
-# =============================================================================
-[expiry_monitoring]
-enabled = true
+# CRL regeneration frequency (hours)
+crl_update_interval = 24
 
-# Check frequency
-check_interval_hours = 24
+# CRL validity duration (hours)
+crl_validity_hours = 168  # 7 days
 
-# Warning thresholds
-warning_days_before_expiry = [
-    365,  # 1 year
-    180,  # 6 months
-    90,   # 3 months
-    30,   # 1 month
-    7,    # 1 week
-]
+# Filesystem path for CRL files
+crl_path = "D:\\SafeOpsFV2\\data\\crl"
 
-# Notifications
-send_email_alerts = false
-send_ui_alerts = true
-log_warnings = true
+# Enable OCSP responder
+ocsp_enabled = true
 
-# =============================================================================
-# SECURITY
-# =============================================================================
+# OCSP responder URL (included in certificates)
+ocsp_responder_url = "http://ocsp.safeops.local:8090"
+
+# Dedicated OCSP signing certificate
+# If not specified, uses intermediate CA
+# ocsp_signing_certificate = "D:\\SafeOpsFV2\\certs\\ocsp-signer.crt"
+# ocsp_signing_key = "D:\\SafeOpsFV2\\certs\\ocsp-signer.key"
+
+# Cache OCSP responses
+ocsp_cache_enabled = true
+
+# OCSP response cache duration (seconds)
+ocsp_cache_ttl = 3600
+
+# ============================================================================
+# Certificate Templates
+# ============================================================================
+# Predefined certificate profiles
+
+[[certificate_templates]]
+template_name = "tls_server"
+template_type = "SERVER"
+validity_days = 365
+key_algorithm = "RSA"
+key_size = 2048
+key_usage = ["digitalSignature", "keyEncipherment"]
+extended_key_usage = ["serverAuth"]
+san_types = ["DNS", "IP"]
+description = "Standard TLS server certificate"
+
+[[certificate_templates]]
+template_name = "tls_client"
+template_type = "CLIENT"
+validity_days = 365
+key_algorithm = "RSA"
+key_size = 2048
+key_usage = ["digitalSignature", "keyEncipherment"]
+extended_key_usage = ["clientAuth"]
+san_types = ["EMAIL", "DNS"]
+description = "TLS client authentication certificate"
+
+[[certificate_templates]]
+template_name = "code_signing"
+template_type = "CODE_SIGNING"
+validity_days = 730  # 2 years
+key_algorithm = "RSA"
+key_size = 4096
+key_usage = ["digitalSignature"]
+extended_key_usage = ["codeSigning"]
+san_types = ["EMAIL"]
+description = "Code signing certificate"
+
+[[certificate_templates]]
+template_name = "email"
+template_type = "EMAIL"
+validity_days = 365
+key_algorithm = "RSA"
+key_size = 2048
+key_usage = ["digitalSignature", "keyEncipherment"]
+extended_key_usage = ["emailProtection"]
+san_types = ["EMAIL"]
+description = "S/MIME email certificate"
+
+# ============================================================================
+# TLS Interception Support
+# ============================================================================
+[tls_interception]
+# Enable on-demand certificate generation for TLS proxy
+tls_interception_enabled = true
+
+# CA certificate for TLS interception
+# Usually same as intermediate CA
+interception_ca_certificate = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.crt"
+interception_ca_private_key = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.key"
+
+# Cache generated interception certificates
+interception_cert_cache = true
+
+# Maximum cached interception certificates
+interception_cache_size = 10000
+
+# Cache entry lifetime (hours)
+interception_cache_ttl = 24
+
+# Validity for intercepted certificates (days)
+interception_cert_validity_days = 365
+
+# Generate wildcard certificates for domains
+wildcard_generation_enabled = true
+
+# Copy server certificate properties (issuer, validity dates)
+# Makes interception less detectable
+copy_server_properties = true
+
+# ============================================================================
+# Security and Compliance
+# ============================================================================
 [security]
-# Private key protection
-encrypt_private_keys = true
-encryption_algorithm = "aes-256-cbc"
+# Encrypt stored private keys
+private_key_encryption = true
 
-# Key storage
-use_windows_dpapi = true  # Windows Data Protection API
-use_hsm = false           # Hardware Security Module
-hsm_provider = ""
+# Encryption algorithm
+# Valid values: "AES256", "CHACHA20"
+encryption_algorithm = "AES256"
 
-# Access control
-restrict_key_access = true
-allowed_services = ["tls_proxy"]
+# Encryption key source
+# Valid values: "FILE", "ENV_VAR", "KMS", "VAULT"
+encryption_key_source = "ENV_VAR"
 
-# Audit logging
-log_key_access = true
-log_cert_generation = true
-log_cert_distribution = true
+# Encryption key environment variable
+encryption_key_env_var = "ENCRYPTION_KEY"
+
+# Path to encryption key file (if source = FILE)
+# encryption_key_path = "D:\\SafeOpsFV2\\secrets\\encryption.key"
+
+# Use Hardware Security Module for CA keys
+hsm_enabled = false
+
+# HSM type
+# Valid values: "PKCS11", "AWS_CLOUDHSM", "AZURE_KEYVAULT"
+# hsm_type = "PKCS11"
+
+# HSM configuration
+# hsm_library_path = "C:\\Program Files\\HSM\\pkcs11.dll"
+# hsm_pin = "${HSM_PIN}"
+# hsm_slot = 0
+
+# Audit logging for all certificate operations
+audit_logging_enabled = true
+
+# Audit log file path
+audit_log_path = "D:\\SafeOpsFV2\\logs\\certificate_audit.log"
+
+# Compliance mode
+# Valid values: "NONE", "NIST", "FIPS", "CA_BROWSER_FORUM"
+compliance_mode = "CA_BROWSER_FORUM"
+
+# ============================================================================
+# API and Integration
+# ============================================================================
+[api]
+# Require authentication for certificate requests
+api_authentication_enabled = true
+
+# Authentication method
+# Valid values: "MTLS", "JWT", "API_KEY"
+api_auth_method = "JWT"
+
+# JWT signing key
+# api_jwt_secret = "${API_SECRET}"
+
+# API key for service-to-service communication
+# api_key = "${API_SECRET}"
+
+# Rate limit certificate requests
+api_rate_limiting_enabled = true
+
+# Maximum requests per minute per client
+api_rate_limit = 100
+
+# Call webhooks on certificate events
+webhook_enabled = false
+
+# Webhook endpoint URL
+# webhook_url = "https://webhook.example.com/certificates"
+
+# Webhook authentication secret
+# webhook_secret = "${WEBHOOK_SECRET}"
+
+# Events to notify
+webhook_events = ["ISSUED", "RENEWED", "REVOKED", "EXPIRED"]
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+[performance]
+# Number of certificate processing worker threads
+# 0 = auto-detect (CPU cores)
+worker_threads = 0
+
+# Certificate request queue size
+request_queue_size = 1000
+
+# Cache signing operations
+signing_cache_enabled = true
+
+# Sign multiple certificates in batch
+batch_signing_enabled = false
+
+# Certificates per batch
+batch_size = 10
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Certificate serial number format
+# Valid values: "RANDOM", "SEQUENTIAL"
+serial_number_format = "RANDOM"
+
+# Random serial number bit length
+serial_number_bits = 128
+
+# Include certificate policies extension
+include_certificate_policies = true
+
+# Certificate policy OID
+certificate_policy_oid = "1.3.6.1.4.1.99999.1.1.1"
+
+# Certificate policy URL
+certificate_policy_url = "https://pki.safeops.local/cps"
+
+# Enable certificate transparency logging
+ct_logging_enabled = false
+
+# CT log servers
+# ct_log_servers = ["https://ct.googleapis.com/logs/argon2021/"]
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# ROOT_CA_PASSWORD - Root CA private key passphrase
+# INTERMEDIATE_CA_PASSWORD - Intermediate CA private key passphrase
+# POSTGRES_PASSWORD - Database password for certificate storage
+# ENCRYPTION_KEY - Key for encrypting stored private keys
+# HSM_PIN - HSM PIN or authentication credential
+# API_SECRET - API authentication secret (JWT signing key or API key)
+# WEBHOOK_SECRET - Webhook authentication secret
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The certificate_manager service validates this configuration at startup
+# and will fail to start if validation fails. Common checks:
+#
+# 1. Root CA certificate and private key must exist
+# 2. Root CA private key must match certificate
+# 3. Intermediate CA certificate must be signed by root CA
+# 4. Certificate chain must be valid
+# 5. storage_backend paths must be writable
+# 6. database credentials must have PostgreSQL access
+# 7. OCSP responder URL must be accessible
+# 8. CRL distribution point must be accessible
+# 9. HSM configuration must be valid if enabled
+# 10. Template configurations must be valid
+#
+# CRITICAL: Root CA certificate must be installed in all client trust
+# stores for certificates to be trusted.
+#
+# Use the validator: safeops-cli config validate certificate_manager.toml
+# ============================================================================

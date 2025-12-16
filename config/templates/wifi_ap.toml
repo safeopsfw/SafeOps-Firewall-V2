@@ -1,195 +1,416 @@
 # SafeOps WiFi Access Point Configuration
-# Purpose: Turn NIC 3 into a wireless hotspot with WPA3 security
+# Wireless network connectivity via hostapd integration
+#
+# This service provides WiFi access point functionality with SSID management,
+# security settings, VLAN tagging, client isolation, and DHCP integration.
 
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Service Configuration
+# ============================================================================
 [service]
-name = "wifi_ap"
-listen_address = "0.0.0.0"
-grpc_port = 50058
-log_level = "info"
-log_file = "C:\\ProgramData\\SafeOps\\logs\\wifi_ap.log"
+# Service identifier for orchestrator registration
+service_name = "wifi_ap"
 
-# =============================================================================
-# ACCESS POINT SETTINGS
-# =============================================================================
-[access_point]
-# Wireless interface
-interface = "NIC3"
+# gRPC management API address
+grpc_listen_address = "127.0.0.1:50063"
 
-# SSID configuration
-ssid = "SafeOps-Secure"
-hidden_ssid = false
+# Physical wireless interface
+# Can be overridden with ${WIFI_INTERFACE}
+wireless_interface = "wlan0"
 
-# WiFi standard
-hw_mode = "g"  # a = 5GHz, g = 2.4GHz, a/g = dual band
-ieee80211n = true   # WiFi 4
-ieee80211ac = true  # WiFi 5
-ieee80211ax = true  # WiFi 6
+# Bridge interface (if bridging to LAN)
+bridge_interface = "br0"
 
-# Channel selection
-channel = 6  # Auto-select best channel if 0
-channel_width = 40  # 20, 40, 80, 160 MHz
+# Path to hostapd configuration file
+hostapd_config_path = "D:\\SafeOpsFV2\\config\\hostapd.conf"
 
-# Country code (regulatory)
-country_code = "US"
+# Path to hostapd executable
+hostapd_binary_path = "C:\\Program Files\\hostapd\\bin\\hostapd.exe"
 
-# Transmission power
-tx_power_dbm = 20  # Max power in dBm
+# Self-health check frequency (seconds)
+health_check_interval = 30
 
-# =============================================================================
-# SECURITY CONFIGURATION
-# =============================================================================
-[security]
-# Authentication
-auth_algs = "wpa3"  # open, wpa2, wpa3, wpa2+wpa3
+# Enable Prometheus metrics export
+metrics_enabled = true
+metrics_port = 9103
 
-# WPA3 settings
-wpa_key_mgmt = "SAE"  # SAE = WPA3-Personal
-sae_password = "${WIFI_PASSWORD}"  # Environment variable
-sae_pwe = 2  # Password element derivation (0=loop, 1=hash, 2=both)
+# ============================================================================
+# SSID Configuration
+# ============================================================================
+# Multiple SSIDs supported
 
-# WPA2 fallback (for older devices)
-wpa2_fallback = true
-wpa_passphrase = "${WIFI_PASSWORD}"
-wpa_key_mgmt_fallback = "WPA-PSK"
-
-# Encryption
-rsn_pairwise = "CCMP"  # AES-CCMP
-wpa_pairwise = "CCMP"
-
-# Group cipher
-group_cipher = "CCMP"
-
-# PMF (Protected Management Frames)
-ieee80211w = 2  # 0=disabled, 1=optional, 2=required
-
-# Key rotation
-wpa_group_rekey = 600  # Seconds
-wpa_ptk_rekey = 600    # Seconds
-
-# =============================================================================
-# CLIENT ISOLATION
-# =============================================================================
-[isolation]
-# Prevent WiFi clients from talking to each other
-ap_isolate = true
-
-# Block WiFi -> LAN traffic (guest network)
-block_lan_access = true
-
-# Allow specific LAN services
-allow_dns = true          # 192.168.1.1:53
-allow_dhcp = true         # 192.168.1.1:67
-allow_gateway = true      # Internet access
-allow_lan_services = []   # Additional IPs/ports
-
-# =============================================================================
-# CAPTIVE PORTAL
-# =============================================================================
-[captive_portal]
-enabled = false
-
-# Portal settings
-portal_url = "http://192.168.2.1/portal"
-portal_page = "C:\\Program Files\\SafeOps\\www\\portal.html"
-
-# Authentication methods
-auth_method = "accept_terms"  # accept_terms, password, social_login
-
-# Session management
-session_timeout_minutes = 240  # 4 hours
-max_sessions_per_device = 1
-
-# Redirect after authentication
-redirect_url = "http://www.google.com"
-
-# =============================================================================
-# CLIENT MANAGEMENT
-# =============================================================================
-[client_management]
-# Connection limits
-max_clients = 50
-max_clients_per_mac = 1
-
-# Bandwidth limiting (per client)
-bandwidth_limit_enabled = false
-download_limit_kbps = 5000  # 5 Mbps
-upload_limit_kbps = 1000    # 1 Mbps
-
-# Idle timeout
-idle_timeout_minutes = 30
-
-# Blacklist
-blacklist_enabled = false
-blacklist_file = "C:\\ProgramData\\SafeOps\\wifi\\blacklist.txt"
-
-# Whitelist (MAC filtering)
-whitelist_enabled = false
-whitelist_file = "C:\\ProgramData\\SafeOps\\wifi\\whitelist.txt"
-
-# =============================================================================
-# QUALITY OF SERVICE (QoS)
-# =============================================================================
-[qos]
+[[ssids]]
+ssid_name = "SafeOps-Home"
 enabled = true
+hidden = false
+vlan_id = 0  # No VLAN (bridge to main LAN)
+max_clients = 50
+client_isolation = false
+description = "Main home network"
 
-# WMM (WiFi Multimedia)
-wmm_enabled = true
+[[ssids]]
+ssid_name = "SafeOps-Guest"
+enabled = true
+hidden = false
+vlan_id = 10  # Guest VLAN
+max_clients = 20
+client_isolation = true
+description = "Guest network with isolation"
 
-# Traffic prioritization
-priority_voice = 7
-priority_video = 5
-priority_best_effort = 3
-priority_background = 1
+[[ssids]]
+ssid_name = "SafeOps-IoT"
+enabled = true
+hidden = false
+vlan_id = 20  # IoT VLAN
+max_clients = 30
+client_isolation = true
+description = "IoT devices network"
 
-# Application QoS
-prioritize_voip = true
-prioritize_video_streaming = true
+# ============================================================================
+# Wireless Settings
+# ============================================================================
+[wireless]
+# Wireless mode
+# Valid values: "802.11b", "802.11g", "802.11n", "802.11ac", "802.11ax"
+wireless_mode = "802.11ac"
 
-# =============================================================================
-# MONITORING & LOGGING
-# =============================================================================
-[monitoring]
-# Client tracking
-track_connected_clients = true
-track_connection_duration = true
-track_bandwidth_usage = true
+# Frequency band
+# Valid values: "2.4GHz", "5GHz", "6GHz"
+frequency_band = "5GHz"
 
-# Database logging
-database_enabled = true
-postgres_host = "localhost"
-postgres_port = 5432
-postgres_database = "safeops"
+# Wireless channel (0=auto)
+# 2.4GHz: 1-14, 5GHz: 36-165
+channel = 0
 
-# Metrics
-collect_metrics = true
-metrics_interval_seconds = 60
+# Channel width
+# Valid values: "20MHz", "40MHz", "80MHz", "160MHz"
+channel_width = "80MHz"
 
-# Signal strength monitoring
-monitor_signal_strength = true
-min_rssi_dbm = -75  # Disconnect if weaker
+# Automatically select best channel
+auto_channel_selection = true
 
-# =============================================================================
-# ADVANCED SETTINGS
-# =============================================================================
-[advanced]
-# Beacon interval
-beacon_interval = 100  # Milliseconds
+# Transmission power (dBm)
+# 0 = maximum allowed by regulatory domain
+tx_power = 0
 
-# DTIM period
+# Beacon interval (milliseconds)
+beacon_interval = 100
+
+# DTIM period for power saving
 dtim_period = 2
 
-# RTS/CTS threshold
+# RTS/CTS threshold (bytes, 0=disabled)
 rts_threshold = 2347
 
-# Fragmentation threshold
+# Fragmentation threshold (bytes)
 fragmentation_threshold = 2346
 
-# Preamble
-preamble = "short"  # short, long
+# ============================================================================
+# Security Configuration
+# ============================================================================
+[security]
+# Security mode
+# Valid values: "OPEN", "WEP", "WPA", "WPA2", "WPA3", "WPA2_WPA3_MIXED"
+security_mode = "WPA2_WPA3_MIXED"
 
-# Hostapd configuration
-hostapd_config_file = "C:\\Program Files\\SafeOps\\wifi\\hostapd.conf"
-hostapd_binary = "C:\\Program Files\\SafeOps\\bin\\hostapd.exe"
+# WPA passphrase (8-63 characters)
+# Can be overridden with ${WPA_PASSPHRASE}
+wpa_passphrase = "${WPA_PASSPHRASE}"
+
+# Key management
+# Valid values: "WPA-PSK", "WPA-EAP", "SAE"
+wpa_key_mgmt = "WPA-PSK SAE"
+
+# WPA pairwise cipher
+# Valid values: "TKIP", "CCMP", "CCMP TKIP"
+wpa_pairwise = "CCMP"
+
+# RSN pairwise cipher (for WPA2/WPA3)
+rsn_pairwise = "CCMP"
+
+# Management frame protection
+# 0=disabled, 1=optional, 2=required
+ieee80211w = 1
+
+# Group key rekey interval (seconds)
+wpa_group_rekey = 3600
+
+# Pairwise key rekey interval (seconds, 0=disabled)
+wpa_ptk_rekey = 0
+
+# ============================================================================
+# Enterprise Authentication (802.1X)
+# ============================================================================
+[enterprise_auth]
+# Enable 802.1X authentication
+enterprise_auth_enabled = false
+
+# RADIUS server address
+radius_server = ""
+
+# RADIUS port (default 1812)
+radius_port = 1812
+
+# RADIUS shared secret
+# Can be overridden with ${RADIUS_SECRET}
+# radius_secret = "${RADIUS_SECRET}"
+
+# Enable RADIUS accounting
+radius_accounting_enabled = false
+
+# Accounting server address
+# radius_accounting_server = ""
+
+# Accounting port (default 1813)
+# radius_accounting_port = 1813
+
+# Allowed EAP methods
+# Valid values: "PEAP", "TTLS", "TLS", "FAST"
+# eap_methods = ["PEAP", "TTLS"]
+
+# ============================================================================
+# Client Management
+# ============================================================================
+[client_management]
+# Maximum total clients across all SSIDs
+max_concurrent_clients = 100
+
+# Idle timeout (seconds, 0=disabled)
+client_timeout = 3600
+
+# Disassociate clients with poor signal quality
+disassoc_low_ack = true
+
+# Global AP isolation (prevent client-to-client)
+# Can be overridden per SSID
+ap_isolate = false
+
+# Enable WiFi Multimedia (QoS)
+wmm_enabled = true
+
+# Enable U-APSD power saving
+uapsd_enabled = true
+
+# ============================================================================
+# DHCP Integration
+# ============================================================================
+[dhcp_integration]
+# Integrate with SafeOps DHCP server
+dhcp_integration_enabled = true
+
+# DHCP server gRPC endpoint
+# Can be overridden with ${DHCP_SERVER_ADDRESS}
+dhcp_grpc_address = "127.0.0.1:50057"
+
+# DHCP pool for WiFi clients
+dhcp_pool_name = "WIFI_POOL"
+
+# Custom DHCP options for WiFi clients
+dhcp_options_override = {}
+
+# Support static IP reservations by MAC
+static_dhcp_enabled = true
+
+# ============================================================================
+# Captive Portal
+# ============================================================================
+[captive_portal]
+# Enable captive portal (for guest network)
+captive_portal_enabled = false
+
+# Captive portal landing page URL
+# portal_url = "http://portal.safeops.local"
+
+# Redirect URL after authentication
+# portal_redirect = "http://www.example.com"
+
+# Require login/acceptance
+# authentication_required = true
+
+# Require terms of service acceptance
+# terms_acceptance_required = true
+
+# Guest session timeout (minutes)
+# session_timeout = 240
+
+# Bandwidth limit for guest users (Mbps)
+# bandwidth_limit = 10
+
+# ============================================================================
+# Quality of Service
+# ============================================================================
+[qos]
+# Enable QoS
+qos_enabled = true
+
+# QoS profiles
+[[qos.qos_profiles]]
+profile_name = "high_priority"
+priority = 6  # WMM priority (0-7)
+min_bandwidth = 10  # Mbps
+max_bandwidth = 100
+client_matcher = "SSID"
+client_value = "SafeOps-Home"
+
+[[qos.qos_profiles]]
+profile_name = "guest_limited"
+priority = 2
+min_bandwidth = 1
+max_bandwidth = 10
+client_matcher = "SSID"
+client_value = "SafeOps-Guest"
+
+[[qos.qos_profiles]]
+profile_name = "iot_limited"
+priority = 1
+min_bandwidth = 1
+max_bandwidth = 5
+client_matcher = "SSID"
+client_value = "SafeOps-IoT"
+
+# Enable airtime fairness
+airtime_fairness = true
+
+# ============================================================================
+# Logging and Monitoring
+# ============================================================================
+[logging]
+# Enable AP event logging
+ap_logging_enabled = true
+
+# AP-specific log level
+# Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR"
+log_level = "INFO"
+
+# Log client associations
+log_associations = true
+
+# Log authentication attempts
+log_authentications = true
+
+# Log client disconnections
+log_deauthentications = true
+
+# Rate limit for high-volume events (events per minute)
+log_rate_limit = 100
+
+# Forward logs to syslog
+syslog_forwarding = true
+
+# Syslog server
+syslog_server = "localhost:514"
+
+# WiFi AP log file
+wifi_log_file = "D:\\SafeOpsFV2\\logs\\wifi_ap.log"
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# BSS load announcement interval (seconds)
+bss_load_update_period = 60
+
+# HT capabilities (802.11n)
+# [LDPC][HT40+][HT40-][GF][SHORT-GI-20][SHORT-GI-40]
+ht_capab = "[HT40+][HT40-][SHORT-GI-20][SHORT-GI-40]"
+
+# VHT capabilities (802.11ac)
+# [MAX-MPDU-11454][RXLDPC][SHORT-GI-80][TX-STBC-2BY1][RX-STBC-1]
+vht_capab = "[RXLDPC][SHORT-GI-80][TX-STBC-2BY1][RX-STBC-1]"
+
+# HE capabilities (802.11ax/WiFi 6)
+# he_capab = "[HE40+][HE40-][HE80]"
+
+# Enable Automatic Channel Selection
+acs_enabled = true
+
+# Exclude DFS (radar) channels from ACS
+acs_exclude_dfs = true
+
+# Regulatory domain country code
+# Can be overridden with ${COUNTRY_CODE}
+# US, EU, JP, CN, etc.
+country_code = "US"
+
+# IEEE 802.11d (country info in beacons)
+ieee80211d = true
+
+# IEEE 802.11h (DFS and TPC)
+ieee80211h = false
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+[performance]
+# Maximum frame aggregation size
+max_num_sta = 100
+
+# RX queue size
+rx_queue_len = 1000
+
+# TX queue size
+tx_queue_len = 1000
+
+# Enable hardware crypto acceleration
+hw_crypto_enabled = true
+
+# ============================================================================
+# Statistics and Monitoring
+# ============================================================================
+[statistics]
+# Enable statistics collection
+statistics_enabled = true
+
+# Statistics interval (seconds)
+stats_interval = 60
+
+# Metrics to track
+track_metrics = [
+    "clients_connected",
+    "clients_authenticated",
+    "tx_bytes",
+    "rx_bytes",
+    "tx_packets",
+    "rx_packets",
+    "signal_strength_avg",
+    "channel_utilization"
+]
+
+# Export statistics via Prometheus
+export_to_prometheus = true
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# WIFI_INTERFACE - Override wireless interface name
+# WPA_PASSPHRASE - WiFi password
+# RADIUS_SECRET - RADIUS shared secret
+# DHCP_SERVER_ADDRESS - DHCP server gRPC endpoint
+# COUNTRY_CODE - Regulatory domain
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The wifi_ap service validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. wireless_interface must exist and be a wireless interface
+# 2. hostapd binary must exist and be executable
+# 3. channel must be valid for frequency_band
+# 4. security_mode should not be OPEN or WEP (insecure)
+# 5. wpa_passphrase must be 8-63 characters for WPA/WPA2/WPA3
+# 6. max_concurrent_clients within hardware capabilities
+# 7. dhcp_grpc_address must be reachable if dhcp_integration_enabled
+# 8. country_code must be valid ISO 3166-1 alpha-2
+# 9. RADIUS server reachable if enterprise_auth_enabled
+# 10. VLAN IDs must not conflict with other network segments
+#
+# SECURITY WARNING: Do not use OPEN or WEP security modes in production.
+# Use WPA2_WPA3_MIXED or WPA3 for maximum security.
+#
+# Use the validator: safeops-cli config validate wifi_ap.toml
+# ============================================================================

@@ -1,438 +1,400 @@
-# ============================================================================
-# SafeOps DNS & DHCP Server Configuration
-# ============================================================================
-# Purpose: Complete configuration for DNS and DHCP services
-# Supports: BIND9-compatible DNS, ISC DHCP, dnsmasq
-# ============================================================================
-
-version: "1.0.0"
-metadata:
-  service: "dns_dhcp_server"
-  description: "Integrated DNS and DHCP configuration"
-  last_updated: "2025-12-13"
-
-# ============================================================================
-# DNS Server Configuration
-# ============================================================================
-dns:
-  enabled: true
-  server_type: bind9  # bind9, dnsmasq, unbound
-  listen_addresses:
-    - 192.168.10.1
-    - 192.168.20.1
-    - 192.168.30.1
-    - 192.168.40.1
-    - 192.168.100.1
-  listen_port: 53
-  
-  # DNS Security
-  dnssec:
-    enabled: true
-    validation: true
-    key_directory: /etc/safeops/dns/keys
-  
-  dns_over_tls:
-    enabled: true
-    port: 853
-    certificate: /etc/safeops/certs/dns-tls.crt
-    private_key: /etc/safeops/certs/dns-tls.key
-  
-  dns_over_https:
-    enabled: true
-    port: 443
-    path: /dns-query
-    certificate: /etc/safeops/certs/dns-https.crt
-    private_key: /etc/safeops/certs/dns-https.key
-  
-  # Forwarding & Recursion
-  forwarders:
-    - name: "Google DNS"
-      ips: [8.8.8.8, 8.8.4.4]
-      priority: 1
-      enabled: true
-    
-    - name: "Cloudflare DNS"
-      ips: [1.1.1.1, 1.0.0.1]
-      priority: 2
-      enabled: true
-    
-    - name: "Quad9"
-      ips: [9.9.9.9, 149.112.112.112]
-      priority: 3
-      enabled: false
-  
-  recursion:
-    enabled: true
-    allow_from:
-      - 192.168.0.0/16
-      - 127.0.0.1
-    cache_size_mb: 512
-    cache_ttl_seconds: 3600
-  
-  # Local Zones
-  zones:
-    - name: office.local
-      type: master
-      file: /etc/safeops/dns/zones/office.local.zone
-      auto_dnssec: true
-      allow_update: []
-      allow_transfer:
-        - 192.168.100.10
-      notify: true
-      records:
-        # A Records
-        - type: A
-          name: gateway
-          value: 192.168.10.1
-          ttl: 300
-        
-        - type: A
-          name: webserver
-          value: 192.168.20.100
-          ttl: 300
-        
-        - type: A
-          name: mailserver
-          value: 192.168.20.101
-          ttl: 300
-        
-        # CNAME Records
-        - type: CNAME
-          name: www
-          value: webserver.office.local.
-          ttl: 300
-        
-        - type: CNAME
-          name: mail
-          value: mailserver.office.local.
-          ttl: 300
-        
-        # MX Records
-        - type: MX
-          name: "@"
-          value: mailserver.office.local.
-          priority: 10
-          ttl: 300
-        
-        # TXT Records (SPF, DKIM, DMARC)
-        - type: TXT
-          name: "@"
-          value: "v=spf1 mx ~all"
-          ttl: 300
-        
-        - type: TXT
-          name: _dmarc
-          value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@office.local"
-          ttl: 300
-    
-    # Reverse Zone for 192.168.10.0/24
-    - name: 10.168.192.in-addr.arpa
-      type: master
-      file: /etc/safeops/dns/zones/10.168.192.in-addr.arpa.zone
-      records:
-        - type: PTR
-          name: "1"
-          value: gateway.office.local.
-          ttl: 300
-        
-        - type: PTR
-          name: "100"
-          value: webserver.office.local.
-          ttl: 300
-  
-  # Conditional Forwarding
-  conditional_forwarding:
-    - domain: corp.example.com
-      forwarders: [10.0.0.1, 10.0.0.2]
-      description: "Corporate domain forwarding"
-  
-  # Filtering & Security
-  filtering:
-    enabled: true
-    
-    # Ad Blocking
-    ad_blocking:
-      enabled: true
-      blocklist_sources:
-        - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
-        - https://v.firebog.net/hosts/AdguardDNS.txt
-        - https://v.firebog.net/hosts/Easylist.txt
-      update_interval_hours: 24
-    
-    # Malware Blocking
-    malware_blocking:
-      enabled: true
-      threat_intel_sources:
-        - urlhaus
-        - phishing_army
-        - malwaredomains
-      action: NXDOMAIN  # NXDOMAIN, REFUSED, custom_ip
-    
-    # Content Categories
-    category_filtering:
-      enabled: true
-      blocked_categories:
-        - adult
-        - gambling
-        - weapons
-        - drugs
-      action: NXDOMAIN
-    
-    # Whitelist
-    whitelist:
-      - google.com
-      - microsoft.com
-      - github.com
-      - "*.office.local"
-    
-    # Blacklist
-    blacklist:
-      - "*.malicious.com"
-      - "evil-domain.net"
-  
-  # Response Policy Zones (RPZ)
-  rpz:
-    enabled: true
-    zones:
-      - name: rpz.local
-        action: NXDOMAIN  # NXDOMAIN, NODATA, PassThru, DROP, TCP-Only
-        file: /etc/safeops/dns/rpz/rpz.local.zone
-  
-  # Logging
-  logging:
-    enabled: true
-    log_queries: true
-    log_responses: false
-    log_file: /var/log/safeops/dns.log
-    max_size_mb: 500
-    rotation: daily
-    retention_days: 30
-
-# ============================================================================
-# DHCP Server Configuration
-# ============================================================================
-dhcp:
-  enabled: true
-  server_type: isc-dhcp  # isc-dhcp, dnsmasq, kea
-  authoritative: true
-  
-  # Global Settings
-  global:
-    default_lease_time_seconds: 86400  # 24 hours
-    max_lease_time_seconds: 604800     # 7 days
-    ping_check: true
-    ping_timeout_ms: 1000
-    update_static_leases: true
-    update_dns: true
-    ddns_update_style: interim
-    ddns_domainname: office.local
-  
-  # Network Scopes (per VLAN)
-  scopes:
-    # Office Network (VLAN 10)
-    - name: Office-Main
-      vlan_id: 10
-      subnet: 192.168.10.0
-      netmask: 255.255.255.0
-      range_start: 192.168.10.100
-      range_end: 192.168.10.200
-      gateway: 192.168.10.1
-      dns_servers:
-        - 192.168.10.1
-        - 8.8.8.8
-      ntp_servers:
-        - time.google.com
-        - pool.ntp.org
-      domain_name: office.local
-      domain_search: [office.local, example.com]
-      lease_time_seconds: 86400
-      
-      # DHCP Options
-      options:
-        - code: 42   # NTP servers
-          value: 192.168.10.1
-        - code: 66   # TFTP server (for PXE)
-          value: 192.168.10.50
-        - code: 150  # Cisco IP Phone option
-          value: 192.168.10.60
-    
-    # Server Network (VLAN 20) - No DHCP, static only
-    - name: Servers
-      vlan_id: 20
-      subnet: 192.168.20.0
-      netmask: 255.255.255.0
-      enabled: false
-      notes: "Static IP assignments only"
-    
-    # Guest Network (VLAN 30)
-    - name: Guest-WiFi
-      vlan_id: 30
-      subnet: 192.168.30.0
-      netmask: 255.255.255.0
-      range_start: 192.168.30.10
-      range_end: 192.168.30.250
-      gateway: 192.168.30.1
-      dns_servers:
-        - 192.168.30.1
-        - 1.1.1.1
-      domain_name: guest.local
-      lease_time_seconds: 14400  # 4 hours
-      
-      # Guest-specific options
-      options:
-        - code: 252  # WPAD (disable for security)
-          value: ""
-    
-    # Library Network (VLAN 40)
-    - name: Library
-      vlan_id: 40
-      subnet: 192.168.40.0
-      netmask: 255.255.255.0
-      range_start: 192.168.40.50
-      range_end: 192.168.40.150
-      gateway: 192.168.40.1
-      dns_servers:
-        - 192.168.40.1
-      domain_name: library.local
-      lease_time_seconds: 43200  # 12 hours
-    
-    # IoT Network (VLAN 50)
-    - name: IoT-Devices
-      vlan_id: 50
-      subnet: 192.168.50.0
-      netmask: 255.255.255.0
-      range_start: 192.168.50.10
-      range_end: 192.168.50.200
-      gateway: 192.168.50.1
-      dns_servers:
-        - 192.168.50.1
-      ntp_servers:
-        - 192.168.50.1
-      lease_time_seconds: 604800  # 7 days (IoT devices rarely change)
-  
-  # Static Reservations (MAC → IP)
-  reservations:
-    # Servers
-    - name: webserver
-      mac_address: "00:11:22:33:44:55"
-      ip_address: 192.168.20.100
-      hostname: webserver.office.local
-      vlan_id: 20
-    
-    - name: mailserver
-      mac_address: "00:11:22:33:44:66"
-      ip_address: 192.168.20.101
-      hostname: mailserver.office.local
-      vlan_id: 20
-    
-    # Printers
-    - name: office-printer-01
-      mac_address: "AA:BB:CC:DD:EE:01"
-      ip_address: 192.168.10.50
-      hostname: printer01.office.local
-      vlan_id: 10
-    
-    # IP Phones
-    - name: ip-phone-reception
-      mac_address: "CC:DD:EE:FF:00:11"
-      ip_address: 192.168.10.60
-      hostname: phone-reception.office.local
-      vlan_id: 10
-      options:
-        - code: 150
-          value: 192.168.10.60
-  
-  # DHCP Relay (for VLANs on different subnets)
-  relay:
-    enabled: true
-    interfaces:
-      - vlan10
-      - vlan30
-      - vlan40
-      - vlan50
-    servers:
-      - 192.168.100.1
-  
-  # Failover / High Availability
-  failover:
-    enabled: false
-    role: primary  # primary, secondary
-    peer_address: 192.168.100.2
-    peer_port: 647
-    max_response_delay: 60
-    max_unacked_updates: 10
-    split: 128  # 50/50 split
-  
-  # Logging
-  logging:
-    enabled: true
-    log_leases: true
-    log_renewals: false
-    log_file: /var/log/safeops/dhcp.log
-    max_size_mb: 200
-    rotation: weekly
-    retention_days: 90
-
-# ============================================================================
-# Integration Settings
-# ============================================================================
-integration:
-  # Threat Intelligence Integration
-  threat_intel:
-    enabled: true
-    block_malicious_domains: true
-    update_interval_hours: 6
-  
-  # IPAM Integration
-  ipam:
-    enabled: true
-    sync_leases: true
-    sync_interval_minutes: 15
-  
-  # SIEM Integration
-  siem:
-    enabled: true
-    export_dns_logs: true
-    export_dhcp_logs: true
-    syslog_server: 192.168.100.20
-    syslog_port: 514
-
-# ============================================================================
-# Monitoring & Health
-# ============================================================================
-monitoring:
-  health_checks:
-    dns_query_test:
-      enabled: true
-      test_domain: google.com
-      interval_seconds: 60
-    
-    dhcp_scope_utilization:
-      enabled: true
-      alert_threshold_percent: 90
-      interval_seconds: 300
-  
-  metrics:
-    enabled: true
-    prometheus_endpoint: true
-    port: 9153
-
-# ============================================================================
-# Application Integration Notes
-# ============================================================================
-# This configuration can be:
-# 1. Loaded via Web UI for editing
-# 2. Modified through gRPC API
-# 3. Validated against JSON schema
-# 4. Applied to DNS/DHCP services
-# 5. Backed up and versioned
+# SafeOps Combined DNS/DHCP Service Configuration
+# Unified configuration for deployments running DNS and DHCP as a single service
 #
-# To add new DNS records:
-#   POST /api/dns/zones/{zone}/records
+# This file merges dns_server.toml and dhcp_server.toml settings while adding
+# coordination parameters for tight DNS-DHCP integration, such as automatic
+# DNS record creation for DHCP leases.
+
+# ============================================================================
+# Combined Service Configuration
+# ============================================================================
+[service]
+# Service identifier for orchestrator registration
+service_name = "dns_dhcp_combined"
+
+# Operating mode
+# Valid values: "COMBINED", "DNS_ONLY", "DHCP_ONLY"
+# Can be overridden with ${COMBINED_SERVICE_MODE}
+operating_mode = "COMBINED"
+
+# Single gRPC endpoint for both DNS and DHCP functions
+grpc_listen_address = "127.0.0.1:50059"
+
+# Health monitoring frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+metrics_port = 9099
+
+# Share memory cache between DNS and DHCP
+shared_cache_enabled = true
+
+# Enable inter-function coordination features
+coordination_enabled = true
+
+# ============================================================================
+# DNS Service Section
+# ============================================================================
+# Complete DNS server configuration
+
+[dns]
+# DNS listen addresses (UDP and TCP)
+listen_addresses = ["0.0.0.0:53", "[::]:53"]
+
+# Upstream DNS forwarders
+upstream_forwarders = ["8.8.8.8", "8.8.4.4", "1.1.1.1"]
+
+# Query timeout for upstream servers (milliseconds)
+upstream_timeout = 2000
+
+# DNS caching
+[dns.caching]
+enabled = true
+cache_size = 10000  # Max cached records
+positive_ttl = 3600  # Cache successful responses (seconds)
+negative_ttl = 600   # Cache NXDOMAIN responses (seconds)
+min_ttl = 60         # Minimum TTL to respect
+max_ttl = 86400      # Maximum TTL to respect
+
+# DNS filtering and blocking
+[dns.filtering]
+enabled = true
+blocklist_enabled = true
+blocklist_urls = [
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+]
+blocklist_update_interval = 86400  # 24 hours
+
+# Local DNS zones
+[[dns.zones]]
+zone_name = "lan.local"
+zone_type = "AUTHORITATIVE"
+zone_file = "D:\\SafeOpsFV2\\data\\dns\\lan.local.zone"
+
+[[dns.zones]]
+zone_name = "dhcp.lan.local"
+zone_type = "DYNAMIC"  # Auto-updated by DHCP
+zone_file = "D:\\SafeOpsFV2\\data\\dns\\dhcp.lan.local.zone"
+
+# Reverse DNS zone
+[[dns.zones]]
+zone_name = "1.168.192.in-addr.arpa"
+zone_type = "DYNAMIC"
+zone_file = "D:\\SafeOpsFV2\\data\\dns\\192.168.1.rev"
+
+# DNS query logging
+[dns.logging]
+query_logging_enabled = true
+log_file = "D:\\SafeOpsFV2\\logs\\dns_queries.log"
+log_queries = true
+log_responses = true
+
+# DNSSEC validation
+[dns.dnssec]
+validation_enabled = false
+trust_anchors_file = "D:\\SafeOpsFV2\\data\\dns\\trust-anchors.xml"
+
+# ============================================================================
+# DHCP Service Section
+# ============================================================================
+# Complete DHCP server configuration
+
+[dhcp]
+# DHCP server settings
+authoritative = true
+listen_interface = "Ethernet 2"
+listen_address = "192.168.1.1"
+listen_port = 67
+
+# IP address pools
+[[dhcp.address_pools]]
+pool_name = "LAN_POOL"
+network = "192.168.1.0/24"
+range_start = "192.168.1.100"
+range_end = "192.168.1.200"
+enabled = true
+interface = "Ethernet 2"
+excluded_addresses = []
+
+[[dhcp.address_pools]]
+pool_name = "WIFI_POOL"
+network = "192.168.2.0/24"
+range_start = "192.168.2.100"
+range_end = "192.168.2.250"
+enabled = true
+interface = "Wi-Fi"
+excluded_addresses = []
+
+# Lease management
+[dhcp.lease_management]
+default_lease_time = 86400  # 24 hours
+max_lease_time = 604800     # 7 days
+min_lease_time = 600        # 10 minutes
+lease_renewal_time = 43200  # 12 hours
+lease_rebinding_time = 75600  # 21 hours
+offer_timeout = 120
+decline_handling = "LOG"
+
+# DHCP options for LAN pool
+[dhcp.dhcp_options.LAN_POOL]
+subnet_mask = "255.255.255.0"
+router = ["192.168.1.1"]
+dns_servers = ["192.168.1.1"]  # Points to local DNS
+domain_name = "lan.local"
+ntp_servers = ["192.168.1.1"]
+broadcast_address = "192.168.1.255"
+
+# DHCP options for WiFi pool
+[dhcp.dhcp_options.WIFI_POOL]
+subnet_mask = "255.255.255.0"
+router = ["192.168.2.1"]
+dns_servers = ["192.168.2.1"]
+domain_name = "wifi.local"
+ntp_servers = ["192.168.2.1"]
+broadcast_address = "192.168.2.255"
+
+# Static reservations
+[[dhcp.reservations]]
+hostname = "nas-server"
+mac_address = "AA:BB:CC:DD:EE:01"
+ip_address = "192.168.1.10"
+description = "Network Attached Storage"
+
+[[dhcp.reservations]]
+hostname = "printer"
+mac_address = "AA:BB:CC:DD:EE:02"
+ip_address = "192.168.1.20"
+description = "Office Network Printer"
+
+# Lease database
+[dhcp.lease_database]
+lease_database_type = "FILE"
+lease_database_path = "D:\\SafeOpsFV2\\data\\dhcp_leases.db"
+lease_sync_interval = 60
+lease_cleanup_interval = 3600
+
+# ============================================================================
+# DNS-DHCP Integration
+# ============================================================================
+# Coordination features enabled by combined deployment
+
+[integration]
+# Automatically create DNS records for DHCP leases
+auto_dns_registration = true
+
+# DNS zone for DHCP client records
+dns_registration_zone = "dhcp.lan.local"
+
+# TTL for auto-created DNS records (seconds)
+dns_record_ttl = 3600
+
+# Delete DNS record when DHCP lease released
+dns_cleanup_on_release = true
+
+# Create PTR records for reverse DNS
+reverse_dns_enabled = true
+
+# Reverse DNS zone
+reverse_dns_zone = "1.168.192.in-addr.arpa"
+
+# Hostname resolution priority
+# Valid values: "DHCP_FIRST", "DNS_FIRST", "BOTH"
+# DHCP_FIRST: Check DHCP leases before DNS zones
+# DNS_FIRST: Check DNS zones before DHCP leases
+# BOTH: Return results from both sources
+hostname_resolution_priority = "DHCP_FIRST"
+
+# Handle DNS/DHCP hostname conflicts
+# Valid values: "DHCP_WINS", "DNS_WINS", "APPEND_MAC"
+# DHCP_WINS: DHCP lease overwrites DNS record
+# DNS_WINS: Keep DNS record, reject DHCP registration
+# APPEND_MAC: Append MAC address to hostname (hostname-aabbcc)
+conflict_resolution = "DHCP_WINS"
+
+# Update DNS immediately when lease assigned
+immediate_dns_update = true
+
+# Batch DNS updates for performance
+batch_dns_updates = false
+batch_update_interval = 30  # seconds
+
+# ============================================================================
+# Shared Performance Settings
+# ============================================================================
+[performance]
+# Total worker threads shared between DNS and DHCP
+# 0 = auto-detect (CPU cores)
+total_worker_threads = 0
+
+# Thread allocation strategy
+# Valid values: "AUTO", "MANUAL"
+# AUTO: Dynamically allocate based on load
+# MANUAL: Fixed allocation per service
+thread_allocation = "AUTO"
+
+# Threads dedicated to DNS (if MANUAL)
+dns_thread_count = 4
+
+# Threads dedicated to DHCP (if MANUAL)
+dhcp_thread_count = 2
+
+# Single memory pool for both services
+shared_memory_pool = true
+
+# Size of shared memory pool (MB)
+memory_pool_size = 512
+
+# Query queue sizes
+dns_query_queue_size = 5000
+dhcp_request_queue_size = 1000
+
+# ============================================================================
+# Unified Logging
+# ============================================================================
+[logging]
+# Use single log stream for both services
+unified_logging_enabled = true
+
+# Tag log entries with service (DNS vs DHCP)
+log_service_tags = true
+
+# Single log file path for both services
+combined_log_file = "D:\\SafeOpsFV2\\logs\\dns_dhcp_combined.log"
+
+# Use separate files despite combined service
+separate_log_files = false
+
+# DNS-specific log level override
+log_level_dns = "INFO"
+
+# DHCP-specific log level override
+log_level_dhcp = "INFO"
+
+# Log DNS-DHCP integration events
+log_integration_events = true
+
+# ============================================================================
+# Shared Database Integration
+# ============================================================================
+[database]
+# Use single database connection pool
+shared_database_enabled = true
+
+# PostgreSQL connection (optional, for advanced deployments)
+database_type = "FILE"  # FILE or POSTGRESQL
+database_host = "localhost"
+database_port = 5432
+database_name = "safeops"
+database_user = "safeops"
+database_password = "${POSTGRES_PASSWORD}"
+
+# Pool size for shared connection
+database_connection_pool = 10
+
+# Frequency of lease-to-DNS synchronization (seconds)
+lease_dns_sync_interval = 60
+
+# Transaction isolation for consistency
+# Valid values: "READ_COMMITTED", "SERIALIZABLE"
+database_transaction_mode = "READ_COMMITTED"
+
+# ============================================================================
+# Security Settings
+# ============================================================================
+[security]
+# Enable DNS query filtering
+dns_filtering_enabled = true
+
+# Enable DHCP MAC address validation
+dhcp_mac_validation = true
+
+# Detect rogue DHCP servers
+rogue_dhcp_detection = true
+
+# Rate limiting
+dns_query_rate_limit = 1000  # queries per second
+dhcp_request_rate_limit = 100  # requests per second
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Enable DNS response caching for DHCP-registered hosts
+cache_dhcp_dns_responses = true
+
+# DHCP-DNS cache TTL (seconds)
+dhcp_dns_cache_ttl = 300
+
+# Automatically clean up stale DNS records
+auto_cleanup_stale_records = true
+
+# Age threshold for stale record cleanup (days)
+stale_record_threshold = 30
+
+# Enable DNS notify for zone updates
+dns_notify_enabled = false
+
+# DNS zone transfer (AXFR/IXFR)
+zone_transfer_enabled = false
+zone_transfer_allowed_ips = []
+
+# ============================================================================
+# Failover Configuration
+# ============================================================================
+[failover]
+# Enable high availability mode
+ha_enabled = false
+
+# Peer combined service address
+ha_peer_address = ""
+
+# Failover timeout (seconds)
+ha_failover_timeout = 30
+
+# Sync DHCP leases with peer
+sync_leases_with_peer = false
+
+# Sync DNS zones with peer
+sync_zones_with_peer = false
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
 #
-# To add DHCP reservation:
-#   POST /api/dhcp/reservations
+# COMBINED_SERVICE_MODE - Override operating mode
+# SHARED_WORKER_THREADS - Override total worker thread count
+# POSTGRES_PASSWORD - Database password (if using PostgreSQL)
 #
-# To modify scope:
-#   PUT /api/dhcp/scopes/{vlan_id}
+# Plus all environment variables from dns_server.toml and dhcp_server.toml
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The dns_dhcp_combined service validates this configuration at startup
+# and will fail to start if validation fails. Common checks:
+#
+# 1. DNS and DHCP ports must not conflict
+# 2. dns_registration_zone must exist in dns.zones
+# 3. reverse_dns_zone must exist if reverse_dns_enabled
+# 4. DHCP address pools must not overlap
+# 5. DNS server must be in DHCP options (usually 192.168.x.1)
+# 6. total_worker_threads >= dns_thread_count + dhcp_thread_count
+# 7. Database must be accessible if shared_database_enabled
+# 8. Network interfaces must exist and be configured
+# 9. Log directories must exist and be writable
+# 10. DNS zone files must exist for AUTHORITATIVE zones
+#
+# DEPLOYMENT NOTE: This combined service is recommended for:
+# - Home networks and small office deployments
+# - Environments with <100 DHCP clients
+# - Scenarios requiring tight DNS-DHCP integration
+#
+# For large enterprise deployments, use separate dns_server.toml and
+# dhcp_server.toml for independent scaling and fault isolation.
+#
+# Use the validator: safeops-cli config validate dns_dhcp_combined.toml
 # ============================================================================

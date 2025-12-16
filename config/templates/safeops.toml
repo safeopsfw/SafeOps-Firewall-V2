@@ -1,343 +1,492 @@
-# SafeOps v2.0 - Main System Configuration
-# This is the primary configuration file for the SafeOps firewall system.
-# All settings have secure defaults. Uncomment and modify as needed.
+# SafeOps Master Configuration File
+# Central coordination point for the entire SafeOps system
+#
+# This file is loaded by the orchestrator at startup and defines:
+# - Global system settings
+# - Service registry and dependencies
+# - Network topology
+# -= Database and cache configuration
+# - Security parameters
+#
+# Hot-reload supported for select sections (marked with 🔄)
 
-# =============================================================================
-# SYSTEM CONFIGURATION
-# =============================================================================
-[system]
-# System identification
-hostname = "safeops-gateway"
-timezone = "UTC"
-admin_email = "admin@example.com"
-description = "SafeOps Network Security Gateway"
-version = "2.0.0"
+# ============================================================================
+# Global System Settings
+# ============================================================================
+[global]
+# Human-readable identifier for this SafeOps deployment
+system_name = "SafeOps Firewall v2.0"
 
-# Installation paths (Windows)
-install_directory = "C:\\Program Files\\SafeOps"
-data_directory = "C:\\ProgramData\\SafeOps"
-log_directory = "C:\\ProgramData\\SafeOps\\logs"
-config_directory = "C:\\ProgramData\\SafeOps\\config"
-temp_directory = "C:\\ProgramData\\SafeOps\\temp"
+# Deployment environment
+# Valid values: "production", "staging", "development", "testing"
+deployment_environment = "production"
 
-[system.resources]
-# Maximum CPU cores to use (0 = all available)
-max_cpu_cores = 0
-# Maximum memory in MB (0 = 80% of available)
-max_memory_mb = 0
-# Maximum disk space for logs/data in GB
-max_disk_gb = 100
+# Global logging verbosity
+# Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"
+# Overridden by logging.toml per-service settings
+log_level = "INFO"
 
-# =============================================================================
-# NETWORK CONFIGURATION
-# =============================================================================
-[network]
-# Network topology
-topology = "3-nic"  # single-nic, 2-nic, 3-nic
+# Configuration schema version for compatibility checking
+config_version = "2.0.0"
 
-# WAN (Wide Area Network - Internet-facing interface)
-[network.wan]
-interface = "NIC1"
-mode = "dhcp"  # dhcp or static
-# Static WAN configuration (only used if mode = "static")
-static_ip = "203.0.113.10"
+# Root path for all runtime data storage
+# Can be overridden with ${SAFEOPS_DATA_DIR}
+data_directory = "D:\\SafeOpsFV2\\data"
+
+# Temporary files and scratch space location
+temp_directory = "D:\\SafeOpsFV2\\temp"
+
+# ============================================================================
+# Service Registry
+# ============================================================================
+# Defines all microservices with connection details and dependencies
+# The orchestrator uses this to manage service lifecycle
+
+[[services]]
+name = "orchestrator"
+enabled = true
+grpc_address = "127.0.0.1:50051"
+health_check_endpoint = "http://127.0.0.1:8081/health"
+startup_order = 1
+dependencies = []
+restart_policy = "always"
+max_restart_attempts = 3
+
+[[services]]
+name = "network_logger"
+enabled = true
+grpc_address = "127.0.0.1:50052"
+health_check_endpoint = "http://127.0.0.1:8082/health"
+startup_order = 2
+dependencies = ["orchestrator"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "firewall_engine"
+enabled = true
+grpc_address = "127.0.0.1:50053"
+health_check_endpoint = "http://127.0.0.1:8083/health"
+startup_order = 3
+dependencies = ["orchestrator", "network_logger"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "threat_intel"
+enabled = true
+grpc_address = "127.0.0.1:50054"
+health_check_endpoint = "http://127.0.0.1:8084/health"
+startup_order = 3
+dependencies = ["orchestrator"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "ids_ips"
+enabled = true
+grpc_address = "127.0.0.1:50055"
+health_check_endpoint = "http://127.0.0.1:8085/health"
+startup_order = 4
+dependencies = ["orchestrator", "threat_intel", "network_logger"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "dns_server"
+enabled = true
+grpc_address = "127.0.0.1:50056"
+health_check_endpoint = "http://127.0.0.1:8086/health"
+startup_order = 5
+dependencies = ["orchestrator", "threat_intel"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "dhcp_server"
+enabled = true
+grpc_address = "127.0.0.1:50057"
+health_check_endpoint = "http://127.0.0.1:8087/health"
+startup_order = 5
+dependencies = ["orchestrator", "dns_server"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "tls_proxy"
+enabled = true
+grpc_address = "127.0.0.1:50058"
+health_check_endpoint = "http://127.0.0.1:8088/health"
+startup_order = 6
+dependencies = ["orchestrator", "certificate_manager"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "wifi_ap"
+enabled = true
+grpc_address = "127.0.0.1:50059"
+health_check_endpoint = "http://127.0.0.1:8089/health"
+startup_order = 6
+dependencies = ["orchestrator", "dhcp_server"]
+restart_policy = "on-failure"
+max_restart_attempts = 5
+
+[[services]]
+name = "backup_restore"
+enabled = true
+grpc_address = "127.0.0.1:50060"
+health_check_endpoint = "http://127.0.0.1:8090/health"
+startup_order = 7
+dependencies = ["orchestrator"]
+restart_policy = "on-failure"
+max_restart_attempts = 3
+
+[[services]]
+name = "certificate_manager"
+enabled = true
+grpc_address = "127.0.0.1:50061"
+health_check_endpoint = "http://127.0.0.1:8091/health"
+startup_order = 2
+dependencies = ["orchestrator"]
+restart_policy = "always"
+max_restart_attempts = 5
+
+[[services]]
+name = "update_manager"
+enabled = true
+grpc_address = "127.0.0.1:50062"
+health_check_endpoint = "http://127.0.0.1:8092/health"
+startup_order = 8
+dependencies = ["orchestrator"]
+restart_policy = "on-failure"
+max_restart_attempts = 3
+
+[[services]]
+name = "network_manager"
+enabled = true
+grpc_address = "127.0.0.1:50063"
+health_check_endpoint = "http://127.0.0.1:8093/health"
+startup_order = 2
+dependencies = ["orchestrator"]
+restart_policy = "always"
+max_restart_attempts = 5
+
+[[services]]
+name = "userspace_service"
+enabled = true
+grpc_address = "127.0.0.1:50064"
+health_check_endpoint = "http://127.0.0.1:8094/health"
+startup_order = 1
+dependencies = []
+restart_policy = "always"
+max_restart_attempts = 10
+
+# ============================================================================
+# Network Topology  🔄
+# ============================================================================
+# Describes physical network interfaces and their roles
+# The network_manager service uses this for auto-configuration
+
+[[network.interfaces]]
+name = "Ethernet"
+type = "WAN"
+mac_address = ""  # Auto-detected at runtime
+ip_configuration = "dhcp"  # "dhcp" or "static"
+monitoring_enabled = true
+default_gateway = ""  # Auto-populated for DHCP
+dns_servers = ["8.8.8.8", "8.8.4.4"]
+
+[[network.interfaces]]
+name = "Ethernet 2"
+type = "LAN"
+mac_address = ""
+ip_configuration = "static"
+monitoring_enabled = true
+static_ip = "192.168.1.1"
 subnet_mask = "255.255.255.0"
-gateway = "203.0.113.1"
-dns_servers = ["8.8.8.8", "1.1.1.1"]
-
-# LAN (Local Area Network - Internal wired network)
-[network.lan]
-interface = "NIC2"
-ip = "192.168.1.1"
-subnet_mask = "255.255.255.0"
-network = "192.168.1.0/24"
-dhcp_enabled = true
-dhcp_range_start = "192.168.1.10"
-dhcp_range_end = "192.168.1.200"
+default_gateway = ""
 dns_servers = ["192.168.1.1"]
-gateway = "192.168.1.1"
-domain = "local"
 
-# WiFi (Wireless Network - Optional third interface)
-[network.wifi]
-interface = "NIC3"
-ip = "192.168.2.1"
+[[network.interfaces]]
+name = "Wi-Fi"
+type = "WIFI"
+mac_address = ""
+ip_configuration = "static"
+monitoring_enabled = true
+static_ip = "192.168.2.1"
 subnet_mask = "255.255.255.0"
-network = "192.168.2.0/24"
-dhcp_enabled = true
-dhcp_range_start = "192.168.2.10"
-dhcp_range_end = "192.168.2.200"
+default_gateway = ""
 dns_servers = ["192.168.2.1"]
-gateway = "192.168.2.1"
-domain = "wifi.local"
-client_isolation = false
 
-# Advanced network settings
-[network.advanced]
-enable_ip_forwarding = true
-enable_nat = true
-enable_ipv6 = false
-mtu_wan = 1500
-mtu_lan = 1500
-mtu_wifi = 1500
+# DMZ network (optional)
+# [[network.interfaces]]
+# name = "Ethernet 3"
+# type = "DMZ"
+# mac_address = ""
+# ip_configuration = "static"
+# monitoring_enabled = true
+# static_ip = "192.168.100.1"
+# subnet_mask = "255.255.255.0"
 
-# =============================================================================
-# gRPC CONFIGURATION
-# =============================================================================
-[grpc]
-listen_address = "127.0.0.1"
-port = 50051
-enable_tls = true
-tls_cert_path = "C:\\Program Files\\SafeOps\\certs\\server.crt"
-tls_key_path = "C:\\Program Files\\SafeOps\\certs\\server.key"
-max_message_size_mb = 10
-connection_timeout_seconds = 30
-keepalive_interval_seconds = 60
+# ============================================================================
+# Orchestration Settings  🔄
+# ============================================================================
+[orchestration]
+# Frequency of service health checks (seconds)
+supervision_interval = 30
 
-[grpc.reflection]
-enabled = false  # Disable in production
+# Allow hot-reload of configuration changes
+config_reload_enabled = true
 
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
-[services]
-# Each service can be individually enabled/disabled
+# How often to check for config file modifications (seconds)
+config_watch_interval = 60
 
-[services.kernel_driver]
-enabled = true
-log_level = "warn"
-critical = true
+# Prometheus metrics scraping frequency (seconds)
+metrics_collection_interval = 15
 
-[services.network_logger]
-enabled = true
-port = 50051
-log_level = "info"
-auto_restart = true
+# Maximum wait time for clean service shutdown (seconds)
+graceful_shutdown_timeout = 30
 
-[services.firewall_engine]
-enabled = true
-port = 50052
-log_level = "info"
-auto_restart = true
-critical = true
+# Default timeout for gRPC calls between services (seconds)
+inter_service_timeout = 10
 
-[services.tls_proxy]
-enabled = false  # Disabled by default for privacy
-port = 50053
-log_level = "info"
-auto_restart = true
+# Enable distributed tracing with OpenTelemetry
+tracing_enabled = false
+tracing_endpoint = "http://localhost:4317"
 
-[services.ids_ips]
-enabled = true
-port = 50054
-log_level = "info"
-auto_restart = true
-critical = true
-
-[services.threat_intel]
-enabled = true
-port = 50055
-log_level = "info"
-auto_restart = true
-
-[services.dns_server]
-enabled = true
-port = 50056
-log_level = "info"
-auto_restart = true
-critical = true
-
-[services.dhcp_server]
-enabled = true
-port = 50057
-log_level = "info"
-auto_restart = true
-
-[services.wifi_ap]
-enabled = false  # Requires WiFi hardware
-port = 50058
-log_level = "info"
-auto_restart = true
-
-[services.certificate_manager]
-enabled = true
-port = 50059
-log_level = "info"
-auto_restart = true
-
-[services.backup_restore]
-enabled = true
-port = 50060
-log_level = "info"
-auto_restart = true
-
-[services.update_manager]
-enabled = true
-port = 50061
-log_level = "info"
-auto_restart = true
-
-[services.orchestrator]
-enabled = true
-port = 50062
-log_level = "info"
-auto_restart = true
-
-[services.web_ui]
-enabled = true
-port = 50063
-log_level = "info"
-auto_restart = true
-
-# =============================================================================
-# DATABASE CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Database Configuration
+# ============================================================================
 [database]
-# PostgreSQL (primary database)
-postgres_host = "localhost"
-postgres_port = 5432
-postgres_database = "safeops"
-postgres_user = "safeops"
-postgres_password = "${POSTGRES_PASSWORD}"
-postgres_pool_size = 10
-postgres_timeout_seconds = 5
-postgres_ssl_enabled = false
-
-# Redis (cache and session storage)
-redis_host = "localhost"
-redis_port = 6379
-redis_password = "${REDIS_PASSWORD}"
-redis_pool_size = 20
-redis_database = 0
-redis_ssl_enabled = false
-redis_timeout_seconds = 3
-
-# =============================================================================
-# SECURITY CONFIGURATION
-# =============================================================================
-[security]
-# TLS inspection (disabled by default for privacy)
-tls_inspection_enabled = false
-
-# IDS/IPS mode
-ids_enabled = true
-ids_mode = "ips"  # ids (detect only) or ips (prevent)
-
-# Threat intelligence
-threat_intel_enabled = true
-
-# Firewall default policy
-firewall_default_policy = "deny"
-
-# Auto-blocking
-auto_block_threats = true
-block_duration_seconds = 3600
-
-# TLS settings
-min_tls_version = "1.2"
-max_tls_version = "1.3"
+# PostgreSQL connection parameters
+database_host = "localhost"
+database_port = 5432
+database_name = "safeops"
 
 # Authentication
-max_login_attempts = 5
-lockout_duration_minutes = 30
+# Password can be overridden with ${POSTGRES_PASSWORD}
+database_user = "safeops"
+database_password = ""  # Set via environment variable
 
-# =============================================================================
-# LOGGING CONFIGURATION
-# =============================================================================
-[logging]
-level = "info"
-format = "json"
-output = "file"
-log_directory = "C:\\ProgramData\\SafeOps\\logs"
-log_file = "safeops.log"
+# Connection pool settings
+connection_pool_size = 25
+connection_timeout = 30
 
-# =============================================================================
-# UPDATES CONFIGURATION
-# =============================================================================
-[updates]
-auto_check = true
-check_interval_hours = 24
-auto_download = true
-auto_install_security = true
-auto_install_signatures = true
-auto_install_software = false
-channel = "stable"
+# TLS encryption
+# Valid values: "disable", "require", "verify-ca", "verify-full"
+ssl_mode = "require"
 
-[updates.maintenance_window]
-days = ["saturday", "sunday"]
-start_hour = 2
-end_hour = 6
+# Database migrations
+auto_migrate = true
+migration_directory = "D:\\SafeOpsFV2\\migrations"
 
-# =============================================================================
-# BACKUP CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Redis Cache Configuration
+# ============================================================================
+[redis]
+# Redis server connection
+redis_host = "localhost"
+redis_port = 6379
+
+# Authentication (if required)
+# Password can be overridden with ${REDIS_PASSWORD}
+redis_password = ""
+
+# Database number (0-15)
+redis_db = 0
+
+# Connection pool settings
+connection_pool_size = 10
+
+# Default TTL for cached entries (seconds)
+# 0 = no expiration
+cache_ttl_default = 3600
+
+# Enable Redis for session management
+session_storage_enabled = true
+
+# Enable Redis for pub/sub messaging between services
+pubsub_enabled = true
+
+# ============================================================================
+# Security Settings
+# ============================================================================
+[security]
+# Enforce TLS for all gRPC communication
+tls_enabled = true
+
+# TLS certificate paths
+# Can be overridden with ${TLS_CERT_PATH}, ${TLS_KEY_PATH}
+tls_cert_path = "D:\\SafeOpsFV2\\certs\\server.crt"
+tls_key_path = "D:\\SafeOpsFV2\\certs\\server.key"
+tls_ca_path = "D:\\SafeOpsFV2\\certs\\ca.crt"
+
+# Client certificate authentication for inter-service communication
+mtls_enabled = false
+
+# API authentication settings
+api_authentication_required = true
+
+# JWT token validity duration (seconds)
+# Default: 24 hours
+api_token_expiry = 86400
+
+# JWT signing key
+# Override with ${API_SECRET_KEY} environment variable
+api_secret_key = ""  # Must be set via environment variable
+
+# IP whitelist for administrative access
+# Empty array = allow from any IP
+allowed_admin_ips = ["127.0.0.1", "::1"]
+
+# Rate limiting for API endpoints
+rate_limiting_enabled = true
+rate_limit_requests_per_minute = 100
+
+# CORS settings for web UI
+[security.cors]
+enabled = true
+allowed_origins = ["http://localhost:3000", "https://localhost:3000"]
+allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+allowed_headers = ["Content-Type", "Authorization"]
+allow_credentials = true
+
+# ============================================================================
+# Metrics and Monitoring
+# ============================================================================
+[metrics]
+# Prometheus metrics exporter
+prometheus_enabled = true
+prometheus_port = 9090
+prometheus_path = "/metrics"
+
+# Export system metrics (CPU, memory, disk)
+system_metrics_enabled = true
+
+# Export service-specific metrics
+service_metrics_enabled = true
+
+# Metrics retention (for internal dashboard)
+metrics_retention_days = 30
+
+# ============================================================================
+# Web UI Configuration
+# ============================================================================
+[web_ui]
+# Web UI server settings
+enabled = true
+listen_address = "0.0.0.0"
+listen_port = 443
+tls_enabled = true
+
+# Session settings
+session_timeout_minutes = 60
+remember_me_duration_days = 30
+
+# File upload limits (for configuration restore, etc.)
+max_upload_size_mb = 100
+
+# ============================================================================
+# Alert and Notification Settings
+# ============================================================================
+[alerts]
+# Enable alert notifications
+enabled = true
+
+# Email notifications
+[alerts.email]
+enabled = false
+smtp_server = ""
+smtp_port = 587
+smtp_username = ""
+smtp_password = ""  # Override with ${SMTP_PASSWORD}
+smtp_tls = true
+from_address = "safeops@example.com"
+to_addresses = ["admin@example.com"]
+
+# Webhook notifications
+[alerts.webhook]
+enabled = false
+webhook_url = ""
+webhook_secret = ""  # Override with ${WEBHOOK_SECRET}
+
+# Alert thresholds
+[alerts.thresholds]
+cpu_usage_percent = 90
+memory_usage_percent = 90
+disk_usage_percent = 85
+failed_login_attempts = 5
+threat_detection_critical = 1
+
+# ============================================================================
+# Backup Configuration
+# ============================================================================
 [backup]
-enabled = true
-schedule = "0 3 * * *"  # Daily at 3 AM
-destination = "C:\\SafeOps_Backups"
-retention_days = 30
-max_backups = 10
-compression = true
-encryption = true
-include_logs = false
+# Automatic backup settings
+auto_backup_enabled = true
+backup_schedule = "0 2 * * *"  # 2 AM daily (cron format)
+backup_directory = "D:\\SafeOpsFV2\\backups"
 
-# =============================================================================
-# MONITORING CONFIGURATION
-# =============================================================================
-[monitoring]
-metrics_enabled = true
-metrics_address = "127.0.0.1"
-metrics_port = 9090
-healthcheck_enabled = true
-healthcheck_port = 8080
-
-[monitoring.alerts]
-cpu_threshold_percent = 80
-memory_threshold_percent = 85
-disk_threshold_percent = 90
-cooldown_minutes = 15
-
-# =============================================================================
-# API CONFIGURATION
-# =============================================================================
-[api]
-enabled = true
-listen_address = "127.0.0.1"
-port = 8443
-https_enabled = true
-https_cert_path = "C:\\Program Files\\SafeOps\\certs\\api.crt"
-https_key_path = "C:\\Program Files\\SafeOps\\certs\\api.key"
-cors_enabled = false
-rate_limit_rpm = 100
-
-# =============================================================================
-# PERFORMANCE CONFIGURATION
-# =============================================================================
-[performance]
-worker_threads = 0  # 0 = auto-detect
-io_threads = 4
-ring_buffer_size_gb = 2
-packet_batch_size = 128
-database_batch_size = 10000
-enable_hardware_offload = true
-enable_rss = true
-enable_profiling = false
-
-# =============================================================================
-# DATA RETENTION
-# =============================================================================
-[retention]
-network_traffic_days = 30
-firewall_logs_days = 90
-ids_alerts_days = 365
-system_logs_days = 30
+# Retention policy
 backup_retention_days = 30
-dns_logs_days = 30
-dhcp_logs_days = 90
-tls_proxy_logs_days = 7
-threat_intel_days = 90
+max_backups = 10
 
-# Auto-cleanup
-enable_auto_cleanup = true
-cleanup_schedule = "0 4 * * *"
-compress_before_cleanup = false
+# Compression
+compress_backups = true
+
+# ============================================================================
+# Update Configuration
+# ============================================================================
+[updates]
+# Automatic update checking
+auto_check_enabled = true
+check_interval_hours = 24
+
+# Update channel
+# Valid values: "stable", "beta", "nightly"
+update_channel = "stable"
+
+# Automatic installation
+auto_install_enabled = false
+install_schedule = "0 3 * * 0"  # 3 AM Sunday
+
+# Update server
+update_server_url = "https://updates.safeops.example.com"
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# SAFEOPS_DATA_DIR - Override data_directory
+# SAFEOPS_LOG_LEVEL - Override global log_level
+# POSTGRES_PASSWORD - PostgreSQL authentication
+# REDIS_PASSWORD - Redis authentication
+# TLS_CERT_PATH - TLS certificate file
+# TLS_KEY_PATH - TLS private key file
+# API_SECRET_KEY - JWT signing key
+# DEPLOYMENT_ENV - Override deployment_environment
+# SMTP_PASSWORD - SMTP authentication
+# WEBHOOK_SECRET - Webhook authentication
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The orchestrator validates this configuration at startup against
+# config/schemas/config_schema.json and will fail to start if validation
+# fails. Common validation checks:
+#
+# 1. All service grpc_address values must be unique
+# 2. Service dependencies must not create circular references
+# 3. Network interface types must be valid enum values
+# 4. Database connection parameters must be accessible
+# 5. TLS certificate files must exist if tls_enabled = true
+# 6. Port numbers must be within valid range (1-65535)
+# 7. All required services must have enabled = true
+# 8. Service startup_order creates valid dependency graph
+#
+# Use the config validator: safeops-cli config validate safeops.toml
+# ============================================================================

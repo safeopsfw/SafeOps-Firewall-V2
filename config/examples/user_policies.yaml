@@ -1,151 +1,603 @@
 # ============================================================================
-# User Access Policies Configuration
+# SafeOps User and Group Access Policies - Comprehensive Examples
+# ============================================================================
+# This file demonstrates user-based and group-based access policies including:
+#   • Internet access policies by user role
+#   • Content filtering by department
+#   • Bandwidth management and QoS
+#   • Time-based access restrictions
+#   • Application control policies
+#   • VPN and remote access policies
+#   • Device compliance requirements
+#   • DLP (Data Loss Prevention)
+#
+# ============================================================================
+
+# ============================================================================
+# SECTION 1: Internet Access Policies
 # ============================================================================
 
 policies:
-  # Internet Access Policy
-  - name: "Full Internet Access"
-    id: policy_internet_full
-    description: "Unrestricted internet access for trusted users"
-    priority: 100
+  # Full unrestricted internet access for executives and IT
+  - name: "Executive - Full Internet Access"
+    id: policy_exec_full
+    description: "Unrestricted internet for C-level and senior management"
+    priority: 10
     enabled: true
     rules:
       - allow_all_protocols: true
       - content_filter: false
-      - bandwidth_limit: null
+      - bandwidth_limit: null  # Unlimited
       - time_restrictions: null
+      - application_whitelist: all
+      - bypass_dlp: false  # Still subject to DLP
     assigned_to:
-      users: [admin, manager]
-      groups: [IT-Staff, Executives]
+      users: [ceo, cto, cfoсео]
+      groups: [Executives, C-Level]
+      ad_groups: ["CN=Executives,OU=Groups,DC=company,DC=com"]
+    logging:
+      log_level: MINIMAL
+      audit: true
 
-  # Restricted Internet Policy
-  - name: "Restricted Internet"
-    id: policy_internet_restricted
-    description: "Limited internet for regular employees"
+  # IT Staff - Full access with monitoring
+  - name: "IT Staff - Administrative Access"
+    id: policy_it_admin
+    description: "Full access for IT administrators with monitoring"
+    priority: 20
+    enabled: true
+    rules:
+      - allow_all_protocols: true
+      - content_filter: false
+      - bandwidth_limit: 1000mbps
+      - time_restrictions: null
+      - require_mfa: true
+      - privileged_access_monitoring: true
+    assigned_to:
+      groups: [IT-Staff, IT-Administrators, Network-Admins]
+    logging:
+      log_level: VERBOSE
+      audit: true
+      alert_on_suspicious: true
+
+  # Regular employees - standard internet access
+  - name: "Employee - Standard Internet"
+    id: policy_employee_standard
+    description: "Standard internet access for regular employees"
+    priority: 100
+    enabled: true
+    rules:
+      - allow_protocols: [HTTP, HTTPS, DNS, SMTP, IMAP, POP3]
+      - block_protocols: [P2P, TORRENT, IRC]
+      - content_filter: true
+      - content_categories:
+          block: [adult, gambling, malware, phishing, illegal-drugs, weapons]
+          warn: [social-media, streaming, shopping, games]
+          allow: [business, news, education, technology]
+      - bandwidth_limit: 50mbps
+      - time_restrictions:
+          business_hours: "07:00-19:00"
+          allowed_days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+          weekend_access: false
+      - streaming_throttle: 5mbps
+    assigned_to:
+      groups: [Employees, Staff, General-Users]
+    logging:
+      log_level: STANDARD
+      log_blocked_content: true
+
+ # Contractors - restricted time-based access
+  - name: "Contractor - Limited Access"
+    id: policy_contractor
+    description: "Restricted internet for contractors"
     priority: 200
     enabled: true
     rules:
-      - allow_protocols: [HTTP, HTTPS, DNS, SMTP]
-      - block_protocols: [P2P, TORRENT]
+      - allow_protocols: [HTTP, HTTPS, DNS]
+      - block_downloads: true
+      - block_file_upload: true
       - content_filter: true
       - content_categories:
-          block: [adult, gambling, malware, phishing]
-          warn: [social-media, streaming]
+          block: [adult, gambling, malware, phishing, social-media, streaming]
+          allow: [business, education]
       - bandwidth_limit: 10mbps
       - time_restrictions:
-          business_hours: "08:00-18:00"
+          contract_hours: "08:00-17:00"
           allowed_days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+      - session_timeout: 4h
+      - require_re_authentication: daily
     assigned_to:
-      groups: [Employees]
+      groups: [Contractors, Temporary-Staff, Vendors]
+    logging:
+      log_level: VERBOSE
+      audit: true
+# ============================================================================
+# SECTION 2: Department-Specific Policies
+# ============================================================================
 
-  # Guest Access Policy
-  - name: "Guest Access"
-    id: policy_guest
+  # Sales - requires access to social media and CRM
+  - name: "Sales Department"
+    id: policy_sales
+    description: "Sales team with social media access"
+    priority: 110
+    enabled: true
+    rules:
+      - base_policy: policy_employee_standard  # Inherit from standard
+      - content_categories_override:
+          allow: [social-media, linkedin, twitter, facebook]  # Override block
+      - application_whitelist: [Salesforce, HubSpot, Zoom, LinkedIn]
+      - bandwidth_guarantee: 20mbps
+    assigned_to:
+      departments: [Sales]
+      ad_groups: ["CN=Sales,OU=Departments,DC=company,DC=com"]
+
+  # Finance - restricted access, DLP enforced
+  - name: "Finance Department"
+    id: policy_finance
+    description: "Finance team with strict DLP controls"
+    priority: 120
+    enabled: true
+    rules:
+      - base_policy: policy_employee_standard
+      - block_file_upload: true
+      - block_webmail: true  # Force use of corporate email
+      - dlp_enforce: STRICT
+      - allowed_destinations: ["*.company.com", "*.accounting-software.com"]
+      - require_mfa: true
+      - audit_all_actions: true
+    assigned_to:
+      departments: [Finance, Accounting]
+    logging:
+      log_level: VERBOSE
+      audit: true
+      retention_days: 2555  # 7 years for compliance
+
+  # HR - access to recruitment sites, strict privacy
+  - name: "Human Resources"
+    id: policy_hr
+    description: "HR team with recruitment access and privacy controls"
+    priority: 130
+    enabled: true
+    rules:
+      - base_policy: policy_employee_standard
+      - content_categories_override:
+          allow: [recruitment, job-boards, linkedin]
+      - application_whitelist: [Workday, BambooHR, LinkedIn-Recruiter]
+      - pii_handling: STRICT
+      - encrypt_traffic: true
+    assigned_to:
+      departments: [HR, Human-Resources]
+
+  # Engineering/Development - unrestricted technical access
+  - name: "Engineering Team"
+    id: policy_engineering
+    description: "Developers with unrestricted technical access"
+    priority: 50
+    enabled: true
+    rules:
+      - allow_all_protocols: true
+      - content_filter_mode: PERMISSIVE
+      - content_categories:
+          allow: [github, stackoverflow, developer-tools, cloud-platforms]
+      - bandwidth_limit: 500mbps
+      - allow_ssh: true
+      - allow_git_protocols: true
+      - application_whitelist: [GitHub, GitLab, Docker, AWS, Azure, VSCode]
+    assigned_to:
+      departments: [Engineering, Development, DevOps]
+
+# ============================================================================
+# SECTION 3: Guest and Visitor Policies
+# ============================================================================
+
+  # Guest Access - internet only, isolated
+  - name: "Guest WiFi Access"
+    id: policy_guest_wifi
     description: "Internet-only access for visitors"
     priority: 300
     enabled: true
     rules:
       - internet_only: true
-      - allow_protocols: [HTTP, HTTPS, DNS]
       - block_lan_access: true
+      - block_internal_dns: true
+      - allow_protocols: [HTTP, HTTPS, DNS]
       - bandwidth_limit: 5mbps
       - session_timeout: 8h
+      - captive_portal: true
+      - terms_acceptance_required: true
       - content_filter: true
       - content_categories:
-          block: [adult, gambling, malware, phishing, weapons, drugs]
+          block: [adult, gambling, malware, phishing, weapons, drugs, torrents]
+      - max_devices_per_user: 2
     assigned_to:
-      group: [Guests]
+      groups: [Guests, Visitors]
       networks: ["192.168.30.0/24"]
+    logging:
+      log_level: STANDARD
+      retain_days: 7
 
-  # VPN Remote Access
-  - name: "VPN Remote Workers"
-    id: policy_vpn_remote
-    description: "Policy for VPN connected remote workers"
-    priority: 150
+  # Temporary access codes (short-term visitors)
+  - name: "Temporary Access Code"
+    id: policy_temp_access
+    description: "Short-term access for meeting participants"
+    priority: 310
     enabled: true
     rules:
-      - allow_protocols: [HTTP, HTTPS, DNS, SSH, RDP]
-      - mfa_required: true
+      - base_policy: policy_guest_wifi
+      - session_timeout: 4h
+      - auto_expire: true
+      - one_time_code: true
+    assigned_to:
+      groups: [Temp-Access]
+
+# ============================================================================
+# SECTION 4: Remote and VPN Access Policies
+# ============================================================================
+
+  # VPN Remote Workers - full access with MFA
+  - name: "VPN Remote Workers"
+    id: policy_vpn_remote
+    description: "Policy for VPN-connected remote workers"
+    priority: 80
+    enabled: true
+    rules:
+      - allow_protocols: [HTTP, HTTPS, DNS, SSH, RDP, SMB]
+      - require_mfa: true
       - idle_timeout: 30m
-      - bandwidth_limit: 20mbps
+      - reauth_interval: 8h
+      - bandwidth_limit: 50mbps
       - allowed_resources:
           - 192.168.10.0/24  # Office VLAN
           - 192.168.20.0/24  # Server VLAN
-      - content_filter: false
+          - 192.168.100.0/24  # Management VLAN
+      - content_filter: true
+      - split_tunnel: false  # All traffic through VPN
+      - device_posture_check: true
     assigned_to:
-      groups: [Remote-Workers, VPN-Users]
+      groups: [Remote-Workers, WFH-Employees, Field-Staff]
+    logging:
+      log_level: VERBOSE
+      log_connections: true
 
-# Application Control Policies
-application_policies:
-  - name: "Block Unauthorized Apps"
+  # External VPN (partners, vendors)
+  - name: "Partner VPN Access"
+    id: policy_partner_vpn
+    description: "Limited VPN access for external partners"
+    priority: 250
     enabled: true
-    mode: blacklist
+    rules:
+      - allow_protocols: [HTTPS, SSH]
+      - require_mfa: true
+      - idle_timeout: 15m
+      - allowed_resources:
+          - 192.168.200.10/32  # Specific partner portal server
+      - block_internet_access: true
+      - session_recording: true
+    assigned_to:
+      groups: [External-Partners, Vendors]
+
+# ============================================================================
+# SECTION 5: Application Control Policies
+# ============================================================================
+
+application_policies:
+  # Whitelist mode - only approved applications
+  - name: "Approved Applications Only"
+    enabled: true
+    mode: WHITELIST
+    default_action: BLOCK
+    applications:
+      productivity:
+        - Microsoft Office 365
+        - Google Workspace
+        - Slack
+        - Microsoft Teams
+        - Zoom
+      development:
+        - GitHub Desktop
+        - Visual Studio Code
+        - Docker Desktop
+        - Postman
+      security:
+        - 1Password
+        - LastPass
+        - Duo Mobile
+    enforcement: STRICT
+    notify_user: true
+
+  # Block unauthorized remote access tools
+  - name: "Block Unauthorized Remote Tools"
+    enabled: true
+    mode: BLACKLIST
     applications:
       block:
         - TeamViewer
         - AnyDesk
+        - LogMeIn
+        - Chrome Remote Desktop
+        - VNC Viewer
+      exceptions:
+        - IT-Staff  # IT can use for support
+    action_blocked: DENY_AND_ALERT
+    
+  # Block file sharing and torrents
+  - name: "Block P2P and File Sharing"
+    enabled: true
+    applications:
+      block:
         - uTorrent
         - BitTorrent
+        - qBittorent
+        - Deluge
+        - Dropbox  # Use corporate OneDrive instead
+        - Google Drive  # Use corporate OneDrive
       allow:
-        - Zoom
-        - Microsoft Teams
-        - Slack
-        - Chrome
-        - Firefox
+        - OneDrive for Business
+        - SharePoint
+    action_blocked: BLOCK_AND_LOG
 
-  - name: "DLP - Prevent Data Exfiltration"
-    enabled: true
-    rules:
-      - block_file_upload: true
-      - allowed_destinations: [*.company.com, *.microsoft.com]
-      - scan_attachments: true
-      - block_pii: true
-      - alert_on_violation: true
+# ============================================================================
+# SECTION 6: Time-Based Access Controls
+# ============================================================================
 
-# Time-based Access
 time_policies:
+  # Business hours only (enforce work schedule)
   - name: "Business Hours Only"
+    id: time_business_hours
+    description: "Restrict access to business hours"
     allowed_times:
       - days: [Monday, Tuesday, Wednesday, Thursday, Friday]
-        start: "08:00"
-        end: "18:00"
+        start: "07:00"
+        end: "19:00"
+        time_zone: "America/New_York"
     action_outside_hours: BLOCK
+    exceptions:
+      groups: [IT-Staff, Executives]  # Always allowed
 
-  - name: "24/7 Access"
-    allowed_times:
-      - days: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
-        start: "00:00"
+  # Maintenance window (limited access)
+  - name: "Maintenance Window Restrictions"
+    id: time_maintenance
+    description: "Limited access during maintenance"
+    restricted_times:
+      - days: [Sunday]
+        start: "02:00"
+        end: "06:00"
+    action_during_window: WARN_AND_LIMIT
+    bandwidth_limit: 1mbps
+
+  # After-hours restrictions (students/parental control style)
+  - name: "After Hours - No Streaming"
+    id: time_no_streaming
+    description: "Block entertainment after business hours"
+    enabled: false  # Example only
+    restricted_times:
+      - days: [Monday, Tuesday, Wednesday, Thursday]
+        start: "22:00"
         end: "23:59"
+    blocked_categories: [streaming, gaming, social-media]
+    assigned_to:
+      users: [specific-user-list]
 
-# Bandwidth Management
+# ============================================================================
+# SECTION 7: Bandwidth Management and QoS
+# ============================================================================
+
 bandwidth_policies:
-  - name: "Business Critical"
-    guaranteed_bandwidth: 50mbps
-    max_bandwidth: 100mbps
-    priority: HIGH
-    applications: [VoIP, Video-Conferencing]
+  # Business critical - highest priority
+  - name: "Business Critical Traffic"
+    priority: 1
+    guaranteed_bandwidth: 100mbps
+    max_bandwidth: 500mbps
+    qos_priority: HIGH
+    applications: [VoIP, SIP, Video-Conferencing, Zoom, Teams, Webex]
+    dscp_marking: EF  # Expedited Forwarding
 
-  - name: "Standard Traffic"
+  # Standard traffic - normal priority
+  - name: "Standard Business Traffic"
+    priority: 2
+    guaranteed_bandwidth: 50mbps
+    max_bandwidth: 200mbps
+    qos_priority: MEDIUM
+    applications: [HTTP, HTTPS, Email, CRM, ERP]
+    dscp_marking: AF21  # Assured Forwarding
+
+  # Best effort - low priority
+  - name: "Best Effort Traffic"
+    priority: 3
     guaranteed_bandwidth: 10mbps
     max_bandwidth: 50mbps
-    priority: MEDIUM
+    qos_priority: LOW
+    applications: [Streaming, YouTube, Social-Media, Gaming]
+    dscp_marking: BE  # Best Effort
 
-  - name: "Best Effort"
-    guaranteed_bandwidth: 1mbps
-    max_bandwidth: 10mbps
-    priority: LOW
-    applications: [Streaming, Social-Media]
+  # Bulk transfers - lowest priority
+  - name: "Bulk Transfer Traffic"
+    priority: 4
+    guaranteed_bandwidth: 5mbps
+    max_bandwidth: 20mbps
+    qos_priority: LOWEST
+    applications: [FTP, SFTP, Backup, File-Sync]
+    dscp_marking: CS1
 
-# Device Compliance
+# ============================================================================
+# SECTION 8: Device Compliance and Posture
+# ============================================================================
+
 device_policies:
-  - name: "Corporate Devices Only"
+  # Corporate managed devices - full access
+  - name: "Corporate Managed Devices"
     require_device_registration: true
-    allowed_device_types: [Windows, macOS, Linux]
-    require_antivirus: true
-    require_encryption: true
-    patch_level: CURRENT
+    require_mdm_enrollment: true
+    allowed_device_types: [Windows, macOS, Linux, iOS, Android]
+    compliance_checks:
+      - antivirus_installed: true
+      - antivirus_updated: true
+      - os_patch_level: CURRENT  # Within 30 days
+      - disk_encryption: REQUIRED
+      - firewall_enabled: true
+      - screen_lock: REQUIRED
+      - password_policy: ENFORCED
+    remediation:
+      - non_compliant_action: QUARANTINE
+      - quarantine_network: "192.168.254.0/24"
+      - allow_remediation: true
+      - remediation_timeout: 4h
 
+  # BYOD (Bring Your Own Device) - restricted access
   - name: "BYOD Policy"
-    require_device_registration: false
+    require_device_registration: true
+    require_mdm_enrollment: false
+    allowed_device_types: [iOS, Android, Windows, macOS]
     network_isolation: true
     limited_access: true
+    allowed_resources: [Internet, Email, Calendar, VPN]
+    blocked_resources: [File-Shares, Internal-Apps, Databases]
+    compliance_checks:
+      - antivirus_installed: RECOMMENDED
+      - os_patch_level: RECOMMENDED
+      - screen_lock: REQUIRED
+
+  # Guest devices - minimal access
+  - name: "Guest Device Access"
+    require_device_registration: false
+    network: "Guest-WiFi"
+    internet_only: true
+    max_session_duration: 8h
+    compliance_checks: None
+
+# ============================================================================
+# SECTION 9: Data Loss Prevention (DLP)
+# ============================================================================
+
+dlp_policies:
+  # Prevent sensitive data exfil
+  - name: "Block PII/PHI Transmission"
+    enabled: true
+    mode: BLOCK
+    rules:
+      - detect_ssn: true
+      - detect_credit_cards: true
+      - detect_medical_records: true
+      - block_file_upload: false  # Scan but don't block all
+      - allowed_destinations: 
+          - "*.company.com"
+          - "*.office365.com"
+          - "*.salesforce.com"
+      - scan_attachments: true
+      - scan_web_forms: true
+    action_violations:
+      - block: true
+      - alert_user: true
+      - alert_security_team: true
+      - quarantine_file: true
+
+  # Financial data protection
+  - name: "Financial Data Protection"
+    enabled: true
+    rules:
+      - detect_financial_data: true
+      - detect_account_numbers: true
+      - block_webmail: true
+      - allowed_email_domains: ["@company.com"]
+      - encrypt_in_transit: true
+      - watermark_documents: true
+    assigned_to:
+      departments: [Finance, Accounting]
+
+  # Intellectual property protection
+  - name: "IP Protection"
+    enabled: true
+    rules:
+      - detect_source_code: true
+      - detect_confidential_patterns: ["CONFIDENTIAL", "PROPRIETARY", "TRADE SECRET"]
+      - block_cloud_storage: true
+      - allowed_cloud: ["OneDrive-Business"]
+      - prevent_screenshots: false
+      - alert_on_bulk_download: true
+      - bulk_threshold: 100mb
+    assigned_to:
+      departments: [Engineering, R&D]
+
+# ============================================================================
+# SECTION 10: Compliance and Auditing
+# ============================================================================
+
+compliance_policies:
+  # HIPAA compliance (healthcare)
+  - name: "HIPAA Compliance"
+    enabled: false  # Enable if healthcare industry
+    requirements:
+      - encrypt_all_traffic: true
+      - log_all_access: true
+      - log_retention_years: 6
+      - access_controls: STRICT
+      - audit_trail: COMPLETE
+      - phi_protection: ENFORCED
+
+  # PCI-DSS compliance (payment card industry)
+  - name: "PCI-DSS Compliance"
+    enabled: false  # Enable if processing cards
+    requirements:
+      - cardholder_data_protection: true
+      - encrypt_transmission: true
+      - log_retention_months: 12
+      - restrict_access: true
+      - monitor_all_access: true
+
+  # SOX compliance (financial)
+  - name: "SOX Compliance"
+    enabled: false  # Enable if publicly traded
+    requirements:
+      - segregation_of_duties: true
+      - change_management: ENFORCED
+      - audit_trail: IMMUTABLE
+      - log_retention_years: 7
+      - access_reviews: QUARTERLY
+
+# ============================================================================
+# Policy Enforcement Settings
+# ============================================================================
+
+enforcement:
+  # Global settings
+  enabled: true
+  mode: ENFORCING  # PERMISSIVE, ENFORCING
+  
+  # User notifications
+  notify_on_block: true
+  notification_message: "This content has been blocked by company policy. Contact IT if you need access."
+  
+  # Logging
+  log_all_policies: true
+  log_violations: true
+  log_allows: false  # Too verbose
+  
+  # Exceptions
+  exception_approval_required: true
+  exception_approvers: [IT-Manager, CISO]
+  exception_duration_max: 7days
+
+# ============================================================================
+# Integration with SafeOps Components
+# ============================================================================
+
+integration:
+  # Active Directory/LDAP
+  ad_enabled: true
+  ldap_server: "ldap://dc.company.com"
+  ldap_base_dn: "DC=company,DC=com"
+  
+  # User authentication
+  auth_method: "AD"  # AD, RADIUS, SAML, LOCAL
+  
+  # Group sync
+  sync_interval: 1h
+  auto_create_policies: false
+  
+  # Threat intelligence
+  threat_intel_integration: true
+  block_malicious_destinations: true
+  
+  # SIEM forwarding
+  siem_integration: true
+  siem_format: "CEF"
+  siem_server: "splunk.company.com:514"

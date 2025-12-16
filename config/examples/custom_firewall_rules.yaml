@@ -1,65 +1,412 @@
 # ============================================================================
-# Custom Firewall Rules Examples
+# SafeOps Custom Firewall Rules - Advanced Examples
 # ============================================================================
+# This file demonstrates advanced firewall rule configurations including:
+#   • Zone-based security policies
+#   • Time-based access control  
+#   • Rate limiting and DDoS protection
+#   • Geo-blocking and threat intelligence integration
+#   • Port forwarding and NAT examples
+#   • Application-layer filtering
+#   • Anti-spoofing and network hardening
+#
+# Rule Priority: Lower number = higher priority (1 = highest)
+# Actions: ALLOW, DROP, REJECT, LOG
+# Directions: INBOUND, OUTBOUND, BOTH
+#
 # Format: YAML
-# Priority: Lower number = higher priority
+# ============================================================================
+
+# ============================================================================
+# SECTION 1: Anti-Spoofing and Network Hardening
 # ============================================================================
 
 firewall_rules:
-  # Allow SSH from management network
-  - name: "Allow SSH from Management"
+  # Block RFC1918 private IPs from WAN (anti-spoofing)
+  - name: "Block RFC1918 Spoofing from WAN"
+    priority: 1
+    enabled: true
+    direction: INBOUND
+    action: DROP
+    interface: wan0
+    source_ip:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    log: true
+    description: "Prevent IP spoofing attacks using private address space"
+    
+  # Block invalid packets (malformed, fragmented bombs)
+  - name: "Drop Invalid Packets"
+    priority: 2
+    enabled: true
+    direction: BOTH
+    action: DROP
+    packet_state: INVALID
+    log: true
+    description: "Drop malformed or invalid packets"
+
+  # Block common attack ports
+  - name: "Block Common Attack Ports"
+    priority: 3
+    enabled: true
+    direction: INBOUND
+    action: DROP
+    interface: wan0
+    protocol: TCP
+    destination_port: [23, 135, 139, 445, 3389]  # Telnet, NetBIOS, SMB, RDP
+    log: true
+    description: "Block common Windows vulnerability ports from Internet"
+
+# ============================================================================
+# SECTION 2: Management Access Rules
+# ============================================================================
+
+  # Allow SSH from management network only
+  - name: "Allow SSH from Management VLAN"
     priority: 10
     enabled: true
     direction: INBOUND
     action: ALLOW
     protocol: TCP
-    source_ip: 192.168.100.0/24
+    source_ip: 192.168.99.0/24  # Management VLAN
     destination_port: 22
     log: true
-    description: "Allow SSH access from management VLAN"
+    description: "Permit SSH access only from management network"
+    max_connections: 5  # Limit concurrent SSH sessions
 
-  # Block known malicious IPs
-  - name: "Block Malicious IPs"
-    priority: 5
+  # Allow Web UI access (HTTPS only)
+  - name: "Allow Web UI Access"
+    priority: 11
     enabled: true
-    direction: BOTH
-    action: DROP
-    source_ip_list: "threat_intel_blocklist"
-    log: true
-    description: "Block IPs from threat intelligence feeds"
+    direction: INBOUND
+    action: ALLOW
+    protocol: TCP
+    source_ip: 
+      - 192.168.1.0/24   # LAN
+      - 192.168.99.0/24  # Management VLAN
+    destination_port: 8443
+    log: false
+    description: "Allow HTTPS access to SafeOps Web UI"
 
-  # Allow web traffic
-  - name: "Allow HTTP/HTTPS"
-    priority: 100
+# ============================================================================
+# SECTION 3: Time-Based Access Control
+# ============================================================================
+
+  # Allow internet access during business hours only
+  - name: "Business Hours Internet Access"
+    priority: 20
+    enabled: false  # Enable if needed
+    direction: OUTBOUND
+    action: ALLOW
+    source_ip: 192.168.10.0/24  # Employee VLAN
+    time_schedule:
+      days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+      start_time: "08:00"
+      end_time: "18:00"
+      timezone: "America/New_York"
+    log: false
+    description: "Restrict internet access to business hours"
+
+  # Block gaming sites after hours (parental control example)
+  - name: "Block Gaming After Hours"
+    priority: 21
+    enabled: false
+    direction: OUTBOUND
+    action: DROP
+    source_ip: 192.168.1.100  # Kid's device
+    application_category: "gaming"
+    time_schedule:
+      days: ["monday", "tuesday", "wednesday", "thursday"]
+      start_time: "20:00"
+      end_time: "23:59"
+    log: true
+    description: "Parental control - no gaming on school nights after 8 PM"
+
+# ============================================================================
+# SECTION 4: Rate Limiting and DDoS Protection
+# ============================================================================
+
+  # Rate limit HTTP requests (DDoS protection)
+  - name: "HTTP Rate Limiting"
+    priority: 30
     enabled: true
     direction: INBOUND
     action: ALLOW
     protocol: TCP
     destination_port: [80, 443]
-    rate_limit: 1000
-    description: "Allow web traffic with rate limiting"
+    rate_limit:
+      max_connections_per_ip: 100
+      max_requests_per_second: 50
+      burst_allowance: 20
+    log_violations: true
+    description: "Protect against HTTP flood attacks"
 
-  # Allow DNS
-  - name: "Allow DNS Queries"
-    priority: 20
+  # SYN flood protection
+  - name: "SYN Flood Protection"
+    priority: 31
     enabled: true
-    direction: OUTBOUND
-    action: ALLOW
-    protocol: UDP
-    destination_port: 53
-    log: false
+    direction: INBOUND
+    action: DROP
+    protocol: TCP
+    tcp_flags: SYN
+    rate_limit:
+      max_syn_per_second: 100
+      per_source_ip: true
+    log_violations: true
+    description: "Mitigate SYN flood DoS attacks"
 
-  # Block P2P protocols
-  - name: "Block P2P"
-    priority: 50
+  # ICMP rate limiting (prevent ping floods)
+  - name: "Rate Limit ICMP"
+    priority: 32
+    enabled: true
+    direction: BOTH
+    action: ALLOW
+    protocol: ICMP
+    rate_limit:
+      max_packets_per_second: 10
+      burst: 5
+    log: false
+    description: "Allow ping but prevent ICMP floods"
+
+# ============================================================================
+# SECTION 5: Geo-Blocking (by Country)
+# ============================================================================
+
+  # Block traffic from high-risk countries
+  - name: "Geo-Block High-Risk Countries"
+    priority: 40
+    enabled: false  # Enable if needed
+    direction: INBOUND
+    action: DROP
+    interface: wan0
+    geoip_countries: ["CN", "RU", "KP", "IR"]  # China, Russia, North Korea, Iran
+    exceptions:
+      # Allow specific trusted IPs even from blocked countries
+      - source_ip: 1.2.3.4
+        description: "Trusted business partner"
+    log: true
+    description: "Block connections from high-risk geographic regions"
+
+  # Allow only specific countries (whitelist mode)
+  - name: "Geo-Allow Whitelist"
+    priority: 41
+    enabled: false
+    direction: INBOUND
+    action: ALLOW
+    geoip_countries: ["US", "CA", "GB", "AU"]  # USA, Canada, UK, Australia
+    service: "ssh"
+    description: "SSH access only from trusted countries"
+
+# ============================================================================
+# SECTION 6: Threat Intelligence Integration
+# ============================================================================
+
+  # Block known malicious IPs (threat intel feeds)
+  - name: "Block Threat Intel IPs"
+    priority: 5  # High priority
     enabled: true
     direction: BOTH
     action: DROP
-    application: ["bittorrent", "emule", "gnutella"]
+    source_ip_list: "threat_intel_blocklist"  # Dynamic list from threat_intel service
     log: true
-    description: "Block peer-to-peer file sharing"
+    description: "Auto-block IPs from threat intelligence feeds"
 
-  # Allow VPN
+  # Block malicious domains (DNS filtering)
+  - name: "Block Malicious Domains"
+    priority: 6
+    enabled: true
+    direction: OUTBOUND
+    action: DROP
+    protocol: [TCP, UDP]
+    destination_port: 53
+    domain_list: "threat_intel_domains"
+    log: true
+    description: "DNS-based blocking of known malicious domains"
+
+  # Block C2 communications (command & control)
+  - name: "Block C2 Traffic"
+    priority: 7
+    enabled: true
+    direction: BOTH
+    action: DROP
+    threat_category: "c2_communication"
+    log: true
+    alert: true
+    description:"Block command-and-control malware communications"
+
+# ============================================================================
+# SECTION 7: Port Forwarding and NAT
+# ============================================================================
+
+  # Port forward for web server in DMZ
+  - name: "Port Forward HTTP to DMZ"
+    priority: 50
+    enabled: true
+    direction: INBOUND
+    action: DNAT  # Destination NAT
+    interface: wan0
+    protocol: TCP
+    destination_port: 80
+    forward_to_ip: "192.168.30.10"  # DMZ web server
+    forward_to_port: 80
+    log: true
+    description: "Forward HTTP traffic to internal web server"
+
+  # Port forward HTTPS with custom port
+  - name: "Port Forward Custom HTTPS"
+    priority: 51
+    enabled: true
+    direction: INBOUND
+    action: DNAT
+    interface: wan0
+    protocol: TCP
+    destination_port: 8443
+    forward_to_ip: "192.168.30.10"
+    forward_to_port: 443
+    description: "Forward external port 8443 to internal HTTPS"
+
+  # 1:1 NAT for DMZ server (all ports)
+  - name: "1:1 NAT for DMZ Server"
+    priority: 52
+    enabled: false
+    direction: BOTH
+    action: BINAT  # Bidirectional NAT
+    external_ip: "203.0.113.10"  # Public IP
+    internal_ip: "192.168.30.20"  # DMZ server
+    description: "Full 1:1 NAT mapping for DMZ server"
+
+# ============================================================================
+# SECTION 8: Application-Layer Filtering
+# ============================================================================
+
+  # Allow web traffic with HTTP inspection
+  - name: "Allow HTTP/HTTPS with Inspection"
+    priority: 100
+    enabled: true
+    direction: BOTH
+    action: ALLOW
+    protocol: TCP
+    destination_port: [80, 443]
+    application_inspection: true
+    tls_inspection: false  # Disabled for privacy
+    log: false
+    description: "Allow web traffic with deep packet inspection"
+
+  # Block specific HTTP methods (security hardening)
+  - name: "Block Dangerous HTTP Methods"
+    priority: 101
+    enabled: true
+    direction: INBOUND
+    action: DROP
+    protocol: TCP
+    destination_port: 80
+    http_methods: ["TRACE", "TRACK", "DELETE"]
+    log: true
+    description: "Block potentially dangerous HTTP methods"
+
+  # Block P2P file sharing applications
+  - name: "Block P2P Applications"
+    priority: 102
+    enabled: true
+    direction: BOTH
+    action: DROP
+    application: ["bittorrent", "emule", "gnutella", "edonkey"]
+    log: true
+    description: "Block peer-to-peer file sharing protocols"
+
+  # Block streaming services (bandwidth management)
+  - name: "Block Streaming Services"
+    priority: 103
+    enabled: false
+    direction: OUTBOUND
+    action: DROP
+    application_category: "streaming"
+    applications: ["netflix", "youtube", "twitch"]
+    exceptions:
+      - source_ip: 192.168.1.10  # CEO's device - allow
+    log: true
+    description: "Reduce bandwidth usage by blocking streaming"
+
+# ============================================================================
+# SECTION 9: Zone-Based Security Policies
+# ============================================================================
+
+  # LAN to WAN (Internet access)
+  - name: "LAN to Internet Access"
+    priority: 200
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    source_zone: "INTERNAL"
+    destination_zone: "EXTERNAL"
+    connection_state: "NEW,ESTABLISHED"
+    log: false
+    description: "Allow LAN users to access Internet"
+
+  # WAN to LAN (block inbound, allow established)
+  - name: "Block Unsolicited WAN to LAN"
+    priority: 201
+    enabled: true
+    direction: INBOUND
+    action: DROP
+    source_zone: "EXTERNAL"
+    destination_zone: "INTERNAL"
+    connection_state: "NEW"
+    log: true
+    description: "Block unsolicited inbound connections"
+
+  # Guest to Internet (allow)
+  - name: "Guest Internet Access"
+    priority: 202
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    source_zone: "GUEST"
+    destination_zone: "EXTERNAL"
+    log: false
+    description: "Allow guest network Internet access"
+
+  # Guest to LAN (deny)
+  - name: "Block Guest to LAN"
+    priority: 203
+    enabled: true
+    direction: BOTH
+    action: DROP
+    source_zone: "GUEST"
+    destination_zone: "INTERNAL"
+    log: true
+    description: "Isolate guest network from internal LAN"
+
+  # IoT to Internet (allow limited)
+  - name: "IoT Limited Internet Access"
+    priority: 204
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    source_zone: "IOT"
+    destination_zone: "EXTERNAL"
+    protocol: [TCP, UDP]
+    destination_port: [80, 443, 123, 53]  # HTTP, HTTPS, NTP, DNS only
+    log: false
+    description: "Allow IoT devices limited Internet access"
+
+  # IoT to LAN (deny)
+  - name: "Block IoT to LAN"
+    priority: 205
+    enabled: true
+    direction: BOTH
+    action: DROP
+    source_zone: "IOT"
+    destination_zone: "INTERNAL"
+    log: true
+    description: "Prevent IoT devices from accessing LAN"
+
+# ============================================================================
+# SECTION 10: VPN and Remote Access
+# ============================================================================
+
+  # Allow WireGuard VPN
   - name: "Allow WireGuard VPN"
     priority: 15
     enabled: true
@@ -68,34 +415,128 @@ firewall_rules:
     protocol: UDP
     destination_port: 51820
     log: true
+    description: "Allow WireGuard VPN connections"
 
-  # Block by country (GeoIP)
-  - name: "Block High-Risk Countries"
-    priority: 8
+  # Allow OpenVPN
+  - name: "Allow OpenVPN"
+    priority: 16
     enabled: false
     direction: INBOUND
-    action: DROP
-    geoip_countries: ["CN", "RU", "KP"]
-    exceptions:
-      - source_ip: 1.2.3.4  # Specific trusted IP
-    log: true
-
-  # Rate limit ICMP
-  - name: "Rate Limit ICMP"
-    priority: 200
-    enabled: true
-    direction: BOTH
     action: ALLOW
-    protocol: ICMP
-    rate_limit: 10
-    rate_limit_per: second
-    log: false
+    protocol: [TCP, UDP]
+    destination_port: 1194
+    log: true
+    description: "Allow OpenVPN connections"
 
-  # Default deny with logging
+  # Allow IPsec VPN (IKE and ESP)
+  - name: "Allow IPsec VPN"
+    priority: 17
+    enabled: false
+    direction: INBOUND
+    action: ALLOW
+    protocol: [UDP, ESP, AH]
+    destination_port: [500, 4500]  # IKE and NAT-T
+    log: true
+    description: "Allow IPsec VPN (IKEv2)"
+
+# ============================================================================
+# SECTION 11: Service-Specific Rules
+# ============================================================================
+
+  # Allow DNS queries
+  - name: "Allow DNS Queries"
+    priority: 20
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    protocol: [TCP, UDP]
+    destination_port: 53
+    log: false
+    description: "Allow DNS resolution"
+
+  # Allow NTP (time synchronization)
+  - name: "Allow NTP"
+    priority: 21
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    protocol: UDP
+    destination_port: 123
+    log: false
+    description: "Allow time synchronization"
+
+  # Allow SMTP (outbound email)
+  - name: "Allow Outbound Email"
+    priority: 22
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    protocol: TCP
+    destination_port: [25, 587, 465]  # SMTP, SMTP+TLS, SMTPS
+    log: false
+    description: "Allow outbound email"
+
+  # Allow IMAP/POP3 (email retrieval)
+  - name: "Allow Email Retrieval"
+    priority: 23
+    enabled: true
+    direction: OUTBOUND
+    action: ALLOW
+    protocol: TCP
+    destination_port: [993, 995]  # IMAPS, POP3S (secure only)
+    log: false
+    description: "Allow secure email retrieval"
+
+# ============================================================================
+# SECTION 12: Logging and Debugging
+# ============================================================================
+
+  # Log all dropped packets (for debugging)
+  - name: "Log All Drops"
+    priority: 9998
+    enabled: false  # Enable only for troubleshooting
+    direction: BOTH
+    action: LOG
+    packet_state: "dropped"
+    log_level: "debug"
+    description: "Debug rule - log all dropped packets"
+
+  # Default deny all (catch-all rule)
   - name: "Default Deny All"
     priority: 9999
     enabled: true
     direction: BOTH
     action: DROP
     log: true
-    description: "Catch-all rule - log and drop everything else"
+    description: "Catch-all rule - deny everything not explicitly allowed"
+
+# ============================================================================
+# ADVANCED FEATURES REFERENCE
+# ============================================================================
+#
+# Connection State Matching:
+#   - NEW: New connection
+#   - ESTABLISHED: Existing connection
+#   - RELATED: Related to existing connection (e.g., FTP data channel)
+#   - INVALID: Invalid or malformed
+#
+# TCP Flags:
+#   - SYN, ACK, FIN, RST, PSH, URG
+#   - Example: tcp_flags: "SYN,!ACK" (SYN set, ACK not set)
+#
+# Logging Levels:
+#   - emergency, alert, critical, error, warning, notice, info, debug
+#
+# Rate Limiting Units:
+#   - per_second, per_minute, per_hour
+#   - Burst: Temporary allowance above rate limit
+#
+# Actions:
+#   - ALLOW: Permit traffic
+#   - DROP: Silently discard (no response)
+#   - REJECT: Discard and send rejection (ICMP/RST)
+#   - DNAT: Destination NAT (port forwarding)
+#   - SNAT: Source NAT (masquerade)
+#   - LOG: Log only, don't affect traffic
+#
+# ============================================================================

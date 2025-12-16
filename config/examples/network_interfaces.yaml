@@ -1,122 +1,790 @@
 # ============================================================================
-# Network Interfaces Configuration Examples
+# SafeOps Network Interface Configuration Examples
+# ============================================================================
+# This file demonstrates comprehensive network interface configurations including:
+#   • Physical NIC identification and configuration
+#   • VLAN tagging and trunk ports
+#   • Bridge interfaces for virtualization
+#   • NIC bonding/teaming (LACP 802.3ad)
+#   • Interface role assignment (WAN/LAN/DMZ/Management)
+#   • MTU tuning for different network types
+#   • Hardware offload features (TSO, GSO, GRO, etc.)
+#   • Interface-specific firewall zones
+#
+# Platform: Windows with SafeOps v2.0
+# ============================================================================
+
+# ============================================================================
+# SECTION 1: Physical Interface Identification and Configuration
 # ============================================================================
 
 network_interfaces:
-  # WAN Interface (Internet)
-  - name: eth0
+  # WAN Interface - Internet Connection
+  - name: "Ethernet 0"
+    windows_name: "Ethernet"  # As shown in Network Connections
     alias: WAN
-    type: ethernet
+    type: physical_ethernet
     role: wan
-    dhcp: true
-    mtu: 1500
+    description: "Primary Internet connection from ISP"
+    
+    # Addressing
+    addressing_mode: dhcp  # Options: dhcp, static, pppoe
+    # For static:
+    # static_ip: 203.0.113.10
+    # netmask: 255.255.255.248
+    # gateway: 203.0.113.1
+    # dns_servers: [8.8.8.8, 8.8.4.4]
+    
+    # Interface settings
+    mtu: 1500  # Standard Ethernet MTU
+    speed: auto  # Options: auto, 10, 100, 1000, 10000
+    duplex: auto  # Options: auto, half, full
+    autonegotiation: true
+    
+    # Hardware offload features
+    hardware_offload:
+      checksum_offload_ipv4: true
+      checksum_offload_ipv6: true
+      tcp_segmentation_offload: true  # TSO
+      generic_segmentation_offload: true  # GSO
+      generic_receive_offload: true  # GRO
+      large_receive_offload: false  # LRO (disable for routers)
+      scatter_gather: true
+      
+    # Monitoring
     enabled: true
-    monitoring: true
+    monitoring_enabled: true
+    collect_stats: true
+    
+    # Firewall zone
+    firewall_zone: UNTRUSTED
+    
+    # MAC address (optional override)
+    # mac_address: "00:11:22:33:44:55"
 
-  # LAN Interface (Internal Network)
-  - name: eth1
+  # LAN Interface - Internal Network
+  - name: "Ethernet 1"
+    windows_name: "Ethernet 2"
     alias: LAN
-    type: ethernet
+    type: physical_ethernet
     role: lan
+    description: "Internal corporate network"
+    
+    # Static addressing for router interface
+    addressing_mode: static
     static_ip: 192.168.1.1
     netmask: 255.255.255.0
-    mtu: 1500
-    enabled: true
+    network: 192.168.1.0/24
     
-  # Management Interface
-  - name: eth2
-    alias: MGMT
-    type: ethernet
-    role: management
-    static_ip: 192.168.100.1
-    netmask: 255.255.255.0
-    vlan_id: 100
+    # Interface settings
+    mtu: 1500  # Can increase to 9000 for jumbo frames
+    speed: 1000  # Force 1 Gbps
+    duplex: full
+    autonegotiation: true
+    
+    # Hardware offload
+    hardware_offload:
+      checksum_offload_ipv4: true
+      checksum_offload_ipv6: true
+      tcp_segmentation_offload: true
+      generic_segmentation_offload: true
+      generic_receive_offload: true
+      
+    # VLAN trunking (if managed switch supports)
+    vlan_trunk: true
+    allowed_vlans: [10, 20, 30, 40, 50, 100]
+    native_vlan: 1
+    
     enabled: true
-    restricted_access: true
+    monitoring_enabled: true
+    firewall_zone: TRUSTED
 
-  # WiFi Access Point
-  - name: wlan0
+  # DMZ Interface - Demilitarized Zone
+  - name: "Ethernet 2"
+    windows_name: "Ethernet 3"
+    alias: DMZ
+    type: physical_ethernet
+    role: dmz
+    description: "DMZ for public-facing servers"
+    
+    addressing_mode: static
+    static_ip: 192.168.30.1
+    netmask: 255.255.255.0
+    network: 192.168.30.0/24
+    
+    mtu: 1500
+    speed: 1000
+    duplex: full
+    
+    enabled: true
+    firewall_zone: DMZ
+
+  # Management Interface - Out-of-Band Management
+  - name: "Ethernet 3"
+    windows_name: "Ethernet 4"
+    alias: MGMT
+    type: physical_ethernet
+    role: management
+    description: "Dedicated management interface (OOBM)"
+    
+    addressing_mode: static
+    static_ip: 192.168.99.1
+    netmask: 255.255.255.0
+    network: 192.168.99.0/24
+    
+    mtu: 1500
+    speed: 100  # 100 Mbps sufficient for management
+    duplex: full
+    
+    # Restrict to management traffic only
+    management_only: true
+    allowed_services: [SSH, HTTPS, SNMP]
+    
+    enabled: true
+    firewall_zone: MANAGEMENT
+
+  # WiFi Access Point - Internal
+  - name: "WiFi 0"
+    windows_name: "Wi-Fi"
     alias: WiFi-Internal
     type: wireless
     role: lan
-    ssid: SafeOps-Secure
-    security: WPA3
-    password: "CHANGE_ME"
-    channel: auto
-    bandwidth: "80MHz"
-    enabled: false
+    description: "Internal employee WiFi"
+    
+    # Wireless settings
+    wireless:
+      ssid: "Corp-Secure"
+      security: WPA3-Enterprise  # WPA3-Enterprise, WPA3-PSK, WPA2-Enterprise, WPA2-PSK
+      encryption: AES-CCMP
+      # For PSK: passphrase: "${WIFI_PASSWORD}"
+      # For Enterprise:
+      radius_server: "radius.corp.local"
+      radius_port: 1812
+      radius_secret: "${RADIUS_SECRET}"
+      
+      # Radio settings
+      band: 5GHz  # 2.4GHz, 5GHz, 6GHz
+      channel: auto  # Or specific: 36, 40, 44, etc.
+      channel_width: 80MHz  # 20MHz, 40MHz, 80MHz, 160MHz
+      tx_power: auto  # Or specific: 10, 15, 20 dBm
+      
+      # Security
+      client_isolation: false  # Allow clients to communicate
+      pmf: required  # Protected Management Frames (WPA3)
+      
+    # VLAN assignment
+    vlan_id: 200
+    
+    enabled: false  # Enable if using SafeOps as WiFi AP
+    firewall_zone: TRUSTED
 
   # Guest WiFi
-  - name: wlan1
+  - name: "WiFi 1"
+    windows_name: "Wi-Fi 2"
     alias: WiFi-Guest
     type: wireless
     role: guest
-    ssid: SafeOps-Guest
-    security: WPA2
-    password: "CHANGE_ME"
-    channel: auto
-    isolation: true
-    vlan_id: 30
+    description: "Guest WiFi with isolation"
+    
+    wireless:
+      ssid: "Corp-Guest"
+      security: WPA2-PSK
+      encryption: AES-CCMP
+      passphrase: "${GUEST_WIFI_PASSWORD}"
+      
+      band: 2.4GHz  # 2.4GHz for better coverage
+      channel: auto
+      channel_width: 20MHz  # Narrow for compatibility
+      
+      # Guest restrictions
+      client_isolation: true
+      internet_only: true
+      bandwidth_limit_mbps: 10
+      session_timeout_minutes: 480
+      
+    vlan_id: 600
     enabled: false
+    firewall_zone: GUEST
 
-# VLAN Configuration
+# ============================================================================
+# SECTION 2: VLAN Configuration (802.1Q Tagging)
+# ============================================================================
+
 vlans:
+  # VLAN 10 - Executive/Management Users
   - vlan_id: 10
-    name: Office
-    description: "Main office network"
+    name: "Executive"
+    description: "Executive and senior management"
+    parent_interface: "Ethernet 1"
+    
+    # Network addressing
     network: 192.168.10.0/24
     gateway: 192.168.10.1
-    dhcp: true
+    dhcp_enabled: true
+    dhcp_range_start: 192.168.10.100
+    dhcp_range_end: 192.168.10.200
+    dns_servers: [192.168.1.1, 1.1.1.1]
     
+    # QoS
+    priority: 7  # 802.1p priority (0-7, 7 highest)
+    cos: 6  # Class of Service
+    
+    # Security
+    firewall_zone: TRUSTED_HIGH
+    security_level: HIGH
+    
+    enabled: true
+
+  # VLAN 20 - General Users
   - vlan_id: 20
-    name: Servers
-    description: "Server infrastructure"
-    network: 192.168.20.0/24
-    gateway: 192.168.20.1
-    dhcp: false
+    name: "Users"
+    description: "General employee workstations"
+    parent_interface: "Ethernet 1"
     
+    network: 192.168.20.0/16
+    gateway: 192.168.20.1
+    dhcp_enabled: true
+    dhcp_range_start: 192.168.20.100
+    dhcp_range_end: 192.168.30.254
+    
+    priority: 4
+    firewall_zone: TRUSTED
+    security_level: MEDIUM
+    
+    enabled: true
+
+  # VLAN 30 - Servers
   - vlan_id: 30
-    name: Guest
-    description: "Guest network"
+    name: "Servers"
+    description: "Production application servers"
+    parent_interface: "Ethernet 1"
+    
     network: 192.168.30.0/24
     gateway: 192.168.30.1
-    dhcp: true
+    dhcp_enabled: false  # Static IPs only
+    
+    priority: 6
+    firewall_zone: SERVER
+    security_level: HIGH
+    
+    # Micro-segmentation
+    micro_segmentation: true
+    
+    enabled: true
+
+  # VLAN 40 - Database
+  - vlan_id: 40
+    name: "Database"
+    description: "Database servers (isolated)"
+    parent_interface: "Ethernet 1"
+    
+    network: 192.168.40.0/24
+    gateway: 192.168.40.1
+    dhcp_enabled: false
+    
+    priority: 7
+    firewall_zone: DATABASE
+    security_level: CRITICAL
+    
+    # Strict isolation
+    micro_segmentation: true
+    isolation_mode: STRICT
+    
+    enabled: true
+
+  # VLAN 50 - IoT/Building Systems
+  - vlan_id: 50
+    name: "IoT"
+    description: "IoT devices and building automation"
+    parent_interface: "Ethernet 1"
+    
+    network: 192.168.50.0/16
+    gateway: 192.168.50.1
+    dhcp_enabled: true
+    dhcp_range_start: 192.168.50.10
+    dhcp_range_end: 192.168.55.254
+    
+    priority: 2
+    firewall_zone: IOT
+    security_level: LOW
+    
+    # Restrict to internet only
+    internet_only: true
+    block_inter_vlan: true
+    
+    enabled: true
+
+  # VLAN 600 - Guest Network
+  - vlan_id: 600
+    name: "Guest"
+    description: "Guest user network"
+    parent_interface: "Ethernet 1"
+    
+    network: 192.168.200.0/24
+    gateway: 192.168.200.1
+    dhcp_enabled: true
+    dhcp_range_start: 192.168.200.10
+    dhcp_range_end: 192.168.200.250
+    
+    priority: 1  # Lowest priority
+    firewall_zone: GUEST
+    security_level: UNTRUSTED
+    
+    # Guest restrictions
     isolation: true
     internet_only: true
+    bandwidth_limit_mbps: 50
+    
+    enabled: true
 
-  - vlan_id: 100
-    name: Management
-    description: "Management interface"
-    network: 192.168.100.0/24
-    gateway: 192.168.100.1
-    dhcp: false
-    restricted: true
+  # VLAN 700 - VoIP
+  - vlan_id: 700
+    name: "VoIP"
+    description: "Voice over IP telephony"
+    parent_interface: "Ethernet 1"
+    
+    network: 192.168.70.0/24
+    gateway = "192.168.70.1"
+    dhcp_enabled: true
+    dhcp_range_start: 192.168.70.10
+    dhcp_range_end: 192.168.70.250
+    
+    # VoIP requires high priority
+    priority: 7
+    cos: 5  # Voice traffic
+    firewall_zone: VOIP
+    
+    # QoS for VoIP
+    qos_enabled: true
+    bandwidth_reservation_mbps: 20
+    latency_target_ms: 50
+    jitter_target_ms: 30
+    
+    enabled: true
 
-# Bonding/Link Aggregation
-bonds:
-  - name: bond0
-    type: LACP
-    mode: 802.3ad
-    slaves: [eth3, eth4]
-    mtu: 9000
-    enabled: false
+  # VLAN 999 - Management
+  - vlan_id: 999
+    name: "Management"
+    description: "Network device management"
+    parent_interface: "Ethernet 1"
+    
+    network: 192.168.99.0/24
+    gateway: 192.168.99.1
+    dhcp_enabled: false  # Static only
+    
+    priority: 7
+    firewall_zone: MANAGEMENT
+    security_level: CRITICAL
+    
+    # Strict access control
+    restricted_access: true
+    mfa_required: true
+    
+    enabled: true
 
-# Bridges
+# ============================================================================
+# SECTION 3: Bridge Interfaces (for Virtual Machines, Containers)
+# ============================================================================
+
 bridges:
+  # Bridge for VM network
   - name: br0
     type: bridge
-    interfaces: [eth1, tap0]
-    stp_enabled: true
+    description: "Bridge for hypervisor virtual machines"
+    
+    # Bridged interfaces
+    member_interfaces:
+      - "Ethernet 5"
+      - "vEthernet (VMs)"
+    
+    # Bridge settings
+    stp_enabled: true  # Spanning Tree Protocol
+    stp_priority: 32768
+    stp_forward_delay: 15  # Seconds
+    
+    # Network settings
+    addressing_mode: static
+    static_ip: 192.168.100.1
+    netmask: 255.255.255.0
+    
+    mtu: 1500
+    
+    enabled: false  # Enable if using virtualization
+
+  # Bridge for container networking
+  - name: br1
+    type: bridge
+    description: "Bridge for Docker/container networking"
+    
+    member_interfaces:
+      - "vEthernet (Containers)"
+    
+    stp_enabled: false  # Not needed for single interface
+    
+    addressing_mode: static
+    static_ip: 172.17.0.1
+    netmask: 255.255.0.0
+    
     enabled: false
 
-# Routes
+# ============================================================================
+# SECTION 4: NIC Bonding/Teaming (LACP 802.3ad)
+# ============================================================================
+
+bonds:
+  # LACP Bond for high availability
+  - name: bond0
+    type: lacp
+    mode: "802.3ad"  # LACP (Link Aggregation Control Protocol)
+    description: "Bonded uplink for redundancy and bandwidth"
+    
+    # Member interfaces (must be same speed)
+    slave_interfaces:
+      - "Ethernet 4"
+      - "Ethernet 5"
+    
+    # Bonding parameters
+    lacp_rate: fast  # fast (1/sec) or slow (30/sec)
+    mii_monitor_interval: 100  # Milliseconds
+    updelay: 200  # Milliseconds to wait before enabling slave
+    downdelay: 200  # Milliseconds to wait before disabling slave
+    
+    # Load balancing
+    xmit_hash_policy: "layer3+4"  # layer2, layer3+4, layer2+3
+    
+    # Fallback
+    primary_slave: "Ethernet 4"
+    
+    # Network settings
+    addressing_mode: static
+    static_ip: 10.0.0.1
+    netmask: 255.255.255.252
+    mtu: 9000  # Jumbo frames for datacenter
+    
+    # Hardware offload
+    hardware_offload:
+      checksum_offload_ipv4: true
+      tcp_segmentation_offload: true
+      large_receive_offload: true
+    
+    enabled: false  # Enable for enterprise deployments
+
+  # Active-Backup Bond (simpler failover)
+  - name: bond1
+    type: active_backup
+    mode: "active-backup"
+    description: "Active-backup failover bond"
+    
+    slave_interfaces:
+      - "Ethernet 6"
+      - "Ethernet 7"
+    
+    # Active-backup specific
+    primary_slave: "Ethernet 6"
+    mii_monitor_interval: 100
+    failover_time_ms: 200
+    
+    addressing_mode: dhcp
+    mtu: 1500
+    
+    enabled: false
+
+# ============================================================================
+# SECTION 5: MTU Tuning for Different Network Types
+# ============================================================================
+
+mtu_profiles:
+  # Standard Ethernet MTU
+  - name: standard_ethernet
+    description: "Standard Ethernet MTU for internet/WAN"
+    mtu: 1500
+    applies_to: [wan, internet, external]
+    
+  # Jumbo frames for datacenter
+  - name: jumbo_frames
+    description: "Jumbo frames for high-speed internal networks"
+    mtu: 9000
+    applies_to: [datacenter, storage, backup]
+    requirements: "All devices must support jumbo frames"
+    
+  # PPPoE with overhead
+  - name: pppoe
+    description: "PPPoE connection with overhead"
+    mtu: 1492  # 1500 - 8 bytes PPPoE overhead
+    applies_to: [pppoe_wan]
+    
+  # VPN MTU
+  - name: vpn_tunnel
+    description: "VPN with encryption overhead"
+    mtu: 1400  # Account for IPsec/OpenVPN overhead
+    applies_to: [vpn, ipsec, openvpn]
+    
+  # VXLAN overlay
+  - name: vxlan_overlay
+    description: "VXLAN overlay network"
+    mtu: 1450  # 1500 - 50 bytes VXLAN overhead
+    applies_to: [vxlan, overlay]
+
+# ============================================================================
+# SECTION 6: Hardware Offload Feature Profiles
+# ============================================================================
+
+hardware_offload_profiles:
+  # Maximum performance (datacenter)
+  - name: max_performance
+    description: "Enable all offload features for maximum throughput"
+    settings:
+      checksum_offload_ipv4: true
+      checksum_offload_ipv6: true
+      tcp_segmentation_offload: true  # TSO
+      generic_segmentation_offload: true  # GSO
+      generic_receive_offload: true  # GRO
+      large_receive_offload: true  # LRO
+      scatter_gather: true
+      rx_vlan_offload: true
+      tx_vlan_offload: true
+      rx_hashing: true  # RSS - Receive Side Scaling
+      tx_hashing: true
+    use_cases: [datacenter, high_throughput]
+    
+  # Router/firewall optimized
+  - name: router_optimized
+    description: "Optimized for routing/firewall with packet inspection"
+    settings:
+      checksum_offload_ipv4: true
+      checksum_offload_ipv6: true
+      tcp_segmentation_offload: true
+      generic_segmentation_offload: true
+      generic_receive_offload: true
+      large_receive_offload: false  # Disable LRO for accurate inspection
+      scatter_gather: true
+      rx_vlan_offload: true
+      tx_vlan_offload: true
+    use_cases: [router, firewall, ids_ips]
+    
+  # Virtualization host
+  - name: virtualization
+    description: "Optimized for VM/container host"
+    settings:
+      checksum_offload_ipv4: true
+      checksum_offload_ipv6: true
+      tcp_segmentation_offload: true
+      generic_segmentation_offload: true
+      generic_receive_offload: true
+      scatter_gather: true
+      vlan_offload: true
+      sr_iov: true  # Single Root I/O Virtualization
+      vmdq: true  # Virtual Machine Device Queues
+    use_cases: [hypervisor, virtualization]
+
+# ============================================================================
+# SECTION 7: Interface-Specific Firewall Zones
+# ============================================================================
+
+firewall_zones:
+  # Untrusted zone - Internet/WAN
+  - name: UNTRUSTED
+    trust_level: 0
+    description: "Untrusted external networks (Internet)"
+    default_policy: DROP
+    interfaces: ["Ethernet 0"]
+    allowed_inbound:
+      - VPN (UDP/1194, UDP/51820)
+      - ICMP (limited)
+    allowed_outbound: all
+    
+  # Trusted zone - Internal LAN
+  - name: TRUSTED
+    trust_level: 80
+    description: "Trusted internal network"
+    default_policy: ALLOW
+    interfaces: ["Ethernet 1", "VLAN 20"]
+    inspection_level: BASIC
+    
+  # Trusted High - Executive network
+  - name: TRUSTED_HIGH
+    trust_level: 90
+    description: "High-trust executive network"
+    default_policy: ALLOW
+    interfaces: ["VLAN 10"]
+    inspection_level: MINIMAL
+    
+  # Server zone
+  - name: SERVER
+    trust_level: 70
+    description: "Application servers"
+    default_policy: DENY
+    interfaces: ["VLAN 30"]
+    inspection_level: STRICT
+    allowed_services: [HTTP, HTTPS, SSH]
+    
+  # Database zone
+  - name: DATABASE
+    trust_level: 60
+    description: "Database servers (isolated)"
+    default_policy: DENY
+    interfaces: ["VLAN 40"]
+    inspection_level: STRICT
+    allowed_from_zones: [SERVER]
+    allowed_services: [PostgreSQL, MySQL, MSSQL]
+    
+  # DMZ zone
+  - name: DMZ
+    trust_level: 30
+    description: "Demilitarized zone for public services"
+    default_policy: DENY
+    interfaces: ["Ethernet 2"]
+    inspection_level: MAXIMUM
+    allowed_inbound: [HTTP, HTTPS]
+    allowed_to_zones: [UNTRUSTED]
+    
+  # IoT zone
+  - name: IOT
+    trust_level: 20
+    description: "IoT and building automation devices"
+    default_policy: DENY
+    interfaces: ["VLAN 50"]
+    internet_only: true
+    block_inter_zone: true
+    
+  # Guest zone
+  - name: GUEST
+    trust_level: 10
+    description: "Guest user network"
+    default_policy: DENY
+    interfaces: ["VLAN 600", "WiFi 1"]
+    internet_only: true
+    isolation: true
+    bandwidth_limit_mbps: 50
+    
+  # VoIP zone
+  - name: VOIP
+    trust_level: 75
+    description: "VoIP telephony"
+    default_policy: ALLOW_VOIP
+    interfaces: ["VLAN 700"]
+    qos_priority: HIGH
+    allowed_protocols: [SIP, RTP, RTCP]
+    
+  # Management zone
+  - name: MANAGEMENT
+    trust_level: 100
+    description: "Management access (restricted)"
+    default_policy: DENY
+    interfaces: ["Ethernet 3", "VLAN 999"]
+    inspection_level: STRICT
+    mfa_required: true
+    allowed_services: [SSH, HTTPS, SNMP]
+    allowed_from_ips: ["192.168.99.0/24"]
+
+# ============================================================================
+# SECTION 8: Static Routes
+# ============================================================================
+
 static_routes:
+  # Route to corporate HQ
   - destination: 10.0.0.0/8
     gateway: 192.168.1.254
     metric: 10
-    interface: eth1
+    interface: "Ethernet 1"
+    description: "Corporate HQ network"
+    persistent: true
     
+  # Route to branch office
   - destination: 172.16.0.0/12
-    gateway: 192.168.1.254
-    metric: 10
-    interface: eth1
+    gateway: 192.168.1.253
+    metric: 20
+    interface: "Ethernet 1"
+    description: "Branch office network"
+    persistent: true
+    
+  # Blackhole route for bogon networks
+  - destination: 192.0.2.0/24  # TEST-NET-1
+    gateway: null
+    type: blackhole
+    description: "Drop RFC 5737 test addresses"
+
+# ============================================================================
+# INTERFACE MONITORING AND HEALTH CHECKS
+# ============================================================================
+
+monitoring:
+  # Interface health checks
+  enabled: true
+  check_interval_seconds: 30
+  
+  # Metrics to collect
+  collect_metrics:
+    - rx_packets
+    - tx_packets
+    - rx_bytes
+    - tx_bytes
+    - rx_errors
+    - tx_errors
+    - rx_dropped
+    - tx_dropped
+    - collisions
+    - link_speed
+    - link_duplex
+    
+  # Alerts
+  alerts:
+    - name: interface_down
+      condition: link_status == DOWN
+      severity: CRITICAL
+      
+    - name: high_error_rate
+      condition: (rx_errors + tx_errors) / (rx_packets + tx_packets) > 0.01  # 1%
+      severity: HIGH
+      
+    - name: high_bandwidth_utilization
+      condition: bandwidth_utilization > 80
+      severity: MEDIUM
+
+# ============================================================================
+# ADVANCED INTERFACE FEATURES
+# ============================================================================
+
+advanced_features:
+  # SR-IOV (Single Root I/O Virtualization)
+  sriov:
+    enabled: false
+    max_vfs: 32  # Virtual functions per physical NIC
+    
+  # RSS (Receive Side Scaling)
+  rss:
+    enabled: true
+    hash_key_size: 40
+    indirection_table_size: 128
+    
+  # Flow Director (Intel)
+  flow_director:
+    enabled: false
+    mode: perfect  # perfect or signature
+    
+  # Wake-on-LAN
+  wake_on_lan:
+    enabled: true
+    magic_packet: true
+    
+  # Energy Efficient Ethernet (EEE)
+  energy_efficient_ethernet:
+    enabled: false  # Disable for consistent latency
+
+# ============================================================================
+# SELF-CHECK VALIDATION
+# ============================================================================
+# Before deploying this configuration, verify:
+#
+# [✓] Physical interface names match actual Windows interface names
+# [✓] MAC addresses unique if manually assigned
+# [✓] VLAN IDs don't conflict with switch configuration
+# [✓] MTU values consistent across network path
+# [✓] Bonded interfaces are same speed and duplex
+# [✓] Firewall zones properly assigned to interfaces
+# [✓] Static routes have valid gateways
+# [✓] Hardware offload features supported by NIC driver
+# [✓] VLANs configured on connected switches
+# [✓] Trunk ports configured for VLAN tagging
+#
+# ============================================================================

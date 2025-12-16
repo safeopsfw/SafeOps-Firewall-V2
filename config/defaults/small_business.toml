@@ -1,225 +1,736 @@
 # ============================================================================
-# SafeOps Default Configuration - Small Business Profile
+# SafeOps Small Business Configuration Preset
 # ============================================================================
-# Optimized for: 10-50 employees, multiple VLANs, moderate security
-# Features: Business protection, network segmentation, compliance logging
-# Resources: 4 cores, 4GB RAM minimum
+# DEPLOYMENT PROFILE: Small Business
+#
+# PURPOSE:
+#   Balanced configuration providing enterprise-grade security with manageable
+#   complexity suitable for small IT teams or managed service providers.
+#
+# TARGET ENVIRONMENT:
+#   • 20-100 employees
+#   • Small office or multi-site small business
+#   • Limited IT staff (1-3 people)
+#   • Moderate security requirements
+#   • Basic compliance needs
+#
+# TARGET HARDWARE:
+#   CPU: Intel Core i5/i7 or Xeon E-2100 series (4-8 cores)
+#   RAM: 16GB minimum (32GB recommended)
+#   Storage: 256GB SSD (OS/apps) + 1TB HDD (logs/backups)
+#   Network: 3x Gigabit NICs (WAN, LAN, Guest/DMZ)
+#
+# KEY FEATURES:
+#   ✓ Business-grade security without enterprise complexity
+#   ✓ Zone-based network segmentation (LAN, Guest, Servers)
+#   ✓ IPS with recommended threat blocking
+#   ✓ Built-in VPN for remote workers
+#   ✓ Automated management and updates
+#   ✓ Compliance-ready logging
+#
+# USE CASES:
+#   • Professional services firms (law, accounting, consulting)
+#   • Medical/dental practices
+#   • Retail stores with POS systems
+#   • Manufacturing facilities
+#   • Multi-location small businesses
+#
 # ============================================================================
 
 [profile]
 name = "small_business"
-description = "Small business with enhanced security"
+description = "Balanced security for small business (20-100 devices)"
 complexity = "moderate"
 version = "2.0.0"
+deployment_type = "SMALL_BUSINESS"
+enforcement_level = "BALANCED"
 
-# =============================================================================
-# SYSTEM
-# =============================================================================
+# ============================================================================
+# SYSTEM CONFIGURATION
+# ============================================================================
+
 [system]
 hostname = "safeops-business"
-timezone = "UTC"
-install_directory = "C:\\Program Files\\SafeOps"
-data_directory = "C:\\ProgramData\\SafeOps"
+timezone = "America/New_York"  # Adjust for location
+admin_email = "it@business.local"
+description = "SafeOps Small Business Security Gateway"
 
-# =============================================================================
-# NETWORK - 3 NIC CONFIGURATION
-# =============================================================================
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "D:\\SafeOps\\Data"
+log_directory = "D:\\SafeOps\\Logs"
+backup_directory = "D:\\SafeOps\\Backups"
+
+[system.resources]
+# Resource allocation for small business workload
+max_cpu_cores = 6
+max_memory_mb = 12288  # 12GB
+max_disk_gb = 1000  # 1TB
+
+# ============================================================================
+# NETWORK CONFIGURATION - 3-ZONE ARCHITECTURE
+# ============================================================================
+
 [network]
 topology = "3-nic"
+description = "WAN, LAN, Guest/DMZ separation"
 
 [network.interfaces]
-wan = "NIC1"
-lan = "NIC2"
-wifi = "NIC3"
+wan = "Ethernet 0"  # Internet connection
+lan = "Ethernet 1"  # Internal business network
+guest_dmz = "Ethernet 2"  # Guest WiFi and DMZ servers
 
 [network.addressing]
-wan_mode = "dhcp"
+# WAN (typically DHCP from ISP)
+wan_mode = "dhcp"  # Or "static" if you have static IP
+
+# LAN - Main business network
 lan_ip = "192.168.1.1"
 lan_netmask = "255.255.255.0"
 lan_network = "192.168.1.0/24"
-wifi_ip = "192.168.2.1"
-wifi_netmask = "255.255.255.0"
-wifi_network = "192.168.2.0/24"
 
-# =============================================================================
-# SERVICES - FULL SET
-# =============================================================================
+# Guest/DMZ network
+guest_ip = "192.168.2.1"
+guest_netmask = "255.255.255.0"
+guest_network = "192.168.2.0/24"
+
+# Enable basic routing
+enable_ip_forwarding = true
+enable_nat = true
+enable_ipv6 = false  # Disabled for simplicity
+
+# ============================================================================
+# VLANS (OPTIONAL) - For businesses with managed switches
+# ============================================================================
+
+[vlans]
+enabled = false  # Enable if using VLAN-capable switches
+
+# Example VLANs (uncomment and edit if needed)
+# [[vlans.segments]]
+# vlan_id = 10
+# name = "Workstations"
+# network = "192.168.10.0/24"
+# gateway = "192.168.10.1"
+# dhcp_enabled = true
+#
+# [[vlans.segments]]
+# vlan_id = 20
+# name = "Servers"
+# network = "192.168.20.0/24"
+# gateway = "192.168.20.1"
+# dhcp_enabled = false
+
+# ============================================================================
+# SERVICE CONFIGURATION - FULL STACK
+# ============================================================================
+
 [services]
+# Core network services
 kernel_driver = true
 network_logger = true
 firewall_engine = true
 ids_ips = true
 dns_server = true
 dhcp_server = true
-wifi_ap = true
-tls_proxy = true  # Enable for business visibility
+
+# Security services
+tls_proxy = true  # Enable for visibility
 certificate_manager = true
 threat_intel = true
+
+# WiFi (if providing wireless)
+wifi_ap = true
+
+# Management services
 backup_restore = true
 update_manager = true
 orchestrator = true
 web_ui = true
 
-# =============================================================================
-# FIREWALL - STRICT MODE
-# =============================================================================
+# VPN (for remote workers)
+# vpn_server = true  # Uncomment if needed
+
+# ============================================================================
+# FIREWALL - ZONE-BASED POLICIES
+# ============================================================================
+
 [firewall]
 enabled = true
-default_action = "deny"
-log_denied = true
-log_allowed = false
-max_connections = 1000000
+enforcement_mode = "BALANCED"
+default_action = "DENY"  # Default deny for security
 
-# Stateful inspection
-stateful_inspection = true
+# Logging
+log_denied = true
+log_allowed = false  # Reduces log volume
+log_detail_level = "STANDARD"
+
+# Connection tracking
 connection_tracking = true
+stateful_inspection = true
+max_connections = 1000000  # 1M concurrent connections
 
 # DDoS protection
-ddos_protection = true
+[firewall.ddos_protection]
+enabled = true
 syn_flood_protection = true
+icmp_flood_protection = true
+rate_limiting = true
+connection_rate_limit = 500  # Per second
 
-# =============================================================================
-# IDS/IPS - PREVENTION MODE
-# =============================================================================
+# Zone definitions
+[firewall.zones]
+[[firewall.zones.zone]]
+name = "WAN"
+trust_level = "UNTRUSTED"
+interfaces = ["Ethernet 0"]
+default_policy = "DENY"
+
+[[firewall.zones.zone]]
+name = "LAN"
+trust_level = "TRUSTED"
+interfaces = ["Ethernet 1"]
+default_policy = "ALLOW"
+
+[[firewall.zones.zone]]
+name = "GUEST"
+trust_level = "UNTRUSTED"
+interfaces = ["Ethernet 2"]
+default_policy = "DENY"
+
+# Inter-zone policies
+[[firewall.zones.policy]]
+from_zone = "LAN"
+to_zone = "WAN"
+action = "ALLOW"
+log = false
+
+[[firewall.zones.policy]]
+from_zone = "WAN"
+to_zone = "LAN"
+action = "DENY"
+log = true
+
+[[firewall.zones.policy]]
+from_zone = "GUEST"
+to_zone = "WAN"
+action = "ALLOW"
+log = false
+
+[[firewall.zones.policy]]
+from_zone = "GUEST"
+to_zone = "LAN"
+action = "DENY"
+log = true
+
+# ============================================================================
+# IDS/IPS - BALANCED PROTECTION
+# ============================================================================
+
 [ids_ips]
 enabled = true
-mode = "ips"  # Block threats
-signature_updates_enabled = true
-update_interval_hours = 1
+operating_mode = "IPS"  # Inline protection
+signature_engine = "SURICATA"
 
-# Categories
+# Detection methods
+[ids_ips.detection]
 signature_based = true
 anomaly_based = true
-behavior_based = true
+behavioral_analysis = true
+heuristic_detection = false  # Disabled to reduce false positives
 
-# Sensitivity
-sensitivity = "medium"
+# Signature management
+signature_updates_enabled = true
+update_interval_hours = 2  # Every 2 hours
+auto_reload_signatures = true
 
-# =============================================================================
-# TLS PROXY - ENABLED
-# =============================================================================
+# Sensitivity (balanced for small business)
+sensitivity = "MEDIUM"
+
+# Enabled categories (focused on business threats)
+enabled_categories = [
+    "malware", "exploit", "trojan", "ransomware",
+    "web-attack", "sql-injection", "xss",
+    "dos", "scan", "brute-force",
+    "phishing", "c2-communication"
+]
+
+# Prevention
+[ids_ips.prevention]
+ips_mode = true
+auto_block = true  # Auto-block high-severity threats
+manual_review_for_medium = false  # Auto-block medium threats too
+block_duration = 3600  # 1 hour
+firewall_integration = true
+
+# ============================================================================
+# TLS PROXY - SELECTIVE INSPECTION
+# ============================================================================
+
 [tls_proxy]
 enabled = true
+mode = "TRANSPARENT"
+
+# Certificate integration
+certificate_manager_integration = true
+dynamic_cert_generation = true
+
+# Bypass sensitive sites (legal/compliance)
 bypass_financial_sites = true
 bypass_healthcare_sites = true
 bypass_government_sites = true
-log_intercepted_domains = true
 
-# =============================================================================
-# DNS - WITH FILTERING
-# =============================================================================
+# Additional bypass for business needs
+bypass_domains = [
+    "*.payroll-provider.com",
+    "*.bank.com",
+    "*.tax-software.com"
+]
+
+# Inspection features
+malware_scanning = true
+url_filtering = true
+dlp_integration = false  # Optional for small business
+
+# ============================================================================
+# DNS SERVER - BUSINESS DNS
+# ============================================================================
+
 [dns]
 enabled = true
+listen_port = 53
+
+# Upstream forwarders
+upstream_servers = [
+    "1.1.1.1",  # Cloudflare
+    "1.0.0.1",
+    "8.8.8.8",  # Google
+    "8.8.4.4"
+]
+
+# Caching
 cache_enabled = true
 cache_size_mb = 256
+cache_ttl_min = 300
+cache_ttl_max = 86400
+
+# Local zone for business
+local_zone_enabled = true
+local_zone_name = "business.local"
+
+# DNS Security
+dnssec_enabled = true
+dns_over_tls_enabled = true
 
 # Filtering
+[dns.filtering]
+enabled = true
 block_malware_domains = true
 block_phishing_domains = true
-block_advertising = true
+block_ransomware_domains = true
+block_advertising = true  # Block ads to save bandwidth
 block_tracking = true
 
-# Security
-dnssec_enabled = true
-dot_enabled = true
+# Threat intel integration
+threat_intel_integration = true
 
-# Upstream
-upstream_servers = ["1.1.1.1", "1.0.0.1", "8.8.8.8"]
+# ============================================================================
+# DHCP SERVER - DUAL POOLS
+# ============================================================================
 
-# =============================================================================
-# DHCP - DUAL POOLS
-# =============================================================================
 [dhcp]
 enabled = true
-lan_enabled = true
-wifi_enabled = true
 
-[dhcp.lan_pool]
-range_start = "192.168.1.50"
+# LAN Pool
+[[dhcp.pools]]
+name = "LAN"
+interface = "Ethernet 1"
+network = "192.168.1.0/24"
+range_start = "192.168.1.100"
 range_end = "192.168.1.200"
-default_lease_hours = 24
+lease_time = 86400  # 24 hours
+gateway = "192.168.1.1"
 dns_servers = ["192.168.1.1"]
+domain_name = "business.local"
 
-[dhcp.wifi_pool]
-range_start = "192.168.2.50"
-range_end = "192.168.2.200"
-default_lease_hours = 4  # Shorter for guests
+# Static reservations for servers/printers/devices
+[[dhcp.pools.reservations]]
+mac = "00:11:22:33:44:55"
+ip = "192.168.1.10"
+hostname = "file-server"
+
+[[dhcp.pools.reservations]]
+mac = "AA:BB:CC:DD:EE:FF"
+ip = "192.168.1.20"
+hostname = "printer-01"
+
+# Guest Pool
+[[dhcp.pools]]
+name = "Guest"
+interface = "Ethernet 2"
+network = "192.168.2.0/24"
+range_start = "192.168.2.100"
+range_end = "192.168.2.250"
+lease_time = 7200  # 2 hours (short for guests)
+gateway = "192.168.2.1"
 dns_servers = ["192.168.2.1"]
+domain_name = "guest.local"
 
-# =============================================================================
-# WIFI - GUEST ISOLATION
-# =============================================================================
+# Dynamic DNS integration
+ddns_enabled = true
+ddns_domain = "business.local"
+
+# ============================================================================
+# WIFI ACCESS POINT
+# ============================================================================
+
 [wifi]
 enabled = true
-ssid = "Business-WiFi"
-security = "wpa3"
-client_isolation = true
-max_clients = 50
 
-# =============================================================================
-# THREAT INTELLIGENCE
-# =============================================================================
+# Business WiFi (WPA3)
+[[wifi.ssids]]
+ssid = "BusinessName-Secure"
+security = "WPA3-PSK"
+encryption = "AES-CCMP"
+passphrase = "${BUSINESS_WIFI_PASSWORD}"
+vlan_id = 0  # Main LAN
+max_clients = 50
+client_isolation = false
+
+# Guest WiFi (isolated)
+[[wifi.ssids]]
+ssid = "BusinessName-Guest"
+security = "WPA2-PSK"
+encryption = "AES-CCMP"
+passphrase = "${GUEST_WIFI_PASSWORD}"
+vlan_id = 0  # Can use VLAN if configured
+network = "192.168.2.0/24"
+max_clients = 20
+client_isolation = true
+bandwidth_limit = 10mbps  # Limit guest bandwidth
+
+# ============================================================================
+# THREAT INTELLIGENCE - FREE + COMMERCIAL MIX
+# ============================================================================
+
 [threat_intel]
 enabled = true
+
+# Feed sources
 auto_update_feeds = true
 update_interval_hours = 6
-feeds = ["free", "standard"]
+feeds = ["free", "commercial"]  # Mix of free and paid feeds
 
-# =============================================================================
-# BACKUP - DAILY
-# =============================================================================
+# Free feeds
+free_feeds = [
+    "Abuse.ch-Feodo",
+    "Abuse.ch-URLhaus",
+    "Emerging-Threats",
+    "Spamhaus-DROP"
+]
+
+# Commercial feeds (optional subscription)
+# commercial_feeds = ["Emerging-Threats-Pro"]
+
+# Auto-blocking
+auto_block_enabled = true
+auto_block_threshold = 75  # Confidence score
+
+# ============================================================================
+# CERTIFICATE MANAGER - INTERNAL PKI
+# ============================================================================
+
+[certificate_manager]
+enabled = true
+
+# Internal CA for business
+internal_ca_enabled = true
+ca_organization = "Your Business Name"
+ca_country = "US"
+ca_validity_years = 10
+
+# Auto-renewal
+auto_renewal_enabled = true
+renewal_days_before_expiry = 30
+
+# TLS interception certificates
+tls_interception_ca = true
+
+# ============================================================================
+# VPN SERVER (OPTIONAL) - For Remote Workers
+# ============================================================================
+
+[vpn]
+enabled = false  # Enable if needed
+
+# WireGuard VPN (recommended for small business)
+# protocol = "WIREGUARD"
+# listen_port = 51820
+# network = "10.0.100.0/24"
+# dns_servers = ["192.168.1.1"]
+#
+# # VPN users
+# [[vpn.users]]
+# name = "remote-worker-01"
+# public_key = "..."
+# allowed_ips = ["10.0.100.10/32"]
+
+# ============================================================================
+# BACKUP AND RESTORE
+# ============================================================================
+
 [backup]
 enabled = true
+
+# Backup schedule
 schedule = "0 2 * * *"  # Daily at 2 AM
+incremental_backups = false  # Full backups only (simpler)
+
+# Backup scope
+backup_configs = true
+backup_database = true
+backup_certificates = true
+backup_threat_intel_data = false  # Can be re-downloaded
+
+# Encryption
+encryption_enabled = true
+encryption_algorithm = "AES-256"
+encryption_password = "${BACKUP_ENCRYPTION_PASSWORD}"
+
+# Backup destinations
+primary_destination = "D:\\SafeOps\\Backups"
+
+# NAS backup (if available)
+nas_backup_enabled = true
+nas_destination = "\\\\nas.business.local\\safeops_backups"
+
+# Cloud backup (optional)
+cloud_backup_enabled = false
+# cloud_provider = "S3"  # or "Azure", "Backblaze"
+# cloud_bucket = "company-backups"
+# cloud_schedule = "0 3 * * 0"  # Weekly on Sunday
+
+# Retention
 retention_days = 90
-compression = true
-encryption = true
+max_backups = 30
 
-# =============================================================================
-# UPDATES
-# =============================================================================
+# ============================================================================
+# UPDATE MANAGEMENT
+# ============================================================================
+
 [updates]
+# Update checking
 auto_check = true
-auto_install_security = true
-auto_install_signatures = true
-auto_install_software = false  # Manual approval
-channel = "stable"
-maintenance_day = "sunday"
-maintenance_start_time = "02:00"
+check_interval_hours = 12
 
-# =============================================================================
-# WEB UI
-# =============================================================================
+# Automatic updates
+auto_install_signatures = true  # Always auto-update signatures
+auto_install_security = true  # Auto-install security patches
+auto_install_software = false  # Manual approval for feature updates
+
+# Update channel
+channel = "stable"
+
+# Maintenance window
+[[updates.maintenance_windows]]
+day = "Sunday"
+start_time = "02:00"
+end_time = "06:00"
+timezone = "America/New_York"
+
+# Notifications
+notify_before_update = true
+notification_email = "it@business.local"
+
+# ============================================================================
+# WEB UI - RBAC ENABLED
+# ============================================================================
+
 [web_ui]
 enabled = true
+
+# Access configuration
 https_enabled = true
 https_port = 8443
+http_redirect = true
+
+# Authentication
 require_authentication = true
+authentication_method = "LOCAL"  # or "LDAP" if AD available
+
+# Role-based access control
+[web_ui.rbac]
+rbac_enabled = true
+
+# Predefined roles
+[[web_ui.rbac.roles]]
+name = "admin"
+permissions = ["*"]  # Full access
+
+[[web_ui.rbac.roles]]
+name = "operator"
+permissions = [
+    "system.view", "firewall.view", "firewall.edit",
+    "dns.view", "dhcp.view", "dhcp.edit",
+    "logs.view", "alerts.acknowledge"
+]
+
+[[web_ui.rbac.roles]]
+name = "viewer"
+permissions = ["*.view", "logs.view"]
+
+# Local users
+[[web_ui.users]]
+username = "admin"
+password_hash = "$2a$10$..."  # Change on first login
+role = "admin"
+force_password_change = true
+
+# Session management
 session_timeout_minutes = 60
-mfa_enabled = false  # Optional for small business
+concurrent_sessions_per_user = 2
 
-# =============================================================================
-# LOGGING - 90 DAYS
-# =============================================================================
+# Multi-factor authentication (optional)
+mfa_enabled = false
+mfa_required_for_admins = false
+
+# ============================================================================
+# LOGGING - COMPLIANCE READY
+# ============================================================================
+
 [logging]
-log_level = "info"
-log_format = "json"
-log_rotation = true
-log_max_size_mb = 100
-log_retention_days = 90
-syslog_enabled = false
+# Logging level
+log_level = "INFO"
+log_format = "JSON"
 
-# =============================================================================
-# RESOURCE LIMITS
-# =============================================================================
-[resource_limits]
-max_cpu_percent = 70
-max_memory_mb = 4096
+# Log rotation
+log_rotation_enabled = true
+log_max_size_mb = 200
+compress_rotated_logs = true
 
-# =============================================================================
-# COMPLIANCE
-# =============================================================================
+# Retention
+log_retention_days = 90  # 3 months
+archive_enabled = true
+archive_retention_days = 365  # 1 year archived
+
+# Log categories
+[logging.categories]
+firewall_logs = true
+ids_alerts = true
+threat_intel_matches = true
+authentication_events = true
+configuration_changes = true
+system_events = true
+dns_queries = false  # Too verbose for small business
+dhcp_events = true
+
+# Packet capture (for alerts only)
+alert_packet_capture = true
+pcap_retention_days = 7
+
+# ============================================================================
+# SIEM INTEGRATION (OPTIONAL)
+# ============================================================================
+
+[siem]
+enabled = false  # Enable if using external SIEM
+
+# Syslog
+# protocol = "syslog-udp"
+# server = "siem.business.local"
+# port = 514
+# format = "CEF"
+
+# ============================================================================
+# COMPLIANCE AND AUDIT
+# ============================================================================
+
 [compliance]
-enabled = false
+enabled = true
+
+# Basic compliance logging
 audit_logging = true
+audit_config_changes = true
+audit_user_actions = true
+
+# Data retention
 data_retention_days = 90
+audit_retention_days = 365
+
+# Reporting (manual)
+generate_reports = true
+report_schedule = "monthly"
+
+# ============================================================================
+# MONITORING AND ALERTS
+# ============================================================================
+
+[monitoring]
+enabled = true
+
+# Health monitoring
+health_check_interval_seconds = 60
+service_monitoring = true
+
+# Email alerts
+email_alerts_enabled = true
+alert_email = "it@business.local"
+
+# Alert conditions
+alert_on_service_failure = true
+alert_on_high_cpu = true  # >80%
+alert_on_high_memory = true  # >85%
+alert_on_disk_full = true  # >90%
+alert_on_ids_critical = true
+
+# Metrics (optional Prometheus)
+prometheus_enabled = false
+# prometheus_port = 9090
+
+# ============================================================================
+# PERFORMANCE TUNING
+# ============================================================================
+
+[performance]
+# Threading
+worker_threads = 4
+capture_threads = 2
+analysis_threads = 2
+
+# Connection limits
+max_sessions = 100000
+
+# Memory management
+max_memory_usage_percent = 75
+
+# ============================================================================
+# RESOURCE LIMITS
+# ============================================================================
+
+[resource_limits]
+max_cpu_percent = 75
+max_memory_mb = 12288  # 12GB
+max_disk_gb = 900  # Leave 100GB free
+
+# Disk usage alerts
+disk_usage_warning_percent = 80
+disk_usage_critical_percent = 90
+
+# ============================================================================
+# SELF-CHECK VALIDATIONS
+# ============================================================================
+# Before deploying this configuration, verify:
+#
+# [✓] Network interfaces correctly identified (WAN, LAN, Guest)
+# [✓] Static DHCP reservations configured for servers/printers
+# [✓] WiFi passwords set in environment variables
+# [✓] Backup encryption password configured
+# [✓] NAS accessible for backups (if used)
+# [✓] Email alerts configured and tested
+# [✓] Local DNS zone matches business domain
+# [✓] TLS bypass list includes critical business apps
+# [✓] VPN configured if needed for remote workers
+# [✓] Web UI users created with strong passwords
+# [✓] Maintenance window appropriate for business hours
+#
+# ============================================================================

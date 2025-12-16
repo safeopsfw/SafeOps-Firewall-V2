@@ -1,510 +1,471 @@
-# ============================================================================
 # SafeOps Network Topology Configuration
-# ============================================================================
-# Purpose: Define complete network infrastructure including ISPs, switches,
-#          VLANs, subnets, and routing policies
-# ============================================================================
-
-version: "1.0.0"
-metadata:
-  organization: "Example Organization"
-  location: "Main Campus"
-  last_updated: "2025-12-13"
-  admin_contact: "netadmin@example.com"
+# Declarative definition of network infrastructure
+#
+# This file maps physical interfaces, VLANs, subnets, routing, and security zones
+# to provide a complete network topology reference for SafeOps deployment.
 
 # ============================================================================
-# WAN Connections (Multiple ISPs)
+# Physical Interfaces
 # ============================================================================
-wan_connections:
-  - name: ISP-Primary
-    provider: "ISP Provider 1"
-    connection_id: wan1
-    interface: eth0
-    type: fiber
-    bandwidth_mbps: 1000
-    ip_type: static
-    public_ip: 203.0.113.10
-    gateway: 203.0.113.1
-    dns_primary: 8.8.8.8
-    dns_secondary: 8.8.4.4
-    subnet_mask: 255.255.255.0
-    vlan_id: null
-    priority: 1
-    failover_group: main
-    load_balance_weight: 50
-    monitoring:
-      enabled: true
-      ping_target: 8.8.8.8
-      check_interval_seconds: 30
-    cost_per_month: 500
-    contract_end_date: "2025-12-31"
-
-  - name: ISP-Secondary
-    provider: "ISP Provider 2"
-    connection_id: wan2
-    interface: eth1
-    type: cable
-    bandwidth_mbps: 500
-    ip_type: static
-    public_ip: 198.51.100.20
-    gateway: 198.51.100.1
-    dns_primary: 1.1.1.1
-    dns_secondary: 1.0.0.1
-    subnet_mask: 255.255.255.0
-    vlan_id: null
-    priority: 2
-    failover_group: main
-    load_balance_weight: 30
-    monitoring:
-      enabled: true
-      ping_target: 1.1.1.1
-      check_interval_seconds: 30
-    cost_per_month: 300
-
-  - name: ISP-Backup
-    provider: "ISP Provider 3"
-    connection_id: wan3
-    interface: eth2
-    type: dsl
-    bandwidth_mbps: 100
-    ip_type: dhcp
-    public_ip: dynamic
-    gateway: auto
-    dns_primary: auto
-    dns_secondary: auto
-    priority: 3
-    failover_group: backup
-    load_balance_weight: 20
-    monitoring:
-      enabled: true
-      ping_target: 8.8.8.8
-      check_interval_seconds: 60
-    cost_per_month: 100
-    notes: "Backup-only connection, activated on primary/secondary failure"
-
-# ============================================================================
-# Load Balancing & Failover
-# ============================================================================
-load_balancing:
-  enabled: true
-  mode: weighted_round_robin  # round_robin, weighted_round_robin, least_connections, source_ip_hash
-  health_check:
-    method: icmp_ping
-    interval_seconds: 10
-    timeout_seconds: 5
-    failure_threshold: 3
-    recovery_threshold: 2
-  failover:
-    automatic: true
-    failback: true
-    failback_delay_seconds: 300
-
-# Policy-based routing for specific traffic
-routing_policies:
-  - name: "VoIP Traffic - Primary ISP"
-    priority: 10
-    match:
-      protocols: [UDP]
-      ports: [5060, 5061, 10000-20000]
-      dscp: [EF, AF41]
-    action:
-      wan_connection: wan1
-      qos_priority: high
-      guaranteed_bandwidth_mbps: 10
-
-  - name: "Guest Network - Backup ISP"
-    priority: 20
-    match:
-      source_vlans: [30]
-    action:
-      wan_connection: wan3
-      bandwidth_limit_mbps: 50
-
-  - name: "Critical Services - Load Balance ISP1&2"
-    priority: 30
-    match:
-      source_vlans: [20]
-    action:
-      wan_connections: [wan1, wan2]
-      load_balance: true
-
-# ============================================================================
-# Internal Network Segments (VLANs)
-# ============================================================================
-network_segments:
-  # Management Network
-  - name: Management
-    vlan_id: 100
-    description: "Network management and monitoring"
-    subnet: 192.168.100.0/24
-    gateway: 192.168.100.1
-    interface: eth10
-    zone: management
-    dhcp:
-      enabled: false
-      range_start: null
-      range_end: null
-    security_level: high
-    access_control:
-      - allow_from: [192.168.100.0/24]
-      - deny_from: [any]
-    services:
-      - SSH
-      - HTTPS
-      - SNMP
-    connected_switches: [core-sw-01]
-    device_count_estimate: 10
-
-  # Office Network
-  - name: Office-Main
-    vlan_id: 10
-    description: "Main office workstations"
-    subnet: 192.168.10.0/24
-    gateway: 192.168.10.1
-    interface: eth11
-    zone: trusted
-    dhcp:
-      enabled: true
-      range_start: 192.168.10.100
-      range_end: 192.168.10.200
-      lease_time_hours: 24
-      dns_servers: [192.168.10.1, 8.8.8.8]
-      domain_name: office.local
-    security_level: medium
-    access_control:
-      - allow_to_internet: true
-      - allow_to_servers: true
-      - deny_to_management: true
-    connected_switches: [office-sw-01, office-sw-02, office-sw-03]
-    device_count_estimate: 150
-
-  # Server Network
-  - name: Servers
-    vlan_id: 20
-    description: "Production servers and databases"
-    subnet: 192.168.20.0/24
-    gateway: 192.168.20.1
-    interface: eth12
-    zone: dmz
-    dhcp:
-      enabled: false
-    security_level: high
-    access_control:
-      - allow_from: [192.168.10.0/24, 192.168.100.0/24]
-      - allow_to_internet: true
-      - deny_from: [192.168.30.0/24]
-    services:
-      - HTTP
-      - HTTPS
-      - Database
-    connected_switches: [server-sw-01]
-    device_count_estimate: 20
-
-  # Guest Network
-  - name: Guest-WiFi
-    vlan_id: 30
-    description: "Guest wireless network"
-    subnet: 192.168.30.0/24
-    gateway: 192.168.30.1
-    interface: wlan0
-    zone: untrusted
-    dhcp:
-      enabled: true
-      range_start: 192.168.30.10
-      range_end: 192.168.30.250
-      lease_time_hours: 4
-      dns_servers: [192.168.30.1]
-    security_level: low
-    isolation: true
-    access_control:
-      - allow_to_internet: true
-      - deny_to_internal: true
-      - bandwidth_limit_mbps: 50
-    connected_switches: [guest-ap-01, guest-ap-02]
-    device_count_estimate: 50
-
-  # Library Network
-  - name: Library
-    vlan_id: 40
-    description: "Library computers and printers"
-    subnet: 192.168.40.0/24
-    gateway: 192.168.40.1
-    interface: eth13
-    zone: trusted
-    dhcp:
-      enabled: true
-      range_start: 192.168.40.50
-      range_end: 192.168.40.150
-      lease_time_hours: 12
-    security_level: medium
-    access_control:
-      - allow_to_internet: true
-      - allow_to_servers: [192.168.20.100]  # Library catalog server
-      - content_filter: enabled
-      - time_restrictions:
-          active_hours: "08:00-22:00"
-    connected_switches: [library-sw-01, library-sw-02]
-    device_count_estimate: 80
-
-  # IoT/Cameras
-  - name: IoT-Devices
-    vlan_id: 50
-    description: "IoT devices, cameras, sensors"
-    subnet: 192.168.50.0/24
-    gateway: 192.168.50.1
-    interface: eth14
-    zone: iot
-    dhcp:
-      enabled: true
-      range_start: 192.168.50.10
-      range_end: 192.168.50.200
-    security_level: low
-    isolation: true
-    access_control:
-      - deny_to_internet: false
-      - deny_to_internal: true
-      - allow_to_servers: [192.168.20.50]  # IoT management server
-    connected_switches: [iot-sw-01]
-    device_count_estimate: 100
-
-# ============================================================================
-# Physical Switches
-# ============================================================================
-switches:
-  # Core Switches
-  - name: core-sw-01
-    type: core
-    model: "Cisco Catalyst 9500"
-    management_ip: 192.168.100.10
-    location: "Server Room A"
-    port_count: 48
-    uplink_interfaces: [1, 2]
-    uplink_speed_gbps: 10
-    vlans: [100, 10, 20, 30, 40, 50]
-    spanning_tree: enabled
-    connected_to: [wan-router]
-
-  # Office Switches
-  - name: office-sw-01
-    type: access
-    model: "HP Aruba 2930F"
-    management_ip: 192.168.100.11
-    location: "Office Floor 1"
-    port_count: 24
-    vlans: [10, 100]
-    connected_to: [core-sw-01]
-    poe_enabled: true
-
-  - name: office-sw-02
-    type: access
-    management_ip: 192.168.100.12
-    location: "Office Floor 2"
-    port_count: 24
-    vlans: [10, 100]
-    connected_to: [core-sw-01]
-    poe_enabled: true
-
-  - name: office-sw-03
-    type: access
-    management_ip: 192.168.100.13
-    location: "Office Floor 3"
-    port_count: 24
-    vlans: [10, 100]
-    connected_to: [core-sw-01]
-    poe_enabled: true
-
-  # Server Switch
-  - name: server-sw-01
-    type: distribution
-    model: "Dell N3248TE-ON"
-    management_ip: 192.168.100.20
-    location: "Server Room A"
-    port_count: 48
-    vlans: [20, 100]
-    connected_to: [core-sw-01]
-    link_aggregation: enabled
-
-  # Library Switches
-  - name: library-sw-01
-    type: access
-    management_ip: 192.168.100.31
-    location: "Library Main Floor"
-    port_count: 24
-    vlans: [40, 100]
-    connected_to: [core-sw-01]
-
-  - name: library-sw-02
-    type: access
-    management_ip: 192.168.100.32
-    location: "Library Upper Floor"
-    port_count: 24
-    vlans: [40, 100]
-    connected_to: [core-sw-01]
-
-  # Guest WiFi Access Points
-  - name: guest-ap-01
-    type: wireless_ap
-    management_ip: 192.168.100.41
-    location: "Lobby"
-    vlans: [30, 100]
-    connected_to: [core-sw-01]
-    ssid: "Guest-WiFi"
-
-  - name: guest-ap-02
-    type: wireless_ap
-    management_ip: 192.168.100.42
-    location: "Conference Room"
-    vlans: [30, 100]
-    connected_to: [core-sw-01]
-    ssid: "Guest-WiFi"
-
-  # IoT Switch
-  - name: iot-sw-01
-    type: access
-    management_ip: 192.168.100.51
-    location: "Building Infrastructure"
-    port_count: 24
-    vlans: [50, 100]
-    connected_to: [core-sw-01]
-    poe_enabled: true
-
-# ============================================================================
-# NAT Policies
-# ============================================================================
-nat_policies:
-  # Outbound NAT (Source NAT)
-  source_nat:
-    - name: "Office to Internet"
-      source_vlans: [10]
-      destination: internet
-      wan_interface: wan1
-      nat_type: masquerade
-      preserve_port_ranges: true
-
-    - name: "Servers to Internet"
-      source_vlans: [20]
-      destination: internet
-      wan_interface: wan1
-      nat_type: static
-      nat_pool: 203.0.113.20-203.0.113.30
-
-    - name: "Guest to Internet"
-      source_vlans: [30]
-      destination: internet
-      wan_interface: wan3
-      nat_type: masquerade
-
-  # Inbound NAT (Destination NAT / Port Forwarding)
-  destination_nat:
-    - name: "Web Server Port Forward"
-      description: "External HTTP/HTTPS to internal web server"
-      wan_interface: wan1
-      protocol: TCP
-      external_ip: 203.0.113.10
-      external_ports: [80, 443]
-      internal_ip: 192.168.20.100
-      internal_ports: [80, 443]
-      enabled: true
-
-    - name: "Mail Server Port Forward"
-      wan_interface: wan1
-      protocol: TCP
-      external_ip: 203.0.113.10
-      external_ports: [25, 587, 993]
-      internal_ip: 192.168.20.101
-      internal_ports: [25, 587, 993]
-      enabled: true
-
-    - name: "VPN Server"
-      wan_interface: wan1
-      protocol: UDP
-      external_ip: 203.0.113.10
-      external_ports: [51820]
-      internal_ip: 192.168.20.50
-      internal_ports: [51820]
-      enabled: true
-
-# ============================================================================
-# IDS/IPS Variable Mappings
-# ============================================================================
-# These map to Suricata variables (vars.yaml)
-ids_ips_variables:
-  HOME_NET:
-    - 192.168.10.0/24   # Office
-    - 192.168.20.0/24   # Servers
-    - 192.168.30.0/24   # Guest
-    - 192.168.40.0/24   # Library
-    - 192.168.50.0/24   # IoT
-    - 192.168.100.0/24  # Management
-  
-  EXTERNAL_NET: "!$HOME_NET"
-  
-  HTTP_SERVERS:
-    - 192.168.20.100    # Web server
-  
-  SMTP_SERVERS:
-    - 192.168.20.101    # Mail server
-  
-  DNS_SERVERS:
-    - 192.168.10.1
-    - 192.168.20.1
-  
-  TELNET_SERVERS: "any"
-  SSH_SERVERS:
-    - 192.168.20.0/24
-    - 192.168.100.0/24
-
-# ============================================================================
-# Firewall Zones
-# ============================================================================
-firewall_zones:
-  - name: wan
-    description: "Internet-facing interfaces"
-    interfaces: [eth0, eth1, eth2]
-    default_policy: DENY
+physical_interfaces:
+  # WAN Interface (Internet connection)
+  - name: "Ethernet 0"
+    guid: "{12345678-1234-1234-1234-123456789ABC}"
+    role: WAN
+    mac_address: "00:11:22:33:44:55"
+    speed: "1000Mbps"
+    duplex: "Full"
+    driver: "Intel(R) Ethernet Controller"
+    description: "Primary Internet connection"
+    ip_assignment: "DHCP"  # From ISP
+    monitoring_enabled: true
     
-  - name: trusted
-    description: "Internal trusted networks"
-    vlans: [10, 40]
-    default_policy: ALLOW
+  # LAN Interface (Internal wired network)
+  - name: "Ethernet 2"
+    guid: "{12345678-1234-1234-1234-123456789DEF}"
+    role: LAN
+    mac_address: "00:11:22:33:44:66"
+    speed: "1000Mbps"
+    duplex: "Full"
+    driver: "Realtek PCIe GbE Family Controller"
+    description: "Internal LAN connection"
+    ip_assignment: "STATIC"
+    ip_address: "192.168.1.1/24"
+    monitoring_enabled: true
     
-  - name: dmz
-    description: "Server network"
-    vlans: [20]
-    default_policy: RESTRICT
+  # WiFi Interface (Wireless access point)
+  - name: "Wi-Fi"
+    guid: "{12345678-1234-1234-1234-123456789GHI}"
+    role: WLAN
+    mac_address: "00:11:22:33:44:77"
+    speed: "866Mbps"
+    duplex: "Full"
+    driver: "Intel(R) Wireless AC 9560"
+    description: "Wireless access point"
+    ip_assignment: "STATIC"
+    ip_address: "192.168.2.1/24"
+    monitoring_enabled: true
+    wireless_standard: "802.11ac"
+    frequency: "5GHz"
+
+# ============================================================================
+# VLAN Configuration
+# ============================================================================
+vlans:
+  # Guest Network VLAN
+  - vlan_id: 10
+    vlan_name: "GUEST"
+    description: "Guest network isolation"
+    parent_interface: "Ethernet 2"
+    tagged: true
+    subnet: "192.168.10.0/24"
+    gateway: "192.168.10.1"
+    dhcp_enabled: true
+    internet_access: true
+    lan_access: false
     
-  - name: untrusted
-    description: "Guest and IoT networks"
-    vlans: [30, 50]
-    default_policy: DENY
+  # IoT Devices VLAN
+  - vlan_id: 20
+    vlan_name: "IOT"
+    description: "Internet of Things devices"
+    parent_interface: "Ethernet 2"
+    tagged: true
+    subnet: "192.168.20.0/24"
+    gateway: "192.168.20.1"
+    dhcp_enabled: true
+    internet_access: true
+    lan_access: false
     
-  - name: management
+  # Servers VLAN
+  - vlan_id: 30
+    vlan_name: "SERVERS"
+    description: "Server infrastructure"
+    parent_interface: "Ethernet 2"
+    tagged: true
+    subnet: "192.168.30.0/24"
+    gateway: "192.168.30.1"
+    dhcp_enabled: false
+    internet_access: true
+    lan_access: true
+    
+  # Management VLAN
+  - vlan_id: 99
+    vlan_name: "MGMT"
     description: "Network management"
-    vlans: [100]
-    default_policy: DENY
+    parent_interface: "Ethernet 2"
+    tagged: true
+    subnet: "192.168.99.0/24"
+    gateway: "192.168.99.1"
+    dhcp_enabled: false
+    internet_access: false
+    lan_access: true
+    restricted: true
 
-# Inter-zone policies
-zone_policies:
-  - from: trusted
-    to: dmz
-    policy: ALLOW
+# ============================================================================
+# IP Address Subnets
+# ============================================================================
+subnets:
+  # WAN Subnet (ISP-assigned)
+  - name: "WAN"
+    network: "DHCP"  # Assigned by ISP
+    interface: "Ethernet 0"
+    gateway: "ISP_GATEWAY"
+    dns_servers: ["ISP_DNS"]
+    zone: "EXTERNAL"
     
-  - from: trusted
-    to: wan
-    policy: ALLOW
+  # Main LAN Subnet
+  - name: "LAN"
+    network: "192.168.1.0/24"
+    interface: "Ethernet 2"
+    gateway: "192.168.1.1"
+    dns_servers: ["192.168.1.1"]
+    dhcp_range_start: "192.168.1.100"
+    dhcp_range_end: "192.168.1.200"
+    dhcp_lease_time: "86400"  # 24 hours
+    zone: "INTERNAL"
+    static_reservations:
+      - mac: "AA:BB:CC:DD:EE:01"
+        ip: "192.168.1.10"
+        hostname: "nas-server"
+      - mac: "AA:BB:CC:DD:EE:02"
+        ip: "192.168.1.20"
+        hostname: "printer"
+      - mac: "AA:BB:CC:DD:EE:03"
+        ip: "192.168.1.30"
+        hostname: "camera-01"
     
-  - from: dmz
-    to: wan
-    policy: ALLOW
+  # WiFi Subnet
+  - name: "WIFI"
+    network: "192.168.2.0/24"
+    interface: "Wi-Fi"
+    gateway: "192.168.2.1"
+    dns_servers: ["192.168.2.1"]
+    dhcp_range_start: "192.168.2.100"
+    dhcp_range_end: "192.168.2.250"
+    dhcp_lease_time: "43200"  # 12 hours
+    zone: "INTERNAL"
     
-  - from: untrusted
-    to: wan
-    policy: ALLOW
+  # Guest VLAN Subnet
+  - name: "GUEST_VLAN"
+    network: "192.168.10.0/24"
+    interface: "Ethernet 2.10"
+    gateway: "192.168.10.1"
+    dns_servers: ["192.168.10.1"]
+    dhcp_range_start: "192.168.10.100"
+    dhcp_range_end: "192.168.10.200"
+    dhcp_lease_time: "7200"  # 2 hours
+    zone: "GUEST"
     
-  - from: untrusted
-    to: [trusted, dmz, management]
-    policy: DENY
+  # IoT VLAN Subnet
+  - name: "IOT_VLAN"
+    network: "192.168.20.0/24"
+    interface: "Ethernet 2.20"
+    gateway: "192.168.20.1"
+    dns_servers: ["192.168.20.1"]
+    dhcp_range_start: "192.168.20.100"
+    dhcp_range_end: "192.168.20.200"
+    dhcp_lease_time: "86400"
+    zone: "IOT"
     
-  - from: management
-    to: [trusted, dmz, untrusted]
-    policy: ALLOW
+  # Server VLAN Subnet
+  - name: "SERVER_VLAN"
+    network: "192.168.30.0/24"
+    interface: "Ethernet 2.30"
+    gateway: "192.168.30.1"
+    dns_servers: ["192.168.30.1"]
+    dhcp_range_start: "192.168.30.100"
+    dhcp_range_end: "192.168.30.200"
+    dhcp_lease_time: "86400"
+    zone: "DMZ"
+    static_reservations:
+      - mac: "AA:BB:CC:DD:EE:10"
+        ip: "192.168.30.10"
+        hostname: "web-server"
+      - mac: "AA:BB:CC:DD:EE:11"
+        ip: "192.168.30.11"
+        hostname: "db-server"
+
+# ============================================================================
+# Routing Configuration
+# ============================================================================
+routing:
+  # Default Gateway
+  default_gateway:
+    interface: "Ethernet 0"
+    gateway: "ISP_GATEWAY"
+    metric: 1
+    
+  # Static Routes
+  static_routes:
+    - destination: "10.0.0.0/8"
+      gateway: "192.168.1.1"
+      interface: "Ethernet 2"
+      metric: 10
+      description: "Private network routing"
+      
+    - destination: "172.16.0.0/12"
+      gateway: "192.168.1.1"
+      interface: "Ethernet 2"
+      metric: 10
+      description: "Private network routing"
+  
+  # Policy-Based Routing
+  policy_routes:
+    - name: "Guest_Internet_Only"
+      source_network: "192.168.10.0/24"
+      destination: "0.0.0.0/0"
+      gateway: "ISP_GATEWAY"
+      interface: "Ethernet 0"
+      priority: 100
+      
+    - name: "IoT_Internet_Only"
+      source_network: "192.168.20.0/24"
+      destination: "0.0.0.0/0"
+      gateway: "ISP_GATEWAY"
+      interface: "Ethernet 0"
+      priority: 100
+      
+  # Multi-WAN Configuration (if applicable)
+  multi_wan:
+    enabled: false
+    # wan_interfaces:
+    #   - name: "Ethernet 0"
+    #     weight: 100
+    #     priority: 1
+    #   - name: "Ethernet 3"
+    #     weight: 50
+    #     priority: 2
+    # load_balancing: "WEIGHTED_ROUND_ROBIN"
+    # failover_enabled: true
+
+# ============================================================================
+# Security Zones
+# ============================================================================
+security_zones:
+  # External Zone (Internet)
+  - zone_name: "EXTERNAL"
+    zone_type: "WAN"
+    trust_level: "UNTRUSTED"
+    interfaces: ["Ethernet 0"]
+    subnets: []
+    default_policy: "DENY"
+    logging: "ALL"
+    
+  # Internal Zone (Trusted LAN)
+  - zone_name: "INTERNAL"
+    zone_type: "LAN"
+    trust_level: "TRUSTED"
+    interfaces: ["Ethernet 2", "Wi-Fi"]
+    subnets: ["192.168.1.0/24", "192.168.2.0/24"]
+    default_policy: "ALLOW"
+    logging: "BLOCKED_ONLY"
+    
+  # Guest Zone (Isolated guests)
+  - zone_name: "GUEST"
+    zone_type: "GUEST"
+    trust_level: "UNTRUSTED"
+    interfaces: ["Ethernet 2.10"]
+    subnets: ["192.168.10.0/24"]
+    default_policy: "DENY"
+    logging: "ALL"
+    
+  # IoT Zone (Smart devices)
+  - zone_name: "IOT"
+    zone_type: "IOT"
+    trust_level: "LIMITED"
+    interfaces: ["Ethernet 2.20"]
+    subnets: ["192.168.20.0/24"]
+    default_policy: "DENY"
+    logging: "ALL"
+    
+  # DMZ Zone (Servers)
+  - zone_name: "DMZ"
+    zone_type: "DMZ"
+    trust_level: "LIMITED"
+    interfaces: ["Ethernet 2.30"]
+    subnets: ["192.168.30.0/24"]
+    default_policy: "DENY"
+    logging: "ALL"
+
+# ============================================================================
+# Inter-Zone Policies
+# ============================================================================
+inter_zone_policies:
+  # INTERNAL -> EXTERNAL (Allow outbound to Internet)
+  - source_zone: "INTERNAL"
+    destination_zone: "EXTERNAL"
+    default_action: "ALLOW"
+    stateful: true
+    
+  # EXTERNAL -> INTERNAL (Deny inbound from Internet)
+  - source_zone: "EXTERNAL"
+    destination_zone: "INTERNAL"
+    default_action: "DENY"
+    stateful: true
+    
+  # GUEST -> EXTERNAL (Allow guest Internet access)
+  - source_zone: "GUEST"
+    destination_zone: "EXTERNAL"
+    default_action: "ALLOW"
+    stateful: true
+    
+  # GUEST -> INTERNAL (Deny guest to LAN)
+  - source_zone: "GUEST"
+    destination_zone: "INTERNAL"
+    default_action: "DENY"
+    stateful: true
+    
+  # IOT -> EXTERNAL (Allow IoT Internet access)
+  - source_zone: "IOT"
+    destination_zone: "EXTERNAL"
+    default_action: "ALLOW"
+    stateful: true
+    
+  # IOT -> INTERNAL (Deny IoT to LAN)
+  - source_zone: "IOT"
+    destination_zone: "INTERNAL"
+    default_action: "DENY"
+    stateful: true
+    
+  # INTERNAL -> DMZ (Allow LAN to servers)
+  - source_zone: "INTERNAL"
+    destination_zone: "DMZ"
+    default_action: "ALLOW"
+    stateful: true
+    
+  # DMZ -> INTERNAL (Deny servers to LAN)
+  - source_zone: "DMZ"
+    destination_zone: "INTERNAL"
+    default_action: "DENY"
+    stateful: true
+    
+  # EXTERNAL -> DMZ (Allow limited Internet to servers)
+  - source_zone: "EXTERNAL"
+    destination_zone: "DMZ"
+    default_action: "DENY"  # Override with specific port forwards
+    stateful: true
+
+# ============================================================================
+# DNS Configuration
+# ============================================================================
+dns:
+  # Local DNS zones
+  local_zones:
+    - zone: "lan.local"
+      authoritative: true
+      subnet_mapping: ["192.168.1.0/24", "192.168.2.0/24"]
+      
+    - zone: "guest.local"
+      authoritative: true
+      subnet_mapping: ["192.168.10.0/24"]
+      
+    - zone: "iot.local"
+      authoritative: true
+      subnet_mapping: ["192.168.20.0/24"]
+  
+  # Upstream forwarders
+  upstream_forwarders:
+    - server: "8.8.8.8"
+      priority: 1
+    - server: "8.8.4.4"
+      priority: 2
+    - server: "1.1.1.1"
+      priority: 3
+
+# ============================================================================
+# Integration Mappings
+# ============================================================================
+integration:
+  # Maps to safeops.toml network topology
+  safeops_toml_mapping:
+    wan_interface: "Ethernet 0"
+    lan_interface: "Ethernet 2"
+    wifi_interface: "Wi-Fi"
+    
+  # Firewall zone mapping
+  firewall_zones:
+    WAN: "EXTERNAL"
+    LAN: "INTERNAL"
+    WIFI: "INTERNAL"
+    GUEST: "GUEST"
+    IOT: "IOT"
+    DMZ: "DMZ"
+    
+  # DHCP pool assignment
+  dhcp_pools:
+    - pool_name: "LAN_POOL"
+      subnet: "192.168.1.0/24"
+      interface: "Ethernet 2"
+      
+    - pool_name: "WIFI_POOL"
+      subnet: "192.168.2.0/24"
+      interface: "Wi-Fi"
+      
+    - pool_name: "GUEST_POOL"
+      subnet: "192.168.10.0/24"
+      interface: "Ethernet 2.10"
+      
+    - pool_name: "IOT_POOL"
+      subnet: "192.168.20.0/24"
+      interface: "Ethernet 2.20"
+
+# ============================================================================
+# Network Metadata
+# ============================================================================
+metadata:
+  version: "2.0"
+  last_updated: "2024-01-01"
+  deployment_type: "HOME_ADVANCED"
+  total_interfaces: 3
+  total_vlans: 4
+  total_subnets: 6
+  total_zones: 5
+  notes: |
+    This network topology provides comprehensive segmentation for home/small office
+    deployment with dedicated zones for guests, IoT devices, and servers. All zones
+    are isolated from each other with specific inter-zone policies.
+
+# ============================================================================
+# Validation and Change Tracking
+# ============================================================================
+validation:
+  # Used by config_validator.ps1
+  schema_version: "2.0"
+  required_interfaces: ["Ethernet 0", "Ethernet 2"]
+  required_subnets: ["192.168.1.0/24"]
+  
+  # Change tracking
+  change_log:
+    - date: "2024-01-01"
+      author: "admin"
+      description: "Initial network topology configuration"
+      changes: ["Created base network structure"]
+
+# ============================================================================
+# Disaster Recovery Information
+# ============================================================================
+disaster_recovery:
+  # Essential information for network recreation
+  critical_static_ips:
+    - device: "SafeOps Firewall"
+      interface: "Ethernet 2"
+      ip: "192.168.1.1"
+      
+    - device: "SafeOps Firewall WiFi"
+      interface: "Wi-Fi"
+      ip: "192.168.2.1"
+      
+  critical_services:
+    - service: "DNS"
+      ip: "192.168.1.1"
+      
+    - service: "DHCP"
+      ip: "192.168.1.1"
+      
+    - service: "Gateway"
+      ip: "192.168.1.1"
+      
+  backup_configuration:
+    location: "D:\\SafeOpsFV2\\backups"
+    retention_days: 30
+    automated: true

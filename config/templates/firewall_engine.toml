@@ -1,153 +1,400 @@
 # SafeOps Firewall Engine Configuration
-# Purpose: Rule evaluation, connection tracking, NAT, and packet filtering
+# Advanced operational parameters for the Rust-based firewall engine service
+#
+# This file controls rule compilation, performance tuning, connection tracking,
+# DDoS protection, and kernel driver integration.
+#
+# Note: Changes require service restart unless auto_reload_enabled = true
 
-# =============================================================================
-# SERVICE CONFIGURATION
-# =============================================================================
+# ============================================================================
+# Service Configuration
+# ============================================================================
 [service]
-name = "firewall_engine"
-listen_address = "0.0.0.0"
-grpc_port = 50052
-log_level = "info"
-log_file = "C:\\ProgramData\\SafeOps\\logs\\firewall_engine.log"
+# Service identifier for orchestrator registration
+service_name = "firewall_engine"
 
-# =============================================================================
-# RULE ENGINE
-# =============================================================================
-[rules]
-# Rule storage
-rules_file = "C:\\ProgramData\\SafeOps\\config\\firewall_rules.yaml"
+# gRPC API server address
+# Production: Use localhost for security
+grpc_listen_address = "127.0.0.1:50053"
 
-# Rule loading
-load_on_startup = true
-reload_on_change = true
-watch_file_changes = true
+# Maximum concurrent gRPC client connections
+grpc_max_connections = 100
 
-# Rule limits
-max_rules = 100000
+# Self-health check frequency (seconds)
+health_check_interval = 30
 
-# Default policy
-default_action = "deny"  # allow, deny, reject
-default_log = true
+# Enable Prometheus metrics export
+metrics_enabled = true
 
-# =============================================================================
-# CONNECTION TRACKING
-# =============================================================================
+# HTTP port for /metrics endpoint
+metrics_port = 9093
+
+# ============================================================================
+# Rule Compilation Settings
+# ============================================================================
+[rule_compilation]
+# Path to firewall rules configuration
+# Can be overridden with ${FIREWALL_RULE_FILE}
+rule_source_file = "D:\\SafeOpsFV2\\config\\firewall.toml"
+
+# Watch for rule file changes and auto-reload
+# Production: false (prevents rule tampering)
+# Development: true (enables rapid testing)
+auto_reload_enabled = false
+
+# How often to check for file modifications (seconds)
+# Only used if auto_reload_enabled = true
+reload_check_interval = 60
+
+# Rule compilation optimization level
+# Valid values: "DEBUG", "RELEASE", "OPTIMIZED"
+# DEBUG: No optimization, detailed logging
+# RELEASE: Standard optimization
+# OPTIMIZED: Maximum performance, aggressive inlining
+compilation_mode = "RELEASE"
+
+# Cache compiled rule tables in memory
+# Significantly faster rule reloads
+rule_cache_enabled = true
+
+# Strict rule validation
+# true: Fail on warnings and errors
+# false: Fail only on errors, log warnings
+rule_validation_strict = true
+
+# ============================================================================
+# Connection Tracking Engine
+# ============================================================================
 [connection_tracking]
-enabled = true
+# Hash table size for connection state tracking (buckets)
+# Rule of thumb: 2x maximum expected concurrent connections
+# Default: 1,048,576 (supports ~500K concurrent connections)
+state_table_size = 1048576
 
-# Connection table sizing
-max_connections = 10000000  # 10 million
-hash_table_size = 2097152   # 2^21 buckets
+# Use lock-free concurrent hash table
+# Significantly improves multi-threaded performance
+state_table_lock_free = true
 
-# TCP state tracking
-track_tcp_states = true
-tcp_timeout_established = 7200  # 2 hours
-tcp_timeout_syn_sent = 120
-tcp_timeout_syn_recv = 60
-tcp_timeout_fin_wait = 120
-tcp_timeout_close_wait = 60
-tcp_timeout_time_wait = 120
+# TCP state machine strictness
+# Valid values: "STRICT_RFC", "PERMISSIVE", "DISABLED"
+# STRICT_RFC: Full RFC compliance, strict state transitions
+# PERMISSIVE: Allow some out-of-order packets
+# DISABLED: No TCP state tracking (stateless firewall)
+tcp_state_machine = "STRICT_RFC"
 
-# UDP tracking
-udp_timeout = 180  # 3 minutes
-udp_stream_timeout = 180
+# Track TCP sequence numbers and window sizes
+# Required for TCP stream reassembly and injection protection
+tcp_window_tracking = true
 
-# ICMP tracking
-icmp_timeout = 30
+# Validate TCP checksums before processing
+# Drops packets with invalid checksums
+tcp_checksum_validation = true
 
-# =============================================================================
-# NAT CONFIGURATION
-# =============================================================================
-[nat]
-enabled = true
+# Enable pseudo-stateful UDP session tracking
+# Tracks UDP "connections" based on 5-tuple
+udp_session_tracking = true
 
-# NAT types
-source_nat = true
-destination_nat = true
-port_forwarding = true
+# Connection eviction policy when table full
+# Valid values: "LRU", "LFU", "RANDOM"
+# LRU: Least Recently Used (recommended)
+# LFU: Least Frequently Used
+# RANDOM: Random eviction (fastest)
+connection_eviction_policy = "LRU"
 
-# NAT pool
-external_ip = "auto"  # auto-detect from WAN NIC
-port_range_start = 1024
-port_range_end = 65535
+# How often to scan for expired connections (seconds)
+# Lower = more CPU, faster cleanup
+# Higher = less CPU, slower cleanup
+aging_check_interval = 60
 
-# NAT session table
-max_nat_sessions = 5000000
-session_timeout = 300
+# Connection timeouts by protocol/state (seconds)
+[connection_tracking.timeouts]
+tcp_established = 3600      # 1 hour for established TCP
+tcp_syn_sent = 120          # 2 minutes for SYN packets
+tcp_syn_recv = 60           # 1 minute for SYN-ACK
+tcp_fin_wait = 120          # 2 minutes for graceful close
+tcp_close_wait = 60         # 1 minute for close wait
+tcp_time_wait = 120         # 2 minutes for TIME_WAIT
+udp_session = 180           # 3 minutes for UDP sessions
+icmp_session = 30           # 30 seconds for ICMP
+generic = 600               # 10 minutes for other protocols
 
-# =============================================================================
-# 3-NIC ROUTING
-# =============================================================================
-[routing]
-# Network zones
-[routing.zones]
-wan = "NIC1"
-lan = "NIC2"
-wifi = "NIC3"
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+[performance]
+# Number of packet processing worker threads
+# 0 = auto-detect (typically CPU cores - 1)
+# Can be overridden with ${WORKER_THREAD_COUNT}
+worker_threads = 0
 
-# Routing policies
-[routing.policies]
-lan_to_wan = "allow"
-lan_to_wifi = "allow"
-wifi_to_wan = "allow"
-wifi_to_lan = "deny"  # Guest isolation
-wifi_to_wifi = "deny" # Client isolation
-wan_to_lan = "deny"   # Unless port forwarded
-wan_to_wifi = "deny"
+# Size of per-thread packet queue
+# Larger = handle traffic bursts, more memory
+# Smaller = lower latency, less memory
+packet_queue_size = 4096
 
-# =============================================================================
-# DDOS MITIGATION
-# =============================================================================
+# Process packets in batches for efficiency
+batch_processing_enabled = true
+
+# Packets per batch
+# Higher = better throughput, higher latency
+# Lower = lower latency, less throughput
+batch_size = 32
+
+# Pin worker threads to specific CPU cores
+# Empty array = no CPU pinning (OS scheduler decides)
+# Example: [0, 2, 4, 6] for cores 0, 2, 4, 6
+cpu_affinity = []
+
+# Pre-allocate packet buffer memory pool
+# Avoids runtime malloc/free overhead
+memory_pool_enabled = true
+
+# Number of packet buffers to pre-allocate
+# Should be >= packet_queue_size * worker_threads
+memory_pool_size = 32768
+
+# Avoid memory copies where possible
+# Requires compatible NIC drivers
+zero_copy_enabled = true
+
+# Lock-free ring buffer for inter-thread communication
+lockfree_queues = true
+
+# NUMA-aware memory allocation
+# Allocates memory on same NUMA node as worker thread
+numa_aware = true
+
+# ============================================================================
+# DDoS Protection
+# ============================================================================
 [ddos_protection]
-enabled = true
+# Enable DDoS detection and mitigation
+ddos_protection_enabled = true
 
 # SYN flood protection
-syn_cookies_enabled = true
-syn_threshold_per_second = 1000
+# Threshold: SYN packets/second to trigger protection
+syn_flood_threshold = 1000
 
-# Rate limiting
-global_packet_rate_limit = 1000000  # 1M pps
-per_ip_rate_limit = 10000           # 10K pps per IP
+# Mitigation action when SYN flood detected
+# Valid values: "RATE_LIMIT", "CHALLENGE", "BLOCK"
+# RATE_LIMIT: Limit new connections
+# CHALLENGE: Send SYN cookies
+# BLOCK: Drop all SYNs temporarily
+syn_flood_mitigation = "CHALLENGE"
 
-# Connection limits
-max_connections_per_ip = 1000
-max_half_open_connections = 10000
+# UDP flood threshold (packets/second)
+udp_flood_threshold = 5000
 
-# =============================================================================
-# PERFORMANCE SETTINGS
-# =============================================================================
-[performance]
-# Threading
-worker_threads = 16
-packet_queue_size = 100000
+# ICMP flood threshold (packets/second)
+icmp_flood_threshold = 100
 
-# CPU affinity
-pin_workers = true
-worker_cpu_cores = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+# New connections per second per source IP
+# 0 = unlimited
+connection_rate_limit = 100
 
-# Packet processing
-batch_processing = true
-batch_size = 128
+# Global packet rate limit (packets/second)
+# Engages when total traffic exceeds threshold
+# 0 = unlimited
+global_rate_limit = 100000
 
-# Rule caching
-rule_cache_size = 128  # MB
-cache_policy = "lru"
+# How long to block detected attackers (seconds)
+# 0 = permanent until manual removal
+blacklist_duration = 3600
 
-# =============================================================================
-# LOGGING & ALERTS
-# =============================================================================
-[logging]
-# What to log
-log_allowed = false
-log_denied = true
-log_rejected = true
+# IP addresses exempt from DDoS protection
+# Trusted sources that should never be rate-limited
+whitelist_addresses = [
+    "127.0.0.1",
+    "::1"
+]
 
-# Log format
-log_format = "json"
+# Enable adaptive threshold adjustment
+# Automatically raises thresholds during legitimate traffic spikes
+adaptive_thresholds = true
 
-# Log destinations
-log_to_file = true
-log_to_syslog = false
-log_to_siem = true
-siem_endpoint = "tcp://siem.local:514"
+# ============================================================================
+# Packet Logging Integration
+# ============================================================================
+[packet_logging]
+# Send filtered packets to network_logger service
+packet_logging_enabled = true
+
+# Log packets that pass firewall rules
+log_allowed_packets = false
+
+# Log packets blocked by firewall rules
+log_denied_packets = true
+
+# Sampling rate for high-volume logging (0.0 to 1.0)
+# 1.0 = log all, 0.1 = log 10%, 0.01 = log 1%
+log_sample_rate = 1.0
+
+# network_logger service gRPC endpoint
+logger_grpc_address = "127.0.0.1:50052"
+
+# Local queue size before blocking
+# If logger is slow, queue fills and firewall blocks
+logger_queue_size = 10000
+
+# Timeout for sending packet to logger (milliseconds)
+# If logger doesn't respond in time, packet is dropped from queue
+logger_timeout = 1000
+
+# Log only packet headers (not full payload)
+# Reduces bandwidth to logger
+log_headers_only = true
+
+# Maximum packet payload bytes to log
+# 0 = log full packet
+max_logged_payload_bytes = 256
+
+# ============================================================================
+# Kernel Driver Interface
+# ============================================================================
+[kernel_driver]
+# Windows kernel device object name
+# Must match driver registration in safeops.inf
+driver_device_name = "\\\\.\\\\SafeOpsDriver"
+
+# Timeout for IOCTL commands to driver (milliseconds)
+ioctl_timeout = 5000
+
+# Number of WFP filters to add/remove per IOCTL batch
+# Larger batches = fewer kernel transitions, more efficient
+# Maximum: 1000 (WFP limitation)
+filter_update_batch_size = 100
+
+# How often to check driver health (seconds)
+driver_status_poll_interval = 30
+
+# Attempt to restart driver on failure
+# Requires administrator privileges
+automatic_driver_restart = false
+
+# Maximum IOCTL retry attempts on failure
+max_ioctl_retries = 3
+
+# Delay between IOCTL retries (milliseconds)
+ioctl_retry_delay = 1000
+
+# ============================================================================
+# Rule Statistics and Monitoring
+# ============================================================================
+[statistics]
+# Track per-rule match counts and performance
+rule_statistics_enabled = true
+
+# Time window for rate calculations (seconds)
+# Affects "packets per second" metrics
+statistics_window = 60
+
+# Number of top-matched rules to track
+# Helps identify most active rules
+top_rules_count = 100
+
+# Log warning for rules slower than threshold (microseconds)
+# Helps identify inefficient rules
+slow_rule_threshold = 1000
+
+# Export statistics via Prometheus metrics endpoint
+statistics_export_enabled = true
+
+# Enable connection state statistics
+# Tracks TCP states, UDP sessions, etc.
+connection_state_stats = true
+
+# Enable per-interface statistics
+# Tracks packets/bytes per network interface
+interface_stats = true
+
+# ============================================================================
+# Failsafe and Error Handling
+# ============================================================================
+[failsafe]
+# Action when engine encounters critical error
+# Valid values: "ALLOW_ALL", "DENY_ALL", "PRESERVE"
+# ALLOW_ALL: Permit all traffic (fail-open, risky)
+# DENY_ALL: Block all traffic (fail-closed, secure)
+# PRESERVE: Keep last-known-good rule set
+failsafe_mode = "DENY_ALL"
+
+# Log malformed packets before dropping
+# Useful for debugging protocol issues
+invalid_packet_logging = true
+
+# Send alerts on engine errors
+# Integrates with alert notification system
+error_notification_enabled = true
+
+# Maximum errors per second before entering failsafe
+# 0 = no limit (never auto-failsafe)
+max_error_rate = 100
+
+# Number of automatic recovery attempts before failsafe
+# After this many failures, enter failsafe mode
+recovery_attempts = 3
+
+# Automatically restart service on critical error
+# Requires orchestrator supervision
+auto_restart_on_failure = true
+
+# Preserve connection state during restart
+# Allows hitless restart for established connections
+preserve_state_on_restart = true
+
+# ============================================================================
+# Security Settings
+# ============================================================================
+[security]
+# Require TLS for gRPC connections
+# Should match safeops.toml [security.tls_enabled]
+grpc_tls_enabled = true
+
+# Client certificate authentication
+grpc_require_client_cert = false
+
+# API rate limiting (requests per minute)
+api_rate_limit = 1000
+
+# Maximum rule count (prevents DoS via rule explosion)
+max_rule_count = 10000
+
+# Maximum rule complexity (nested conditions)
+max_rule_depth = 10
+
+# Validate IP addresses in rules
+validate_ip_addresses = true
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# FIREWALL_RULE_FILE - Override rule_source_file
+#   Example: set FIREWALL_RULE_FILE=D:\Custom\firewall.toml
+#
+# WORKER_THREAD_COUNT - Override worker_threads
+#   Example: set WORKER_THREAD_COUNT=8
+#
+# DDOS_PROTECTION_MODE - Enable/disable DDoS protection
+#   Example: set DDOS_PROTECTION_MODE=true
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The firewall engine validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. rule_source_file must exist and be readable
+# 2. grpc_listen_address must be valid IP:port format
+# 3. worker_threads must be > 0 (after auto-detection)
+# 4. state_table_size must be power of 2
+# 5. Timeout values must be > 0
+# 6. Port numbers must be in range 1-65535
+# 7. IP addresses in whitelist must be valid
+# 8. driver_device_name must match kernel driver
+#
+# Use the config validator: safeops-cli config validate firewall_engine.toml
+# ============================================================================
