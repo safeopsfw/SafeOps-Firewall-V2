@@ -1,0 +1,347 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.ids_ips;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/ids_ips";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// IDS/IPS Service - Intrusion Detection and Prevention System
+service IDSIPSService {
+  // Rule Management
+  rpc AddRule(AddRuleRequest) returns (RuleResponse);
+  rpc RemoveRule(RemoveRuleRequest) returns (RuleResponse);
+  rpc UpdateRule(UpdateRuleRequest) returns (RuleResponse);
+  rpc ListRules(ListRulesRequest) returns (RuleListResponse);
+  rpc ValidateRule(ValidateRuleRequest) returns (RuleResponse);
+  
+  // Alert Management
+  rpc GetAlerts(AlertRequest) returns (AlertResponse);
+  rpc StreamAlerts(StreamAlertsRequest) returns (stream Alert);
+  rpc AcknowledgeAlert(AcknowledgeAlertRequest) returns (AlertActionResponse);
+  rpc MarkFalsePositive(MarkFalsePositiveRequest) returns (AlertActionResponse);
+  
+  // Detection Control
+  rpc EnableDetection(DetectionControlRequest) returns (DetectionControlResponse);
+  rpc DisableDetection(DetectionControlRequest) returns (DetectionControlResponse);
+  rpc SetMode(SetModeRequest) returns (ModeResponse);
+  
+  // Statistics
+  rpc GetDetectionStats(DetectionStatsRequest) returns (DetectionStatsResponse);
+  rpc GetRuleStats(RuleStatsRequest) returns (RuleStatsResponse);
+  
+  // Response Actions
+  rpc BlockIP(BlockIPRequest) returns (BlockIPResponse);
+  rpc UnblockIP(UnblockIPRequest) returns (BlockIPResponse);
+  rpc GetBlockedIPs(GetBlockedIPsRequest) returns (BlockedIPsResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Detection mode
+enum DetectionMode {
+  MODE_UNKNOWN = 0;
+  MODE_IDS_ONLY = 1;       // Detection only, no blocking
+  MODE_IPS_PASSIVE = 2;    // Detection with logging, no blocking
+  MODE_IPS_ACTIVE = 3;     // Detection with automatic blocking
+}
+
+// Alert severity
+enum AlertSeverity {
+  SEVERITY_UNKNOWN = 0;
+  SEVERITY_LOW = 1;
+  SEVERITY_MEDIUM = 2;
+  SEVERITY_HIGH = 3;
+  SEVERITY_CRITICAL = 4;
+}
+
+// Alert category
+enum AlertCategory {
+  CATEGORY_UNKNOWN = 0;
+  CATEGORY_MALWARE = 1;
+  CATEGORY_EXPLOIT = 2;
+  CATEGORY_SCAN = 3;
+  CATEGORY_POLICY_VIOLATION = 4;
+  CATEGORY_ANOMALY = 5;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - RULE MANAGEMENT
+// ============================================================================
+
+// Add rule request
+message AddRuleRequest {
+  string rule_content = 1;               // Suricata rule format
+  bool enabled = 2;                      // Enable immediately
+  AlertSeverity severity = 3;            // Override severity
+}
+
+// Remove rule request
+message RemoveRuleRequest {
+  string rule_id = 1;                    // Rule ID to remove
+}
+
+// Update rule request
+message UpdateRuleRequest {
+  string rule_id = 1;                    // Rule ID to update
+  string rule_content = 2;               // Updated rule content
+  bool enabled = 3;                      // Enabled status
+  AlertSeverity severity = 4;            // Updated severity
+}
+
+// List rules request
+message ListRulesRequest {
+  AlertSeverity severity = 1;            // Filter by severity
+  bool enabled_only = 2;                 // Only enabled rules
+  AlertCategory category = 3;            // Filter by category
+  common.Pagination pagination = 4;      // Pagination
+}
+
+// Validate rule request
+message ValidateRuleRequest {
+  string rule_content = 1;               // Rule to validate
+}
+
+// ============================================================================
+// REQUEST MESSAGES - ALERT MANAGEMENT
+// ============================================================================
+
+// Alert request
+message AlertRequest {
+  common.Timestamp start_time = 1;       // Start of time range
+  common.Timestamp end_time = 2;         // End of time range
+  AlertSeverity min_severity = 3;        // Minimum severity
+  common.IPAddress source_ip = 4;        // Filter by source IP
+  common.IPAddress dest_ip = 5;          // Filter by destination IP
+  bool acknowledged_only = 6;            // Only acknowledged alerts
+  bool unacknowledged_only = 7;          // Only unacknowledged alerts
+  common.Pagination pagination = 8;      // Pagination
+}
+
+// Stream alerts request
+message StreamAlertsRequest {
+  AlertSeverity min_severity = 1;        // Minimum severity to stream
+  repeated AlertCategory categories = 2; // Filter by categories
+}
+
+// Acknowledge alert request
+message AcknowledgeAlertRequest {
+  string alert_id = 1;                   // Alert ID to acknowledge
+  string user = 2;                       // User acknowledging
+  string notes = 3;                      // Acknowledgement notes
+}
+
+// Mark false positive request
+message MarkFalsePositiveRequest {
+  string alert_id = 1;                   // Alert ID to mark
+  string user = 2;                       // User marking
+  string reason = 3;                     // Reason for false positive
+  bool disable_rule = 4;                 // Also disable the rule
+}
+
+// ============================================================================
+// REQUEST MESSAGES - DETECTION CONTROL
+// ============================================================================
+
+// Detection control request
+message DetectionControlRequest {
+  string interface = 1;                  // Network interface (empty for all)
+}
+
+// Set mode request
+message SetModeRequest {
+  DetectionMode mode = 1;                // Detection mode
+  uint32 auto_block_threshold = 2;       // Severity threshold for auto-block
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATISTICS
+// ============================================================================
+
+// Detection stats request
+message DetectionStatsRequest {
+  common.Timestamp start_time = 1;       // Start time
+  common.Timestamp end_time = 2;         // End time
+}
+
+// Rule stats request
+message RuleStatsRequest {
+  string rule_id = 1;                    // Specific rule (empty for all)
+  uint32 top_n = 2;                      // Return top N rules by trigger count
+}
+
+// ============================================================================
+// REQUEST MESSAGES - RESPONSE ACTIONS
+// ============================================================================
+
+// Block IP request
+message BlockIPRequest {
+  common.IPAddress ip_address = 1;       // IP to block
+  uint32 duration_seconds = 2;           // Block duration (0 = permanent)
+  string reason = 3;                     // Reason for blocking
+  uint32 rule_sid = 4;                   // Associated rule SID
+}
+
+// Unblock IP request
+message UnblockIPRequest {
+  common.IPAddress ip_address = 1;       // IP to unblock
+  string reason = 2;                     // Reason for unblocking
+}
+
+// Get blocked IPs request
+message GetBlockedIPsRequest {
+  bool active_only = 1;                  // Only currently blocked IPs
+  common.Pagination pagination = 2;      // Pagination
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Rule response
+message RuleResponse {
+  common.Status status = 1;              // Operation status
+  string rule_id = 2;                    // Rule ID
+  repeated string validation_errors = 3; // Validation errors
+  string message = 4;                    // Status message
+}
+
+// Rule list response
+message RuleListResponse {
+  repeated IDSRule rules = 1;            // List of rules
+  uint32 total_count = 2;                // Total rule count
+  common.Pagination pagination = 3;      // Pagination info
+}
+
+// Alert response
+message AlertResponse {
+  repeated Alert alerts = 1;             // List of alerts
+  uint32 total_count = 2;                // Total alert count
+  common.Pagination pagination = 3;      // Pagination info
+}
+
+// Alert action response
+message AlertActionResponse {
+  common.Status status = 1;              // Operation status
+  string message = 2;                    // Status message
+}
+
+// Mode response
+message ModeResponse {
+  common.Status status = 1;              // Operation status
+  DetectionMode current_mode = 2;        // Current detection mode
+  uint32 auto_block_threshold = 3;       // Current threshold
+}
+
+// Detection control response
+message DetectionControlResponse {
+  common.Status status = 1;              // Operation status
+  bool detection_enabled = 2;            // Current detection state
+  string message = 3;                    // Status message
+}
+
+// Detection statistics response
+message DetectionStatsResponse {
+  uint64 total_alerts = 1;               // Total alerts generated
+  map<string, uint64> alerts_by_severity = 2; // Breakdown by severity
+  map<string, uint64> alerts_by_category = 3; // Breakdown by category
+  uint64 blocked_ips_count = 4;          // Number of blocked IPs
+  uint64 packets_inspected = 5;          // Total packets inspected
+  common.Timestamp timestamp = 6;        // When stats collected
+}
+
+// Rule statistics response
+message RuleStatsResponse {
+  repeated RuleStat rule_stats = 1;      // Per-rule statistics
+  common.Timestamp timestamp = 2;        // When stats collected
+}
+
+// Rule stat
+message RuleStat {
+  string rule_id = 1;                    // Rule ID
+  uint32 rule_sid = 2;                   // Suricata ID
+  uint64 trigger_count = 3;              // Times triggered
+  common.Timestamp last_triggered = 4;   // Last trigger time
+  uint64 false_positive_count = 5;       // False positive count
+}
+
+// Block IP response
+message BlockIPResponse {
+  common.Status status = 1;              // Operation status
+  string message = 2;                    // Status message
+  common.Timestamp unblock_at = 3;       // When IP will be unblocked
+}
+
+// Blocked IPs response
+message BlockedIPsResponse {
+  repeated BlockedIP blocked_ips = 1;    // List of blocked IPs
+  uint32 total_count = 2;                // Total count
+  common.Pagination pagination = 3;      // Pagination info
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// IDS Rule (Suricata format)
+message IDSRule {
+  string id = 1;                         // Internal rule ID
+  uint32 sid = 2;                        // Suricata ID
+  string content = 3;                    // Rule text (Suricata format)
+  AlertCategory category = 4;            // Alert category
+  AlertSeverity severity = 5;            // Alert severity
+  bool enabled = 6;                      // Is rule enabled
+  string description = 7;                // Human-readable description
+  repeated string references = 8;        // External references (CVE, URL, etc.)
+  common.Timestamp created_at = 9;       // Creation timestamp
+  common.Timestamp updated_at = 10;      // Last update timestamp
+  uint64 trigger_count = 11;             // Number of times triggered
+}
+
+// Alert
+message Alert {
+  string id = 1;                         // Unique alert ID
+  common.Timestamp timestamp = 2;        // When alert occurred
+  uint32 rule_sid = 3;                   // Triggering rule SID
+  AlertSeverity severity = 4;            // Alert severity
+  
+  // Network details
+  common.IPAddress source_ip = 5;        // Source IP
+  uint32 source_port = 6;                // Source port
+  common.IPAddress dest_ip = 7;          // Destination IP
+  uint32 dest_port = 8;                  // Destination port
+  common.Protocol protocol = 9;          // Network protocol
+  
+  // Payload
+  bytes packet_payload = 10;             // Packet payload (truncated)
+  
+  // Response
+  string action_taken = 11;              // Action taken (ALERT/BLOCK/DROP)
+  
+  // Status
+  bool acknowledged = 12;                // Has been acknowledged
+  bool false_positive = 13;              // Marked as false positive
+  common.Timestamp acknowledged_at = 14; // When acknowledged
+  string acknowledged_by = 15;           // Who acknowledged
+  
+  // Additional context
+  AlertCategory category = 16;           // Alert category
+  string description = 17;               // Alert description
+}
+
+// Blocked IP entry
+message BlockedIP {
+  common.IPAddress ip_address = 1;       // Blocked IP address
+  common.Timestamp blocked_at = 2;       // When blocked
+  common.Timestamp unblock_at = 3;       // When to unblock (0 = permanent)
+  string reason = 4;                     // Reason for blocking
+  uint32 rule_sid = 5;                   // Rule that triggered block
+  bool is_active = 6;                    // Currently blocked
+}

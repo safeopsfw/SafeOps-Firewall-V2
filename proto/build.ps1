@@ -1,18 +1,29 @@
 <#
 .SYNOPSIS
-    SafeOps Proto Build Script for Windows
+    SafeOps Protocol Buffers Build Script for Windows
 
 .DESCRIPTION
     PowerShell script to generate Go and Rust code from Protocol Buffers (.proto) files.
+    Automates the protocol buffer compilation process with dependency resolution, tool validation,
+    and comprehensive error handling for CI/CD integration.
     
 .PARAMETER Clean
     Remove previously generated code before building
 
+.PARAMETER VerboseOutput
+    Enable detailed output during compilation
+
+.PARAMETER CheckOnly
+    Validate proto syntax without generating code
+
+.PARAMETER ProtoPath
+    Custom proto source directory (default: proto/grpc/)
+
+.PARAMETER OutputPath
+    Custom output directory for generated code (default: build/proto/)
+
 .PARAMETER GoOnly
     Generate only Go code (skip Rust)
-
-.PARAMETER RustOnly
-    Generate only Rust code (skip Go)
 
 .PARAMETER Help
     Display help message and exit
@@ -22,32 +33,45 @@
     Generate both Go and Rust code
 
 .EXAMPLE
-    .\build.ps1 -Clean -GoOnly
-    Clean and generate only Go code
+    .\build.ps1 -Clean -VerboseOutput
+    Clean and generate with detailed output
 
 .EXAMPLE
-    .\build.ps1 -RustOnly
-    Generate only Rust code
+    .\build.ps1 -CheckOnly
+    Validate proto files without code generation
 #>
 
 [CmdletBinding()]
 param(
     [switch]$Clean,
+    [switch]$VerboseOutput,
+    [switch]$CheckOnly,
+    [string]$ProtoPath = "",
+    [string]$OutputPath = "",
     [switch]$GoOnly,
-    [switch]$RustOnly,
     [switch]$Help
 )
 
 $ErrorActionPreference = "Stop"
+$StartTime = Get-Date
 
 ################################################################################
 # Configuration Variables
 ################################################################################
 
 $ProtoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$GrpcDir = Join-Path $ProtoDir "grpc"
-$GoOutDir = Join-Path $ProtoDir "gen\go"
-$RustOutDir = Join-Path $ProtoDir "gen\rust"
+$ProjectRoot = Split-Path -Parent $ProtoDir
+$GrpcDir = if ($ProtoPath) { $ProtoPath } else { Join-Path $ProtoDir "grpc" }
+$BuildDir = Join-Path $ProjectRoot "build"
+$GoOutDir = if ($OutputPath) { Join-Path $OutputPath "go" } else { Join-Path $BuildDir "proto\go" }
+$RustOutDir = if ($OutputPath) { Join-Path $OutputPath "rust" } else { Join-Path $BuildDir "proto\rust" }
+
+# Go module path for generated code
+$GoModulePath = "safeops/build/proto/go"
+
+# Minimum version requirements
+$MinProtocVersion = "3.19.0"
+$MinGoPluginVersion = "1.28.0"
 
 ################################################################################
 # Helper Functions
@@ -68,19 +92,19 @@ function Write-ColorOutput {
     
     switch ($Type) {
         "Info" { 
-            $prefix = "[i]"
+            $prefix = "[INFO]"
             $color = "Cyan"
         }
         "Success" { 
-            $prefix = "[+]"
+            $prefix = "[SUCCESS]"
             $color = "Green"
         }
         "Warning" { 
-            $prefix = "[!]"
+            $prefix = "[WARNING]"
             $color = "Yellow"
         }
         "Error" { 
-            $prefix = "[X]"
+            $prefix = "[ERROR]"
             $color = "Red"
         }
     }
@@ -109,31 +133,70 @@ function Test-CommandExists {
     }
 }
 
+function Compare-Version {
+    param(
+        [string]$Version1,
+        [string]$Version2
+    )
+    
+    $v1 = [version]($Version1 -replace "[^0-9.]", "")
+    $v2 = [version]($Version2 -replace "[^0-9.]", "")
+    
+    return $v1.CompareTo($v2)
+}
+
+function Get-ProtoFiles {
+    param(
+        [string]$Directory
+    )
+    
+    if (-not (Test-Path $Directory)) {
+        Write-ColorOutput "Proto directory not found: $Directory" -Type Error
+        exit 1
+    }
+    
+    $protoFiles = Get-ChildItem -Path $Directory -Filter "*.proto" -File | Sort-Object Name
+    
+    if ($protoFiles.Count -eq 0) {
+        Write-ColorOutput "No .proto files found in: $Directory" -Type Warning
+    }
+    
+    return $protoFiles
+}
+
 function Show-Help {
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Cyan
-    Write-Host "   SafeOps Proto Build Script for Windows" -ForegroundColor Cyan
+    Write-Host "   SafeOps Protocol Buffers Build Script" -ForegroundColor Cyan
     Write-Host "============================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "USAGE:" -ForegroundColor Yellow
     Write-Host "    .\build.ps1 [OPTIONS]"
     Write-Host ""
     Write-Host "OPTIONS:" -ForegroundColor Yellow
-    Write-Host "    -Clean      Remove previously generated code before building"
-    Write-Host "    -GoOnly     Generate only Go code (skip Rust)"
-    Write-Host "    -RustOnly   Generate only Rust code (skip Go)"
-    Write-Host "    -Help       Display this help message"
+    Write-Host "    -Clean          Remove previously generated code before building"
+    Write-Host "    -VerboseOutput  Enable detailed output during compilation"
+    Write-Host "    -CheckOnly      Validate proto syntax without generating code"
+    Write-Host "    -ProtoPath      Custom proto source directory"
+    Write-Host "    -OutputPath     Custom output directory for generated code"
+    Write-Host "    -GoOnly         Generate only Go code (skip Rust)"
+    Write-Host "    -Help           Display this help message"
     Write-Host ""
     Write-Host "EXAMPLES:" -ForegroundColor Yellow
-    Write-Host "    .\build.ps1                     # Generate both Go and Rust"
-    Write-Host "    .\build.ps1 -Clean -GoOnly      # Clean and generate Go only"
-    Write-Host "    .\build.ps1 -RustOnly           # Generate Rust only"
+    Write-Host "    .\build.ps1                          # Full build"
+    Write-Host "    .\build.ps1 -Clean -VerboseOutput   # Clean build with details"
+    Write-Host "    .\build.ps1 -CheckOnly               # Syntax validation only"
     Write-Host ""
     Write-Host "REQUIREMENTS:" -ForegroundColor Yellow
-    Write-Host "    - protoc (Protocol Buffers compiler)"
-    Write-Host "    - protoc-gen-go (Go plugin)"
-    Write-Host "    - protoc-gen-go-grpc (Go gRPC plugin)"
-    Write-Host "    - protoc-gen-rust (Rust plugin, optional)"
+    Write-Host "    - PowerShell 5.1+ or PowerShell Core 7+"
+    Write-Host "    - protoc v$MinProtocVersion+"
+    Write-Host "    - protoc-gen-go v$MinGoPluginVersion+"
+    Write-Host "    - protoc-gen-go-grpc v1.2.0+"
+    Write-Host "    - Go 1.19+ (for Go code generation)"
+    Write-Host ""
+    Write-Host "OUTPUT STRUCTURE:" -ForegroundColor Yellow
+    Write-Host "    build/proto/go/       - Generated Go code"
+    Write-Host "    build/proto/rust/     - Generated Rust code"
     Write-Host ""
 }
 
@@ -147,15 +210,6 @@ if ($Help) {
 }
 
 ################################################################################
-# Validate Flags
-################################################################################
-
-if ($GoOnly -and $RustOnly) {
-    Write-ColorOutput "Cannot use both -GoOnly and -RustOnly flags" -Type Error
-    exit 1
-}
-
-################################################################################
 # Banner
 ################################################################################
 
@@ -166,99 +220,105 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 ################################################################################
-# Determine What to Generate
+# Environment Validation
 ################################################################################
 
-$GenerateGo = -not $RustOnly
-$GenerateRust = -not $GoOnly
-
-################################################################################
-# Dependency Checking
-################################################################################
-
-Write-ColorOutput "Checking required dependencies..." -Type Info
+Write-ColorOutput "Validating build environment..." -Type Info
 Write-Host ""
+
+# Check PowerShell version
+$psVersion = $PSVersionTable.PSVersion
+if ($psVersion.Major -lt 5 -or ($psVersion.Major -eq 5 -and $psVersion.Minor -lt 1)) {
+    Write-ColorOutput "PowerShell 5.1 or higher required (found $psVersion)" -Type Error
+    exit 1
+}
+Write-ColorOutput "PowerShell version: $psVersion" -Type Success
 
 # Check protoc
 if (-not (Test-CommandExists "protoc")) {
-    Write-ColorOutput "protoc not found" -Type Error
+    Write-ColorOutput "protoc compiler not found in PATH" -Type Error
     Write-Host "Install with:"
     Write-Host "  Chocolatey: choco install protoc"
     Write-Host "  Or download from: https://github.com/protocolbuffers/protobuf/releases"
     exit 1
 }
-$protocVersion = (protoc --version) -replace "libprotoc ", ""
-Write-ColorOutput "protoc found (version $protocVersion)" -Type Success
+$protocVersionOutput = (protoc --version) -replace "libprotoc ", ""
+$protocVersion = $protocVersionOutput.Trim()
+if ((Compare-Version $protocVersion $MinProtocVersion) -lt 0) {
+    Write-ColorOutput "protoc version $MinProtocVersion+ required (found $protocVersion)" -Type Warning
+}
+Write-ColorOutput "protoc compiler: v$protocVersion" -Type Success
 
-# Check Go tools
-if ($GenerateGo) {
-    if (-not (Test-CommandExists "protoc-gen-go")) {
-        Write-ColorOutput "protoc-gen-go not found" -Type Error
-        Write-Host "Install with: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"
-        exit 1
-    }
-    Write-ColorOutput "protoc-gen-go found" -Type Success
-
-    if (-not (Test-CommandExists "protoc-gen-go-grpc")) {
-        Write-ColorOutput "protoc-gen-go-grpc not found" -Type Error
-        Write-Host "Install with: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest"
-        exit 1
-    }
-    Write-ColorOutput "protoc-gen-go-grpc found" -Type Success
+# Check protoc-gen-go
+if (-not (Test-CommandExists "protoc-gen-go")) {
+    Write-ColorOutput "protoc-gen-go plugin not found in PATH" -Type Error
+    Write-Host "Install with: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"
+    exit 1
+}
+try {
+    $goPluginVersion = (protoc-gen-go --version 2>&1) -replace "protoc-gen-go ", ""
+    Write-ColorOutput "protoc-gen-go: v$goPluginVersion" -Type Success
+}
+catch {
+    Write-ColorOutput "protoc-gen-go: installed (version check failed)" -Type Success
 }
 
-# Check Rust tools (optional)
-if ($GenerateRust) {
-    if (-not (Test-CommandExists "protoc-gen-rust")) {
-        Write-ColorOutput "protoc-gen-rust not found (skipping Rust generation)" -Type Warning
-        Write-Host "Install with: cargo install protobuf-codegen"
-        $GenerateRust = $false
-    }
-    else {
-        Write-ColorOutput "protoc-gen-rust found" -Type Success
-    }
+# Check protoc-gen-go-grpc
+if (-not (Test-CommandExists "protoc-gen-go-grpc")) {
+    Write-ColorOutput "protoc-gen-go-grpc plugin not found in PATH" -Type Error
+    Write-Host "Install with: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest"
+    exit 1
+}
+Write-ColorOutput "protoc-gen-go-grpc: installed" -Type Success
+
+# Check Go installation
+if (-not (Test-CommandExists "go")) {
+    Write-ColorOutput "Go not found in PATH" -Type Warning
+    Write-Host "Go is recommended for module management"
+}
+else {
+    $goVersion = (go version) -replace "go version go", "" -replace " .*", ""
+    Write-ColorOutput "Go compiler: v$goVersion" -Type Success
 }
 
 Write-Host ""
 
 ################################################################################
-# Clean Operation
+# Directory Structure Setup
 ################################################################################
 
+Write-ColorOutput "Setting up directory structure..." -Type Info
+
+# Create build directory if it doesn't exist
+if (-not (Test-Path $BuildDir)) {
+    New-Item -Path $BuildDir -ItemType Directory -Force | Out-Null
+    Write-ColorOutput "Created build directory: $BuildDir" -Type Success
+}
+
+# Clean operation
 if ($Clean) {
     Write-ColorOutput "Cleaning previously generated code..." -Type Info
     
-    if ($GenerateGo -and (Test-Path $GoOutDir)) {
+    if (Test-Path $GoOutDir) {
         Remove-Item -Path $GoOutDir -Recurse -Force
-        Write-ColorOutput "Removed Go output directory: $GoOutDir" -Type Success
+        Write-ColorOutput "Removed: $GoOutDir" -Type Success
     }
     
-    if ($GenerateRust -and (Test-Path $RustOutDir)) {
+    if (-not $GoOnly -and (Test-Path $RustOutDir)) {
         Remove-Item -Path $RustOutDir -Recurse -Force
-        Write-ColorOutput "Removed Rust output directory: $RustOutDir" -Type Success
+        Write-ColorOutput "Removed: $RustOutDir" -Type Success
     }
-    
-    Write-Host ""
 }
 
-################################################################################
-# Directory Creation
-################################################################################
-
-Write-ColorOutput "Creating output directories..." -Type Info
-
-if ($GenerateGo) {
-    if (-not (Test-Path $GoOutDir)) {
-        New-Item -ItemType Directory -Path $GoOutDir -Force | Out-Null
-    }
-    Write-ColorOutput "Go output directory: $GoOutDir" -Type Success
+# Create output directories
+if (-not (Test-Path $GoOutDir)) {
+    New-Item -Path $GoOutDir -ItemType Directory -Force | Out-Null
+    Write-ColorOutput "Created Go output directory: $GoOutDir" -Type Success
 }
 
-if ($GenerateRust) {
-    if (-not (Test-Path $RustOutDir)) {
-        New-Item -ItemType Directory -Path $RustOutDir -Force | Out-Null
-    }
-    Write-ColorOutput "Rust output directory: $RustOutDir" -Type Success
+if (-not $GoOnly -and -not (Test-Path $RustOutDir)) {
+    New-Item -Path $RustOutDir -ItemType Directory -Force | Out-Null
+    Write-ColorOutput "Created Rust output directory: $RustOutDir" -Type Success
 }
 
 Write-Host ""
@@ -267,180 +327,202 @@ Write-Host ""
 # Proto File Discovery
 ################################################################################
 
-Write-ColorOutput "Discovering .proto files..." -Type Info
+Write-ColorOutput "Discovering proto files..." -Type Info
 
-if (-not (Test-Path $GrpcDir)) {
-    Write-ColorOutput "gRPC directory not found: $GrpcDir" -Type Error
+$protoFiles = Get-ProtoFiles -Directory $GrpcDir
+
+if ($protoFiles.Count -eq 0) {
+    Write-ColorOutput "No proto files found to compile" -Type Warning
+    exit 0
+}
+
+Write-ColorOutput "Found $($protoFiles.Count) proto files" -Type Success
+
+if ($Verbose) {
+    foreach ($file in $protoFiles) {
+        Write-Host "  - $($file.Name)" -ForegroundColor Gray
+    }
+}
+
+Write-Host ""
+
+################################################################################
+# Compilation Loop - Go Code Generation
+################################################################################
+
+Write-ColorOutput "Compiling proto files to Go..." -Type Info
+Write-Host ""
+
+$successCount = 0
+$failCount = 0
+$errors = @()
+
+foreach ($protoFile in $protoFiles) {
+    $fileName = $protoFile.Name
+    $filePath = $protoFile.FullName
+    
+    if ($VerboseOutput) {
+        Write-ColorOutput "Compiling: $fileName" -Type Info
+    }
+    
+    try {
+        # Build protoc command for Go
+        $protocArgs = @(
+            "--proto_path=$GrpcDir"
+            "--go_out=$GoOutDir"
+            "--go_opt=paths=source_relative"
+            "--go-grpc_out=$GoOutDir"
+            "--go-grpc_opt=paths=source_relative"
+            $filePath
+        )
+        
+        if ($CheckOnly) {
+            # Syntax check only
+            $protocArgs = @(
+                "--proto_path=$GrpcDir"
+                "--descriptor_set_out=NUL"
+                $filePath
+            )
+        }
+        
+        # Execute protoc
+        $output = & protoc $protocArgs 2>&1
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "protoc failed with exit code $LASTEXITCODE`n$output"
+        }
+        
+        $successCount++
+        if ($VerboseOutput) {
+            Write-ColorOutput "  ✓ $fileName" -Type Success
+        }
+    }
+    catch {
+        $failCount++
+        $errMsg = "Failed to compile: $fileName`n  Error: $($_.Exception.Message)"
+        $errors += $errMsg
+        Write-ColorOutput $errMsg -Type Error
+    }
+}
+
+Write-Host ""
+
+################################################################################
+# Rust Code Generation (Template Creation)
+################################################################################
+
+if (-not $GoOnly -and -not $CheckOnly) {
+    Write-ColorOutput "Setting up Rust proto integration..." -Type Info
+    
+    $buildRsTemplate = @"
+// Rust Proto Build Template for SafeOps
+// This file provides guidance for Rust services to use tonic-build for proto compilation.
+// 
+// USAGE: Copy this to your Rust service's build.rs file and customize as needed.
+//
+// Example build.rs:
+// ```rust
+// fn main() -> Result<(), Box<dyn std::error::Error>> {
+//     tonic_build::configure()
+//         .build_server(true)
+//         .build_client(true)
+//         .compile(
+//             &[
+//                 "../../proto/grpc/common.proto",
+//                 "../../proto/grpc/firewall.proto",
+//                 // Add your proto files here
+//             ],
+//             &["../../proto/grpc/"],
+//         )?;
+//     Ok(())
+// }
+// ```
+//
+// Add to Cargo.toml:
+// [build-dependencies]
+// tonic-build = "0.10"
+// 
+// [dependencies]
+// tonic = "0.10"
+// prost = "0.12"
+
+"@
+    
+    $buildRsPath = Join-Path $RustOutDir "build.rs.template"
+    $buildRsTemplate | Out-File -FilePath $buildRsPath -Encoding UTF8
+    Write-ColorOutput "Created Rust build template: $buildRsPath" -Type Success
+    Write-Host ""
+}
+
+################################################################################
+# Success Reporting
+################################################################################
+
+$duration = (Get-Date) - $StartTime
+
+Write-Host ""
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "   Build Summary" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host ""
+
+if ($CheckOnly) {
+    Write-ColorOutput "Syntax Validation Complete" -Type Success
+}
+else {
+    Write-ColorOutput "Code Generation Complete" -Type Success
+}
+
+Write-Host ""
+Write-ColorOutput "Proto files processed: $($protoFiles.Count)" -Type Info
+Write-ColorOutput "Successfully compiled: $successCount" -Type Success
+
+if ($failCount -gt 0) {
+    Write-ColorOutput "Failed to compile: $failCount" -Type Error
+    Write-Host ""
+    Write-ColorOutput "Errors encountered:" -Type Error
+    foreach ($errItem in $errors) {
+        Write-Host "  $errItem" -ForegroundColor Red
+    }
+}
+
+Write-ColorOutput "Build time: $($duration.TotalSeconds.ToString('F2')) seconds" -Type Info
+
+Write-Host ""
+
+# Generated files validation
+if (-not $CheckOnly) {
+    $goFiles = Get-ChildItem -Path $GoOutDir -Filter "*.pb.go" -Recurse -File
+    $grpcFiles = Get-ChildItem -Path $GoOutDir -Filter "*_grpc.pb.go" -Recurse -File
+    
+    Write-ColorOutput "Generated Go files:" -Type Info
+    Write-Host "  - Protocol buffer files: $($goFiles.Count)" -ForegroundColor Gray
+    Write-Host "  - gRPC service files: $($grpcFiles.Count)" -ForegroundColor Gray
+    
+    if ($Verbose) {
+        Write-Host ""
+        Write-ColorOutput "Output locations:" -Type Info
+        Write-Host "  - Go code: $GoOutDir" -ForegroundColor Gray
+        if (-not $GoOnly) {
+            Write-Host "  - Rust template: $RustOutDir" -ForegroundColor Gray
+        }
+    }
+}
+
+Write-Host ""
+
+# Next steps
+if ($failCount -eq 0 -and -not $CheckOnly) {
+    Write-ColorOutput "Next steps:" -Type Info
+    Write-Host "  1. Run 'go mod tidy' to update Go dependencies" -ForegroundColor Gray
+    Write-Host "  2. Import generated packages in your Go services" -ForegroundColor Gray
+    Write-Host "  3. For Rust services, use the template in build/proto/rust/" -ForegroundColor Gray
+    Write-Host ""
+}
+
+# Exit with appropriate code
+if ($failCount -gt 0) {
     exit 1
 }
-
-$ProtoFiles = Get-ChildItem -Path $GrpcDir -Filter "*.proto" -Recurse | Sort-Object Name
-$ProtoCount = $ProtoFiles.Count
-
-if ($ProtoCount -eq 0) {
-    Write-ColorOutput "No .proto files found in $GrpcDir" -Type Error
-    exit 1
-}
-
-Write-ColorOutput "Found $ProtoCount .proto file(s)" -Type Success
-Write-Host ""
-
-################################################################################
-# Go Code Generation
-################################################################################
-
-$GoFileCount = 0
-
-if ($GenerateGo) {
-    Write-ColorOutput "Generating Go code..." -Type Info
-    Write-Host ""
-    
-    $GoSuccessCount = 0
-    $GoFailCount = 0
-    
-    foreach ($file in $ProtoFiles) {
-        Write-Host "  Processing $($file.Name)... " -NoNewline
-        
-        try {
-            $result = & protoc `
-                --proto_path="$GrpcDir" `
-                --go_out="$GoOutDir" `
-                --go_opt=paths=source_relative `
-                --go-grpc_out="$GoOutDir" `
-                --go-grpc_opt=paths=source_relative `
-                $file.FullName 2>&1
-            
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "OK" -ForegroundColor Green
-                $GoSuccessCount++
-            }
-            else {
-                Write-Host "FAILED" -ForegroundColor Red
-                Write-ColorOutput "Error: $result" -Type Error
-                $GoFailCount++
-            }
-        }
-        catch {
-            Write-Host "FAILED" -ForegroundColor Red
-            Write-ColorOutput "Error: $_" -Type Error
-            $GoFailCount++
-        }
-    }
-    
-    Write-Host ""
-    
-    if ($GoFailCount -eq 0) {
-        $GoFiles = Get-ChildItem -Path $GoOutDir -Filter "*.pb.go" -Recurse -ErrorAction SilentlyContinue
-        $GoFileCount = if ($GoFiles) { $GoFiles.Count } else { 0 }
-        Write-ColorOutput "Go code generation complete: $GoFileCount file(s) generated" -Type Success
-    }
-    else {
-        Write-ColorOutput "Go code generation completed with $GoFailCount error(s)" -Type Error
-        exit 1
-    }
-    
-    Write-Host ""
-}
-
-################################################################################
-# Rust Code Generation
-################################################################################
-
-$RustFileCount = 0
-
-if ($GenerateRust) {
-    Write-ColorOutput "Generating Rust code..." -Type Info
-    Write-Host ""
-    
-    $RustSuccessCount = 0
-    $RustFailCount = 0
-    
-    foreach ($file in $ProtoFiles) {
-        Write-Host "  Processing $($file.Name)... " -NoNewline
-        
-        try {
-            $result = & protoc `
-                --proto_path="$GrpcDir" `
-                --rust_out="$RustOutDir" `
-                $file.FullName 2>&1
-            
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "OK" -ForegroundColor Green
-                $RustSuccessCount++
-            }
-            else {
-                Write-Host "FAILED" -ForegroundColor Red
-                Write-ColorOutput "Error: $result" -Type Error
-                $RustFailCount++
-            }
-        }
-        catch {
-            Write-Host "FAILED" -ForegroundColor Red
-            Write-ColorOutput "Error: $_" -Type Error
-            $RustFailCount++
-        }
-    }
-    
-    Write-Host ""
-    
-    if ($RustFailCount -eq 0) {
-        $RustFiles = Get-ChildItem -Path $RustOutDir -Filter "*.rs" -Recurse -ErrorAction SilentlyContinue
-        $RustFileCount = if ($RustFiles) { $RustFiles.Count } else { 0 }
-        Write-ColorOutput "Rust code generation complete: $RustFileCount file(s) generated" -Type Success
-        
-        # Generate mod.rs
-        if ($RustFileCount -gt 0) {
-            Write-ColorOutput "Generating mod.rs..." -Type Info
-            $ModFile = Join-Path $RustOutDir "mod.rs"
-            
-            $modContent = @()
-            $modContent += "// Auto-generated module file"
-            $modContent += "// Generated on: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-            $modContent += ""
-            
-            foreach ($rsFile in $RustFiles) {
-                if ($rsFile.Name -ne "mod.rs") {
-                    $moduleName = $rsFile.BaseName
-                    $modContent += "pub mod $moduleName;"
-                }
-            }
-            
-            $modContent | Out-File -FilePath $ModFile -Encoding utf8
-            Write-ColorOutput "Generated mod.rs with $RustFileCount module(s)" -Type Success
-        }
-    }
-    else {
-        Write-ColorOutput "Rust code generation completed with $RustFailCount error(s)" -Type Error
-        exit 1
-    }
-    
-    Write-Host ""
-}
-
-################################################################################
-# Build Summary
-################################################################################
-
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host "   Build Summary" -ForegroundColor Green
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "  Proto files processed: $ProtoCount"
-
-if ($GenerateGo) {
-    Write-Host "  Go files generated:    $GoFileCount"
-    Write-Host "  Go output directory:   $GoOutDir"
-}
-
-if ($GenerateRust) {
-    Write-Host "  Rust files generated:  $RustFileCount"
-    Write-Host "  Rust output directory: $RustOutDir"
-}
-
-Write-Host ""
-Write-Host "[+] Build completed successfully!" -ForegroundColor Green
-Write-Host "    Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-Write-Host ""
 
 exit 0

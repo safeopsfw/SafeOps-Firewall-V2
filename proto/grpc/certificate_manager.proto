@@ -1,0 +1,365 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.certificate_manager;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/certificate_manager";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// Certificate Manager Service - SSL/TLS certificate lifecycle management
+service CertificateManagerService {
+  // Certificate Methods
+  rpc GenerateCertificate(GenerateCertificateRequest) returns (CertificateResponse);
+  rpc ImportCertificate(ImportCertificateRequest) returns (CertificateResponse);
+  rpc RenewCertificate(RenewCertificateRequest) returns (CertificateResponse);
+  rpc RevokeCertificate(RevokeCertificateRequest) returns (CertificateResponse);
+  rpc DeleteCertificate(DeleteCertificateRequest) returns (CertificateResponse);
+  rpc ListCertificates(ListCertificatesRequest) returns (CertificateListResponse);
+  rpc GetCertificateDetails(GetCertificateDetailsRequest) returns (CertificateDetailResponse);
+  
+  // ACME Methods
+  rpc ConfigureACME(ACMEConfigRequest) returns (ACMEConfigResponse);
+  rpc RequestACMECertificate(RequestACMECertificateRequest) returns (CertificateResponse);
+  rpc GetACMEStatus(GetACMEStatusRequest) returns (ACMEStatusResponse);
+  
+  // CA Methods
+  rpc GenerateCA(GenerateCARequest) returns (CAResponse);
+  rpc SignCSR(SignCSRRequest) returns (CertificateResponse);
+  rpc GetCAChain(GetCAChainRequest) returns (CAChainResponse);
+  
+  // Validation Methods
+  rpc ValidateCertificate(ValidateCertificateRequest) returns (ValidationResponse);
+  rpc CheckExpiration(CheckExpirationRequest) returns (ExpirationCheckResponse);
+  rpc VerifyChain(VerifyChainRequest) returns (ChainValidationResponse);
+  
+  // Statistics
+  rpc GetCertificateStats(GetCertificateStatsRequest) returns (CertificateStatsResponse);
+  rpc GetExpiringCertificates(GetExpiringCertificatesRequest) returns (ExpiringCertificatesResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Certificate status
+enum CertificateStatus {
+  STATUS_UNKNOWN = 0;
+  STATUS_VALID = 1;
+  STATUS_EXPIRING = 2;
+  STATUS_EXPIRED = 3;
+  STATUS_REVOKED = 4;
+  STATUS_PENDING_VALIDATION = 5;
+}
+
+// Key algorithm
+enum KeyAlgorithm {
+  ALGORITHM_UNKNOWN = 0;
+  ALGORITHM_RSA = 1;
+  ALGORITHM_ECDSA = 2;
+  ALGORITHM_ED25519 = 3;
+}
+
+// Revocation reason
+enum RevocationReason {
+  REASON_UNSPECIFIED = 0;
+  REASON_KEY_COMPROMISE = 1;
+  REASON_CA_COMPROMISE = 2;
+  REASON_AFFILIATION_CHANGED = 3;
+  REASON_SUPERSEDED = 4;
+  REASON_CESSATION_OF_OPERATION = 5;
+  REASON_CERTIFICATE_HOLD = 6;
+  REASON_REMOVE_FROM_CRL = 8;
+}
+
+// ACME challenge type
+enum ChallengeType {
+  CHALLENGE_UNKNOWN = 0;
+  CHALLENGE_HTTP01 = 1;
+  CHALLENGE_DNS01 = 2;
+  CHALLENGE_TLS_ALPN01 = 3;
+}
+
+// DNS provider
+enum DNSProvider {
+  DNS_PROVIDER_UNKNOWN = 0;
+  DNS_PROVIDER_CLOUDFLARE = 1;
+  DNS_PROVIDER_ROUTE53 = 2;
+  DNS_PROVIDER_GOOGLE_CLOUD_DNS = 3;
+  DNS_PROVIDER_AZURE_DNS = 4;
+  DNS_PROVIDER_CUSTOM = 5;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CERTIFICATE METHODS
+// ============================================================================
+
+// Generate certificate request
+message GenerateCertificateRequest {
+  string common_name = 1;                        // Common name (CN)
+  repeated string subject_alternative_names = 2; // SANs
+  string organization = 3;                       // Organization (O)
+  string country = 4;                            // Country (C)
+  KeyAlgorithm key_algorithm = 5;                // Key algorithm
+  uint32 key_size = 6;                           // Key size (bits)
+  uint32 validity_days = 7;                      // Validity period
+}
+
+// Import certificate request
+message ImportCertificateRequest {
+  bytes certificate_pem = 1;                     // Certificate (PEM)
+  bytes private_key_pem = 2;                     // Private key (PEM)
+  bytes certificate_chain = 3;                   // Certificate chain
+  string passphrase = 4;                         // Key passphrase
+}
+
+// Renew certificate request
+message RenewCertificateRequest {
+  string certificate_id = 1;                     // Certificate ID to renew
+  uint32 renew_before_days = 2;                  // Renew N days before expiry
+}
+
+// Revoke certificate request
+message RevokeCertificateRequest {
+  string certificate_id = 1;                     // Certificate ID to revoke
+  RevocationReason reason = 2;                   // Revocation reason
+}
+
+// Delete certificate request
+message DeleteCertificateRequest {
+  string certificate_id = 1;                     // Certificate ID to delete
+  bool delete_private_key = 2;                   // Also delete private key
+}
+
+// List certificates request
+message ListCertificatesRequest {
+  CertificateStatus status = 1;                  // Filter by status
+  string issuer = 2;                             // Filter by issuer
+  string domain = 3;                             // Filter by domain
+  common.Pagination pagination = 4;              // Pagination
+}
+
+// Get certificate details request
+message GetCertificateDetailsRequest {
+  string certificate_id = 1;                     // Certificate ID (optional)
+  string domain_name = 2;                        // Or domain name
+}
+
+// ============================================================================
+// REQUEST MESSAGES - ACME METHODS
+// ============================================================================
+
+// ACME config request
+message ACMEConfigRequest {
+  string acme_server_url = 1;                    // ACME server URL
+  string email = 2;                              // Account email
+  DNSProvider dns_provider = 3;                  // DNS provider
+  string api_credentials = 4;                    // API credentials
+  ChallengeType challenge_type = 5;              // Challenge type
+}
+
+// Request ACME certificate request
+message RequestACMECertificateRequest {
+  repeated string domains = 1;                   // Domains to certify
+  ChallengeType challenge_type = 2;              // Challenge type
+  bool auto_renew = 3;                           // Enable auto-renewal
+}
+
+// Get ACME status request
+message GetACMEStatusRequest {
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CA METHODS
+// ============================================================================
+
+// Generate CA request
+message GenerateCARequest {
+  string common_name = 1;                        // CA common name
+  string organization = 2;                       // Organization
+  string country = 3;                            // Country
+  uint32 validity_years = 4;                     // Validity period (years)
+  KeyAlgorithm key_algorithm = 5;                // Key algorithm
+  uint32 key_size = 6;                           // Key size
+}
+
+// Sign CSR request
+message SignCSRRequest {
+  bytes csr_pem = 1;                             // CSR in PEM format
+  uint32 validity_days = 2;                      // Validity period
+  string ca_id = 3;                              // CA to sign with
+}
+
+// Get CA chain request
+message GetCAChainRequest {
+  string ca_id = 1;                              // CA ID
+}
+
+// ============================================================================
+// REQUEST MESSAGES - VALIDATION & STATISTICS
+// ============================================================================
+
+// Validate certificate request
+message ValidateCertificateRequest {
+  string certificate_id = 1;                     // Certificate ID (optional)
+  bytes certificate_pem = 2;                     // Or certificate PEM
+}
+
+// Check expiration request
+message CheckExpirationRequest {
+  uint32 days_threshold = 1;                     // Days threshold (default: 30)
+}
+
+// Verify chain request
+message VerifyChainRequest {
+  string certificate_id = 1;                     // Certificate ID to verify
+}
+
+// Get certificate stats request
+message GetCertificateStatsRequest {
+}
+
+// Get expiring certificates request
+message GetExpiringCertificatesRequest {
+  uint32 days_threshold = 1;                     // Days until expiration
+  common.Pagination pagination = 2;              // Pagination
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Certificate response
+message CertificateResponse {
+  string certificate_id = 1;                     // Certificate ID
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// Certificate list response
+message CertificateListResponse {
+  repeated Certificate certificates = 1;         // List of certificates
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Certificate detail response
+message CertificateDetailResponse {
+  string id = 1;                                 // Certificate ID
+  string common_name = 2;                        // Common name
+  repeated string san_list = 3;                  // SAN list
+  string issuer = 4;                             // Issuer
+  string subject = 5;                            // Subject
+  string serial_number = 6;                      // Serial number
+  common.Timestamp valid_from = 7;               // Valid from
+  common.Timestamp valid_until = 8;              // Valid until
+  KeyAlgorithm key_algorithm = 9;                // Key algorithm
+  string signature_algorithm = 10;               // Signature algorithm
+  string fingerprint_sha256 = 11;                // SHA256 fingerprint
+  bytes certificate_pem = 12;                    // Certificate (PEM)
+  bytes chain_pem = 13;                          // Chain (PEM)
+}
+
+// ACME config response
+message ACMEConfigResponse {
+  common.Status status = 1;                      // Operation status
+  string message = 2;                            // Status message
+}
+
+// ACME status response
+message ACMEStatusResponse {
+  bool configured = 1;                           // Is configured
+  string account_email = 2;                      // Account email
+  string acme_server = 3;                        // ACME server URL
+  common.Timestamp last_request_time = 4;        // Last request time
+  repeated string pending_challenges = 5;        // Pending challenges
+}
+
+// CA response
+message CAResponse {
+  string ca_certificate_id = 1;                  // CA certificate ID
+  bytes ca_certificate_pem = 2;                  // CA certificate (PEM)
+  common.Status status = 3;                      // Operation status
+}
+
+// CA chain response
+message CAChainResponse {
+  repeated bytes chain_pem = 1;                  // Certificate chain
+  common.Status status = 2;                      // Operation status
+}
+
+// Validation response
+message ValidationResponse {
+  bool is_valid = 1;                             // Is valid
+  repeated string errors = 2;                    // Validation errors
+  repeated string warnings = 3;                  // Validation warnings
+  bool chain_valid = 4;                          // Chain is valid
+  common.Timestamp not_before = 5;               // Not before date
+  common.Timestamp not_after = 6;                // Not after date
+  uint32 days_until_expiration = 7;              // Days until expiration
+}
+
+// Expiration check response
+message ExpirationCheckResponse {
+  repeated Certificate expiring_certificates = 1; // Expiring certificates
+  uint32 total_expiring = 2;                     // Total expiring count
+}
+
+// Chain validation response
+message ChainValidationResponse {
+  bool is_valid = 1;                             // Is valid
+  repeated string chain_issues = 2;              // Chain issues
+  repeated string certificate_path = 3;          // Certificate path
+}
+
+// Certificate statistics response
+message CertificateStatsResponse {
+  uint32 total_certificates = 1;                 // Total certificates
+  uint32 valid_certificates = 2;                 // Valid certificates
+  uint32 expiring_soon = 3;                      // Expiring < 30 days
+  uint32 expired_certificates = 4;               // Expired certificates
+  uint32 revoked_certificates = 5;               // Revoked certificates
+  common.Timestamp timestamp = 6;                // Stats timestamp
+}
+
+// Expiring certificates response
+message ExpiringCertificatesResponse {
+  repeated ExpiringCertificate certificates = 1; // Expiring certificates
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Expiring certificate entry
+message ExpiringCertificate {
+  string id = 1;                                 // Certificate ID
+  string domain = 2;                             // Domain
+  common.Timestamp expiration_date = 3;          // Expiration date
+  uint32 days_remaining = 4;                     // Days remaining
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Certificate
+message Certificate {
+  string id = 1;                                 // Certificate ID
+  string common_name = 2;                        // Common name
+  repeated string subject_alternative_names = 3; // SANs
+  string issuer = 4;                             // Issuer
+  string subject = 5;                            // Subject
+  string serial_number = 6;                      // Serial number
+  common.Timestamp valid_from = 7;               // Valid from
+  common.Timestamp valid_until = 8;              // Valid until
+  CertificateStatus status = 9;                  // Certificate status
+  KeyAlgorithm key_algorithm = 10;               // Key algorithm
+  uint32 key_size = 11;                          // Key size (bits)
+  string signature_algorithm = 12;               // Signature algorithm
+  string fingerprint_sha256 = 13;                // SHA256 fingerprint
+  bool auto_renew = 14;                          // Auto-renew enabled
+  repeated string used_by_services = 15;         // Services using this cert
+}

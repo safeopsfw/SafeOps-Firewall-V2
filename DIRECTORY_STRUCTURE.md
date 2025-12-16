@@ -115,26 +115,6 @@ SafeOps/
 ├── 📁 src/                                      (700+ files total)
 │   │
 │   ├── 📁 kernel_driver/                       (20 files - Phase 1 ✅)
-│   │   ├── driver.c                            # Driver entry point (DriverEntry, DriverUnload)
-│   │   ├── driver.h                            # Global driver structures and definitions
-│   │   ├── driver_part2.c                      # Extended driver functions
-│   │   ├── packet_capture.c                    # NDIS Lightweight Filter implementation
-│   │   ├── packet_capture.h                    # Packet capture header
-│   │   ├── filter_engine.c                     # WFP Callout implementation (8 layers)
-│   │   ├── filter_engine.h                     # Filter engine header
-│   │   ├── shared_memory.c                     # 2GB lock-free ring buffer
-│   │   ├── shared_memory.h                     # Shared memory header
-│   │   ├── ioctl_handler.c                     # IOCTL handler (20+ commands)
-│   │   ├── ioctl_handler.h                     # IOCTL header
-│   │   ├── nic_management.c                    # NIC tagging (WAN/LAN/WiFi)
-│   │   ├── nic_management.h                    # NIC management header
-│   │   ├── performance.c                       # DMA, RSS, NUMA optimizations
-│   │   ├── performance.h                       # Performance header
-│   │   ├── makefile                            # Build system (690 lines)
-│   │   ├── safeops.inf                         # Driver installation manifest
-│   │   ├── safeops.rc                          # Version resource
-│   │   ├── README.md                           # Kernel driver documentation (960 lines)
-│   │   └── DEPENDENCIES.md                     # Module dependency map
 │   │
 │   ├── 📁 userspace_service/                   (7 files - Phase 1 ✅)
 │   │   ├── service_main.c                      # Windows service entry (320 lines)

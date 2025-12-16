@@ -1,0 +1,449 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.tls_proxy;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/tls_proxy";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// TLS Proxy Service - SSL/TLS termination and inspection
+service TLSProxyService {
+  // Proxy Control
+  rpc StartProxy(StartProxyRequest) returns (ProxyStatusResponse);
+  rpc StopProxy(StopProxyRequest) returns (ProxyStatusResponse);
+  rpc GetProxyStatus(GetProxyStatusRequest) returns (ProxyStatusResponse);
+  rpc ReloadConfig(ReloadConfigRequest) returns (ProxyStatusResponse);
+  
+  // Certificate Methods
+  rpc InstallCertificate(InstallCertificateRequest) returns (CertificateResponse);
+  rpc RemoveCertificate(RemoveCertificateRequest) returns (CertificateResponse);
+  rpc ListCertificates(ListCertificatesRequest) returns (CertificateListResponse);
+  rpc GetCertificateDetails(GetCertificateDetailsRequest) returns (CertificateDetailResponse);
+  rpc RenewCertificate(RenewCertificateRequest) returns (CertificateResponse);
+  
+  // Policy Methods
+  rpc SetInspectionPolicy(InspectionPolicyRequest) returns (InspectionPolicyResponse);
+  rpc GetInspectionPolicy(GetInspectionPolicyRequest) returns (InspectionPolicyResponse);
+  rpc AddBypassRule(BypassRuleRequest) returns (BypassRuleResponse);
+  rpc RemoveBypassRule(RemoveBypassRuleRequest) returns (BypassRuleResponse);
+  rpc ListBypassRules(ListBypassRulesRequest) returns (BypassRuleListResponse);
+  
+  // Statistics Methods
+  rpc GetProxyStats(GetProxyStatsRequest) returns (ProxyStatsResponse);
+  rpc GetConnectionStats(GetConnectionStatsRequest) returns (ConnectionStatsResponse);
+  rpc GetCertificateStats(GetCertificateStatsRequest) returns (CertificateStatsResponse);
+  rpc StreamTrafficStats(StreamTrafficStatsRequest) returns (stream ProxyStatsResponse);
+  
+  // SNI Routing
+  rpc AddRoute(RouteRequest) returns (RouteResponse);
+  rpc RemoveRoute(RemoveRouteRequest) returns (RouteResponse);
+  rpc UpdateRoute(UpdateRouteRequest) returns (RouteResponse);
+  rpc ListRoutes(ListRoutesRequest) returns (RouteListResponse);
+  
+  // Cipher Control
+  rpc SetCipherSuites(CipherSuitesRequest) returns (CipherSuitesResponse);
+  rpc GetCipherSuites(GetCipherSuitesRequest) returns (CipherSuitesResponse);
+  rpc SetTLSVersions(TLSVersionsRequest) returns (TLSVersionsResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Inspection mode
+enum InspectionMode {
+  MODE_UNKNOWN = 0;
+  MODE_NONE = 1;              // No inspection (transparent proxy)
+  MODE_PASSIVE = 2;           // Inspect and log only
+  MODE_ACTIVE = 3;            // Inspect and filter/block
+}
+
+// TLS version
+enum TLSVersion {
+  TLS_UNKNOWN = 0;
+  TLS_1_0 = 1;
+  TLS_1_1 = 2;
+  TLS_1_2 = 3;
+  TLS_1_3 = 4;
+}
+
+// Cipher suite (common TLS 1.2 and 1.3 suites)
+enum CipherSuite {
+  CIPHER_UNKNOWN = 0;
+  // TLS 1.3 cipher suites
+  TLS_AES_256_GCM_SHA384 = 1;
+  TLS_AES_128_GCM_SHA256 = 2;
+  TLS_CHACHA20_POLY1305_SHA256 = 3;
+  // TLS 1.2 cipher suites
+  TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 = 4;
+  TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 = 5;
+  TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305 = 6;
+  TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 = 7;
+  TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 = 8;
+}
+
+// Bypass rule type
+enum BypassRuleType {
+  BYPASS_TYPE_UNKNOWN = 0;
+  BYPASS_TYPE_DOMAIN = 1;
+  BYPASS_TYPE_IP = 2;
+  BYPASS_TYPE_PORT = 3;
+}
+
+// Proxy status
+enum ProxyStatus {
+  STATUS_UNKNOWN = 0;
+  STATUS_STOPPED = 1;
+  STATUS_STARTING = 2;
+  STATUS_RUNNING = 3;
+  STATUS_ERROR = 4;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - PROXY CONTROL
+// ============================================================================
+
+// Start proxy request
+message StartProxyRequest {
+  string listen_address = 1;                     // Listen address
+  uint32 listen_port = 2;                        // Listen port
+  string backend_address = 3;                    // Backend address
+  uint32 backend_port = 4;                       // Backend port
+  string certificate_id = 5;                     // Default certificate ID
+}
+
+// Stop proxy request
+message StopProxyRequest {
+  bool graceful = 1;                             // Graceful shutdown
+  uint32 timeout_seconds = 2;                    // Shutdown timeout
+}
+
+// Get proxy status request
+message GetProxyStatusRequest {
+}
+
+// Reload config request
+message ReloadConfigRequest {
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CERTIFICATE METHODS
+// ============================================================================
+
+// Install certificate request
+message InstallCertificateRequest {
+  bytes certificate_pem = 1;                     // Certificate in PEM format
+  bytes private_key_pem = 2;                     // Private key in PEM format
+  bytes certificate_chain = 3;                   // Certificate chain (optional)
+  repeated string domains = 4;                   // Domains this cert covers
+  bool auto_renew = 5;                           // Enable auto-renewal
+  uint32 renew_before_days = 6;                  // Renew N days before expiry
+}
+
+// Remove certificate request
+message RemoveCertificateRequest {
+  string certificate_id = 1;                     // Certificate ID to remove
+}
+
+// List certificates request
+message ListCertificatesRequest {
+  bool expiring_soon = 1;                        // Only expiring soon
+  common.Pagination pagination = 2;              // Pagination
+}
+
+// Get certificate details request
+message GetCertificateDetailsRequest {
+  string certificate_id = 1;                     // Certificate ID
+}
+
+// Renew certificate request
+message RenewCertificateRequest {
+  string certificate_id = 1;                     // Certificate ID to renew
+  bool force = 2;                                // Force renewal
+}
+
+// ============================================================================
+// REQUEST MESSAGES - POLICY METHODS
+// ============================================================================
+
+// Inspection policy request
+message InspectionPolicyRequest {
+  InspectionMode mode = 1;                       // Inspection mode
+  repeated string inspect_domains = 2;           // Domains to inspect
+  repeated string bypass_domains = 3;            // Domains to bypass
+  bool log_all_traffic = 4;                      // Log all traffic
+}
+
+// Get inspection policy request
+message GetInspectionPolicyRequest {
+}
+
+// Bypass rule request
+message BypassRuleRequest {
+  BypassRuleType rule_type = 1;                  // Rule type
+  string value = 2;                              // Domain/IP/Port value
+  string reason = 3;                             // Reason for bypass
+  bool enabled = 4;                              // Is enabled
+}
+
+// Remove bypass rule request
+message RemoveBypassRuleRequest {
+  string rule_id = 1;                            // Rule ID to remove
+}
+
+// List bypass rules request
+message ListBypassRulesRequest {
+  bool enabled_only = 1;                         // Only enabled rules
+  common.Pagination pagination = 2;              // Pagination
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATISTICS
+// ============================================================================
+
+// Get proxy stats request
+message GetProxyStatsRequest {
+  common.Timestamp start_time = 1;               // Start time
+  common.Timestamp end_time = 2;                 // End time
+}
+
+// Get connection stats request
+message GetConnectionStatsRequest {
+  bool active_only = 1;                          // Only active connections
+}
+
+// Get certificate stats request
+message GetCertificateStatsRequest {
+}
+
+// Stream traffic stats request
+message StreamTrafficStatsRequest {
+  uint32 interval_seconds = 1;                   // Update interval
+}
+
+// ============================================================================
+// REQUEST MESSAGES - SNI ROUTING
+// ============================================================================
+
+// Route request
+message RouteRequest {
+  string sni_hostname = 1;                       // SNI hostname
+  string backend_address = 2;                    // Backend address
+  uint32 backend_port = 3;                       // Backend port
+  string certificate_id = 4;                     // Certificate to use
+  bool enabled = 5;                              // Is enabled
+}
+
+// Remove route request
+message RemoveRouteRequest {
+  string route_id = 1;                           // Route ID to remove
+}
+
+// Update route request
+message UpdateRouteRequest {
+  string route_id = 1;                           // Route ID to update
+  string backend_address = 2;                    // Updated backend
+  uint32 backend_port = 3;                       // Updated port
+  string certificate_id = 4;                     // Updated certificate
+  bool enabled = 5;                              // Enable/disable
+}
+
+// List routes request
+message ListRoutesRequest {
+  bool enabled_only = 1;                         // Only enabled routes
+  common.Pagination pagination = 2;              // Pagination
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CIPHER CONTROL
+// ============================================================================
+
+// Cipher suites request
+message CipherSuitesRequest {
+  repeated string allowed_ciphers = 1;           // Allowed cipher names
+  repeated uint32 priority_order = 2;            // Priority order
+}
+
+// Get cipher suites request
+message GetCipherSuitesRequest {
+}
+
+// TLS versions request
+message TLSVersionsRequest {
+  TLSVersion min_version = 1;                    // Minimum TLS version
+  TLSVersion max_version = 2;                    // Maximum TLS version
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Proxy status response
+message ProxyStatusResponse {
+  ProxyStatus status = 1;                        // Proxy status
+  string listen_address = 2;                     // Listen address
+  uint32 listen_port = 3;                        // Listen port
+  uint32 active_connections = 4;                 // Active connections
+  uint64 uptime_seconds = 5;                     // Uptime in seconds
+  string message = 6;                            // Status message
+}
+
+// Certificate response
+message CertificateResponse {
+  string certificate_id = 1;                     // Certificate ID
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// Certificate list response
+message CertificateListResponse {
+  repeated Certificate certificates = 1;         // List of certificates
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Certificate detail response
+message CertificateDetailResponse {
+  Certificate certificate = 1;                   // Certificate details
+  common.Timestamp expiration_date = 2;          // Expiration date
+  repeated string domains = 3;                   // Covered domains
+  string issuer = 4;                             // Issuer
+  string subject = 5;                            // Subject
+  string serial_number = 6;                      // Serial number
+  common.Timestamp valid_from = 7;               // Valid from
+  common.Timestamp valid_until = 8;              // Valid until
+}
+
+// Inspection policy response
+message InspectionPolicyResponse {
+  InspectionMode mode = 1;                       // Current mode
+  repeated string inspect_domains = 2;           // Inspected domains
+  repeated string bypass_domains = 3;            // Bypassed domains
+  bool log_all_traffic = 4;                      // Log all traffic
+  common.Status status = 5;                      // Operation status
+}
+
+// Bypass rule response
+message BypassRuleResponse {
+  string rule_id = 1;                            // Rule ID
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// Bypass rule list response
+message BypassRuleListResponse {
+  repeated BypassRule rules = 1;                 // List of rules
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Proxy statistics response
+message ProxyStatsResponse {
+  uint64 total_connections = 1;                  // Total connections
+  uint32 active_connections = 2;                 // Active connections
+  uint64 bytes_proxied = 3;                      // Total bytes proxied
+  map<string, uint64> connections_by_domain = 4; // Connections by domain
+  uint32 average_handshake_time_ms = 5;          // Avg handshake time
+  map<string, uint64> cipher_usage_stats = 6;    // Cipher usage stats
+  common.Timestamp timestamp = 7;                // Stats timestamp
+}
+
+// Connection statistics response
+message ConnectionStatsResponse {
+  repeated ActiveConnection connections = 1;     // Active connections
+  uint32 total_count = 2;                        // Total active count
+}
+
+// Certificate statistics response
+message CertificateStatsResponse {
+  uint32 total_certificates = 1;                 // Total certificates
+  uint32 expiring_soon_count = 2;                // Expiring within 30 days
+  uint32 expired_count = 3;                      // Expired certificates
+  common.Timestamp timestamp = 4;                // Stats timestamp
+}
+
+// Route response
+message RouteResponse {
+  string route_id = 1;                           // Route ID
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// Route list response
+message RouteListResponse {
+  repeated Route routes = 1;                     // List of routes
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Cipher suites response
+message CipherSuitesResponse {
+  repeated string allowed_ciphers = 1;           // Allowed ciphers
+  repeated string preferred_ciphers = 2;         // Preferred order
+  common.Status status = 3;                      // Operation status
+}
+
+// TLS versions response
+message TLSVersionsResponse {
+  TLSVersion min_version = 1;                    // Minimum version
+  TLSVersion max_version = 2;                    // Maximum version
+  common.Status status = 3;                      // Operation status
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Certificate
+message Certificate {
+  string id = 1;                                 // Certificate ID
+  repeated string domains = 2;                   // Covered domains
+  string issuer = 3;                             // Issuer
+  string subject = 4;                            // Subject
+  string serial_number = 5;                      // Serial number
+  common.Timestamp valid_from = 6;               // Valid from
+  common.Timestamp valid_until = 7;              // Valid until
+  bytes certificate_pem = 8;                     // Certificate (PEM)
+  bool auto_renew = 9;                           // Auto-renewal enabled
+  uint32 renew_before_days = 10;                 // Renew before days
+}
+
+// Bypass rule
+message BypassRule {
+  string id = 1;                                 // Rule ID
+  BypassRuleType type = 2;                       // Rule type
+  string value = 3;                              // Domain/IP/Port
+  string reason = 4;                             // Bypass reason
+  bool enabled = 5;                              // Is enabled
+  uint64 hit_count = 6;                          // Number of hits
+  common.Timestamp created_at = 7;               // Creation timestamp
+}
+
+// Route
+message Route {
+  string id = 1;                                 // Route ID
+  string sni_hostname = 2;                       // SNI hostname
+  string backend_address = 3;                    // Backend address
+  uint32 backend_port = 4;                       // Backend port
+  string certificate_id = 5;                     // Certificate ID
+  bool enabled = 6;                              // Is enabled
+  uint64 connection_count = 7;                   // Connection count
+}
+
+// Active connection
+message ActiveConnection {
+  string id = 1;                                 // Connection ID
+  common.IPAddress source_ip = 2;                // Source IP
+  string dest_domain = 3;                        // Destination domain
+  string cipher_suite = 4;                       // Used cipher suite
+  TLSVersion tls_version = 5;                    // TLS version
+  uint64 bytes_sent = 6;                         // Bytes sent
+  uint64 bytes_received = 7;                     // Bytes received
+  common.Timestamp start_time = 8;               // Connection start
+  uint32 duration_ms = 9;                        // Duration in ms
+}

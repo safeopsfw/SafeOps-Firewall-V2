@@ -1,0 +1,451 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.dns_server;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/dns_server";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// DNS Server Service - Domain name resolution with filtering and threat integration
+service DNSServerService {
+  // Configuration Methods
+  rpc SetUpstreamServers(SetUpstreamServersRequest) returns (UpstreamServersResponse);
+  rpc GetUpstreamServers(GetUpstreamServersRequest) returns (UpstreamServersResponse);
+  rpc SetCacheSettings(CacheSettingsRequest) returns (CacheSettingsResponse);
+  rpc GetCacheSettings(GetCacheSettingsRequest) returns (CacheSettingsResponse);
+  
+  // Filtering Methods
+  rpc AddBlocklist(BlocklistRequest) returns (BlocklistResponse);
+  rpc RemoveBlocklist(RemoveBlocklistRequest) returns (BlocklistResponse);
+  rpc UpdateBlocklist(UpdateBlocklistRequest) returns (BlocklistResponse);
+  rpc ListBlocklists(ListBlocklistsRequest) returns (BlocklistListResponse);
+  rpc AddCustomRule(CustomRuleRequest) returns (CustomRuleResponse);
+  rpc RemoveCustomRule(RemoveCustomRuleRequest) returns (CustomRuleResponse);
+  
+  // Query Methods
+  rpc LookupDomain(LookupDomainRequest) returns (LookupResponse);
+  rpc ReverseLookup(ReverseLookupRequest) returns (ReverseLookupResponse);
+  rpc ValidateDNSSEC(DNSSECValidationRequest) returns (DNSSECValidationResponse);
+  
+  // Cache Methods
+  rpc FlushCache(FlushCacheRequest) returns (CacheOperationResponse);
+  rpc GetCacheStats(GetCacheStatsRequest) returns (CacheStatsResponse);
+  rpc PurgeStaleEntries(PurgeStaleEntriesRequest) returns (CacheOperationResponse);
+  
+  // Statistics Methods
+  rpc GetQueryStats(QueryStatsRequest) returns (QueryStatsResponse);
+  rpc GetTopDomains(GetTopDomainsRequest) returns (TopDomainsResponse);
+  rpc GetBlockedDomains(GetBlockedDomainsRequest) returns (BlockedDomainsResponse);
+  rpc StreamQueryStats(StreamQueryStatsRequest) returns (stream QueryStatsResponse);
+  
+  // DNSSEC Methods
+  rpc EnableDNSSEC(EnableDNSSECRequest) returns (DNSSECStatusResponse);
+  rpc GetDNSSECStatus(GetDNSSECStatusRequest) returns (DNSSECStatusResponse);
+  rpc ValidateChain(ValidateChainRequest) returns (DNSSECValidationResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// DNS query type
+enum DNSQueryType {
+  QUERY_TYPE_UNKNOWN = 0;
+  QUERY_TYPE_A = 1;           // IPv4 address
+  QUERY_TYPE_AAAA = 2;        // IPv6 address
+  QUERY_TYPE_MX = 3;          // Mail exchange
+  QUERY_TYPE_TXT = 4;         // Text record
+  QUERY_TYPE_CNAME = 5;       // Canonical name
+  QUERY_TYPE_NS = 6;          // Name server
+  QUERY_TYPE_SOA = 7;         // Start of authority
+  QUERY_TYPE_PTR = 8;         // Pointer (reverse DNS)
+  QUERY_TYPE_SRV = 9;         // Service
+  QUERY_TYPE_CAA = 10;        // Certification Authority Authorization
+}
+
+// DNS response code
+enum DNSResponseCode {
+  RESPONSE_NOERROR = 0;       // No error
+  RESPONSE_NXDOMAIN = 1;      // Non-existent domain
+  RESPONSE_SERVFAIL = 2;      // Server failure
+  RESPONSE_REFUSED = 3;       // Query refused
+  RESPONSE_FORMERR = 4;       // Format error
+}
+
+// DNS protocol
+enum DNSProtocol {
+  PROTOCOL_UNKNOWN = 0;
+  PROTOCOL_UDP = 1;
+  PROTOCOL_TCP = 2;
+  PROTOCOL_DOT = 3;           // DNS-over-TLS
+  PROTOCOL_DOH = 4;           // DNS-over-HTTPS
+}
+
+// Blocklist format
+enum BlocklistFormat {
+  FORMAT_UNKNOWN = 0;
+  FORMAT_HOSTS = 1;           // /etc/hosts format
+  FORMAT_DOMAIN_LIST = 2;     // Plain domain list
+  FORMAT_ADBLOCK = 3;         // Adblock Plus format
+}
+
+// Rule type
+enum RuleType {
+  RULE_TYPE_UNKNOWN = 0;
+  RULE_TYPE_BLOCK = 1;
+  RULE_TYPE_ALLOW = 2;
+  RULE_TYPE_REDIRECT = 3;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CONFIGURATION
+// ============================================================================
+
+// Set upstream servers request
+message SetUpstreamServersRequest {
+  repeated UpstreamServer servers = 1;           // List of upstream servers
+}
+
+// Get upstream servers request
+message GetUpstreamServersRequest {
+}
+
+// Cache settings request
+message CacheSettingsRequest {
+  uint32 cache_ttl_seconds = 1;                  // Default cache TTL
+  uint32 max_cache_size_mb = 2;                  // Max cache size
+  uint32 negative_cache_ttl = 3;                 // TTL for NXDOMAIN
+  uint32 minimum_ttl = 4;                        // Minimum TTL
+  uint32 maximum_ttl = 5;                        // Maximum TTL
+}
+
+// Get cache settings request
+message GetCacheSettingsRequest {
+}
+
+// ============================================================================
+// REQUEST MESSAGES - FILTERING
+// ============================================================================
+
+// Blocklist request
+message BlocklistRequest {
+  string blocklist_name = 1;                     // Blocklist name
+  string blocklist_url = 2;                      // URL to blocklist
+  BlocklistFormat format = 3;                    // Blocklist format
+  bool auto_update_enabled = 4;                  // Enable auto-updates
+  uint32 update_frequency_hours = 5;             // Update frequency
+}
+
+// Remove blocklist request
+message RemoveBlocklistRequest {
+  string blocklist_id = 1;                       // Blocklist ID to remove
+}
+
+// Update blocklist request
+message UpdateBlocklistRequest {
+  string blocklist_id = 1;                       // Blocklist ID to update
+  bool enabled = 2;                              // Enable/disable
+  uint32 update_frequency_hours = 3;             // New update frequency
+}
+
+// List blocklists request
+message ListBlocklistsRequest {
+  bool enabled_only = 1;                         // Only enabled blocklists
+}
+
+// Custom rule request
+message CustomRuleRequest {
+  RuleType rule_type = 1;                        // Rule type
+  string domain_pattern = 2;                     // Domain pattern (wildcards ok)
+  string action = 3;                             // Action to take
+  string redirect_ip = 4;                        // Redirect IP (if applicable)
+  uint32 priority = 5;                           // Rule priority
+}
+
+// Remove custom rule request
+message RemoveCustomRuleRequest {
+  string rule_id = 1;                            // Rule ID to remove
+}
+
+// ============================================================================
+// REQUEST MESSAGES - QUERY
+// ============================================================================
+
+// Lookup domain request
+message LookupDomainRequest {
+  string domain = 1;                             // Domain to lookup
+  DNSQueryType query_type = 2;                   // Query type
+  common.IPAddress client_ip = 3;                // Client IP (for ACL)
+  bool recursion_desired = 4;                    // Recursion flag
+}
+
+// Reverse lookup request
+message ReverseLookupRequest {
+  common.IPAddress ip_address = 1;               // IP to reverse lookup
+}
+
+// DNSSEC validation request
+message DNSSECValidationRequest {
+  string domain = 1;                             // Domain to validate
+  DNSQueryType query_type = 2;                   // Query type
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CACHE
+// ============================================================================
+
+// Flush cache request
+message FlushCacheRequest {
+  bool flush_all = 1;                            // Flush entire cache
+  string domain_pattern = 2;                     // Domain pattern to flush
+}
+
+// Get cache stats request
+message GetCacheStatsRequest {
+}
+
+// Purge stale entries request
+message PurgeStaleEntriesRequest {
+  uint32 max_age_seconds = 1;                    // Max age before purge
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATISTICS
+// ============================================================================
+
+// Query stats request
+message QueryStatsRequest {
+  common.Timestamp start_time = 1;               // Start time
+  common.Timestamp end_time = 2;                 // End time
+  string group_by = 3;                           // Group by (DOMAIN/CLIENT/TYPE/RESULT)
+  uint32 top_n_limit = 4;                        // Top N results
+}
+
+// Get top domains request
+message GetTopDomainsRequest {
+  common.Timestamp start_time = 1;               // Start time
+  common.Timestamp end_time = 2;                 // End time
+  uint32 limit = 3;                              // Number of results
+}
+
+// Get blocked domains request
+message GetBlockedDomainsRequest {
+  common.Timestamp start_time = 1;               // Start time
+  common.Timestamp end_time = 2;                 // End time
+  common.Pagination pagination = 3;              // Pagination
+}
+
+// Stream query stats request
+message StreamQueryStatsRequest {
+  uint32 interval_seconds = 1;                   // Update interval
+}
+
+// ============================================================================
+// REQUEST MESSAGES - DNSSEC
+// ============================================================================
+
+// Enable DNSSEC request
+message EnableDNSSECRequest {
+  bool enabled = 1;                              // Enable or disable
+}
+
+// Get DNSSEC status request
+message GetDNSSECStatusRequest {
+}
+
+// Validate chain request
+message ValidateChainRequest {
+  string domain = 1;                             // Domain to validate
+  DNSQueryType query_type = 2;                   // Query type
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Upstream servers response
+message UpstreamServersResponse {
+  repeated UpstreamServer servers = 1;           // List of servers
+  common.Status status = 2;                      // Operation status
+}
+
+// Cache settings response
+message CacheSettingsResponse {
+  uint32 cache_ttl_seconds = 1;                  // Cache TTL
+  uint32 max_cache_size_mb = 2;                  // Max size
+  uint32 negative_cache_ttl = 3;                 // Negative cache TTL
+  uint32 minimum_ttl = 4;                        // Min TTL
+  uint32 maximum_ttl = 5;                        // Max TTL
+  common.Status status = 6;                      // Operation status
+}
+
+// Blocklist response
+message BlocklistResponse {
+  string blocklist_id = 1;                       // Blocklist ID
+  common.Status status = 2;                      // Operation status
+  uint32 entry_count = 3;                        // Number of entries
+  common.Timestamp last_updated = 4;             // Last update time
+}
+
+// Blocklist list response
+message BlocklistListResponse {
+  repeated Blocklist blocklists = 1;             // List of blocklists
+  uint32 total_count = 2;                        // Total count
+}
+
+// Custom rule response
+message CustomRuleResponse {
+  string rule_id = 1;                            // Rule ID
+  common.Status status = 2;                      // Operation status
+}
+
+// Lookup response
+message LookupResponse {
+  string query_domain = 1;                       // Queried domain
+  DNSQueryType query_type = 2;                   // Query type
+  DNSResponseCode response_code = 3;             // Response code
+  repeated DNSRecord answers = 4;                // Answer records
+  repeated DNSRecord authority = 5;              // Authority records
+  repeated DNSRecord additional = 6;             // Additional records
+  uint32 ttl = 7;                                // TTL
+  bool cached = 8;                               // From cache
+  bool dnssec_validated = 9;                     // DNSSEC validated
+  uint32 response_time_ms = 10;                  // Response time
+}
+
+// Reverse lookup response
+message ReverseLookupResponse {
+  common.IPAddress ip_address = 1;               // IP address
+  repeated string domain_names = 2;              // Domain names
+  uint32 ttl = 3;                                // TTL
+}
+
+// DNSSEC validation response
+message DNSSECValidationResponse {
+  bool is_valid = 1;                             // Validation result
+  repeated string validation_chain = 2;          // Validation chain
+  string error_message = 3;                      // Error if invalid
+}
+
+// Cache operation response
+message CacheOperationResponse {
+  common.Status status = 1;                      // Operation status
+  uint32 entries_affected = 2;                   // Entries affected
+  string message = 3;                            // Status message
+}
+
+// Cache stats response
+message CacheStatsResponse {
+  uint64 total_entries = 1;                      // Total entries
+  double cache_hit_rate = 2;                     // Hit rate percentage
+  uint64 cache_size_mb = 3;                      // Cache size
+  uint64 evictions_count = 4;                    // Number of evictions
+  uint32 oldest_entry_age = 5;                   // Oldest entry age (seconds)
+}
+
+// Query stats response
+message QueryStatsResponse {
+  uint64 total_queries = 1;                      // Total queries
+  map<string, uint64> queries_by_type = 2;       // Breakdown by type
+  map<string, uint64> queries_by_result = 3;     // Breakdown by result
+  uint64 blocked_queries = 4;                    // Blocked queries
+  repeated TopDomain top_queried_domains = 5;    // Most queried domains
+  repeated TopClient top_clients = 6;            // Most active clients
+  uint32 average_response_time_ms = 7;           // Avg response time
+  common.Timestamp timestamp = 8;                // Stats timestamp
+}
+
+// Top domains response
+message TopDomainsResponse {
+  repeated TopDomain domains = 1;                // Top domains
+  common.Timestamp timestamp = 2;                // Query timestamp
+}
+
+// Blocked domains response
+message BlockedDomainsResponse {
+  repeated BlockedDomain blocked_domains = 1;    // Blocked domains
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// DNSSEC status response
+message DNSSECStatusResponse {
+  bool enabled = 1;                              // DNSSEC enabled
+  uint64 validations_performed = 2;              // Validations performed
+  uint64 validation_failures = 3;                // Validation failures
+  common.Status status = 4;                      // Operation status
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Upstream server
+message UpstreamServer {
+  common.IPAddress ip_address = 1;               // Server IP
+  uint32 port = 2;                               // Server port
+  DNSProtocol protocol = 3;                      // Protocol (UDP/TCP/DoT/DoH)
+  uint32 priority = 4;                           // Priority (lower first)
+  uint32 timeout_ms = 5;                         // Timeout in ms
+  bool enabled = 6;                              // Is enabled
+  uint32 response_time_avg = 7;                  // Average response time
+}
+
+// Blocklist
+message Blocklist {
+  string id = 1;                                 // Blocklist ID
+  string name = 2;                               // Blocklist name
+  string url = 3;                                // Source URL
+  BlocklistFormat format = 4;                    // Format
+  uint32 entry_count = 5;                        // Number of entries
+  common.Timestamp last_updated = 6;             // Last update
+  bool auto_update_enabled = 7;                  // Auto-update enabled
+  uint32 update_frequency_hours = 8;             // Update frequency
+  bool enabled = 9;                              // Is enabled
+}
+
+// Custom rule
+message CustomRule {
+  string id = 1;                                 // Rule ID
+  RuleType type = 2;                             // Rule type
+  string domain_pattern = 3;                     // Domain pattern
+  string action = 4;                             // Action
+  string redirect_ip = 5;                        // Redirect IP (if applicable)
+  uint32 priority = 6;                           // Priority
+  bool enabled = 7;                              // Is enabled
+  uint64 hit_count = 8;                          // Number of hits
+}
+
+// DNS record
+message DNSRecord {
+  string name = 1;                               // Record name
+  DNSQueryType type = 2;                         // Record type
+  uint32 ttl = 3;                                // TTL
+  string data = 4;                               // Record data
+  bool dnssec_signed = 5;                        // DNSSEC signed
+}
+
+// Top domain
+message TopDomain {
+  string domain = 1;                             // Domain name
+  uint64 query_count = 2;                        // Query count
+}
+
+// Top client
+message TopClient {
+  common.IPAddress ip_address = 1;               // Client IP
+  uint64 query_count = 2;                        // Query count
+}
+
+// Blocked domain
+message BlockedDomain {
+  string domain = 1;                             // Domain name
+  common.Timestamp blocked_at = 2;               // When blocked
+  string rule_id = 3;                            // Rule ID that blocked it
+  string blocklist_name = 4;                     // Blocklist name (if applicable)
+}

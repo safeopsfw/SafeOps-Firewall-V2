@@ -1,0 +1,216 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.orchestrator;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/orchestrator";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// Orchestrator Service - Central coordination service for all SafeOps microservices
+service OrchestratorService {
+  // Service Lifecycle Methods
+  rpc StartService(StartServiceRequest) returns (ServiceResponse);
+  rpc StopService(StopServiceRequest) returns (ServiceResponse);
+  rpc RestartService(RestartServiceRequest) returns (ServiceResponse);
+  rpc GetServiceStatus(ServiceStatusRequest) returns (ServiceStatusResponse);
+  
+  // Health Monitoring Methods
+  rpc GetHealth(HealthRequest) returns (HealthResponse);
+  rpc StreamHealth(HealthRequest) returns (stream HealthResponse);
+  
+  // Configuration Methods
+  rpc UpdateConfig(ConfigUpdateRequest) returns (ConfigUpdateResponse);
+  rpc GetConfig(ConfigRequest) returns (ConfigResponse);
+  rpc ValidateConfig(ValidateConfigRequest) returns (ValidateConfigResponse);
+  rpc ReloadConfig(ConfigRequest) returns (ServiceResponse);
+  
+  // Metrics Methods
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+  rpc StreamMetrics(MetricsRequest) returns (stream MetricsResponse);
+  
+  // Dependency Management
+  rpc GetDependencyGraph(DependencyGraphRequest) returns (DependencyGraphResponse);
+  rpc CheckDependencies(DependencyGraphRequest) returns (ServiceResponse);
+}
+
+// ============================================================================
+// REQUEST MESSAGES
+// ============================================================================
+
+// Start service request
+message StartServiceRequest {
+  string service_name = 1;                      // Name of service to start
+  map<string, string> env_overrides = 2;        // Environment variable overrides
+  bool wait_for_ready = 3;                      // Block until service is healthy
+}
+
+// Stop service request
+message StopServiceRequest {
+  string service_name = 1;           // Name of service to stop
+  bool force = 2;                    // Force kill if graceful shutdown fails
+  uint32 timeout_seconds = 3;        // Graceful shutdown timeout
+  bool graceful = 4;                 // Attempt graceful shutdown
+}
+
+// Restart service request
+message RestartServiceRequest {
+  string service_name = 1;           // Name of service to restart
+  bool graceful = 2;                 // Use graceful restart
+  uint32 drain_timeout = 3;          // Seconds to drain connections
+}
+
+// Service status request
+message ServiceStatusRequest {
+  string service_name = 1;  // Service name, empty for all services
+}
+
+// Health check request
+message HealthRequest {
+  repeated string service_names = 1;  // List of services to check, empty for all
+}
+
+// Config update request
+message ConfigUpdateRequest {
+  string service_name = 1;            // Target service name
+  string config_path = 2;             // Path to config file
+  bytes config_content = 3;           // Config file content (TOML)
+  bool validate_only = 4;             // Only validate, don't apply
+}
+
+// Config request
+message ConfigRequest {
+  string service_name = 1;            // Target service name
+  string config_key = 2;              // Specific config section (optional)
+}
+
+// Validate config request
+message ValidateConfigRequest {
+  string service_name = 1;            // Service to validate config for
+  bytes config_content = 2;           // Config content to validate
+}
+
+// Metrics request
+message MetricsRequest {
+  repeated string service_names = 1;  // Services to get metrics from
+  repeated string metric_names = 2;   // Filter by metric names
+  TimeRange time_range = 3;           // Time range for metrics
+}
+
+// Time range for metrics
+message TimeRange {
+  common.Timestamp start = 1;
+  common.Timestamp end = 2;
+}
+
+// Dependency graph request
+message DependencyGraphRequest {
+  string service_name = 1;   // Get dependencies for specific service, empty for full graph
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Generic service operation response
+message ServiceResponse {
+  common.Status status = 1;            // Operation status
+  string message = 2;                  // Human-readable message
+  common.ServiceState new_state = 3;   // New service state after operation
+  uint32 process_id = 4;               // Process ID (if applicable)
+}
+
+// Service status response
+message ServiceStatusResponse {
+  string service_name = 1;                // Service name
+  common.ServiceState state = 2;          // Current state
+  uint32 pid = 3;                         // Process ID
+  uint64 uptime_seconds = 4;              // Uptime in seconds
+  uint64 memory_bytes = 5;                // Memory usage
+  double cpu_percent = 6;                 // CPU usage percentage
+  string version = 7;                     // Service version
+  common.Timestamp started_at = 8;        // When service started
+}
+
+// Health response
+message HealthResponse {
+  map<string, common.HealthStatus> services = 1;  // Map of service name to health status
+  common.Timestamp timestamp = 2;                 // When health was checked
+}
+
+// Config update response
+message ConfigUpdateResponse {
+  common.Status status = 1;              // Update status
+  repeated string validation_errors = 2; // Validation errors
+  bool requires_restart = 3;             // Whether restart is needed
+}
+
+// Config response
+message ConfigResponse {
+  string config_content = 1;          // Config as TOML string
+  common.Timestamp last_updated = 2;  // Last modification time
+}
+
+// Validate config response
+message ValidateConfigResponse {
+  bool is_valid = 1;               // Whether config is valid
+  repeated string errors = 2;      // Validation errors
+  repeated string warnings = 3;    // Validation warnings
+}
+
+// Metrics response
+message MetricsResponse {
+  map<string, ServiceMetrics> services = 1;  // Map of service name to metrics
+  common.Timestamp timestamp = 2;            // When metrics were collected
+}
+
+// Dependency graph response
+message DependencyGraphResponse {
+  repeated DependencyNode nodes = 1;  // List of service nodes
+  repeated DependencyEdge edges = 2;  // List of dependency edges
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Service metrics
+message ServiceMetrics {
+  map<string, double> counters = 1;       // Counter metrics (monotonically increasing)
+  map<string, double> gauges = 2;         // Gauge metrics (can go up/down)
+  map<string, Histogram> histograms = 3;  // Histogram metrics
+  map<string, string> labels = 4;         // Metric labels
+}
+
+// Histogram metric
+message Histogram {
+  repeated double buckets = 1;      // Bucket boundaries
+  repeated uint64 counts = 2;       // Count per bucket
+  double sum = 3;                   // Sum of all observations
+  uint64 total_count = 4;           // Total number of observations
+}
+
+// Dependency graph node
+message DependencyNode {
+  string service_name = 1;                // Service name
+  common.ServiceState state = 2;          // Current service state
+  repeated string dependencies = 3;       // List of services this depends on
+}
+
+// Dependency graph edge
+message DependencyEdge {
+  string from_service = 1;          // Service that has the dependency
+  string to_service = 2;            // Service that is depended on
+  DependencyType dependency_type = 3;  // Type of dependency
+}
+
+// Dependency type
+enum DependencyType {
+  DEPENDENCY_UNKNOWN = 0;
+  DEPENDENCY_REQUIRED = 1;   // Must be running
+  DEPENDENCY_OPTIONAL = 2;   // Nice to have, but not required
+}

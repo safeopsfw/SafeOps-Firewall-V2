@@ -1,0 +1,379 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.update_manager;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/update_manager";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// Update Manager Service - System updates, patch management, and version control
+service UpdateManagerService {
+  // Update Lifecycle
+  rpc CheckForUpdates(CheckForUpdatesRequest) returns (AvailableUpdatesResponse);
+  rpc GetUpdateDetails(UpdateDetailsRequest) returns (UpdateDetailsResponse);
+  rpc DownloadUpdate(DownloadUpdateRequest) returns (DownloadResponse);
+  rpc ApplyUpdate(ApplyUpdateRequest) returns (ApplyUpdateResponse);
+  rpc RollbackUpdate(RollbackRequest) returns (RollbackResponse);
+  
+  // Scheduling and Configuration
+  rpc ScheduleUpdate(ScheduleUpdateRequest) returns (ScheduleResponse);
+  rpc SetUpdatePolicy(UpdatePolicyRequest) returns (UpdatePolicyResponse);
+  rpc GetUpdatePolicy(GetUpdatePolicyRequest) returns (UpdatePolicyResponse);
+  
+  // Status and Monitoring
+  rpc GetUpdateStatus(UpdateStatusRequest) returns (UpdateStatusResponse);
+  rpc ListInstalledVersions(ListInstalledVersionsRequest) returns (InstalledVersionsResponse);
+  rpc ValidateUpdate(ValidateUpdateRequest) returns (ValidationResponse);
+  
+  // Streaming Operations
+  rpc StreamUpdateProgress(StreamUpdateProgressRequest) returns (stream UpdateProgressEvent);
+  rpc StreamInstallProgress(StreamInstallProgressRequest) returns (stream InstallProgressEvent);
+  rpc MonitorUpdateHealth(MonitorUpdateHealthRequest) returns (stream HealthCheckEvent);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Update channel
+enum UpdateChannel {
+  CHANNEL_UNKNOWN = 0;
+  CHANNEL_STABLE = 1;
+  CHANNEL_BETA = 2;
+  CHANNEL_NIGHTLY = 3;
+}
+
+// Update priority
+enum UpdatePriority {
+  PRIORITY_UNKNOWN = 0;
+  PRIORITY_LOW = 1;
+  PRIORITY_MEDIUM = 2;
+  PRIORITY_HIGH = 3;
+  PRIORITY_CRITICAL = 4;
+}
+
+// Update type
+enum UpdateType {
+  TYPE_UNKNOWN = 0;
+  TYPE_SECURITY = 1;
+  TYPE_FEATURE = 2;
+  TYPE_BUGFIX = 3;
+  TYPE_HOTFIX = 4;
+}
+
+// Update status
+enum UpdateStatus {
+  STATUS_UNKNOWN = 0;
+  STATUS_AVAILABLE = 1;
+  STATUS_DOWNLOADING = 2;
+  STATUS_DOWNLOADED = 3;
+  STATUS_INSTALLING = 4;
+  STATUS_INSTALLED = 5;
+  STATUS_FAILED = 6;
+  STATUS_ROLLED_BACK = 7;
+}
+
+// Update phase
+enum UpdatePhase {
+  PHASE_UNKNOWN = 0;
+  PHASE_CHECKING = 1;
+  PHASE_DOWNLOADING = 2;
+  PHASE_VALIDATING = 3;
+  PHASE_BACKING_UP = 4;
+  PHASE_INSTALLING = 5;
+  PHASE_VERIFYING = 6;
+  PHASE_COMPLETED = 7;
+  PHASE_FAILED = 8;
+}
+
+// Restart policy
+enum RestartPolicy {
+  RESTART_UNKNOWN = 0;
+  RESTART_IMMEDIATE = 1;
+  RESTART_DEFERRED = 2;
+  RESTART_MANUAL = 3;
+  RESTART_NOT_REQUIRED = 4;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - UPDATE LIFECYCLE
+// ============================================================================
+
+// Check for updates request
+message CheckForUpdatesRequest {
+  repeated string component_filter = 1;          // Filter by components
+  UpdateChannel channel = 2;                     // Update channel
+  bool include_beta = 3;                         // Include beta updates
+}
+
+// Update details request
+message UpdateDetailsRequest {
+  string update_id = 1;                          // Update ID
+  string component_identifier = 2;               // Or component identifier
+}
+
+// Download update request
+message DownloadUpdateRequest {
+  string update_id = 1;                          // Update ID to download
+  UpdatePriority download_priority = 2;          // Download priority
+  uint32 bandwidth_limit_kbps = 3;               // Bandwidth limit
+}
+
+// Apply update request
+message ApplyUpdateRequest {
+  string update_id = 1;                          // Update ID to apply
+  RestartPolicy restart_policy = 2;              // Restart policy
+  bool create_backup = 3;                        // Create backup first
+  bool validate_before_apply = 4;                // Validate before applying
+}
+
+// Rollback request
+message RollbackRequest {
+  string target_version = 1;                     // Target version to rollback to
+  repeated string component_scope = 2;           // Components to rollback
+  bool restore_from_backup = 3;                  // Restore from backup
+}
+
+// ============================================================================
+// REQUEST MESSAGES - SCHEDULING & CONFIGURATION
+// ============================================================================
+
+// Schedule update request
+message ScheduleUpdateRequest {
+  string update_id = 1;                          // Update ID to schedule
+  MaintenanceWindow maintenance_window = 2;      // Maintenance window
+  bool auto_apply = 3;                           // Auto-apply flag
+  RestartPolicy restart_policy = 4;              // Restart policy
+}
+
+// Update policy request
+message UpdatePolicyRequest {
+  bool auto_update_enabled = 1;                  // Enable auto-updates
+  UpdateChannel approved_channel = 2;            // Approved channel
+  repeated UpdateType auto_apply_types = 3;      // Auto-apply types
+  MaintenanceWindow default_window = 4;          // Default maintenance window
+  BackupPolicy backup_policy = 5;                // Backup policy
+  UpdateConstraints constraints = 6;             // Update constraints
+}
+
+// Get update policy request
+message GetUpdatePolicyRequest {
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATUS & MONITORING
+// ============================================================================
+
+// Update status request
+message UpdateStatusRequest {
+  string operation_id = 1;                       // Operation ID to query
+}
+
+// List installed versions request
+message ListInstalledVersionsRequest {
+  repeated string component_filter = 1;          // Filter by components
+}
+
+// Validate update request
+message ValidateUpdateRequest {
+  string update_id = 1;                          // Update ID to validate
+  bool verify_signature = 2;                     // Verify signature
+  bool check_dependencies = 3;                   // Check dependencies
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STREAMING OPERATIONS
+// ============================================================================
+
+// Stream update progress request
+message StreamUpdateProgressRequest {
+  string operation_id = 1;                       // Operation ID to monitor
+}
+
+// Stream install progress request
+message StreamInstallProgressRequest {
+  string operation_id = 1;                       // Operation ID to monitor
+}
+
+// Monitor update health request
+message MonitorUpdateHealthRequest {
+  string component_name = 1;                     // Component to monitor
+  uint32 check_interval_seconds = 2;             // Check interval
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Available updates response
+message AvailableUpdatesResponse {
+  repeated UpdateInfo updates = 1;               // Available updates
+  uint32 total_count = 2;                        // Total updates available
+  common.Timestamp checked_at = 3;               // When checked
+}
+
+// Update details response
+message UpdateDetailsResponse {
+  UpdateInfo update = 1;                         // Update information
+  string changelog = 2;                          // Changelog
+  repeated string dependencies = 3;              // Dependencies
+  repeated string compatibility_info = 4;        // Compatibility notes
+  uint64 download_size_bytes = 5;                // Download size
+  string signature = 6;                          // Cryptographic signature
+}
+
+// Download response
+message DownloadResponse {
+  string operation_id = 1;                       // Operation ID
+  common.Status status = 2;                      // Operation status
+  string download_path = 3;                      // Downloaded file path
+}
+
+// Apply update response
+message ApplyUpdateResponse {
+  common.Status status = 1;                      // Operation status
+  bool restart_required = 2;                     // Restart required flag
+  string installed_version = 3;                  // Installed version
+  string message = 4;                            // Status message
+}
+
+// Rollback response
+message RollbackResponse {
+  common.Status status = 1;                      // Operation status
+  string restored_version = 2;                   // Restored version
+  repeated string affected_components = 3;       // Affected components
+  string message = 4;                            // Status message
+}
+
+// Schedule response
+message ScheduleResponse {
+  string schedule_id = 1;                        // Schedule ID
+  common.Status status = 2;                      // Operation status
+  common.Timestamp scheduled_time = 3;           // Scheduled time
+  string message = 4;                            // Status message
+}
+
+// Update policy response
+message UpdatePolicyResponse {
+  bool auto_update_enabled = 1;                  // Auto-update enabled
+  UpdateChannel approved_channel = 2;            // Approved channel
+  repeated UpdateType auto_apply_types = 3;      // Auto-apply types
+  MaintenanceWindow default_window = 4;          // Default window
+  BackupPolicy backup_policy = 5;                // Backup policy
+  common.Status status = 6;                      // Operation status
+}
+
+// Update status response
+message UpdateStatusResponse {
+  string operation_id = 1;                       // Operation ID
+  UpdatePhase current_phase = 2;                 // Current phase
+  uint32 progress_percent = 3;                   // Progress percentage
+  string current_step = 4;                       // Current step description
+  common.Timestamp started_at = 5;               // Start time
+  common.Timestamp estimated_completion = 6;     // ETA
+  string error_message = 7;                      // Error if failed
+}
+
+// Installed versions response
+message InstalledVersionsResponse {
+  repeated ComponentVersion components = 1;      // Component versions
+  common.Timestamp queried_at = 2;               // Query time
+}
+
+// Validation response
+message ValidationResponse {
+  bool is_valid = 1;                             // Is valid
+  bool signature_verified = 2;                   // Signature verified
+  bool dependencies_met = 3;                     // Dependencies met
+  repeated string validation_errors = 4;         // Validation errors
+  repeated string validation_warnings = 5;       // Validation warnings
+}
+
+// ============================================================================
+// STREAMING RESPONSE MESSAGES
+// ============================================================================
+
+// Update progress event
+message UpdateProgressEvent {
+  string operation_id = 1;                       // Operation ID
+  UpdatePhase phase = 2;                         // Current phase
+  uint64 bytes_downloaded = 3;                   // Bytes downloaded
+  uint64 total_bytes = 4;                        // Total bytes
+  uint32 progress_percent = 5;                   // Progress percentage
+  common.Timestamp timestamp = 6;                // Event timestamp
+}
+
+// Install progress event
+message InstallProgressEvent {
+  string operation_id = 1;                       // Operation ID
+  string current_step = 2;                       // Current step
+  uint32 progress_percent = 3;                   // Progress percentage
+  repeated string completed_components = 4;      // Completed components
+  repeated string pending_components = 5;        // Pending components
+  common.Timestamp timestamp = 6;                // Event timestamp
+}
+
+// Health check event
+message HealthCheckEvent {
+  string component_name = 1;                     // Component name
+  bool is_healthy = 2;                           // Health status
+  string version = 3;                            // Current version
+  repeated string health_issues = 4;             // Health issues
+  common.Timestamp timestamp = 5;                // Event timestamp
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Update information
+message UpdateInfo {
+  string id = 1;                                 // Update ID
+  string component_name = 2;                     // Component name
+  string version = 3;                            // Version number
+  string current_version = 4;                    // Current version
+  UpdateType type = 5;                           // Update type
+  UpdatePriority priority = 6;                   // Priority
+  UpdateChannel channel = 7;                     // Channel
+  common.Timestamp release_date = 8;             // Release date
+  uint64 size_bytes = 9;                         // Download size
+  string description = 10;                       // Description
+  UpdateStatus status = 11;                      // Current status
+}
+
+// Component version
+message ComponentVersion {
+  string component_name = 1;                     // Component name
+  string current_version = 2;                    // Current version
+  string available_version = 3;                  // Available version
+  common.Timestamp installed_at = 4;             // Installation time
+  bool update_available = 5;                     // Update available flag
+}
+
+// Maintenance window
+message MaintenanceWindow {
+  string start_time = 1;                         // Start time (HH:MM)
+  string end_time = 2;                           // End time (HH:MM)
+  repeated string days_of_week = 3;              // Days of week
+  string timezone = 4;                           // Timezone
+}
+
+// Backup policy
+message BackupPolicy {
+  bool backup_before_update = 1;                 // Backup before update
+  uint32 retention_days = 2;                     // Backup retention
+  string backup_location = 3;                    // Backup location
+}
+
+// Update constraints
+message UpdateConstraints {
+  uint32 max_download_bandwidth_kbps = 1;        // Max bandwidth
+  uint64 min_free_disk_space_bytes = 2;          // Min free disk space
+  uint32 max_concurrent_updates = 3;             // Max concurrent updates
+  bool require_manual_approval = 4;              // Require manual approval
+}

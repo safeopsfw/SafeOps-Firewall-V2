@@ -1,0 +1,417 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.dhcp_server;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/dhcp_server";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// DHCP Server Service - Automatic IP address assignment and lease management
+service DHCPServerService {
+  // Pool Management
+  rpc CreatePool(CreatePoolRequest) returns (PoolResponse);
+  rpc UpdatePool(UpdatePoolRequest) returns (PoolResponse);
+  rpc DeletePool(DeletePoolRequest) returns (PoolResponse);
+  rpc ListPools(ListPoolsRequest) returns (PoolListResponse);
+  rpc GetPool(GetPoolRequest) returns (PoolDetailResponse);
+  
+  // Reservation Methods
+  rpc AddReservation(AddReservationRequest) returns (ReservationResponse);
+  rpc RemoveReservation(RemoveReservationRequest) returns (ReservationResponse);
+  rpc UpdateReservation(UpdateReservationRequest) returns (ReservationResponse);
+  rpc ListReservations(ListReservationsRequest) returns (ReservationListResponse);
+  
+  // Lease Methods
+  rpc GetLeases(GetLeasesRequest) returns (LeaseListResponse);
+  rpc GetLeaseByIP(GetLeaseByIPRequest) returns (LeaseDetailResponse);
+  rpc GetLeaseByMAC(GetLeaseByMACRequest) returns (LeaseDetailResponse);
+  rpc RenewLease(RenewLeaseRequest) returns (LeaseDetailResponse);
+  rpc ReleaseLease(ReleaseLeaseRequest) returns (LeaseDetailResponse);
+  rpc ExpireStaleLeases(ExpireStaleLeasesRequest) returns (ExpireStaleLeasesResponse);
+  
+  // Configuration Methods
+  rpc SetServerOptions(ServerOptionsRequest) returns (ServerOptionsResponse);
+  rpc GetServerOptions(GetServerOptionsRequest) returns (ServerOptionsResponse);
+  rpc SetPoolOptions(PoolOptionsRequest) returns (PoolOptionsResponse);
+  rpc GetPoolOptions(GetPoolOptionsRequest) returns (PoolOptionsResponse);
+  
+  // Statistics Methods
+  rpc GetDHCPStats(DHCPStatsRequest) returns (DHCPStatsResponse);
+  rpc GetPoolUtilization(GetPoolUtilizationRequest) returns (PoolUtilizationResponse);
+  rpc StreamLeaseEvents(StreamLeaseEventsRequest) returns (stream LeaseEvent);
+  
+  // Integration Methods
+  rpc EnableDynamicDNS(DynamicDNSRequest) returns (DynamicDNSStatusResponse);
+  rpc GetDynamicDNSStatus(GetDynamicDNSStatusRequest) returns (DynamicDNSStatusResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Lease state
+enum LeaseState {
+  STATE_UNKNOWN = 0;
+  STATE_ACTIVE = 1;
+  STATE_EXPIRED = 2;
+  STATE_RELEASED = 3;
+  STATE_ABANDONED = 4;
+}
+
+// DHCP message type
+enum DHCPMessageType {
+  MESSAGE_UNKNOWN = 0;
+  MESSAGE_DISCOVER = 1;
+  MESSAGE_OFFER = 2;
+  MESSAGE_REQUEST = 3;
+  MESSAGE_ACK = 4;
+  MESSAGE_NAK = 5;
+  MESSAGE_RELEASE = 6;
+  MESSAGE_INFORM = 7;
+  MESSAGE_DECLINE = 8;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - POOL MANAGEMENT
+// ============================================================================
+
+// Create pool request
+message CreatePoolRequest {
+  string pool_name = 1;                          // Pool name
+  string network_cidr = 2;                       // Network CIDR (e.g., 192.168.1.0/24)
+  common.IPAddress range_start_ip = 3;           // Start of IP range
+  common.IPAddress range_end_ip = 4;             // End of IP range
+  uint32 lease_duration_seconds = 5;             // Lease duration
+  common.IPAddress default_gateway = 6;          // Default gateway
+  repeated common.IPAddress dns_servers = 7;     // DNS servers
+  string domain_name = 8;                        // Domain name
+  bool enabled = 9;                              // Enable pool
+}
+
+// Update pool request
+message UpdatePoolRequest {
+  string pool_id = 1;                            // Pool ID to update
+  string pool_name = 2;                          // Updated pool name
+  uint32 lease_duration_seconds = 3;             // Updated lease duration
+  common.IPAddress default_gateway = 4;          // Updated gateway
+  repeated common.IPAddress dns_servers = 5;     // Updated DNS servers
+  string domain_name = 6;                        // Updated domain
+  bool enabled = 7;                              // Enable/disable pool
+}
+
+// Delete pool request
+message DeletePoolRequest {
+  string pool_id = 1;                            // Pool ID to delete
+  bool force = 2;                                // Force delete (release active leases)
+}
+
+// List pools request
+message ListPoolsRequest {
+  bool enabled_only = 1;                         // Only enabled pools
+  common.Pagination pagination = 2;              // Pagination
+}
+
+// Get pool request
+message GetPoolRequest {
+  string pool_id = 1;                            // Pool ID to query
+}
+
+// ============================================================================
+// REQUEST MESSAGES - RESERVATION METHODS
+// ============================================================================
+
+// Add reservation request
+message AddReservationRequest {
+  common.MACAddress mac_address = 1;             // Client MAC address
+  common.IPAddress ip_address = 2;               // Reserved IP address
+  string hostname = 3;                           // Client hostname
+  string comment = 4;                            // Reservation comment
+  string pool_id = 5;                            // Associated pool
+}
+
+// Remove reservation request
+message RemoveReservationRequest {
+  string reservation_id = 1;                     // Reservation ID (optional)
+  common.MACAddress mac_address = 2;             // Or MAC address
+}
+
+// Update reservation request
+message UpdateReservationRequest {
+  string reservation_id = 1;                     // Reservation ID to update
+  common.IPAddress ip_address = 2;               // Updated IP
+  string hostname = 3;                           // Updated hostname
+  string comment = 4;                            // Updated comment
+  bool active = 5;                               // Active status
+}
+
+// List reservations request
+message ListReservationsRequest {
+  string pool_id = 1;                            // Filter by pool
+  bool active_only = 2;                          // Only active reservations
+  common.Pagination pagination = 3;              // Pagination
+}
+
+// ============================================================================
+// REQUEST MESSAGES - LEASE METHODS
+// ============================================================================
+
+// Get leases request
+message GetLeasesRequest {
+  string pool_id = 1;                            // Filter by pool
+  LeaseState state = 2;                          // Filter by state
+  common.Pagination pagination = 3;              // Pagination
+}
+
+// Get lease by IP request
+message GetLeaseByIPRequest {
+  common.IPAddress ip_address = 1;               // IP address to query
+}
+
+// Get lease by MAC request
+message GetLeaseByMACRequest {
+  common.MACAddress mac_address = 1;             // MAC address to query
+}
+
+// Renew lease request
+message RenewLeaseRequest {
+  string lease_id = 1;                           // Lease ID to renew
+  uint32 duration_seconds = 2;                   // Renewal duration
+}
+
+// Release lease request
+message ReleaseLeaseRequest {
+  string lease_id = 1;                           // Lease ID (optional)
+  common.IPAddress ip_address = 2;               // Or IP address
+}
+
+// Expire stale leases request
+message ExpireStaleLeasesRequest {
+  uint32 stale_threshold_seconds = 1;            // Age threshold
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CONFIGURATION
+// ============================================================================
+
+// Server options request
+message ServerOptionsRequest {
+  uint32 default_lease_time = 1;                 // Default lease time (seconds)
+  uint32 max_lease_time = 2;                     // Max lease time (seconds)
+  bool authoritative = 3;                        // Authoritative server flag
+  bool log_packets = 4;                          // Enable packet logging
+}
+
+// Get server options request
+message GetServerOptionsRequest {
+}
+
+// Pool options request
+message PoolOptionsRequest {
+  string pool_id = 1;                            // Pool ID
+  map<uint32, bytes> options = 2;                // DHCP options (code → value)
+}
+
+// Get pool options request
+message GetPoolOptionsRequest {
+  string pool_id = 1;                            // Pool ID
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATISTICS & INTEGRATION
+// ============================================================================
+
+// DHCP stats request
+message DHCPStatsRequest {
+  common.Timestamp start_time = 1;               // Start time for stats
+  common.Timestamp end_time = 2;                 // End time for stats
+}
+
+// Get pool utilization request
+message GetPoolUtilizationRequest {
+}
+
+// Stream lease events request
+message StreamLeaseEventsRequest {
+  string pool_id = 1;                            // Filter by pool (optional)
+}
+
+// Dynamic DNS request
+message DynamicDNSRequest {
+  bool enabled = 1;                              // Enable Dynamic DNS
+  string dns_server_address = 2;                 // DNS server address
+  bool update_forward = 3;                       // Update A records
+  bool update_reverse = 4;                       // Update PTR records
+  uint32 ttl_seconds = 5;                        // DNS record TTL
+}
+
+// Get Dynamic DNS status request
+message GetDynamicDNSStatusRequest {
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Pool response
+message PoolResponse {
+  string pool_id = 1;                            // Pool ID
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// Pool list response
+message PoolListResponse {
+  repeated DHCPPool pools = 1;                   // List of pools
+  uint32 total_count = 2;                        // Total pool count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Pool detail response
+message PoolDetailResponse {
+  DHCPPool pool = 1;                             // Pool details
+  uint32 active_leases = 2;                      // Active leases count
+  uint32 available_ips = 3;                      // Available IPs
+  double utilization_percent = 4;                // Utilization percentage
+}
+
+// Reservation response
+message ReservationResponse {
+  string reservation_id = 1;                     // Reservation ID
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// Reservation list response
+message ReservationListResponse {
+  repeated Reservation reservations = 1;         // List of reservations
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Lease list response
+message LeaseListResponse {
+  repeated Lease leases = 1;                     // List of leases
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Lease detail response
+message LeaseDetailResponse {
+  Lease lease = 1;                               // Lease details
+  common.Status status = 2;                      // Operation status
+}
+
+// Expire stale leases response
+message ExpireStaleLeasesResponse {
+  uint32 expired_count = 1;                      // Number of leases expired
+  common.Status status = 2;                      // Operation status
+}
+
+// Server options response
+message ServerOptionsResponse {
+  uint32 default_lease_time = 1;                 // Default lease time
+  uint32 max_lease_time = 2;                     // Max lease time
+  bool authoritative = 3;                        // Authoritative flag
+  bool log_packets = 4;                          // Packet logging enabled
+  common.Status status = 5;                      // Operation status
+}
+
+// Pool options response
+message PoolOptionsResponse {
+  map<uint32, bytes> options = 1;                // DHCP options
+  common.Status status = 2;                      // Operation status
+}
+
+// DHCP statistics response
+message DHCPStatsResponse {
+  uint64 total_leases_issued = 1;                // Total leases issued
+  uint64 active_leases = 2;                      // Currently active leases
+  uint64 expired_leases = 3;                     // Expired leases
+  uint64 total_requests = 4;                     // Total DHCP requests
+  map<string, uint64> requests_by_message_type = 5; // Breakdown by message type
+  uint32 average_lease_duration = 6;             // Average lease duration (seconds)
+  common.Timestamp timestamp = 7;                // Stats timestamp
+}
+
+// Pool utilization response
+message PoolUtilizationResponse {
+  map<string, double> utilization_by_pool = 1;   // Pool ID → utilization %
+  common.Timestamp timestamp = 2;                // Query timestamp
+}
+
+// Dynamic DNS status response
+message DynamicDNSStatusResponse {
+  bool enabled = 1;                              // Dynamic DNS enabled
+  string dns_server = 2;                         // DNS server address
+  uint64 records_updated = 3;                    // Total records updated
+  common.Timestamp last_update_time = 4;         // Last update timestamp
+  uint64 errors_count = 5;                       // Update error count
+  common.Status status = 6;                      // Operation status
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// DHCP pool
+message DHCPPool {
+  string id = 1;                                 // Pool ID
+  string name = 2;                               // Pool name
+  string network_cidr = 3;                       // Network CIDR
+  common.IPAddress range_start_ip = 4;           // Start of range
+  common.IPAddress range_end_ip = 5;             // End of range
+  uint32 lease_duration_seconds = 6;             // Lease duration
+  common.IPAddress default_gateway = 7;          // Default gateway
+  repeated common.IPAddress dns_servers = 8;     // DNS servers
+  string domain_name = 9;                        // Domain name
+  bool enabled = 10;                             // Is enabled
+  double current_utilization_percent = 11;       // Current utilization
+  common.Timestamp created_at = 12;              // Creation timestamp
+  common.Timestamp updated_at = 13;              // Last update timestamp
+}
+
+// Reservation
+message Reservation {
+  string id = 1;                                 // Reservation ID
+  common.MACAddress mac_address = 2;             // Client MAC
+  common.IPAddress ip_address = 3;               // Reserved IP
+  string hostname = 4;                           // Client hostname
+  string pool_id = 5;                            // Associated pool
+  string comment = 6;                            // Comment
+  common.Timestamp created_at = 7;               // Creation timestamp
+  bool active = 8;                               // Is active
+}
+
+// Lease
+message Lease {
+  string id = 1;                                 // Lease ID
+  common.MACAddress mac_address = 2;             // Client MAC
+  common.IPAddress ip_address = 3;               // Assigned IP
+  string hostname = 4;                           // Client hostname
+  string pool_id = 5;                            // Pool ID
+  LeaseState state = 6;                          // Lease state
+  common.Timestamp issued_at = 7;                // When issued
+  common.Timestamp expires_at = 8;               // Expiration time
+  common.Timestamp renewed_at = 9;               // Last renewal
+  string client_identifier = 10;                 // Client identifier
+  string vendor_class = 11;                      // Vendor class
+}
+
+// DHCP option
+message DHCPOption {
+  uint32 option_code = 1;                        // DHCP option code
+  string option_name = 2;                        // Option name
+  bytes value = 3;                               // Option value
+}
+
+// Lease event (for streaming)
+message LeaseEvent {
+  DHCPMessageType event_type = 1;                // Event type
+  Lease lease = 2;                               // Associated lease
+  common.Timestamp timestamp = 3;                // Event timestamp
+}
