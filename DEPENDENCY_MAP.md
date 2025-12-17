@@ -1,750 +1,545 @@
-# SafeOps v2.0 - Complete Dependency Map
+# SafeOps v2.0 - Complete File Interconnection Map
 
-> **File-by-file dependency analysis for all implemented components**
+> **File-by-file dependency analysis: What uses what, compiled vs raw**
 >
-> Generated: 2025-12-17 | Files Analyzed: 150+ | Phase 1 Complete
+> Generated: 2025-12-17 | Phase 1 Complete | Ready for Phase 2
 
 ---
 
-## 📋 Build Order (Bottom-to-Top)
+## 📊 Current Progress Visualization
 
-This document shows dependencies from foundational files (bottom) up to dependent files (top).
-**Rule:** Build files at each level only after all files at lower levels are built.
-
----
-
-## 🔢 Level 0: No Dependencies (Pure Definitions)
-
-These files have no project-internal dependencies.
-
-### Protocol Buffers - Base Types
 ```
-proto/grpc/common.proto
-  └── Dependencies: NONE
-  └── Contains: Timestamp, Empty, Status, Metadata types
-  └── Required By: ALL other .proto files (13 services)
-```
+SafeOps File Completion Status (Phase 1)
+=========================================
 
-### C Shared Headers - Base Types
-```
-src/shared/c/shared_constants.h
-  └── Dependencies: <stdint.h>
-  └── Contains: MAX_*, MIN_*, TIMEOUT_* constants
-  └── Required By: packet_structs.h, ring_buffer.h, ioctl_codes.h
+FOUNDATION LAYER (100% Complete)
+├── Proto Definitions     ████████████████████ 14/14 files
+├── C Headers            ████████████████████  4/4  files
+├── Database Schemas     ████████████████████ 16/16 files
+├── Kernel Driver        ████████████████████ 15/15 files
+├── Userspace Service    ████████████████████  7/7  files
+└── Shared Libraries     ████████████████████ 61/61 files
+    ├── Go (37 files)    ████████████████████ 100%
+    ├── Rust (12 files)  ████████████████████ 100%
+    └── C (4 files)      ████████████████████ 100%
 
-src/shared/c/packet_structs.h
-  └── Dependencies: <stdint.h>, <winsock2.h> (Windows), <arpa/inet.h> (Linux)
-  └── Contains: TCP_HEADER, UDP_HEADER, IPV4_HEADER, PACKET_INFO
-  └── Required By: ring_buffer.h, kernel_driver/*
+SERVICE LAYER (0% - Phase 2)
+├── Firewall Engine      ░░░░░░░░░░░░░░░░░░░░  0/~20 files
+├── Threat Intel         ░░░░░░░░░░░░░░░░░░░░  0/~25 files
+├── IDS/IPS              ░░░░░░░░░░░░░░░░░░░░  0/~30 files
+├── DNS Server           ░░░░░░░░░░░░░░░░░░░░  0/~15 files
+├── DHCP Server          ░░░░░░░░░░░░░░░░░░░░  0/~15 files
+└── Other Services       ░░░░░░░░░░░░░░░░░░░░  0/~100 files
 
-src/shared/c/ring_buffer.h
-  └── Dependencies: <stdint.h>, <intrin.h> (Windows), <stdatomic.h> (Linux)
-  └── Contains: RING_BUFFER_HEADER, SafeOpsRingBuffer
-  └── Required By: shared_memory.h, ring_reader.c
+UI LAYER (0% - Phase 3)
+└── Web UI               ░░░░░░░░░░░░░░░░░░░░  0/~50 files
 
-src/shared/c/ioctl_codes.h
-  └── Dependencies: <windows.h>
-  └── Contains: IOCTL_SAFEOPS_* command codes
-  └── Required By: ioctl_handler.h, ioctl_client.c
-```
-
-### Database - Initial Setup (Must Run First)
-```
-database/schemas/001_initial_setup.sql
-  └── Dependencies: PostgreSQL 16+
-  └── Creates:
-      - Extensions: pgcrypto, uuid-ossp, citext, pg_trgm, btree_gist
-      - Tables: threat_categories, threat_feeds, ioc_indicators
-      - Tables: ioc_campaigns, ioc_campaign_members, ioc_relationships
-      - Functions: set_updated_at(), calculate_confidence_score()
-  └── Required By: ALL other schema files (002-009, views, seeds)
+TOTAL: ~117 files implemented / ~400 planned
 ```
 
 ---
 
-## 🔢 Level 1: Foundation Dependencies
+## 🔄 File Usage Type Reference
 
-### Protocol Buffers - Services
-All depend on `common.proto`:
+| Usage Type | Symbol | Meaning |
+|------------|--------|---------|
+| **RAW** | 📄 | Source code imported/included directly |
+| **COMPILED** | ⚙️ | Compiled library (.lib, .a, .so) linked |
+| **GENERATED** | 🔧 | Auto-generated from source (proto→code) |
+| **RUNTIME** | 🔌 | Used at runtime via IPC/API/database |
+
+---
+
+## 📁 FILE-BY-FILE INTERCONNECTION
+
+### src/shared/c/ (C Headers - Always RAW)
 
 ```
-proto/grpc/firewall.proto         → Depends: common.proto
-proto/grpc/threat_intel.proto     → Depends: common.proto
-proto/grpc/network_manager.proto  → Depends: common.proto
-proto/grpc/network_logger.proto   → Depends: common.proto
-proto/grpc/ids_ips.proto          → Depends: common.proto
-proto/grpc/dns_server.proto       → Depends: common.proto
-proto/grpc/dhcp_server.proto      → Depends: common.proto
-proto/grpc/tls_proxy.proto        → Depends: common.proto
-proto/grpc/wifi_ap.proto          → Depends: common.proto
-proto/grpc/orchestrator.proto     → Depends: common.proto
-proto/grpc/certificate_manager.proto → Depends: common.proto
-proto/grpc/backup_restore.proto   → Depends: common.proto
-proto/grpc/update_manager.proto   → Depends: common.proto
-```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ shared_constants.h                                                       │
+│ Usage: 📄 RAW (header-only, #include)                                    │
+│ Size: ~150 lines                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   📄 → packet_structs.h          (includes for constants)               │
+│   📄 → ring_buffer.h             (includes for buffer sizes)            │
+│   📄 → kernel_driver/*.c         (throughinclude chain)                │
+│   📄 → userspace_service/*.c     (through include chain)                │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (Future Phase 2):                                        │
+│   📄 → firewall_engine (Rust FFI binding)                               │
+│   📄 → threat_intel (Rust FFI binding)                                  │
+└─────────────────────────────────────────────────────────────────────────┘
 
-### Kernel Driver - Core Headers
-```
-src/kernel_driver/driver.h
-  └── Dependencies:
-      - Windows WDK: <ntddk.h>, <wdf.h>
-      - WFP: <fwpsk.h>, <fwpmk.h>
-      - NDIS: <ndis.h>
-      - System: <ntstrsafe.h>
-  └── Contains: SAFEOPS_DEVICE_EXTENSION, callback declarations
-  └── Required By: driver.c, ioctl_handler.h, shared_memory.h
+┌─────────────────────────────────────────────────────────────────────────┐
+│ packet_structs.h                                                         │
+│ Usage: 📄 RAW (header-only, #include)                                    │
+│ Size: ~280 lines                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   📄 → ring_buffer.h             (PACKET_INFO struct)                   │
+│   📄 → kernel_driver/packet_capture.h                                   │
+│   📄 → kernel_driver/filter_engine.h                                    │
+│   📄 → userspace_service/ring_reader.c                                  │
+│   📄 → userspace_service/log_writer.c                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (Future):                                                │
+│   📄 → firewall_engine/src/driver_interface (Rust FFI)                  │
+│   📄 → ids_ips (Go CGO for packet parsing)                              │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/filter_engine.h
-  └── Dependencies: <ntddk.h>, <fwpsk.h>, <fwpmk.h>, <netiodef.h>
-  └── Contains: FilterEngine*, WfpCallout* functions
-  └── Required By: filter_engine.c, driver.c
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ring_buffer.h                                                            │
+│ Usage: 📄 RAW (header-only, #include)                                    │
+│ Size: ~200 lines                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   📄 → kernel_driver/shared_memory.c  (ring buffer creation)            │
+│   📄 → userspace_service/ring_reader.c (ring buffer reading)            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (Future):                                                │
+│   📄 → firewall_engine (if direct kernel communication)                 │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/packet_capture.h
-  └── Dependencies: <ntddk.h>, <ndis.h>, <netiodef.h>, <in6addr.h>, <ip2string.h>
-  └── Contains: CAPTURED_PACKET, PacketCapture* functions
-  └── Required By: packet_capture.c, driver.c
-
-src/kernel_driver/nic_management.h
-  └── Dependencies: <ntddk.h>, <ndis.h>
-  └── Contains: NIC_INFO, NicMgmt* functions
-  └── Required By: nic_management.c, driver.c
-
-src/kernel_driver/performance.h
-  └── Dependencies: <ntddk.h>, <ndis.h>
-  └── Contains: PERFORMANCE_COUNTERS, Perf* functions
-  └── Required By: performance.c, driver.c
-```
-
-### Go Shared - Error Handling (Foundation)
-```
-src/shared/go/errors/codes.go
-  └── Dependencies: Go stdlib only
-  └── Contains: Error codes (ErrCodeInternal, ErrCodeNotFound, etc.)
-  └── Required By: errors.go, wrapping.go
-
-src/shared/go/errors/errors.go
-  └── Dependencies: "fmt", "errors"
-  └── Contains: SafeOpsError struct, New(), Wrap(), Is()
-  └── Required By: ALL Go shared packages
-
-src/shared/go/errors/wrapping.go
-  └── Dependencies: "fmt", "errors"
-  └── Contains: WithStack(), WithContext(), Cause()
-  └── Required By: All Go error handling
-```
-
-### Rust Shared - Error Handling (Foundation)
-```
-src/shared/rust/src/error.rs
-  └── Dependencies: thiserror, anyhow
-  └── Contains: SafeOpsError enum, Result type alias
-  └── Required By: ALL other Rust modules
-```
-
-### Database - Core Reputation Tables
-```
-database/schemas/002_ip_reputation.sql
-  └── Dependencies: 001_initial_setup.sql (threat_categories, threat_feeds)
-  └── Creates:
-      - Tables: ip_reputation, ip_reputation_sources, ip_reputation_history
-      - Tables: ip_whitelist, ip_blacklist, ip_reputation_scores
-      - Indexes: 15+ optimized indexes
-      - Triggers: score update triggers
-  └── Required By: Views, threat_intel service, firewall_engine
-
-database/schemas/003_domain_reputation.sql
-  └── Dependencies: 001_initial_setup.sql (threat_categories, threat_feeds)
-  └── Creates:
-      - Tables: domain_reputation, domain_reputation_sources, domain_reputation_history
-      - Tables: domain_whitelist, domain_blacklist, domain_dns_records
-      - Indexes: Trigram index for fuzzy search
-  └── Required By: Views, dns_server, threat_intel
-
-database/schemas/004_hash_reputation.sql
-  └── Dependencies: 001_initial_setup.sql (threat_categories, threat_feeds)
-  └── Creates:
-      - Tables: hash_reputation, hash_reputation_sources, hash_reputation_history
-      - Tables: malware_families, hash_analysis_results, hash_relationships
-  └── Required By: Views, threat_intel
-
-database/schemas/005_ioc_storage.sql
-  └── Dependencies: 001_initial_setup.sql (ioc_indicators, threat_feeds, threat_categories)
-  └── Creates:
-      - Tables: ioc_sightings, ioc_campaign_members, ioc_relationships
-      - Partitions: By IOC type
-      - Functions: IOC expiration, sighting tracking
-  └── Required By: Views, ids_ips
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ioctl_codes.h                                                            │
+│ Usage: 📄 RAW (header-only, #include)                                    │
+│ Size: ~120 lines                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   📄 → kernel_driver/ioctl_handler.c  (IOCTL dispatch)                  │
+│   📄 → userspace_service/ioctl_client.c (DeviceIoControl calls)         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (Future):                                                │
+│   📄 → firewall_engine (kernel communication)                           │
+│   📄 → orchestrator (driver health checks)                              │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔢 Level 2: Secondary Dependencies
+### src/shared/go/ (Go Packages - COMPILED into services)
 
-### Kernel Driver - Implementation Files
 ```
-src/kernel_driver/driver.c
-  └── Dependencies:
-      - driver.h
-      - <ntstrsafe.h>, <wdmsec.h>
-  └── Contains: DriverEntry(), DriverUnload(), device callbacks
-  └── Required By: safeops.sys (driver binary)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: errors/                                                         │
+│ Usage: ⚙️ COMPILED (Go import, compiled into binary)                    │
+│ Files: codes.go, errors.go, wrapping.go                                  │
+│ Import: github.com/safeops/shared/errors                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   ⚙️ → shared/go/config/*        (error wrapping)                       │
+│   ⚙️ → shared/go/logging/*       (error logging)                        │
+│   ⚙️ → shared/go/postgres/*      (DB errors)                            │
+│   ⚙️ → shared/go/redis/*         (cache errors)                         │
+│   ⚙️ → shared/go/grpc_client/*   (RPC errors)                           │
+│   ⚙️ → shared/go/health/*        (health check errors)                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (ALL Phase 2 Go services):                               │
+│   ⚙️ → ids_ips/                  (compiled into binary)                 │
+│   ⚙️ → dns_server/               (compiled into binary)                 │
+│   ⚙️ → dhcp_server/              (compiled into binary)                 │
+│   ⚙️ → tls_proxy/                (compiled into binary)                 │
+│   ⚙️ → wifi_ap/                  (compiled into binary)                 │
+│   ⚙️ → orchestrator/             (compiled into binary)                 │
+│   ⚙️ → certificate_manager/      (compiled into binary)                 │
+│   ⚙️ → backup_restore/           (compiled into binary)                 │
+│   ⚙️ → update_manager/           (compiled into binary)                 │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/driver_part2.c
-  └── Dependencies: driver.h
-  └── Contains: Additional driver functions (split for compilation)
-  └── Required By: safeops.sys
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: config/                                                         │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: config.go, env.go, validator.go, watcher.go, config_test.go      │
+│ Import: github.com/safeops/shared/config                                 │
+│ External Deps: github.com/spf13/viper, gopkg.in/yaml.v3                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current - internal dependencies):                               │
+│   ⚙️ → shared/go/logging/logger.go   (config-based log levels)         │
+│   ⚙️ → shared/go/postgres/postgres.go (DB config)                       │
+│   ⚙️ → shared/go/redis/redis.go      (cache config)                     │
+│   ⚙️ → shared/go/grpc_client/client.go (gRPC config)                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (ALL Phase 2 services):                                  │
+│   ⚙️ → Every Go service (compiled in, reads config/*.toml)             │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/filter_engine.c
-  └── Dependencies: filter_engine.h
-  └── Contains: WFP callout implementations, classify functions
-  └── Required By: safeops.sys
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: logging/                                                        │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: logger.go, levels.go, formatters.go, rotation.go, logger_test.go │
+│ Import: github.com/safeops/shared/logging                                │
+│ External Deps: github.com/sirupsen/logrus                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   ⚙️ → shared/go/postgres/*      (query logging)                        │
+│   ⚙️ → shared/go/redis/*         (operation logging)                    │
+│   ⚙️ → shared/go/grpc_client/*   (request logging)                      │
+│   ⚙️ → shared/go/health/*        (health check logging)                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (ALL Phase 2 services):                                  │
+│   ⚙️ → Every Go service (compiled in)                                   │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/packet_capture.c
-  └── Dependencies: packet_capture.h
-  └── Contains: Packet parsing, capture logic
-  └── Required By: safeops.sys
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: postgres/                                                       │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: postgres.go, transactions.go, bulk_insert.go, migrations.go      │
+│ Import: github.com/safeops/shared/postgres                               │
+│ External Deps: github.com/jackc/pgx/v5                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   ⚙️ → shared/go/health/checks.go    (DB health check)                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (Database-connected services):                           │
+│   ⚙️ → threat_intel/             (reputation queries)                   │
+│   ⚙️ → ids_ips/                  (alert storage)                        │
+│   ⚙️ → dns_server/               (domain filtering)                     │
+│   ⚙️ → backup_restore/           (backup operations)                    │
+│   ⚙️ → certificate_manager/      (cert storage)                         │
+│   ⚙️ → dhcp_server/              (lease storage)                        │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/nic_management.c
-  └── Dependencies: nic_management.h
-  └── Contains: NIC enumeration, RSS, offload configuration
-  └── Required By: safeops.sys
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: redis/                                                          │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: redis.go, pubsub.go, pipeline.go, lua_scripts.go                  │
+│ Import: github.com/safeops/shared/redis                                  │
+│ External Deps: github.com/go-redis/redis/v8                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│ USED BY (Current):                                                       │
+│   ⚙️ → shared/go/health/checks.go    (Redis health check)               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (Cache-enabled services):                                │
+│   ⚙️ → threat_intel/             (reputation cache)                     │
+│   ⚙️ → dns_server/               (DNS cache)                            │
+│   ⚙️ → firewall_engine/          (rule cache via Rust FFI)              │
+│   ⚙️ → orchestrator/             (service state)                        │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/performance.c
-  └── Dependencies: performance.h
-  └── Contains: DMA init, RSS config, performance tuning
-  └── Required By: safeops.sys
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: grpc_client/                                                    │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: client.go, interceptors.go, retry.go, circuit_breaker.go         │
+│        load_balancer.go, retry_budget.go, service_discovery.go          │
+│ Import: github.com/safeops/shared/grpc_client                            │
+│ External Deps: google.golang.org/grpc                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (ALL inter-service communication):                       │
+│   ⚙️ → orchestrator/             (calls all services)                   │
+│   ⚙️ → ids_ips/                  (calls threat_intel, firewall)         │
+│   ⚙️ → dns_server/               (calls threat_intel)                   │
+│   ⚙️ → tls_proxy/                (calls certificate_manager)            │
+│   ⚙️ → update_manager/           (calls orchestrator)                   │
+│   ⚙️ → ui/backend/               (calls all services)                   │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/ioctl_handler.h
-  └── Dependencies: driver.h
-  └── Contains: IOCTL codes, command structures
-  └── Required By: ioctl_handler.c
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: metrics/                                                        │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: metrics.go, registry.go, http_handler.go                          │
+│ Import: github.com/safeops/shared/metrics                                │
+│ External Deps: github.com/prometheus/client_golang                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (ALL services with /metrics endpoint):                   │
+│   ⚙️ → ALL Go services (compiled in, exposes :9090/metrics)            │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/ioctl_handler.c
-  └── Dependencies: ioctl_handler.h
-  └── Contains: IOCTL dispatch, command processing
-  └── Required By: safeops.sys
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: health/                                                         │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: health.go, checks.go                                              │
+│ Import: github.com/safeops/shared/health                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY (ALL services):                                          │
+│   ⚙️ → ALL Go services (health check endpoints)                         │
+│   ⚙️ → orchestrator/ (calls health checks on all services)              │
+└─────────────────────────────────────────────────────────────────────────┘
 
-src/kernel_driver/shared_memory.h
-  └── Dependencies: driver.h
-  └── Contains: Ring buffer section, shared memory functions
-  └── Required By: shared_memory.c
-
-src/kernel_driver/shared_memory.c
-  └── Dependencies: shared_memory.h
-  └── Contains: Ring buffer creation, kernel→userspace communication
-  └── Required By: safeops.sys
-```
-
-### Go Shared - Core Utilities
-```
-src/shared/go/config/config.go
-  └── Dependencies:
-      - External: github.com/spf13/viper, gopkg.in/yaml.v3
-      - Internal: errors package
-  └── Contains: Config struct, Load(), Get(), Watch()
-  └── Required By: ALL Go services
-
-src/shared/go/config/env.go
-  └── Dependencies: "os", "strconv"
-  └── Contains: GetEnv(), GetEnvWithDefault()
-  └── Required By: config.go
-
-src/shared/go/config/validator.go
-  └── Dependencies: "reflect", "regexp"
-  └── Contains: Validate(), ValidateRequired()
-  └── Required By: config.go
-
-src/shared/go/config/watcher.go
-  └── Dependencies: github.com/fsnotify/fsnotify
-  └── Contains: Watch(), OnConfigChange()
-  └── Required By: Hot-reload functionality
-
-src/shared/go/logging/logger.go
-  └── Dependencies:
-      - External: github.com/sirupsen/logrus
-      - Internal: errors package
-  └── Contains: Logger struct, Info/Debug/Error/Warn methods
-  └── Required By: ALL Go services
-
-src/shared/go/logging/levels.go
-  └── Dependencies: logrus
-  └── Contains: Level type, ParseLevel()
-  └── Required By: logger.go
-
-src/shared/go/logging/formatters.go
-  └── Dependencies: logrus, "encoding/json", "time"
-  └── Contains: JSONFormatter, TextFormatter
-  └── Required By: logger.go
-
-src/shared/go/logging/rotation.go
-  └── Dependencies: "os", "path/filepath", "io"
-  └── Contains: RotatingWriter, file rotation logic
-  └── Required By: logger.go
-```
-
-### Rust Shared - Core Utilities
-```
-src/shared/rust/src/ip_utils.rs
-  └── Dependencies: ipnet, cidr-utils
-  └── Contains: IP parsing, CIDR matching, network checks
-  └── Required By: threat_intel, firewall_engine
-
-src/shared/rust/src/hash_utils.rs
-  └── Dependencies: ahash, xxhash-rust
-  └── Contains: fast_hash(), xxh3_hash(), ahash()
-  └── Required By: firewall_engine, ids_ips
-
-src/shared/rust/src/time_utils.rs
-  └── Dependencies: chrono
-  └── Contains: now_utc(), format_timestamp(), duration_*
-  └── Required By: ALL Rust services
-
-src/shared/rust/src/lock_free.rs
-  └── Dependencies: crossbeam, parking_lot
-  └── Contains: LockFreeQueue, AtomicCounter
-  └── Required By: High-performance services
-
-src/shared/rust/src/memory_pool.rs
-  └── Dependencies: parking_lot
-  └── Contains: ObjectPool, PooledObject
-  └── Required By: Performance-critical paths
-
-src/shared/rust/src/buffer_pool.rs
-  └── Dependencies: None (std only)
-  └── Contains: BufferPool, reusable byte buffers
-  └── Required By: Packet processing
-
-src/shared/rust/src/simd_utils.rs
-  └── Dependencies: packed_simd_2
-  └── Contains: SIMD-accelerated byte searches
-  └── Required By: Deep packet inspection
-
-src/shared/rust/src/proto_utils.rs
-  └── Dependencies: prost
-  └── Contains: Protobuf helpers, encoding utilities
-  └── Required By: gRPC services
-
-src/shared/rust/src/metrics.rs
-  └── Dependencies: prometheus
-  └── Contains: Histogram, Counter, Gauge wrappers
-  └── Required By: ALL Rust services
-```
-
-### Database - Additional Tables
-```
-database/schemas/006_proxy_anonymizer.sql
-  └── Dependencies: 001_initial_setup.sql
-  └── Creates:
-      - Tables: proxy_services, vpn_providers, tor_exit_nodes
-      - Tables: datacenter_ips, hosting_providers
-      - Detection functions
-  └── Required By: threat_intel, firewall_engine
-
-database/schemas/007_geolocation.sql
-  └── Dependencies: 001_initial_setup.sql
-  └── Creates:
-      - Tables: ip_geolocation, country_info, city_info
-      - Tables: threat_zones, geofence_rules
-      - Partitions: By continent
-  └── Required By: threat_intel, dashboard
-
-database/schemas/008_threat_feeds.sql
-  └── Dependencies: 001_initial_setup.sql (threat_feeds table)
-  └── Creates:
-      - Tables: feed_credentials, feed_schedules, feed_health
-      - Tables: feed_update_history, feed_statistics
-      - Encrypted credential storage
-  └── Required By: threat_intel feed ingestion
-
-database/schemas/009_asn_data.sql
-  └── Dependencies: 001_initial_setup.sql
-  └── Creates:
-      - Tables: asn_data, asn_prefixes, asn_peers
-      - Tables: asn_reputation, asn_abuse_contacts
-      - BGP routing data
-  └── Required By: threat_intel, network analysis
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PACKAGE: utils/                                                          │
+│ Usage: ⚙️ COMPILED (Go import)                                          │
+│ Files: retry.go, rate_limit.go, bytes.go, strings.go, validation.go     │
+│ Import: github.com/safeops/shared/utils                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ WILL BE USED BY:                                                         │
+│   ⚙️ → ALL Go services (utility functions)                              │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔢 Level 3: Service Dependencies
+### src/shared/rust/ (Rust Crate - COMPILED as library)
 
-### Go Shared - Client Libraries
 ```
-src/shared/go/postgres/postgres.go
-  └── Dependencies:
-      - External: github.com/jackc/pgx/v5
-      - Internal: config, logging, errors
-  └── Contains: DB struct, Connect(), Query(), Exec()
-  └── Required By: ALL database-connected services
-
-src/shared/go/postgres/transactions.go
-  └── Dependencies: pgx, postgres.go
-  └── Contains: Tx struct, Begin(), Commit(), Rollback()
-  └── Required By: Multi-statement operations
-
-src/shared/go/postgres/bulk_insert.go
-  └── Dependencies: pgx, postgres.go
-  └── Contains: BulkInsert(), CopyFrom()
-  └── Required By: Feed ingestion, batch processing
-
-src/shared/go/postgres/migrations.go
-  └── Dependencies: pgx, postgres.go, "path/filepath"
-  └── Contains: RunMigrations(), MigrationStatus()
-  └── Required By: Database setup
-
-src/shared/go/redis/redis.go
-  └── Dependencies:
-      - External: github.com/go-redis/redis/v8
-      - Internal: config, logging, errors
-  └── Contains: Client struct, Get(), Set(), Del()
-  └── Required By: Caching services
-
-src/shared/go/redis/pubsub.go
-  └── Dependencies: redis/v8, redis.go
-  └── Contains: Subscribe(), Publish(), channels
-  └── Required By: Event-driven services
-
-src/shared/go/redis/pipeline.go
-  └── Dependencies: redis/v8, redis.go
-  └── Contains: Pipeline(), batch operations
-  └── Required By: Bulk cache operations
-
-src/shared/go/redis/lua_scripts.go
-  └── Dependencies: redis/v8, redis.go
-  └── Contains: Eval(), atomic Lua scripts
-  └── Required By: Rate limiting, counters
-
-src/shared/go/grpc_client/client.go
-  └── Dependencies:
-      - External: google.golang.org/grpc
-      - Internal: config, logging, errors
-  └── Contains: GRPCClient struct, Dial(), Close()
-  └── Required By: ALL service-to-service communication
-
-src/shared/go/grpc_client/interceptors.go
-  └── Dependencies: grpc, logging, metrics
-  └── Contains: UnaryInterceptor, StreamInterceptor
-  └── Required By: client.go
-
-src/shared/go/grpc_client/retry.go
-  └── Dependencies: grpc, time, context
-  └── Contains: RetryUnary(), exponential backoff
-  └── Required By: client.go
-
-src/shared/go/grpc_client/circuit_breaker.go
-  └── Dependencies: "sync", "time"
-  └── Contains: CircuitBreaker, Open/Close/HalfOpen states
-  └── Required By: client.go
-
-src/shared/go/grpc_client/load_balancer.go
-  └── Dependencies: grpc/balancer
-  └── Contains: RoundRobin, WeightedRoundRobin
-  └── Required By: client.go
-
-src/shared/go/grpc_client/retry_budget.go
-  └── Dependencies: "sync/atomic", "time"
-  └── Contains: RetryBudget, token bucket
-  └── Required By: retry.go
-
-src/shared/go/grpc_client/service_discovery.go
-  └── Dependencies: grpc/resolver
-  └── Contains: Resolver, ServiceRegistry
-  └── Required By: client.go
-
-src/shared/go/health/health.go
-  └── Dependencies: logging, errors, "sync"
-  └── Contains: HealthChecker, Check(), Status
-  └── Required By: ALL services
-
-src/shared/go/health/checks.go
-  └── Dependencies: health.go, postgres, redis
-  └── Contains: CheckPostgres(), CheckRedis(), CheckGRPC()
-  └── Required By: health.go
-
-src/shared/go/metrics/metrics.go
-  └── Dependencies:
-      - External: github.com/prometheus/client_golang
-  └── Contains: Counter, Histogram, Gauge wrappers
-  └── Required By: ALL services
-
-src/shared/go/metrics/registry.go
-  └── Dependencies: prometheus
-  └── Contains: Registry, registration functions
-  └── Required By: metrics.go
-
-src/shared/go/metrics/http_handler.go
-  └── Dependencies: prometheus, "net/http"
-  └── Contains: MetricsHandler, /metrics endpoint
-  └── Required By: Services with HTTP server
-
-src/shared/go/utils/retry.go
-  └── Dependencies: "time", "context"
-  └── Contains: Retry(), WithBackoff(), MaxRetries
-  └── Required By: Resilient operations
-
-src/shared/go/utils/rate_limit.go
-  └── Dependencies: "sync", "time"
-  └── Contains: RateLimiter, TokenBucket, Allow()
-  └── Required By: API rate limiting
-
-src/shared/go/utils/bytes.go
-  └── Dependencies: "encoding/binary"
-  └── Contains: byte utilities, endianness
-  └── Required By: Protocol handling
-
-src/shared/go/utils/strings.go
-  └── Dependencies: "strings", "unicode"
-  └── Contains: string utilities
-  └── Required By: Input validation
-
-src/shared/go/utils/validation.go
-  └── Dependencies: "regexp", "net"
-  └── Contains: ValidateIP(), ValidateDomain(), ValidatePort()
-  └── Required By: Input validation
-```
-
-### Userspace Service Files
-```
-src/userspace_service/userspace_service.h
-  └── Dependencies: <windows.h>, <stdio.h>, <stdlib.h>, <string.h>, <time.h>
-  └── Contains: Common definitions, types
-  └── Required By: ALL userspace_service/*.c files
-
-src/userspace_service/ioctl_client.c
-  └── Dependencies: <windows.h>, <winioctl.h>, ioctl_codes.h
-  └── Contains: Driver communication, DeviceIoControl wrapper
-  └── Required By: service_main.c
-
-src/userspace_service/ring_reader.c
-  └── Dependencies: <windows.h>, <intrin.h>, ring_buffer.h, packet_structs.h
-  └── Contains: Ring buffer consumer, lock-free reads
-  └── Required By: service_main.c
-
-src/userspace_service/log_writer.c
-  └── Dependencies: <windows.h>, <time.h>, packet_structs.h
-  └── Contains: JSON log formatting, file writing
-  └── Required By: service_main.c
-
-src/userspace_service/rotation_manager.c
-  └── Dependencies: <windows.h>, <time.h>
-  └── Contains: 5-minute log rotation, compression
-  └── Required By: service_main.c
-
-src/userspace_service/service_main.c
-  └── Dependencies:
-      - Windows: <windows.h>, <tchar.h>, <strsafe.h>, <psapi.h>
-      - Internal: userspace_service.h, ring_reader.h, log_writer.h
-      - Internal: rotation_manager.h, ioctl_client.h
-  └── Contains: ServiceMain(), main(), service control handler
-  └── Required By: userspace_service.exe (final binary)
-```
-
-### Database - Indexes and Views
-```
-database/schemas/999_indexes_and_maintenance.sql
-  └── Dependencies: ALL schema files (001-009)
-  └── Creates:
-      - Composite indexes for common queries
-      - Partial indexes for active records
-      - Materialized view refresh functions
-      - Maintenance procedures
-      - pg_cron scheduled jobs
-  └── Required By: Production performance
-
-database/views/active_threats_view.sql
-  └── Dependencies: ip_reputation, domain_reputation, hash_reputation, ioc_indicators
-  └── Creates: active_threats_view (materialized)
-  └── Used By: Dashboard, alerting
-
-database/views/high_confidence_iocs.sql
-  └── Dependencies: ioc_indicators, ip_reputation, domain_reputation, hash_reputation
-  └── Creates: high_confidence_iocs (materialized)
-  └── Used By: Automated blocking
-
-database/views/threat_summary_stats.sql
-  └── Dependencies: ALL reputation tables
-  └── Creates: threat_summary_stats (materialized)
-  └── Used By: Reporting, dashboards
-```
-
-### Database - Seed Data
-```
-database/seeds/initial_threat_categories.sql
-  └── Dependencies: 001_initial_setup.sql (threat_categories table)
-  └── Inserts: 37 threat categories
-  └── Required By: ALL reputation tables (foreign key)
-
-database/seeds/feed_sources_config.sql
-  └── Dependencies: 001_initial_setup.sql (threat_feeds table)
-  └── Inserts: 18 threat feed configurations
-  └── Required By: Threat feed ingestion
-
-database/seeds/test_ioc_data.sql
-  └── Dependencies: ALL schemas + initial_threat_categories + feed_sources_config
-  └── Inserts: Sample IOC data for testing
-  └── Optional: Skip in production (-SkipTestData)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ CRATE: safeops_shared                                                    │
+│ Usage: ⚙️ COMPILED (Cargo dependency, static library)                   │
+│ Output: libsafeops_shared.rlib OR safeops_shared.dll (cdylib)           │
+│ Cargo.toml declares: crate-type = ["lib", "cdylib"]                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Files and Their Individual Usage:                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│ src/lib.rs                                                               │
+│   → Module root, re-exports all other modules                            │
+│   → Usage: 📄 RAW (Rust mod declarations)                               │
+│                                                                          │
+│ src/error.rs                                                             │
+│   → Contains: SafeOpsError enum, Result<T> alias                         │
+│   → Usage: ⚙️ COMPILED into all Rust services                           │
+│   → Used by: ALL other modules in this crate                             │
+│   → Will be used by: firewall_engine, threat_intel                       │
+│                                                                          │
+│ src/ip_utils.rs                                                          │
+│   → Contains: parse_ip(), is_private(), cidr_contains()                  │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Used by: (internal validation)                                       │
+│   → Will be used by: firewall_engine (rule matching)                     │
+│   →                   threat_intel (IP reputation)                       │
+│   →                   dns_server (via FFI if needed)                     │
+│                                                                          │
+│ src/hash_utils.rs                                                        │
+│   → Contains: fast_hash(), xxh3(), ahash_map()                           │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: firewall_engine (fast rule lookup)                  │
+│   →                   ids_ips (signature matching)                       │
+│                                                                          │
+│ src/memory_pool.rs                                                       │
+│   → Contains: ObjectPool<T>, PooledObject<T>                             │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: firewall_engine (packet buffer reuse)               │
+│   →                   threat_intel (connection pooling)                  │
+│                                                                          │
+│ src/lock_free.rs                                                         │
+│   → Contains: LockFreeQueue, AtomicCounter                               │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: firewall_engine (high-perf packet processing)       │
+│                                                                          │
+│ src/simd_utils.rs                                                        │
+│   → Contains: SIMD byte search, memcmp acceleration                      │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: ids_ips (deep packet inspection)                    │
+│                                                                          │
+│ src/time_utils.rs                                                        │
+│   → Contains: now_utc(), format_timestamp()                              │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: ALL Rust services                                   │
+│                                                                          │
+│ src/proto_utils.rs                                                       │
+│   → Contains: Protobuf encode/decode helpers                             │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: ALL Rust gRPC services                              │
+│                                                                          │
+│ src/buffer_pool.rs                                                       │
+│   → Contains: BufferPool, reusable Vec<u8>                               │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: firewall_engine, threat_intel                       │
+│                                                                          │
+│ src/metrics.rs                                                           │
+│   → Contains: Prometheus metric wrappers                                 │
+│   → Usage: ⚙️ COMPILED                                                  │
+│   → Will be used by: ALL Rust services                                   │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔢 Level 4: Driver & Service Binary
+### proto/grpc/ (Protocol Buffers - GENERATED)
 
-### Kernel Driver Binary
 ```
-src/kernel_driver/safeops.sys
-  └── Dependencies:
-      - driver.c
-      - driver_part2.c
-      - filter_engine.c
-      - packet_capture.c
-      - nic_management.c
-      - performance.c
-      - ioctl_handler.c
-      - shared_memory.c
-  └── Linker Dependencies:
-      - ntoskrnl.lib
-      - fwpkclnt.lib
-      - ndis.lib
-      - wdf01000.lib
-  └── Build Tool: WDK nmake/msbuild
-
-src/kernel_driver/safeops.inf
-  └── Dependencies: safeops.sys
-  └── Contains: Driver installation manifest
-  └── Required By: Windows driver installation
-```
-
-### Userspace Service Binary
-```
-src/userspace_service/userspace_service.exe
-  └── Dependencies:
-      - service_main.c
-      - ioctl_client.c
-      - ring_reader.c
-      - log_writer.c
-      - rotation_manager.c
-  └── Linker Dependencies:
-      - kernel32.lib
-      - advapi32.lib
-      - psapi.lib
-  └── Build Tool: cl.exe (MSVC)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Proto Files → Generated Code Flow                                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│ common.proto                                                             │
+│   → Usage: 🔧 GENERATED (protoc generates code)                         │
+│   → Generates: build/proto/go/common.pb.go                              │
+│   →            build/proto/rust/common.rs (planned)                     │
+│   → Used by: ALL other .proto files (import "common.proto")            │
+│   → Runtime: Types compiled into service binaries                       │
+│                                                                          │
+│ firewall.proto                                                           │
+│   → Generates: firewall.pb.go, firewall_grpc.pb.go                      │
+│   → Used by: firewall_engine (server), orchestrator (client)            │
+│   →          ui/backend (client)                                        │
+│                                                                          │
+│ threat_intel.proto                                                       │
+│   → Generates: threat_intel.pb.go, threat_intel_grpc.pb.go              │
+│   → Used by: threat_intel (server), ids_ips (client)                    │
+│   →          dns_server (client), firewall_engine (client)              │
+│                                                                          │
+│ network_manager.proto                                                    │
+│   → Generates: network_manager.pb.go, network_manager_grpc.pb.go        │
+│   → Used by: kernel_driver interface, orchestrator                      │
+│                                                                          │
+│ [Similar pattern for all 14 proto files...]                              │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Build Command: proto/build.ps1                                           │
+│ Output Location: build/proto/go/, build/proto/rust/                      │
+│ Runtime Usage: ⚙️ COMPILED into each service binary                    │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📊 Dependency Statistics
+### src/kernel_driver/ (Kernel Code - COMPILED to .sys)
 
-### File Counts by Component
-
-| Component | Files | Lines (est.) | External Deps |
-|-----------|-------|--------------|---------------|
-| Kernel Driver | 15 | 8,000+ | WDK (5 libs) |
-| Userspace Service | 7 | 3,000+ | Win32 (3 libs) |
-| Shared C Headers | 4 | 500+ | None |
-| Shared Go | 37 | 6,000+ | 7 packages |
-| Shared Rust | 10 | 2,000+ | 11 crates |
-| Proto Definitions | 14 | 1,500+ | google.protobuf |
-| Database Schemas | 10 | 8,000+ | PostgreSQL 16+ |
-| Database Views | 3 | 500+ | Schema tables |
-| Database Seeds | 3 | 300+ | Schema tables |
-| **Total** | **103** | **30,000+** | - |
-
-### External Dependencies
-
-#### Go (go.mod)
 ```
-github.com/go-redis/redis/v8    # Redis client
-github.com/jackc/pgx/v5         # PostgreSQL driver
-github.com/prometheus/client_golang  # Metrics
-github.com/sirupsen/logrus      # Logging
-github.com/spf13/viper          # Configuration
-google.golang.org/grpc          # gRPC framework
-gopkg.in/yaml.v3                # YAML parsing
-```
-
-#### Rust (Cargo.toml)
-```
-ipnet = "2.9"                   # IP/CIDR handling
-cidr-utils = "0.6"              # CIDR utilities
-ahash = "0.8"                   # Fast hashing
-xxhash-rust = "0.8"             # xxHash
-packed_simd_2 = "0.3"           # SIMD
-crossbeam = "0.8"               # Lock-free data structures
-parking_lot = "0.12"            # Fast mutex
-prost = "0.12"                  # Protobuf
-chrono = "0.4"                  # DateTime
-thiserror = "1.0"               # Error derive
-prometheus = "0.13"             # Metrics
-```
-
-#### Windows (WDK)
-```
-ntoskrnl.lib                    # Kernel functions
-fwpkclnt.lib                    # WFP callouts
-ndis.lib                        # NDIS functions
-wdf01000.lib                    # WDF framework
-wdmsec.lib                      # WDM security
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Kernel Driver Files → Single Binary Output                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│ driver.h                          │ Usage: 📄 RAW (#include)            │
+│   ↓ included by                                                          │
+│ driver.c                          │ Usage: ⚙️ COMPILED → safeops.obj   │
+│ driver_part2.c                    │ Usage: ⚙️ COMPILED → safeops2.obj  │
+│ ioctl_handler.h + .c              │ Usage: ⚙️ COMPILED → ioctl.obj     │
+│ shared_memory.h + .c              │ Usage: ⚙️ COMPILED → shmem.obj     │
+│ filter_engine.h + .c              │ Usage: ⚙️ COMPILED → filter.obj    │
+│ packet_capture.h + .c             │ Usage: ⚙️ COMPILED → capture.obj   │
+│ nic_management.h + .c             │ Usage: ⚙️ COMPILED → nic.obj       │
+│ performance.h + .c                │ Usage: ⚙️ COMPILED → perf.obj      │
+│   ↓ linked together                                                      │
+│ safeops.sys                       │ Final kernel driver binary           │
+│ safeops.inf                       │ Installation manifest                │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ RUNTIME CONNECTION TO OTHER COMPONENTS:                                  │
+│                                                                          │
+│ safeops.sys ←──🔌 RUNTIME (IOCTL)──→ userspace_service.exe              │
+│             ←──🔌 RUNTIME (shared memory)──→ ring_reader.c               │
+│                                                                          │
+│ Future connections:                                                      │
+│ safeops.sys ←──🔌 RUNTIME──→ firewall_engine (via userspace bridge)     │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔧 Build Order Commands
+### src/userspace_service/ (User Service - COMPILED to .exe)
 
-### 1. Proto Generation (Level 0)
-```powershell
-cd proto
-.\build.ps1
-# Generates: build/proto/go/*.pb.go, build/proto/rust/*.rs
 ```
-
-### 2. Database Setup (Level 0-3)
-```powershell
-cd database
-.\init_database.ps1 -DatabaseName safeops_threat_intel
-# Runs: 001-009 schemas → views → seeds
-```
-
-### 3. Shared Libraries (Level 1-2)
-```powershell
-# Rust
-cd src/shared/rust
-cargo build --release
-
-# Go (verify dependencies)
-cd src/shared/go
-go mod tidy
-go build ./...
-```
-
-### 4. Kernel Driver (Level 0-4)
-```powershell
-cd src/kernel_driver
-nmake
-# Produces: safeops.sys, safeops.inf
-```
-
-### 5. Userspace Service (Level 3)
-```powershell
-cd src/userspace_service
-cl /Fe:userspace_service.exe *.c kernel32.lib advapi32.lib psapi.lib
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Userspace Service Files → Single Binary Output                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│ userspace_service.h               │ Usage: 📄 RAW (#include)            │
+│   ↓ included by all                                                      │
+│ service_main.c                    │ Usage: ⚙️ COMPILED → main.obj      │
+│   ├── includes ring_reader.h                                             │
+│   ├── includes log_writer.h                                              │
+│   ├── includes rotation_manager.h                                        │
+│   └── includes ioctl_client.h                                            │
+│                                                                          │
+│ ioctl_client.c                    │ Usage: ⚙️ COMPILED → ioctl.obj     │
+│ ring_reader.c                     │ Usage: ⚙️ COMPILED → ring.obj      │
+│ log_writer.c                      │ Usage: ⚙️ COMPILED → log.obj       │
+│ rotation_manager.c                │ Usage: ⚙️ COMPILED → rotate.obj    │
+│   ↓ linked together                                                      │
+│ userspace_service.exe             │ Final Windows service binary         │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ RUNTIME CONNECTIONS:                                                     │
+│                                                                          │
+│ userspace_service.exe                                                    │
+│   ←──🔌 RUNTIME──→ safeops.sys (IOCTL + shared memory)                  │
+│   ←──🔌 RUNTIME──→ logs/*.json (file output)                            │
+│                                                                          │
+│ Future:                                                                  │
+│   ←──🔌 RUNTIME──→ orchestrator (gRPC health check)                     │
+│   ←──🔌 RUNTIME──→ network_logger (log forwarding)                      │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ✅ Verification Checklist
+### database/ (SQL - RUNTIME database connection)
 
-- [ ] All Level 0 files exist (proto/common.proto, shared/c/*.h, schemas/001)
-- [ ] All Level 1 dependencies resolve (headers include correctly)
-- [ ] All Level 2 implementations compile
-- [ ] All Level 3 services link correctly
-- [ ] Database migrations run in order
-- [ ] Proto generation succeeds
-- [ ] Final binaries build
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Database Files → PostgreSQL Runtime                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│ ALL .sql files are 📄 RAW SQL scripts executed by psql                  │
+│ They CREATE tables/indexes that services connect to at 🔌 RUNTIME       │
+│                                                                          │
+│ Execution Order (init_database.ps1):                                     │
+│   001_initial_setup.sql     → Creates: threat_categories, threat_feeds  │
+│   002_ip_reputation.sql     → Creates: ip_reputation, ip_*_history      │
+│   003_domain_reputation.sql → Creates: domain_reputation, domain_*      │
+│   004_hash_reputation.sql   → Creates: hash_reputation, malware_*       │
+│   005_ioc_storage.sql       → Creates: ioc_indicators, ioc_*            │
+│   006_proxy_anonymizer.sql  → Creates: proxy_*, vpn_*, tor_*            │
+│   007_geolocation.sql       → Creates: ip_geolocation, country_*        │
+│   008_threat_feeds.sql      → Creates: feed_*, update_history           │
+│   009_asn_data.sql          → Creates: asn_data, asn_*                  │
+│   999_indexes_*.sql         → Creates: performance indexes              │
+│                                                                          │
+│ views/*.sql                 → Creates: materialized views               │
+│ seeds/*.sql                 → Inserts: initial data                     │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│ RUNTIME CONNECTIONS FROM SERVICES:                                       │
+│                                                                          │
+│ PostgreSQL Database ←──🔌 RUNTIME (pgx)──→ threat_intel service         │
+│                    ←──🔌 RUNTIME (pgx)──→ ids_ips service               │
+│                    ←──🔌 RUNTIME (pgx)──→ dns_server service            │
+│                    ←──🔌 RUNTIME (pgx)──→ backup_restore service        │
+│                    ←──🔌 RUNTIME (pgx)──→ certificate_manager           │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🏗️ Future Service File Dependencies
+
+### Phase 2 Service → Shared Library Usage
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│ SERVICE              │ SHARED GO        │ SHARED RUST    │ RUNTIME DB     │
+├──────────────────────┼──────────────────┼────────────────┼────────────────┤
+│ firewall_engine      │ (none - Rust)    │ ALL modules    │ Redis          │
+│ threat_intel         │ (none - Rust)    │ ALL modules    │ PostgreSQL     │
+│ ids_ips              │ ALL packages     │ via FFI        │ PostgreSQL     │
+│ dns_server           │ ALL packages     │ (none)         │ PostgreSQL     │
+│ dhcp_server          │ ALL packages     │ (none)         │ PostgreSQL     │
+│ tls_proxy            │ ALL packages     │ (none)         │ (none)         │
+│ wifi_ap              │ ALL packages     │ (none)         │ (none)         │
+│ orchestrator         │ ALL packages     │ (none)         │ Redis          │
+│ certificate_manager  │ ALL packages     │ (none)         │ PostgreSQL     │
+│ backup_restore       │ ALL packages     │ (none)         │ PostgreSQL     │
+│ update_manager       │ ALL packages     │ (none)         │ (none)         │
+│ ui/backend           │ ALL packages     │ (none)         │ (none)         │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Legend:
+  ALL packages = errors, config, logging, postgres, redis, grpc_client, 
+                 health, metrics, utils (compiled into service binary)
+  ALL modules  = error, ip_utils, hash_utils, memory_pool, lock_free,
+                 time_utils, proto_utils, metrics (compiled into binary)
+  via FFI      = Rust library called from Go using cgo
+```
+
+---
+
+## 📋 Quick Reference: Compiled vs Raw
+
+| Code Type | Usage | Example |
+|-----------|-------|---------|
+| **.h files** | 📄 RAW always | `#include "packet_structs.h"` |
+| **.c files** | ⚙️ COMPILED to .obj → linked | `driver.c` → `safeops.sys` |
+| **.go files** | ⚙️ COMPILED into service binary | `config.go` → `ids_ips.exe` |
+| **.rs files** | ⚙️ COMPILED into .rlib/.dll | `ip_utils.rs` → `libsafeops_shared.rlib` |
+| **.proto files** | 🔧 GENERATED → .pb.go/.rs | `firewall.proto` → `firewall.pb.go` |
+| **.sql files** | 📄 RAW executed by psql | Creates tables at install time |
+| **Database connection** | 🔌 RUNTIME via pgx/redis | Service queries DB at runtime |
+| **gRPC calls** | 🔌 RUNTIME via HTTP/2 | Service-to-service calls |
+| **IOCTL calls** | 🔌 RUNTIME via DeviceIoControl | Userspace → kernel communication |
 
 ---
 
 **Generated:** 2025-12-17  
-**Files Analyzed:** 103 source files  
-**Phase:** 1 (Foundation Complete)  
-**Next Phase:** Service implementations (firewall_engine, threat_intel, etc.)
+**Phase:** 1 Complete (117 files) | Phase 2 Ready (shared libraries)

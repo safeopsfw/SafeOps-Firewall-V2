@@ -1408,41 +1408,72 @@ FUTURE DEPENDENCIES:
 
 ```yaml
 FILE: src/shared/rust/Cargo.toml
+USAGE: ⚙️ Build configuration (cargo uses this)
 
-PAST DEPENDENCIES:
-  SafeOps Files:
-    - NONE (defines dependencies, doesn't use project files)
-  External Crates:
-    - tokio, prost, xxhash-rust, crossbeam, etc. (20+ crates)
-  Proto Files:
-    - References ../../proto/grpc/*.proto (for build.rs)
-
-FUTURE DEPENDENCIES:
-  Builds to:
-    ⚙️ target/release/libsafeops_shared.rlib (COMPILED)
+CONTAINS:
+  [package]
+  name = "safeops-shared"
+  version = "2.0.0"
+  edition = "2021"
   
-  Linked into:
-    ⚙️ src/firewall_engine/Cargo.toml (dependency - COMPILED)
-    ⚙️ src/threat_intel/Cargo.toml (dependency - COMPILED)
+  [lib]
+  name = "safeops_shared"
+  crate-type = ["rlib"]  # Static library
+  
+  [dependencies]
+  tokio = { version = "1.35", features = ["full"] }
+  serde = { version = "1.0", features = ["derive"] }
+  tonic = { version = "0.10", features = ["transport", "tls"] }
+  prost = "0.12"
+  xxhash-rust = { version = "0.8", features = ["xxh3"] }
+  ahash = "0.8"
+  crossbeam = "0.8"
+  parking_lot = "0.12"
+  rayon = "1.8"
+  prometheus = "0.13"
+  ring = "0.17"
+  # ... 20+ dependencies total
+
+BUILDS TO:
+  ⚙️ target/release/libsafeops_shared.rlib (Rust static library)
+
+USED BY:
+  ⚙️ src/firewall_engine/Cargo.toml (depends on safeops-shared - COMPILED)
+  ⚙️ src/threat_intel/Cargo.toml (depends on safeops-shared - COMPILED)
 ```
 
 ### ⚙️ build.rs
 
 ```yaml
 FILE: src/shared/rust/build.rs
+USAGE: ⚙️ Build script (runs before compilation)
 
-PAST DEPENDENCIES:
-  Proto Files Used (RAW):
-    📄 proto/grpc/common.proto (compiles to Rust - RAW source)
-    📄 proto/grpc/firewall.proto (RAW)
-    📄 proto/grpc/threat_intel.proto (RAW)
-  Build Dep:
-    - tonic-build crate
+CONTAINS:
+  fn main() -> Result<(), Box<dyn std::error::Error>> {
+      tonic_build::configure()
+          .build_client(true)
+          .build_server(false)
+          .out_dir("src/proto")
+          .compile(
+              &[
+                  "../../proto/grpc/common.proto",
+                  "../../proto/grpc/firewall.proto",
+                  "../../proto/grpc/threat_intel.proto",
+              ],
+              &["../../proto/grpc"]
+          )?;
+      Ok(())
+  }
 
-GENERATES (Build Output):
+READS (RAW proto):
+  📄 proto/grpc/common.proto
+  📄 proto/grpc/firewall.proto
+  📄 proto/grpc/threat_intel.proto
+
+GENERATES:
   ⚙️ src/proto/common.rs (COMPILED into crate)
-  ⚙️ src/proto/firewall.rs (COMPILED)
-  ⚙️ src/proto/threat_intel.rs (COMPILED)
+  ⚙️ src/proto/firewall.rs (COMPILED into crate)
+  ⚙️ src/proto/threat_intel.rs (COMPILED into crate)
 
 FUTURE DEPENDENCIES:
   - Build system only, generates code used by lib.rs

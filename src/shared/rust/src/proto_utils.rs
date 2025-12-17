@@ -1,745 +1,346 @@
-//! Protocol Buffer utilities with optimizations
+//! Protocol Buffer utility functions
 //!
-//! Helper functions for Protocol Buffer serialization/deserialization
-//! optimized for high-performance gRPC communication.
-//!
-//! # Features
-//! - **Zero-Copy**: Minimized allocations where possible
-//! - **Buffer Management**: Reusable buffers for serialization
-//! - **Message Builders**: Fluent API for message construction
-//! - **Lazy Deserialization**: Partial message parsing
-//! - **Batch Operations**: Efficient batch serialization/deserialization
-//! - **Streaming**: Support for large message streaming
-//!
-//! # Performance Optimizations
-//! - Buffer reuse between messages
-//! - Pre-allocated buffer management
-//! - Size estimation before allocation
-//! - Error recovery for partial failures
+//! Helper functions for working with Protocol Buffer generated types, including
+//! conversion between proto messages and internal Rust types, validation of proto
+//! message fields, and serialization/deserialization utilities.
 
+use crate::error::{Result, SafeOpsError};
+use crate::ip_utils::IPAddress;
+use crate::time_utils;
 use prost::Message;
-use std::io::{Read, Write};
-use std::sync::Arc;
-use std::sync::Mutex;
-
-use crate::error::{Error, Result};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 // ============================================================================
-// Serialization
+// Timestamp Conversion (Common Proto Pattern)
 // ============================================================================
 
-/// Encode a protobuf message to bytes
-#[inline]
-pub fn encode<M: Message>(msg: &M) -> Vec<u8> {
-    msg.encode_to_vec()
+/// Converts Unix timestamp to proto Timestamp tuple (seconds, nanos)
+pub fn timestamp_to_proto(timestamp: i64) -> (i64, i32) {
+    (timestamp, 0)
 }
 
-/// Encode a protobuf message to a writer
-pub fn encode_to_writer<M: Message, W: Write>(msg: &M, writer: &mut W) -> Result<()> {
-    let bytes = msg.encode_to_vec();
-    writer.write_all(&bytes).map_err(Error::Io)
-}
-
-/// Encode a protobuf message with length prefix (4 bytes, big-endian)
-pub fn encode_length_prefixed<M: Message>(msg: &M) -> Vec<u8> {
-    let encoded = msg.encode_to_vec();
-    let len = encoded.len() as u32;
-    
-    let mut result = Vec::with_capacity(4 + encoded.len());
-    result.extend_from_slice(&len.to_be_bytes());
-    result.extend(encoded);
-    result
-}
-
-/// Encode multiple messages with length prefixes
-pub fn encode_batch<M: Message>(messages: &[M]) -> Vec<u8> {
-    let mut result = Vec::new();
-    
-    // Write message count
-    let count = messages.len() as u32;
-    result.extend_from_slice(&count.to_be_bytes());
-    
-    // Write each message with length prefix
-    for msg in messages {
-        let encoded = msg.encode_to_vec();
-        let len = encoded.len() as u32;
-        result.extend_from_slice(&len.to_be_bytes());
-        result.extend(encoded);
-    }
-    
-    result
+/// Converts proto Timestamp to Unix timestamp
+pub fn proto_to_timestamp(seconds: i64, nanos: i32) -> i64 {
+    seconds
 }
 
 // ============================================================================
-// Deserialization
+// Validation Functions
 // ============================================================================
 
-/// Decode a protobuf message from bytes
-#[inline]
-pub fn decode<M: Message + Default>(bytes: &[u8]) -> Result<M> {
-    M::decode(bytes).map_err(|e| Error::Deserialization(e.to_string()))
-}
-
-/// Decode a protobuf message from a reader
-pub fn decode_from_reader<M: Message + Default, R: Read>(reader: &mut R) -> Result<M> {
-    let mut bytes = Vec::new();
-    reader.read_to_end(&mut bytes).map_err(Error::Io)?;
-    decode(&bytes)
-}
-
-/// Decode a length-prefixed protobuf message
-pub fn decode_length_prefixed<M: Message + Default>(bytes: &[u8]) -> Result<(M, usize)> {
-    if bytes.len() < 4 {
-        return Err(Error::Deserialization("Buffer too short for length prefix".to_string()));
-    }
-    
-    let len = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
-    
-    if bytes.len() < 4 + len {
-        return Err(Error::Deserialization(format!(
-            "Buffer too short: expected {} bytes, got {}",
-            4 + len,
-            bytes.len()
+/// Validates proto string field
+pub fn validate_proto_string(s: &str, field_name: &str, max_len: usize) -> Result<()> {
+    if s.is_empty() {
+        return Err(SafeOpsError::invalid_input(format!(
+            "{} cannot be empty",
+            field_name
         )));
     }
-    
-    let msg = decode(&bytes[4..4 + len])?;
-    Ok((msg, 4 + len))
-}
-
-/// Decode a batch of length-prefixed messages
-pub fn decode_batch<M: Message + Default>(bytes: &[u8]) -> Result<Vec<M>> {
-    if bytes.len() < 4 {
-        return Err(Error::Deserialization("Buffer too short for message count".to_string()));
+    if s.len() > max_len {
+        return Err(SafeOpsError::invalid_input(format!(
+            "{} exceeds maximum length of {} (got {})",
+            field_name, max_len, s.len()
+        )));
     }
-    
-    let count = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
-    let mut messages = Vec::with_capacity(count);
-    let mut offset = 4;
-    
-    for _ in 0..count {
-        let (msg, consumed) = decode_length_prefixed(&bytes[offset..])?;
-        messages.push(msg);
-        offset += consumed;
+    Ok(())
+}
+
+/// Validates port number is in valid range
+pub fn validate_proto_port(port: u32) -> Result<()> {
+    if port > 65535 {
+        return Err(SafeOpsError::invalid_input(format!(
+            "Port {} exceeds maximum of 65535",
+            port
+        )));
     }
+    Ok(())
+}
+
+/// Validates port range
+pub fn validate_proto_port_range(start: u32, end: u32) -> Result<()> {
+    validate_proto_port(start)?;
+    validate_proto_port(end)?;
     
-    Ok(messages)
+    if start > end {
+        return Err(SafeOpsError::invalid_input(format!(
+            "Port range invalid: start {} > end {}",
+            start, end
+        )));
+    }
+    Ok(())
+}
+
+/// Validates confidence score (0.0 to 1.0)
+pub fn validate_confidence(confidence: f32) -> Result<()> {
+    if !(0.0..=1.0).contains(&confidence) {
+        return Err(SafeOpsError::invalid_input(format!(
+            "Confidence {} must be between 0.0 and 1.0",
+            confidence
+        )));
+    }
+    Ok(())
+}
+
+/// Validates reputation score (-100 to +100)
+pub fn validate_reputation_score(score: i32) -> Result<()> {
+    if !(-100..=100).contains(&score) {
+        return Err(SafeOpsError::invalid_input(format!(
+            "Reputation score {} must be between -100 and +100",
+            score
+        )));
+    }
+    Ok(())
+}
+
+/// Validates timestamp is positive
+pub fn validate_timestamp(timestamp: i64, field_name: &str) -> Result<()> {
+    if timestamp < 0 {
+        return Err(SafeOpsError::invalid_input(format!(
+            "{} timestamp cannot be negative: {}",
+            field_name, timestamp
+        )));
+    }
+    Ok(())
+}
+
+/// Creates error for missing required field
+pub fn missing_field_error(field_name: &str) -> SafeOpsError {
+    SafeOpsError::invalid_input(format!("Required field '{}' is missing", field_name))
 }
 
 // ============================================================================
-// Message Utilities
+// IP Address Conversion
 // ============================================================================
 
-/// Get the encoded size of a message without actually encoding
-#[inline]
-pub fn encoded_size<M: Message>(msg: &M) -> usize {
-    msg.encoded_len()
+/// Converts internal IPAddress to proto-compatible tuple
+///
+/// Returns (is_v6: bool, bytes: Vec<u8>)
+pub fn ip_to_proto_bytes(ip: &IPAddress) -> (bool, Vec<u8>) {
+    match ip.0 {
+        IpAddr::V4(ipv4) => (false, ipv4.octets().to_vec()),
+        IpAddr::V6(ipv6) => (true, ipv6.octets().to_vec()),
+    }
 }
 
-/// Merge two messages (fields from source override fields in target)
-pub fn merge<M: Message + Default + Clone>(target: &M, source: &M) -> Result<M> {
-    let mut result = target.clone();
-    let source_bytes = source.encode_to_vec();
-    result.merge(source_bytes.as_slice())
-        .map_err(|e| Error::Deserialization(e.to_string()))?;
-    Ok(result)
-}
-
-/// Clone a message via serialization (deep clone)
-pub fn deep_clone<M: Message + Default>(msg: &M) -> Result<M> {
-    let bytes = msg.encode_to_vec();
-    decode(&bytes)
-}
-
-// ============================================================================
-// Streaming Helpers
-// ============================================================================
-
-/// Iterator over length-prefixed messages in a buffer
-pub struct MessageIterator<'a, M: Message + Default> {
-    buffer: &'a [u8],
-    offset: usize,
-    _marker: std::marker::PhantomData<M>,
-}
-
-impl<'a, M: Message + Default> MessageIterator<'a, M> {
-    /// Create a new message iterator
-    pub fn new(buffer: &'a [u8]) -> Self {
-        Self {
-            buffer,
-            offset: 0,
-            _marker: std::marker::PhantomData,
+/// Converts proto IP bytes to IPAddress
+pub fn ip_from_proto_bytes(is_v6: bool, bytes: &[u8]) -> Result<IPAddress> {
+    if is_v6 {
+        if bytes.len() != 16 {
+            return Err(SafeOpsError::parse(format!(
+                "Invalid IPv6 address length: {} (expected 16)",
+                bytes.len()
+            )));
         }
-    }
-    
-    /// Get remaining bytes
-    pub fn remaining(&self) -> usize {
-        self.buffer.len() - self.offset
-    }
-}
-
-impl<'a, M: Message + Default> Iterator for MessageIterator<'a, M> {
-    type Item = Result<M>;
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.offset >= self.buffer.len() {
-            return None;
+        let octets: [u8; 16] = bytes.try_into()
+            .map_err(|_| SafeOpsError::parse("Invalid IPv6 bytes"))?;
+        Ok(IPAddress::from(Ipv6Addr::from(octets)))
+    } else {
+        if bytes.len() != 4 {
+            return Err(SafeOpsError::parse(format!(
+                "Invalid IPv4 address length: {} (expected 4)",
+                bytes.len()
+            )));
         }
-        
-        match decode_length_prefixed(&self.buffer[self.offset..]) {
-            Ok((msg, consumed)) => {
-                self.offset += consumed;
-                Some(Ok(msg))
-            }
-            Err(e) => Some(Err(e)),
-        }
+        let octets: [u8; 4] = bytes.try_into()
+            .map_err(|_| SafeOpsError::parse("Invalid IPv4 bytes"))?;
+        Ok(IPAddress::from(Ipv4Addr::from(octets)))
     }
 }
 
 // ============================================================================
-// Buffer Pool for Protobuf
+// Protocol Conversion
 // ============================================================================
 
-/// Reusable buffer for encoding messages
-pub struct EncodingBuffer {
-    buffer: Vec<u8>,
-    capacity: usize,
-}
+/// Protocol numbers for common protocols
+pub const PROTOCOL_TCP: u8 = 6;
+pub const PROTOCOL_UDP: u8 = 17;
+pub const PROTOCOL_ICMP: u8 = 1;
+pub const PROTOCOL_ICMPV6: u8 = 58;
 
-impl EncodingBuffer {
-    /// Create a new encoding buffer
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            buffer: Vec::with_capacity(capacity),
-            capacity,
-        }
-    }
-    
-    /// Encode a message into the buffer
-    pub fn encode<M: Message>(&mut self, msg: &M) -> &[u8] {
-        self.buffer.clear();
-        msg.encode(&mut self.buffer).unwrap();
-        &self.buffer
-    }
-    
-    /// Encode with length prefix
-    pub fn encode_length_prefixed<M: Message>(&mut self, msg: &M) -> &[u8] {
-        self.buffer.clear();
-        
-        let len = msg.encoded_len() as u32;
-        self.buffer.extend_from_slice(&len.to_be_bytes());
-        msg.encode(&mut self.buffer).unwrap();
-        
-        &self.buffer
-    }
-    
-    /// Clear the buffer
-    pub fn clear(&mut self) {
-        self.buffer.clear();
-    }
-    
-    /// Shrink buffer if it exceeds capacity
-    pub fn shrink_if_needed(&mut self) {
-        if self.buffer.capacity() > self.capacity * 2 {
-            self.buffer.shrink_to(self.capacity);
-        }
+/// Converts protocol number to name string
+pub fn protocol_to_name(protocol: u8) -> &'static str {
+    match protocol {
+        PROTOCOL_TCP => "TCP",
+        PROTOCOL_UDP => "UDP",
+        PROTOCOL_ICMP => "ICMP",
+        PROTOCOL_ICMPV6 => "ICMPv6",
+        _ => "Unknown",
     }
 }
 
-impl Default for EncodingBuffer {
-    fn default() -> Self {
-        Self::new(4096)
+/// Converts protocol name to number
+pub fn protocol_from_name(name: &str) -> Result<u8> {
+    match name.to_uppercase().as_str() {
+        "TCP" => Ok(PROTOCOL_TCP),
+        "UDP" => Ok(PROTOCOL_UDP),
+        "ICMP" => Ok(PROTOCOL_ICMP),
+        "ICMPV6" => Ok(PROTOCOL_ICMPV6),
+        _ => Err(SafeOpsError::parse(format!("Unknown protocol: {}", name))),
     }
 }
 
 // ============================================================================
-// Advanced Buffer Pool
+// Serialization Helpers
 // ============================================================================
 
-/// Thread-safe buffer pool for encoding
-pub struct BufferPool {
-    buffers: Arc<Mutex<Vec<Vec<u8>>>>,
-    initial_capacity: usize,
-    max_buffers: usize,
+/// Serializes any proto message to bytes
+pub fn serialize_proto<M: Message>(message: &M) -> Vec<u8> {
+    let mut buf = Vec::with_capacity(message.encoded_len());
+    message.encode(&mut buf).expect("Failed to encode proto message");
+    buf
 }
 
-impl BufferPool {
-    /// Create a new buffer pool
-    pub fn new(initial_capacity: usize, max_buffers: usize) -> Self {
-        Self {
-            buffers: Arc::new(Mutex::new(Vec::new())),
-            initial_capacity,
-            max_buffers,
-        }
-    }
-    
-    /// Acquire a buffer from the pool
-    pub fn acquire(&self) -> Vec<u8> {
-        let mut buffers = self.buffers.lock().unwrap();
-        buffers.pop().unwrap_or_else(|| Vec::with_capacity(self.initial_capacity))
-    }
-    
-    /// Return a buffer to the pool
-    pub fn release(&self, mut buffer: Vec<u8>) {
-        buffer.clear();
-        
-        let mut buffers = self.buffers.lock().unwrap();
-        if buffers.len() < self.max_buffers {
-            buffers.push(buffer);
-        }
-    }
-    
-    /// Encode a message using a pooled buffer
-    pub fn encode_pooled<M: Message>(&self, msg: &M) -> Vec<u8> {
-        let mut buffer = self.acquire();
-        msg.encode(&mut buffer).unwrap();
-        buffer
-    }
+/// Deserializes bytes to proto message
+pub fn deserialize_proto<M: Message + Default>(bytes: &[u8]) -> Result<M> {
+    M::decode(bytes).map_err(|e| SafeOpsError::parse(format!("Proto decode error: {}", e)))
 }
 
-impl Default for BufferPool {
-    fn default() -> Self {
-        Self::new(4096, 32)
-    }
+/// Converts proto message to JSON string (for debugging)
+pub fn proto_to_json<M: serde::Serialize>(message: &M) -> Result<String> {
+    serde_json::to_string_pretty(message)
+        .map_err(|e| SafeOpsError::internal(format!("JSON serialization error: {}", e)))
+}
+
+/// Parses JSON to proto message (for config files)
+pub fn proto_from_json<M>(json: &str) -> Result<M>
+where
+    M: for<'de> serde::Deserialize<'de>,
+{
+    serde_json::from_str(json)
+        .map_err(|e| SafeOpsError::parse(format!("JSON parsing error: {}", e)))
 }
 
 // ============================================================================
-// Message Builders
+// Error Handling
 // ============================================================================
 
-/// Trait for building protobuf messages with fluent API
-pub trait MessageBuilder: Sized {
-    type Output;
-    
-    /// Build the final message
-    fn build(self) -> Self::Output;
-}
-
-/// Helper for building messages with default values
-pub struct ProtoBuilder<M> {
-    message: M,
-}
-
-impl<M: Default> ProtoBuilder<M> {
-    /// Create a new builder with default values
-    pub fn new() -> Self {
-        Self {
-            message: M::default(),
-        }
-    }
-    
-    /// Create from existing message
-    pub fn from_message(message: M) -> Self {
-        Self { message }
-    }
-    
-    /// Apply a function to modify the message
-    pub fn with<F>(mut self, f: F) -> Self
-    where
-        F: FnOnce(&mut M),
-    {
-        f(&mut self.message);
-        self
-    }
-    
-    /// Build the final message
-    pub fn build(self) -> M {
-        self.message
-    }
-    
-    /// Get a reference to the message
-    pub fn as_ref(&self) -> &M {
-        &self.message
-    }
-    
-    /// Get a mutable reference to the message
-    pub fn as_mut(&mut self) -> &mut M {
-        &mut self.message
-    }
-}
-
-impl<M: Default> Default for ProtoBuilder<M> {
-    fn default() -> Self {
-        Self::new()
-    }
+/// Converts prost decode error to SafeOpsError
+pub fn proto_error_to_safeops(error: prost::DecodeError) -> SafeOpsError {
+    SafeOpsError::parse(format!("Protocol buffer decode error: {}", error))
 }
 
 // ============================================================================
-// Lazy Deserialization
+// Common Proto Field Helpers
 // ============================================================================
 
-/// Lazy message wrapper for deferred deserialization
-pub struct LazyMessage<M> {
-    bytes: Vec<u8>,
-    cached: Option<M>,
+/// Extracts required field from Option
+pub fn require_field<T>(field: Option<T>, field_name: &str) -> Result<T> {
+    field.ok_or_else(|| missing_field_error(field_name))
 }
 
-impl<M: Message + Default + Clone> LazyMessage<M> {
-    /// Create a new lazy message from bytes
-    pub fn new(bytes: Vec<u8>) -> Self {
-        Self {
-            bytes,
-            cached: None,
-        }
+/// Validates and extracts required string field
+pub fn require_string(field: &str, field_name: &str, max_len: usize) -> Result<String> {
+    validate_proto_string(field, field_name, max_len)?;
+    Ok(field.to_string())
+}
+
+/// Validates vec is not empty
+pub fn require_non_empty<T>(vec: &[T], field_name: &str) -> Result<()> {
+    if vec.is_empty() {
+        return Err(SafeOpsError::invalid_input(format!(
+            "{} cannot be empty",
+            field_name
+        )));
     }
-    
-    /// Get the message, deserializing if necessary
-    pub fn get(&mut self) -> Result<&M> {
-        if self.cached.is_none() {
-            let msg = decode(&self.bytes)?;
-            self.cached = Some(msg);
-        }
-        Ok(self.cached.as_ref().unwrap())
-    }
-    
-    /// Get the message, cloning it
-    pub fn get_cloned(&mut self) -> Result<M> {
-        self.get().map(|m| m.clone())
-    }
-    
-    /// Check if the message has been deserialized
-    pub fn is_cached(&self) -> bool {
-        self.cached.is_some()
-    }
-    
-    /// Get the raw bytes
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes
-    }
-    
-    /// Get estimated message size
-    pub fn byte_size(&self) -> usize {
-        self.bytes.len()
-    }
+    Ok(())
 }
 
 // ============================================================================
-// Partial Message Parsing
+// Duration Conversion
 // ============================================================================
 
-/// Parse only specific fields from a message
-pub struct PartialParser<'a> {
-    bytes: &'a [u8],
+/// Converts std::time::Duration to proto seconds
+pub fn duration_to_proto_seconds(duration: std::time::Duration) -> i64 {
+    duration.as_secs() as i64
 }
 
-impl<'a> PartialParser<'a> {
-    /// Create a new partial parser
-    pub fn new(bytes: &'a [u8]) -> Self {
-        Self { bytes }
+/// Converts proto seconds to std::time::Duration
+pub fn proto_seconds_to_duration(seconds: i64) -> Result<std::time::Duration> {
+    if seconds < 0 {
+        return Err(SafeOpsError::invalid_input(format!(
+            "Duration cannot be negative: {}",
+            seconds
+        )));
     }
-    
-    /// Try to extract a field by tag number (limited implementation)
-    /// Note: This is a simplified version - full implementation would use prost internals
-    pub fn has_field(&self, tag: u32) -> bool {
-        // Simplified check - in production, use proper protobuf wire format parsing
-        !self.bytes.is_empty() && tag > 0
-    }
-    
-    /// Get full message size
-    pub fn size(&self) -> usize {
-        self.bytes.len()
-    }
+    Ok(std::time::Duration::from_secs(seconds as u64))
 }
-
-// ============================================================================
-// Streaming Serialization
-// ============================================================================
-
-/// Streaming encoder for large messages
-pub struct StreamingEncoder<W: Write> {
-    writer: W,
-    total_written: usize,
-}
-
-impl<W: Write> StreamingEncoder<W> {
-    /// Create a new streaming encoder
-    pub fn new(writer: W) -> Self {
-        Self {
-            writer,
-            total_written: 0,
-        }
-    }
-    
-    /// Write a message with length prefix
-    pub fn write_message<M: Message>(&mut self, msg: &M) -> Result<()> {
-        let bytes = msg.encode_to_vec();
-        let len = bytes.len() as u32;
-        
-        self.writer.write_all(&len.to_be_bytes()).map_err(Error::Io)?;
-        self.writer.write_all(&bytes).map_err(Error::Io)?;
-        
-        self.total_written += 4 + bytes.len();
-        Ok(())
-    }
-    
-    /// Write multiple messages
-    pub fn write_batch<M: Message>(&mut self, messages: &[M]) -> Result<()> {
-        for msg in messages {
-            self.write_message(msg)?;
-        }
-        Ok(())
-    }
-    
-    /// Get total bytes written
-    pub fn total_written(&self) -> usize {
-        self.total_written
-    }
-    
-    /// Flush the underlying writer
-    pub fn flush(&mut self) -> Result<()> {
-        self.writer.flush().map_err(Error::Io)
-    }
-}
-
-/// Streaming decoder for large messages
-pub struct StreamingDecoder<R: Read> {
-    reader: R,
-    total_read: usize,
-}
-
-impl<R: Read> StreamingDecoder<R> {
-    /// Create a new streaming decoder
-    pub fn new(reader: R) -> Self {
-        Self {
-            reader,
-            total_read: 0,
-        }
-    }
-    
-    /// Read next message
-    pub fn read_message<M: Message + Default>(&mut self) -> Result<Option<M>> {
-        let mut len_bytes = [0u8; 4];
-        
-        match self.reader.read_exact(&mut len_bytes) {
-            Ok(()) => {},
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
-            Err(e) => return Err(Error::Io(e)),
-        }
-        
-        let len = u32::from_be_bytes(len_bytes) as usize;
-        let mut msg_bytes = vec![0u8; len];
-        
-        self.reader.read_exact(&mut msg_bytes).map_err(Error::Io)?;
-        self.total_read += 4 + len;
-        
-        let msg = decode(&msg_bytes)?;
-        Ok(Some(msg))
-    }
-    
-    /// Get total bytes read
-    pub fn total_read(&self) -> usize {
-        self.total_read
-    }
-}
-
-// ============================================================================
-// Validation Helpers
-// ============================================================================
-
-/// Trait for validating protobuf messages
-pub trait Validate {
-    /// Validate the message
-    fn validate(&self) -> Result<()>;
-}
-
-/// Validate a message if it implements Validate trait
-pub fn validate<M: Validate>(msg: &M) -> Result<()> {
-    msg.validate()
-}
-
-/// Decode and validate in one step
-pub fn decode_validated<M: Message + Default + Validate>(bytes: &[u8]) -> Result<M> {
-    let msg = decode(bytes)?;
-    msg.validate()?;
-    Ok(msg)
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
-    // Simple test message for testing
-    #[derive(Clone, PartialEq, prost::Message)]
-    pub struct TestMessage {
-        #[prost(string, tag = "1")]
-        pub name: String,
-        #[prost(int32, tag = "2")]
-        pub value: i32,
+
+    #[test]
+    fn test_timestamp_conversion() {
+        let ts = 1234567890i64;
+        let (secs, nanos) = timestamp_to_proto(ts);
+        let converted = proto_to_timestamp(secs, nanos);
+        assert_eq!(converted, ts);
     }
 
     #[test]
-    fn test_encode_decode() {
-        let msg = TestMessage {
-            name: "test".to_string(),
-            value: 42,
-        };
-        
-        let bytes = encode(&msg);
-        let decoded: TestMessage = decode(&bytes).unwrap();
-        
-        assert_eq!(msg, decoded);
+    fn test_validate_proto_string() {
+        assert!(validate_proto_string("valid", "test", 100).is_ok());
+        assert!(validate_proto_string("", "test", 100).is_err());
+        assert!(validate_proto_string("too long string", "test", 5).is_err());
     }
 
     #[test]
-    fn test_length_prefixed() {
-        let msg = TestMessage {
-            name: "hello".to_string(),
-            value: 123,
-        };
-        
-        let bytes = encode_length_prefixed(&msg);
-        let (decoded, consumed): (TestMessage, _) = decode_length_prefixed(&bytes).unwrap();
-        
-        assert_eq!(msg, decoded);
-        assert_eq!(consumed, bytes.len());
+    fn test_validate_port() {
+        assert!(validate_proto_port(80).is_ok());
+        assert!(validate_proto_port(65535).is_ok());
+        assert!(validate_proto_port(65536).is_err());
     }
 
     #[test]
-    fn test_batch_encoding() {
-        let messages = vec![
-            TestMessage { name: "one".to_string(), value: 1 },
-            TestMessage { name: "two".to_string(), value: 2 },
-            TestMessage { name: "three".to_string(), value: 3 },
-        ];
-        
-        let bytes = encode_batch(&messages);
-        let decoded: Vec<TestMessage> = decode_batch(&bytes).unwrap();
-        
-        assert_eq!(messages, decoded);
+    fn test_validate_confidence() {
+        assert!(validate_confidence(0.0).is_ok());
+        assert!(validate_confidence(0.5).is_ok());
+        assert!(validate_confidence(1.0).is_ok());
+        assert!(validate_confidence(-0.1).is_err());
+        assert!(validate_confidence(1.1).is_err());
     }
 
     #[test]
-    fn test_message_iterator() {
-        let msg1 = TestMessage { name: "first".to_string(), value: 1 };
-        let msg2 = TestMessage { name: "second".to_string(), value: 2 };
-        
-        let mut bytes = encode_length_prefixed(&msg1);
-        bytes.extend(encode_length_prefixed(&msg2));
-        
-        let mut iter = MessageIterator::<TestMessage>::new(&bytes);
-        
-        assert_eq!(iter.next().unwrap().unwrap(), msg1);
-        assert_eq!(iter.next().unwrap().unwrap(), msg2);
-        assert!(iter.next().is_none());
+    fn test_validate_reputation_score() {
+        assert!(validate_reputation_score(0).is_ok());
+        assert!(validate_reputation_score(100).is_ok());
+        assert!(validate_reputation_score(-100).is_ok());
+        assert!(validate_reputation_score(101).is_err());
+        assert!(validate_reputation_score(-101).is_err());
     }
 
     #[test]
-    fn test_encoding_buffer() {
-        let mut buffer = EncodingBuffer::new(1024);
+    fn test_ip_conversion() {
+        let ipv4 = IPAddress::from(Ipv4Addr::new(192, 168, 1, 1));
+        let (is_v6, bytes) = ip_to_proto_bytes(&ipv4);
+        assert!(!is_v6);
+        assert_eq!(bytes, vec![192, 168, 1, 1]);
         
-        let msg = TestMessage {
-            name: "test".to_string(),
-            value: 42,
-        };
-        
-        let bytes = buffer.encode(&msg);
-        let decoded: TestMessage = decode(bytes).unwrap();
-        
-        assert_eq!(msg, decoded);
+        let converted = ip_from_proto_bytes(is_v6, &bytes).unwrap();
+        assert_eq!(converted, ipv4);
     }
 
     #[test]
-    fn test_buffer_pool() {
-        let pool = BufferPool::new(1024, 10);
-        
-        let msg = TestMessage {
-            name: "pooled".to_string(),
-            value: 123,
-        };
-        
-        let encoded = pool.encode_pooled(&msg);
-        let decoded: TestMessage = decode(&encoded).unwrap();
-        
-        assert_eq!(msg, decoded);
+    fn test_protocol_conversion() {
+        assert_eq!(protocol_to_name(PROTOCOL_TCP), "TCP");
+        assert_eq!(protocol_to_name(PROTOCOL_UDP), "UDP");
+        assert_eq!(protocol_from_name("TCP").unwrap(), PROTOCOL_TCP);
+        assert_eq!(protocol_from_name("udp").unwrap(), PROTOCOL_UDP);
     }
 
     #[test]
-    fn test_message_builder() {
-        let msg = ProtoBuilder::<TestMessage>::new()
-            .with(|m| {
-                m.name = "builder".to_string();
-                m.value = 999;
-            })
-            .build();
+    fn test_duration_conversion() {
+        let duration = std::time::Duration::from_secs(300);
+        let seconds = duration_to_proto_seconds(duration);
+        assert_eq!(seconds, 300);
         
-        assert_eq!(msg.name, "builder");
-        assert_eq!(msg.value, 999);
+        let converted = proto_seconds_to_duration(seconds).unwrap();
+        assert_eq!(converted, duration);
     }
 
     #[test]
-    fn test_lazy_message() {
-        let original = TestMessage {
-            name: "lazy".to_string(),
-            value: 42,
-        };
-        
-        let bytes = encode(&original);
-        let mut lazy = LazyMessage::new(bytes);
-        
-        assert!(!lazy.is_cached());
-        
-        let msg = lazy.get().unwrap();
-        assert_eq!(msg.name, "lazy");
-        assert_eq!(msg.value, 42);
-        
-        assert!(lazy.is_cached());
-    }
-
-    #[test]
-    fn test_streaming_encode_decode() {
-        let messages = vec![
-            TestMessage { name: "msg1".to_string(), value: 1 },
-            TestMessage { name: "msg2".to_string(), value: 2 },
-            TestMessage { name: "msg3".to_string(), value: 3 },
-        ];
-        
-        // Encode to buffer
-        let mut buffer = Vec::new();
-        {
-            let mut encoder = StreamingEncoder::new(&mut buffer);
-            encoder.write_batch(&messages).unwrap();
-        }
-        
-        // Decode from buffer
-        let mut decoded = Vec::new();
-        {
-            let mut decoder = StreamingDecoder::new(buffer.as_slice());
-            while let Some(msg) = decoder.read_message::<TestMessage>().unwrap() {
-                decoded.push(msg);
-            }
-        }
-        
-        assert_eq!(messages, decoded);
-    }
-
-    #[test]
-    fn test_partial_parser() {
-        let msg = TestMessage {
-            name: "partial".to_string(),
-            value: 42,
-        };
-        
-        let bytes = encode(&msg);
-        let parser = PartialParser::new(&bytes);
-        
-        assert!(parser.has_field(1)); // name field
-        assert_eq!(parser.size(), bytes.len());
-    }
-
-    #[test]
-    fn test_encoded_size() {
-        let msg = TestMessage {
-            name: "size_test".to_string(),
-            value: 42,
-        };
-        
-        let size = encoded_size(&msg);
-        let bytes = encode(&msg);
-        
-        assert_eq!(size, bytes.len());
+    fn test_missing_field_error() {
+        let err = missing_field_error("test_field");
+        assert!(format!("{}", err).contains("test_field"));
     }
 }

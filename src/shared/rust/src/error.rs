@@ -1,295 +1,238 @@
-//! Common error types and error handling utilities
+//! Error types for SafeOps shared library
 //!
-//! Provides consistent error management across all SafeOps services
-//! with comprehensive error context, chain traversal, and reporting.
-//!
-//! # Features
-//! - **System Errors**: IO, network, permission, resource exhaustion
-//! - **Application Errors**: Configuration, validation, parse, state errors
-//! - **Error Context**: Rich context wrapping with source tracking
-//! - **Error Codes**: HTTP-style error codes for API responses
-//! - **Error Reporting**: Structured logging and metrics integration
-//! - **Error Chain**: Full error chain traversal and debugging
-//!
-//! # Error Handling Patterns
-//! ```rust,ignore
-//! use safeops_shared::error::{Error, Result, ResultExt};
-//!
-//! fn example() -> Result<()> {
-//!     let data = load_config()
-//!         .context("Failed to load configuration")?;
-//!     Ok(())
-//! }
-//! ```
+//! This module provides a unified error type that consolidates all possible error
+//! conditions across the shared library. It supports automatic error conversion,
+//! error context chains, and integration with gRPC status codes.
 
 use thiserror::Error;
 
-/// Main error type for the SafeOps shared library
+/// Primary error type representing all error conditions in SafeOps shared library
 #[derive(Error, Debug)]
-pub enum Error {
-    /// Parse error (invalid format)
-    #[error("Parse error: {0}")]
-    Parse(String),
-    
-    /// Invalid input error
-    #[error("Invalid input: {0}")]
-    InvalidInput(String),
-    
-    /// I/O error
+pub enum SafeOpsError {
+    /// File system, network socket, or standard I/O errors
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    
-    /// Memory allocation error
-    #[error("Memory allocation failed: {0}")]
-    Allocation(String),
-    
-    /// Pool exhausted error
-    #[error("Pool exhausted: {0}")]
-    PoolExhausted(String),
-    
-    /// Timeout error
-    #[error("Operation timed out: {0}")]
-    Timeout(String),
-    
-    /// Lock error
-    #[error("Lock acquisition failed: {0}")]
-    Lock(String),
-    
-    /// Queue full error
-    #[error("Queue is full")]
-    QueueFull,
-    
-    /// Queue empty error
-    #[error("Queue is empty")]
-    QueueEmpty,
-    
-    /// Capacity exceeded error
-    #[error("Capacity exceeded: {0}")]
-    CapacityExceeded(String),
-    
-    /// Not found error
-    #[error("Not found: {0}")]
-    NotFound(String),
-    
-    /// Already exists error
-    #[error("Already exists: {0}")]
-    AlreadyExists(String),
-    
-    /// Configuration error
+
+    /// Network connection failures, timeouts, or DNS errors
+    #[error("Network error: {0}")]
+    Network(String),
+
+    /// Data format parsing failures (JSON, binary, packets)
+    #[error("Parse error: {0}")]
+    Parse(String),
+
+    /// Hashing operation failures
+    #[error("Hash error: {0}")]
+    Hash(String),
+
+    /// gRPC call errors from other services
+    #[error("gRPC error: {0}")]
+    Grpc(#[from] tonic::Status),
+
+    /// Serialization or deserialization errors
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
+    /// Database connection or query failures
+    #[error("Database error: {0}")]
+    Database(String),
+
+    /// Configuration loading or validation errors
     #[error("Configuration error: {0}")]
     Config(String),
-    
-    /// Serialization error
-    #[error("Serialization error: {0}")]
-    Serialization(String),
-    
-    /// Deserialization error
-    #[error("Deserialization error: {0}")]
-    Deserialization(String),
-    
-    /// Internal error
+
+    /// User or external data validation failures
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
+    /// Operations exceeding time limits
+    #[error("Operation timed out")]
+    Timeout,
+
+    /// Resource not found (rules, indicators, connections)
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    /// Authorization failures
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    /// Unexpected internal errors
     #[error("Internal error: {0}")]
     Internal(String),
 }
 
-/// Error code for API responses
+/// Convenience Result type alias using SafeOpsError
+///
+/// Allows functions to return `Result<T>` instead of `Result<T, SafeOpsError>`
+pub type Result<T> = std::result::Result<T, SafeOpsError>;
+
+/// Error category for classification
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ErrorCode {
-    // Client errors (4xx)
-    InvalidInput = 400,
-    Unauthorized = 401,
-    Forbidden = 403,
-    NotFound = 404,
-    AlreadyExists = 409,
-    
-    // Server errors (5xx)
-    Internal = 500,
-    NotImplemented = 501,
-    ServiceUnavailable = 503,
-    Timeout = 504,
+pub enum ErrorCategory {
+    /// Transient errors that may succeed on retry
+    Transient,
+    /// Permanent errors that won't succeed on retry
+    Permanent,
+    /// User-caused errors (invalid input, not found)
+    UserError,
+    /// System errors (internal failures, database issues)
+    SystemError,
 }
 
-impl Error {
-    /// Get the error code for this error
-    pub fn code(&self) -> ErrorCode {
-        match self {
-            Error::Parse(_) | Error::InvalidInput(_) => ErrorCode::InvalidInput,
-            Error::NotFound(_) => ErrorCode::NotFound,
-            Error::AlreadyExists(_) => ErrorCode::AlreadyExists,
-            Error::Timeout(_) => ErrorCode::Timeout,
-            Error::Config(_) | Error::Serialization(_) | Error::Deserialization(_) => {
-                ErrorCode::InvalidInput
-            }
-            Error::Io(_) | Error::Allocation(_) | Error::PoolExhausted(_) | 
-            Error::Lock(_) | Error::QueueFull | Error::QueueEmpty | 
-            Error::CapacityExceeded(_) | Error::Internal(_) => ErrorCode::Internal,
-        }
+impl SafeOpsError {
+    // ========================================================================
+    // Constructor Functions
+    // ========================================================================
+
+    /// Creates a Network error
+    pub fn network<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::Network(msg.into())
     }
-    
-    /// Get a user-friendly error message
-    pub fn user_message(&self) -> String {
-        match self {
-            Error::Parse(msg) => format!("Invalid format: {}", msg),
-            Error::InvalidInput(msg) => format!("Invalid input: {}", msg),
-            Error::NotFound(msg) => format!("{} not found", msg),
-            Error::AlreadyExists(msg) => format!("{} already exists", msg),
-            Error::Timeout(msg) => format!("Operation timed out: {}", msg),
-            Error::Config(msg) => format!("Configuration error: {}", msg),
-            Error::Io(_) => "I/O operation failed".to_string(),
-            Error::Allocation(_) => "Memory allocation failed".to_string(),
-            Error::PoolExhausted(_) => "Resource pool exhausted".to_string(),
-            Error::Lock(_) => "Lock acquisition failed".to_string(),
-            Error::QueueFull => "Queue is full".to_string(),
-            Error::QueueEmpty => "Queue is empty".to_string(),
-            Error::CapacityExceeded(_) => "Capacity limit exceeded".to_string(),
-            Error::Serialization(_) | Error::Deserialization(_) => {
-                "Data conversion failed".to_string()
-            }
-            Error::Internal(_) => "Internal server error".to_string(),
-        }
+
+    /// Creates an Internal error
+    pub fn internal<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::Internal(msg.into())
     }
-    
-    /// Check if error is retryable
-    pub fn is_retryable(&self) -> bool {
+
+    /// Creates a Parse error
+    pub fn parse<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::Parse(msg.into())
+    }
+
+    /// Creates an InvalidInput error
+    pub fn invalid_input<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::InvalidInput(msg.into())
+    }
+
+    /// Creates a Hash error
+    pub fn hash_error<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::Hash(msg.into())
+    }
+
+    /// Creates a Config error
+    pub fn config<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::Config(msg.into())
+    }
+
+    /// Creates a Database error
+    pub fn database<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::Database(msg.into())
+    }
+
+    /// Creates a NotFound error
+    pub fn not_found<S: Into<String>>(msg: S) -> Self {
+        SafeOpsError::NotFound(msg.into())
+    }
+
+    // ========================================================================
+    // Classification Methods
+    // ========================================================================
+
+    /// Returns true if this error is recoverable (transient)
+    ///
+    /// Recoverable errors may succeed if retried, such as network timeouts,
+    /// temporary connection failures, or gRPC unavailable errors.
+    pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
-            Error::Timeout(_) | Error::Io(_) | Error::Lock(_) |
-            Error::QueueFull | Error::PoolExhausted(_)
+            SafeOpsError::Network(_)
+                | SafeOpsError::Timeout
+                | SafeOpsError::Grpc(_)
+                | SafeOpsError::Database(_)
         )
     }
-}
 
-/// Result type alias for SafeOps operations
-pub type Result<T> = std::result::Result<T, Error>;
+    /// Returns true if this error is permanent (non-recoverable)
+    ///
+    /// Permanent errors will not succeed on retry, such as parse errors,
+    /// invalid input, or permission denied.
+    pub fn is_permanent(&self) -> bool {
+        matches!(
+            self,
+            SafeOpsError::Parse(_)
+                | SafeOpsError::InvalidInput(_)
+                | SafeOpsError::PermissionDenied(_)
+                | SafeOpsError::Serialization(_)
+        )
+    }
 
-/// Extension trait for converting Option to Result
-pub trait OptionExt<T> {
-    /// Convert Option to Result with a custom error message
-    fn ok_or_not_found(self, msg: &str) -> Result<T>;
-}
+    /// Returns the error category for classification and handling
+    pub fn error_category(&self) -> ErrorCategory {
+        match self {
+            SafeOpsError::Network(_) | SafeOpsError::Timeout | SafeOpsError::Grpc(_) => {
+                ErrorCategory::Transient
+            }
+            SafeOpsError::Parse(_) | SafeOpsError::Serialization(_) => ErrorCategory::Permanent,
+            SafeOpsError::InvalidInput(_)
+            | SafeOpsError::NotFound(_)
+            | SafeOpsError::PermissionDenied(_) => ErrorCategory::UserError,
+            SafeOpsError::Io(_)
+            | SafeOpsError::Hash(_)
+            | SafeOpsError::Database(_)
+            | SafeOpsError::Config(_)
+            | SafeOpsError::Internal(_) => ErrorCategory::SystemError,
+        }
+    }
 
-impl<T> OptionExt<T> for Option<T> {
-    fn ok_or_not_found(self, msg: &str) -> Result<T> {
-        self.ok_or_else(|| Error::NotFound(msg.to_string()))
+    // ========================================================================
+    // Conversion Methods
+    // ========================================================================
+
+    /// Converts SafeOpsError to gRPC tonic::Status for service responses
+    ///
+    /// Maps error variants to appropriate gRPC status codes:
+    /// - InvalidInput, Parse → InvalidArgument
+    /// - NotFound → NotFound
+    /// - PermissionDenied → PermissionDenied
+    /// - Timeout → DeadlineExceeded
+    /// - Network → Unavailable
+    /// - Others → Internal
+    pub fn to_status(&self) -> tonic::Status {
+        match self {
+            SafeOpsError::InvalidInput(msg) | SafeOpsError::Parse(msg) => {
+                tonic::Status::invalid_argument(msg)
+            }
+            SafeOpsError::NotFound(msg) => tonic::Status::not_found(msg),
+            SafeOpsError::PermissionDenied(msg) => tonic::Status::permission_denied(msg),
+            SafeOpsError::Timeout => {
+                tonic::Status::deadline_exceeded("Operation timed out")
+            }
+            SafeOpsError::Network(msg) => tonic::Status::unavailable(msg),
+            SafeOpsError::Grpc(status) => status.clone(),
+            SafeOpsError::Io(err) => tonic::Status::internal(err.to_string()),
+            SafeOpsError::Hash(msg)
+            | SafeOpsError::Serialization(_)
+            | SafeOpsError::Database(msg)
+            | SafeOpsError::Config(msg)
+            | SafeOpsError::Internal(msg) => tonic::Status::internal(msg),
+        }
     }
 }
 
 /// Extension trait for adding context to errors
-pub trait ResultExt<T> {
-    /// Add context to an error
+///
+/// Enables error chaining with context messages:
+///
+/// ```
+/// use safeops_shared::error::{Result, ErrorContext};
+///
+/// fn process() -> Result<()> {
+///     read_file().context("Failed to read configuration")?;
+///     Ok(())
+/// }
+/// ```
+pub trait ErrorContext<T> {
+    /// Adds context message to the error
     fn context(self, msg: &str) -> Result<T>;
 }
 
-impl<T, E: std::error::Error + 'static> ResultExt<T> for std::result::Result<T, E> {
+impl<T, E> ErrorContext<T> for std::result::Result<T, E>
+where
+    E: std::fmt::Display,
+{
     fn context(self, msg: &str) -> Result<T> {
-        self.map_err(|e| Error::Internal(format!("{}: {}", msg, e)))
-    }
-}
-
-// ============================================================================
-// Error Context and Chain
-// ============================================================================
-
-/// Error with context information
-#[derive(Debug)]
-pub struct ErrorContext {
-    pub error: Error,
-    pub context: Vec<String>,
-    pub location: Option<String>,
-}
-
-impl ErrorContext {
-    /// Create a new error context
-    pub fn new(error: Error) -> Self {
-        Self {
-            error,
-            context: Vec::new(),
-            location: None,
-        }
-    }
-    
-    /// Add context information
-    pub fn with_context(mut self, msg: impl Into<String>) -> Self {
-        self.context.push(msg.into());
-        self
-    }
-    
-    /// Set the error location
-    pub fn with_location(mut self, file: &str, line: u32) -> Self {
-        self.location = Some(format!("{}:{}", file, line));
-        self
-    }
-    
-    /// Get the full error chain as a string
-    pub fn error_chain(&self) -> String {
-        let mut chain = vec![format!("Error: {}", self.error)];
-        
-        if !self.context.is_empty() {
-            chain.push(format!("Context: {}", self.context.join(" -> ")));
-        }
-        
-        if let Some(ref loc) = self.location {
-            chain.push(format!("Location: {}", loc));
-        }
-        
-        // Add source error if available
-        if let Some(source) = std::error::Error::source(&self.error) {
-            chain.push(format!("Caused by: {}", source));
-        }
-        
-        chain.join("\n")
-    }
-}
-
-impl std::fmt::Display for ErrorContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.error_chain())
-    }
-}
-
-impl std::error::Error for ErrorContext {}
-
-/// Macro for creating errors with file/line information
-#[macro_export]
-macro_rules! error_here {
-    ($err:expr) => {
-        ErrorContext::new($err).with_location(file!(), line!())
-    };
-    ($err:expr, $ctx:expr) => {
-        ErrorContext::new($err)
-            .with_context($ctx)
-            .with_location(file!(), line!())
-    };
-}
-
-// ============================================================================
-// Error Reporting
-// ============================================================================
-
-/// Error metrics for monitoring
-#[derive(Debug, Clone, Default)]
-pub struct ErrorMetrics {
-    pub total_errors: u64,
-    pub retryable_errors: u64,
-    pub client_errors: u64,
-    pub server_errors: u64,
-}
-
-impl ErrorMetrics {
-    /// Record an error
-    pub fn record(&mut self, error: &Error) {
-        self.total_errors += 1;
-        
-        if error.is_retryable() {
-            self.retryable_errors += 1;
-        }
-        
-        match error.code() {
-            ErrorCode::InvalidInput | ErrorCode::Unauthorized |
-            ErrorCode::Forbidden | ErrorCode::NotFound |
-            ErrorCode::AlreadyExists => self.client_errors += 1,
-            _ => self.server_errors += 1,
-        }
+        self.map_err(|e| SafeOpsError::Internal(format!("{}: {}", msg, e)))
     }
 }
 
@@ -298,74 +241,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_error_display() {
-        let e = Error::Parse("invalid IP".to_string());
-        assert_eq!(format!("{}", e), "Parse error: invalid IP");
+    fn test_error_constructors() {
+        let err = SafeOpsError::network("Connection failed");
+        assert!(matches!(err, SafeOpsError::Network(_)));
+
+        let err = SafeOpsError::parse("Invalid format");
+        assert!(matches!(err, SafeOpsError::Parse(_)));
     }
 
     #[test]
-    fn test_option_ext() {
-        let opt: Option<i32> = None;
-        let result = opt.ok_or_not_found("item");
-        assert!(matches!(result, Err(Error::NotFound(_))));
+    fn test_is_recoverable() {
+        assert!(SafeOpsError::network("test").is_recoverable());
+        assert!(SafeOpsError::Timeout.is_recoverable());
+        assert!(!SafeOpsError::parse("test").is_recoverable());
+        assert!(!SafeOpsError::invalid_input("test").is_recoverable());
     }
 
     #[test]
-    fn test_result_ext() {
-        let result: std::result::Result<i32, std::io::Error> = 
-            Err(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found"));
-        let wrapped = result.context("loading config");
-        assert!(matches!(wrapped, Err(Error::Internal(_))));
+    fn test_error_category() {
+        assert_eq!(
+            SafeOpsError::network("test").error_category(),
+            ErrorCategory::Transient
+        );
+        assert_eq!(
+            SafeOpsError::parse("test").error_category(),
+            ErrorCategory::Permanent
+        );
+        assert_eq!(
+            SafeOpsError::invalid_input("test").error_category(),
+            ErrorCategory::UserError
+        );
+        assert_eq!(
+            SafeOpsError::internal("test").error_category(),
+            ErrorCategory::SystemError
+        );
     }
 
     #[test]
-    fn test_error_code() {
-        assert_eq!(Error::Parse("test".to_string()).code(), ErrorCode::InvalidInput);
-        assert_eq!(Error::NotFound("item".to_string()).code(), ErrorCode::NotFound);
-        assert_eq!(Error::Timeout("op".to_string()).code(), ErrorCode::Timeout);
-    }
+    fn test_to_status() {
+        let err = SafeOpsError::not_found("resource");
+        let status = err.to_status();
+        assert_eq!(status.code(), tonic::Code::NotFound);
 
-    #[test]
-    fn test_user_message() {
-        let err = Error::NotFound("user".to_string());
-        assert_eq!(err.user_message(), "user not found");
-        
-        let err = Error::QueueFull;
-        assert_eq!(err.user_message(), "Queue is full");
-    }
-
-    #[test]
-    fn test_retryable() {
-        assert!(Error::Timeout("test".to_string()).is_retryable());
-        assert!(Error::QueueFull.is_retryable());
-        assert!(!Error::NotFound("test".to_string()).is_retryable());
-    }
-
-    #[test]
-    fn test_error_context() {
-        let err = Error::Parse("invalid data".to_string());
-        let ctx = ErrorContext::new(err)
-            .with_context("reading file")
-            .with_context("loading config")
-            .with_location("test.rs", 100);
-        
-        let chain = ctx.error_chain();
-        assert!(chain.contains("Parse error"));
-        assert!(chain.contains("Context:"));
-        assert!(chain.contains("Location: test.rs:100"));
-    }
-
-    #[test]
-    fn test_error_metrics() {
-        let mut metrics = ErrorMetrics::default();
-        
-        metrics.record(&Error::NotFound("test".to_string()));
-        metrics.record(&Error::Timeout("op".to_string()));
-        metrics.record(&Error::Internal("bug".to_string()));
-        
-        assert_eq!(metrics.total_errors, 3);
-        assert_eq!(metrics.retryable_errors, 1); // Timeout is retryable
-        assert_eq!(metrics.client_errors, 1); // NotFound
-        assert_eq!(metrics.server_errors, 2); // Timeout + Internal
+        let err = SafeOpsError::Timeout;
+        let status = err.to_status();
+        assert_eq!(status.code(), tonic::Code::DeadlineExceeded);
     }
 }

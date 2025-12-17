@@ -1,622 +1,404 @@
-//! Object pooling system for zero-allocation packet processing
+//! Object pooling for high-frequency allocations in packet processing
 //!
-//! Provides memory-efficient object reuse to reduce allocation overhead
-//! in high-throughput packet processing and connection tracking.
-//!
-//! # Pool Types
-//! - **Fixed-size object pools**: Reusable typed objects with factory functions
-//! - **Variable-size buffer pools**: Byte buffers with size classes
-//! - **Thread-local pools**: Per-thread pools to avoid contention
-//! - **Global shared pools**: Lock-free concurrent pools
-//!
-//! # Performance Features
-//! - Lock-free for single-threaded access
-//! - Per-thread pools to eliminate contention
-//! - Batch allocation/deallocation operations
-//! - Zero fragmentation with fixed size classes
-//! - Automatic pool resizing with configurable growth policies
-//!
-//! # Memory Management
-//! - Pre-allocated memory regions
-//! - NUMA-aware allocation (prepared for future)
-//! - Memory usage tracking and monitoring
-//! - Configurable pool size limits
+//! Provides pre-allocated, reusable objects that are reset and returned to pool
+//! after use, enabling zero-allocation packet handling. Implements generic pool
+//! that works with any type, uses Drop trait for automatic return to pool.
 
-use crossbeam::queue::ArrayQueue;
-use parking_lot::Mutex;
-use std::cell::RefCell;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use crate::error::{Result, SafeOpsError};
+use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, Weak};
 
-use crate::error::{Error, Result};
+/// Trait for types that can be reset to initial state before reuse
+pub trait Resettable {
+    /// Resets the object to its initial state
+    fn reset(&mut self);
+}
 
-// ============================================================================
-// Object Pool
-// ============================================================================
+// Implement Resettable for common types
+impl<T> Resettable for Vec<T> {
+    fn reset(&mut self) {
+        self.clear();
+    }
+}
 
-/// Statistics for pool usage
-#[derive(Debug, Default, Clone)]
+impl Resettable for String {
+    fn reset(&mut self) {
+        self.clear();
+    }
+}
+
+/// Pool statistics for monitoring
+#[derive(Debug, Clone)]
 pub struct PoolStats {
-    /// Number of objects created
-    pub created: usize,
-    /// Number of objects acquired
-    pub acquired: usize,
-    /// Number of objects released
-    pub released: usize,
-    /// Current pool size
-    pub pool_size: usize,
-    /// Maximum pool size reached
-    pub max_pool_size: usize,
-    /// Total memory allocated (bytes)
-    pub memory_allocated: usize,
-    /// Peak memory usage (bytes)
-    pub peak_memory: usize,
-    /// Number of pool misses (had to allocate new)
-    pub misses: usize,
-    /// Number of pool hits (reused from pool)
-    pub hits: usize,
+    /// Number of objects currently available in pool
+    pub available: usize,
+    /// Number of objects currently checked out
+    pub in_use: usize,
+    /// Total number of acquire calls over pool lifetime
+    pub total_allocations: u64,
+    /// Number of times pool was exhausted and had to allocate
+    pub pool_exhaustions: u64,
+    /// Maximum pool capacity
+    pub capacity: usize,
 }
 
-/// Pool growth policy
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GrowthPolicy {
-    /// Never grow beyond initial capacity
-    Fixed,
-    /// Grow by a fixed amount
-    Linear(usize),
-    /// Double the capacity each time
-    Exponential,
-    /// Grow up to a maximum size
-    BoundedLinear { step: usize, max: usize },
+/// Generic object pool for high-frequency allocations
+///
+/// Preallocates objects and reuses them to eliminate allocation overhead
+/// in hot paths. Thread-safe and supports any type T.
+pub struct MemoryPool<T> {
+    /// Maximum pool size
+    capacity: usize,
+    /// Free objects available for use
+    available: Arc<Mutex<Vec<T>>>,
+    /// Total number of objects allocated over pool lifetime
+    total_allocated: AtomicUsize,
+    /// Number of objects currently in use
+    current_in_use: AtomicUsize,
+    /// Total number of acquire calls
+    allocation_count: AtomicU64,
+    /// Number of times pool was exhausted
+    exhaustion_count: AtomicU64,
 }
 
-/// A thread-safe object pool
-/// 
-/// Objects are created on-demand and returned to the pool when dropped.
-pub struct ObjectPool<T> {
-    /// Lock-free queue for pooled objects
-    pool: ArrayQueue<T>,
-    /// Factory function to create new objects
-    factory: Box<dyn Fn() -> T + Send + Sync>,
-    /// Reset function to clear object state
-    reset: Box<dyn Fn(&mut T) + Send + Sync>,
-    /// Statistics
-    created: AtomicUsize,
-    acquired: AtomicUsize,
-    released: AtomicUsize,
-    misses: AtomicUsize,
-    hits: AtomicUsize,
-    memory_allocated: AtomicUsize,
-    peak_memory: AtomicUsize,
-    /// Growth policy
-    growth_policy: GrowthPolicy,
+impl<T> MemoryPool<T>
+where
+    T: Default,
+{
+    /// Creates a new memory pool with specified capacity
+    ///
+    /// Preallocates `capacity` objects using T::default()
+    pub fn new(capacity: usize) -> Self {
+        Self::with_initializer(capacity, T::default)
+    }
 }
 
-impl<T: Send> ObjectPool<T> {
-    /// Create a new object pool
-    /// 
-    /// # Arguments
-    /// * `capacity` - Maximum number of objects to pool
-    /// * `factory` - Function to create new objects
-    /// * `reset` - Function to reset object state before reuse
-    pub fn new<F, R>(capacity: usize, factory: F, reset: R) -> Self
+impl<T> MemoryPool<T> {
+    /// Creates a new memory pool with custom object initializer
+    ///
+    /// Calls `init` function for each object during preallocation
+    pub fn with_initializer<F>(capacity: usize, init: F) -> Self
     where
-        F: Fn() -> T + Send + Sync + 'static,
-        R: Fn(&mut T) + Send + Sync + 'static,
+        F: Fn() -> T,
     {
-        Self {
-            pool: ArrayQueue::new(capacity),
-            factory: Box::new(factory),
-            reset: Box::new(reset),
-            created: AtomicUsize::new(0),
-            acquired: AtomicUsize::new(0),
-            released: AtomicUsize::new(0),
-            misses: AtomicUsize::new(0),
-            hits: AtomicUsize::new(0),
-            memory_allocated: AtomicUsize::new(0),
-            peak_memory: AtomicUsize::new(0),
-            growth_policy: GrowthPolicy::Fixed,
+        let mut objects = Vec::with_capacity(capacity);
+        for _ in 0..capacity {
+            objects.push(init());
+        }
+
+        MemoryPool {
+            capacity,
+            available: Arc::new(Mutex::new(objects)),
+            total_allocated: AtomicUsize::new(capacity),
+            current_in_use: AtomicUsize::new(0),
+            allocation_count: AtomicU64::new(0),
+            exhaustion_count: AtomicU64::new(0),
         }
     }
-    
-    /// Create with growth policy
-    pub fn with_growth_policy<F, R>(
-        capacity: usize,
-        factory: F,
-        reset: R,
-        growth_policy: GrowthPolicy,
-    ) -> Self
+
+    /// Acquires an object from the pool
+    ///
+    /// Returns a PooledObject smart pointer that automatically returns
+    /// the object to the pool when dropped. If pool is empty, allocates
+    /// a new object (with warning).
+    pub fn acquire(&self) -> Result<PooledObject<T>>
     where
-        F: Fn() -> T + Send + Sync + 'static,
-        R: Fn(&mut T) + Send + Sync + 'static,
+        T: Default,
     {
-        let mut pool = Self::new(capacity, factory, reset);
-        pool.growth_policy = growth_policy;
-        pool
-    }
-    
-    /// Acquire an object from the pool or create a new one
-    pub fn acquire(&self) -> T {
-        self.acquired.fetch_add(1, Ordering::Relaxed);
-        
-        match self.pool.pop() {
-            Some(obj) => {
-                self.hits.fetch_add(1, Ordering::Relaxed);
-                obj
-            }
+        self.allocation_count.fetch_add(1, Ordering::Relaxed);
+
+        // Try to get object from pool
+        let obj = {
+            let mut available = self.available.lock().unwrap();
+            available.pop()
+        };
+
+        let obj = match obj {
+            Some(obj) => obj,
             None => {
-                self.misses.fetch_add(1, Ordering::Relaxed);
-                self.created.fetch_add(1, Ordering::Relaxed);
-                (self.factory)()
+                // Pool exhausted - allocate new object
+                self.exhaustion_count.fetch_add(1, Ordering::Relaxed);
+                
+                #[cfg(feature = "warn_pool_exhaustion")]
+                eprintln!("Warning: Memory pool exhausted, allocating new object");
+                
+                self.total_allocated.fetch_add(1, Ordering::Relaxed);
+                T::default()
             }
-        }
+        };
+
+        self.current_in_use.fetch_add(1, Ordering::Relaxed);
+
+        Ok(PooledObject {
+            obj: Some(obj),
+            pool: Arc::downgrade(&self.available),
+            in_use_counter: Some(Arc::clone(&Arc::new(self.current_in_use.clone()))),
+        })
     }
-    
-    /// Acquire multiple objects from the pool
-    pub fn acquire_batch(&self, count: usize) -> Vec<T> {
-        let mut objects = Vec::with_capacity(count);
+
+    /// Tries to acquire object from pool without allocating
+    ///
+    /// Returns None if pool is empty (doesn't allocate new objects)
+    pub fn try_acquire(&self) -> Option<PooledObject<T>> {
+        self.allocation_count.fetch_add(1, Ordering::Relaxed);
+
+        let obj = {
+            let mut available = self.available.lock().unwrap();
+            available.pop()
+        }?;
+
+        self.current_in_use.fetch_add(1, Ordering::Relaxed);
+
+        Some(PooledObject {
+            obj: Some(obj),
+            pool: Arc::downgrade(&self.available),
+            in_use_counter: Some(Arc::clone(&Arc::new(self.current_in_use.clone()))),
+        })
+    }
+
+    /// Preallocates additional objects and adds them to pool
+    pub fn preallocate(&self, count: usize)
+    where
+        T: Default,
+    {
+        let mut available = self.available.lock().unwrap();
         for _ in 0..count {
-            objects.push(self.acquire());
+            available.push(T::default());
         }
-        objects
+        self.total_allocated.fetch_add(count, Ordering::Relaxed);
     }
-    
-    /// Release an object back to the pool
-    /// 
-    /// If the pool is full, the object is dropped.
-    pub fn release(&self, mut obj: T) {
-        self.released.fetch_add(1, Ordering::Relaxed);
-        (self.reset)(&mut obj);
-        
-        // Try to return to pool, drop if full
-        let _ = self.pool.push(obj);
-    }
-    
-    /// Release multiple objects back to the pool
-    pub fn release_batch(&self, objects: Vec<T>) {
-        for obj in objects {
-            self.release(obj);
+
+    /// Removes excess objects from pool to reduce memory footprint
+    pub fn shrink(&self, target_size: usize) {
+        let mut available = self.available.lock().unwrap();
+        if available.len() > target_size {
+            available.truncate(target_size);
         }
     }
-    
-    /// Pre-populate the pool with objects
-    pub fn prefill(&self, count: usize) {
-        for _ in 0..count {
-            let obj = (self.factory)();
-            self.created.fetch_add(1, Ordering::Relaxed);
-            if self.pool.push(obj).is_err() {
-                break;
-            }
-        }
+
+    /// Clears all objects from pool and resets counters
+    pub fn clear(&self) {
+        let mut available = self.available.lock().unwrap();
+        available.clear();
+        self.current_in_use.store(0, Ordering::Relaxed);
     }
-    
-    /// Get pool statistics
+
+    /// Drains and returns all objects from pool
+    pub fn drain(&self) -> Vec<T> {
+        let mut available = self.available.lock().unwrap();
+        available.drain(..).collect()
+    }
+
+    /// Returns pool statistics
     pub fn stats(&self) -> PoolStats {
-        let memory = self.memory_allocated.load(Ordering::Relaxed);
-        let peak = self.peak_memory.load(Ordering::Relaxed);
-        
+        let available = self.available.lock().unwrap().len();
         PoolStats {
-            created: self.created.load(Ordering::Relaxed),
-            acquired: self.acquired.load(Ordering::Relaxed),
-            released: self.released.load(Ordering::Relaxed),
-            pool_size: self.pool.len(),
-            max_pool_size: self.pool.capacity(),
-            memory_allocated: memory,
-            peak_memory: peak,
-            misses: self.misses.load(Ordering::Relaxed),
-            hits: self.hits.load(Ordering::Relaxed),
+            available,
+            in_use: self.current_in_use.load(Ordering::Relaxed),
+            total_allocations: self.allocation_count.load(Ordering::Relaxed),
+            pool_exhaustions: self.exhaustion_count.load(Ordering::Relaxed),
+            capacity: self.capacity,
         }
     }
-    
-    /// Update memory tracking
-    pub fn track_memory(&self, bytes: usize) {
-        let new_total = self.memory_allocated.fetch_add(bytes, Ordering::Relaxed) + bytes;
-        
-        // Update peak if necessary
-        let mut peak = self.peak_memory.load(Ordering::Relaxed);
-        while new_total > peak {
-            match self.peak_memory.compare_exchange_weak(
-                peak,
-                new_total,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => break,
-                Err(x) => peak = x,
-            }
-        }
-    }
-    
-    /// Get current pool size
-    pub fn len(&self) -> usize {
-        self.pool.len()
-    }
-    
-    /// Check if pool is empty
-    pub fn is_empty(&self) -> bool {
-        self.pool.is_empty()
-    }
-    
-    /// Get pool capacity
-    pub fn capacity(&self) -> usize {
-        self.pool.capacity()
-    }
-}
 
-// ============================================================================
-// Pooled Object Handle
-// ============================================================================
-
-/// A handle to a pooled object that returns it to the pool on drop
-pub struct Pooled<T: Send + 'static> {
-    value: Option<T>,
-    pool: Arc<ObjectPool<T>>,
-}
-
-impl<T: Send + 'static> Pooled<T> {
-    /// Create a new pooled handle
-    pub fn new(pool: Arc<ObjectPool<T>>) -> Self {
-        let value = pool.acquire();
-        Self {
-            value: Some(value),
-            pool,
-        }
-    }
-    
-    /// Get a reference to the pooled value
-    pub fn get(&self) -> &T {
-        self.value.as_ref().unwrap()
-    }
-    
-    /// Get a mutable reference to the pooled value
-    pub fn get_mut(&mut self) -> &mut T {
-        self.value.as_mut().unwrap()
-    }
-    
-    /// Take ownership of the value (it won't be returned to pool)
-    pub fn take(mut self) -> T {
-        self.value.take().unwrap()
-    }
-}
-
-impl<T: Send + 'static> std::ops::Deref for Pooled<T> {
-    type Target = T;
-    
-    fn deref(&self) -> &Self::Target {
-        self.get()
-    }
-}
-
-impl<T: Send + 'static> std::ops::DerefMut for Pooled<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.get_mut()
-    }
-}
-
-impl<T: Send + 'static> Drop for Pooled<T> {
-    fn drop(&mut self) {
-        if let Some(value) = self.value.take() {
-            self.pool.release(value);
-        }
-    }
-}
-
-// ============================================================================
-// Sized Pool (for objects of fixed size)
-// ============================================================================
-
-/// Pool for fixed-size allocations
-pub struct SizedPool {
-    pools: Vec<ArrayQueue<Vec<u8>>>,
-    size_classes: Vec<usize>,
-}
-
-impl SizedPool {
-    /// Create a new sized pool with default size classes
-    pub fn new() -> Self {
-        Self::with_size_classes(&[64, 256, 1024, 4096, 16384, 65536])
-    }
-    
-    /// Create with custom size classes
-    pub fn with_size_classes(sizes: &[usize]) -> Self {
-        let pools = sizes.iter()
-            .map(|_| ArrayQueue::new(1024))
-            .collect();
-        
-        Self {
-            pools,
-            size_classes: sizes.to_vec(),
-        }
-    }
-    
-    /// Find the appropriate size class for a given size
-    fn find_size_class(&self, size: usize) -> Option<usize> {
-        self.size_classes.iter()
-            .position(|&s| s >= size)
-    }
-    
-    /// Allocate a buffer of at least the given size
-    pub fn allocate(&self, size: usize) -> Vec<u8> {
-        if let Some(idx) = self.find_size_class(size) {
-            if let Some(buf) = self.pools[idx].pop() {
-                return buf;
-            }
-            vec![0u8; self.size_classes[idx]]
+    /// Returns pool utilization as percentage (0.0 to 1.0)
+    pub fn utilization(&self) -> f32 {
+        let in_use = self.current_in_use.load(Ordering::Relaxed);
+        let total = self.total_allocated.load(Ordering::Relaxed);
+        if total == 0 {
+            0.0
         } else {
-            // Size too large for any pool
-            vec![0u8; size]
+            in_use as f32 / total as f32
         }
     }
-    
-    /// Return a buffer to the pool
-    pub fn deallocate(&self, mut buf: Vec<u8>) {
-        if let Some(idx) = self.find_size_class(buf.capacity()) {
-            buf.clear();
-            let _ = self.pools[idx].push(buf);
-        }
-        // Buffer too large, just drop it
+
+    /// Returns true if pool has no available objects
+    pub fn is_exhausted(&self) -> bool {
+        self.available.lock().unwrap().is_empty()
     }
 }
 
-impl Default for SizedPool {
-    fn default() -> Self {
-        Self::new()
-    }
+/// Smart pointer wrapper for pooled objects
+///
+/// Automatically returns object to pool when dropped
+pub struct PooledObject<T> {
+    obj: Option<T>,
+    pool: Weak<Mutex<Vec<T>>>,
+    in_use_counter: Option<Arc<AtomicUsize>>,
 }
 
-// ============================================================================
-// Thread-Local Pool
-// ============================================================================
-
-thread_local! {
-    static THREAD_BUFFER_POOL: RefCell<SizedPool> = RefCell::new(SizedPool::new());
-}
-
-/// Thread-local buffer pool for zero-contention allocation
-pub struct ThreadLocalPool;
-
-impl ThreadLocalPool {
-    /// Allocate a buffer from the thread-local pool
-    pub fn allocate(size: usize) -> Vec<u8> {
-        THREAD_BUFFER_POOL.with(|pool| pool.borrow().allocate(size))
+impl<T> PooledObject<T> {
+    /// Returns immutable reference to inner object
+    pub fn as_ref(&self) -> &T {
+        self.obj.as_ref().unwrap()
     }
-    
-    /// Return a buffer to the thread-local pool
-    pub fn deallocate(buf: Vec<u8>) {
-        THREAD_BUFFER_POOL.with(|pool| pool.borrow().deallocate(buf))
+
+    /// Returns mutable reference to inner object
+    pub fn as_mut(&mut self) -> &mut T {
+        self.obj.as_mut().unwrap()
     }
-    
-    /// Allocate multiple buffers
-    pub fn allocate_batch(size: usize, count: usize) -> Vec<Vec<u8>> {
-        (0..count)
-            .map(|_| Self::allocate(size))
-            .collect()
-    }
-    
-    /// Return multiple buffers
-    pub fn deallocate_batch(buffers: Vec<Vec<u8>>) {
-        for buf in buffers {
-            Self::deallocate(buf);
+
+    /// Resets object state if it implements Resettable
+    pub fn reset(&mut self)
+    where
+        T: Resettable,
+    {
+        if let Some(obj) = &mut self.obj {
+            obj.reset();
         }
     }
-}
 
-// ============================================================================
-// Scoped Pool Allocation
-// ============================================================================
-
-/// A guard that returns memory to pool on drop
-pub struct ScopedAlloc<'a> {
-    buffer: Vec<u8>,
-    pool: &'a SizedPool,
-}
-
-impl<'a> ScopedAlloc<'a> {
-    /// Create a scoped allocation
-    pub fn new(pool: &'a SizedPool, size: usize) -> Self {
-        Self {
-            buffer: pool.allocate(size),
-            pool,
-        }
-    }
-    
-    /// Get the buffer
-    pub fn as_slice(&self) -> &[u8] {
-        &self.buffer
-    }
-    
-    /// Get mutable buffer
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        &mut self.buffer
+    /// Detaches object from pool (won't be returned on drop)
+    pub fn detach(mut self) -> T {
+        self.pool = Weak::new();
+        self.obj.take().unwrap()
     }
 }
 
-impl<'a> Drop for ScopedAlloc<'a> {
-    fn drop(&mut self) {
-        let buf = std::mem::take(&mut self.buffer);
-        self.pool.deallocate(buf);
-    }
-}
+impl<T> Deref for PooledObject<T> {
+    type Target = T;
 
-impl<'a> std::ops::Deref for ScopedAlloc<'a> {
-    type Target = [u8];
-    
     fn deref(&self) -> &Self::Target {
-        &self.buffer
+        self.obj.as_ref().unwrap()
     }
 }
 
-impl<'a> std::ops::DerefMut for ScopedAlloc<'a> {
+impl<T> DerefMut for PooledObject<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.buffer
+        self.obj.as_mut().unwrap()
     }
 }
 
-// ============================================================================
-// Tests
-// ============================================================================
+impl<T> Drop for PooledObject<T> {
+    fn drop(&mut self) {
+        if let Some(mut obj) = self.obj.take() {
+            // Reset object if it implements Resettable
+            if let Some(obj_resettable) = (&mut obj as &mut dyn std::any::Any).downcast_mut::<dyn Resettable>() {
+                obj_resettable.reset();
+            }
+
+            // Return to pool if pool still exists
+            if let Some(pool) = self.pool.upgrade() {
+                if let Ok(mut available) = pool.lock() {
+                    available.push(obj);
+                }
+            }
+
+            // Decrement in-use counter
+            if let Some(counter) = &self.in_use_counter {
+                counter.fetch_sub(1, Ordering::Relaxed);
+            }
+        }
+    }
+}
+
+unsafe impl<T: Send> Send for MemoryPool<T> {}
+unsafe impl<T: Send> Sync for MemoryPool<T> {}
+unsafe impl<T: Send> Send for PooledObject<T> {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_object_pool() {
-        let pool = ObjectPool::new(
-            10,
-            || Vec::<u8>::with_capacity(1024),
-            |v| v.clear(),
-        );
-        
-        // Acquire and release
-        let mut obj = pool.acquire();
-        obj.push(1);
-        obj.push(2);
-        pool.release(obj);
-        
-        // Acquire again - should get pooled object
-        let obj = pool.acquire();
-        assert!(obj.is_empty()); // Should be reset
-        
-        let stats = pool.stats();
-        assert_eq!(stats.created, 1);
-        assert_eq!(stats.acquired, 2);
-        assert_eq!(stats.released, 1);
+    #[derive(Default, Debug)]
+    struct TestObject {
+        value: usize,
+    }
+
+    impl Resettable for TestObject {
+        fn reset(&mut self) {
+            self.value = 0;
+        }
     }
 
     #[test]
-    fn test_pooled_handle() {
-        let pool = Arc::new(ObjectPool::new(
-            10,
-            || String::new(),
-            |s| s.clear(),
-        ));
-        
-        pool.prefill(5);
-        assert_eq!(pool.len(), 5);
+    fn test_pool_creation() {
+        let pool: MemoryPool<TestObject> = MemoryPool::new(10);
+        let stats = pool.stats();
+        assert_eq!(stats.available, 10);
+        assert_eq!(stats.in_use, 0);
+    }
+
+    #[test]
+    fn test_acquire_and_return() {
+        let pool: MemoryPool<TestObject> = MemoryPool::new(5);
         
         {
-            let mut handle = Pooled::new(pool.clone());
-            handle.push_str("hello");
-            assert_eq!(handle.as_str(), "hello");
-        } // Handle dropped, object returned to pool
-        
-        assert_eq!(pool.len(), 5); // One was taken but returned
-    }
-
-    #[test]
-    fn test_sized_pool() {
-        let pool = SizedPool::new();
-        
-        let buf1 = pool.allocate(100);
-        assert!(buf1.capacity() >= 100);
-        
-        let buf2 = pool.allocate(5000);
-        assert!(buf2.capacity() >= 5000);
-        
-        pool.deallocate(buf1);
-        pool.deallocate(buf2);
-    }
-
-    #[test]
-    fn test_scoped_alloc() {
-        let pool = SizedPool::new();
-        
-        {
-            let mut alloc = ScopedAlloc::new(&pool, 100);
-            alloc[0] = 42;
-            assert_eq!(alloc[0], 42);
-        } // Automatically returned to pool
-    }
-
-    #[test]
-    fn test_batch_operations() {
-        let pool = Arc::new(ObjectPool::new(
-            10,
-            || Vec::<u8>::with_capacity(128),
-            |v| v.clear(),
-        ));
-        
-        // Batch acquire
-        let objects = pool.acquire_batch(5);
-        assert_eq!(objects.len(), 5);
-        
-        // Batch release
-        pool.release_batch(objects);
-        
-        let stats = pool.stats();
-        assert_eq!(stats.acquired, 5);
-        assert_eq!(stats.released, 5);
-    }
-
-    #[test]
-    fn test_pool_statistics() {
-        let pool = ObjectPool::new(
-            5,
-            || Vec::<u8>::with_capacity(100),
-            |v| v.clear(),
-        );
-        
-        pool.prefill(3);
-        
-        let _obj1 = pool.acquire();
-        let _obj2 = pool.acquire();
-        
-        let stats = pool.stats();
-        assert_eq!(stats.created, 3);
-        assert_eq!(stats.hits, 2); // Both from pool
-        assert_eq!(stats.misses, 0);
-        
-        // Acquire one more (pool empty, creates new)
-        let _obj3 = pool.acquire();
-        let stats = pool.stats();
-        assert_eq!(stats.misses, 1);
-    }
-
-    #[test]
-    fn test_thread_local_pool() {
-        let buf1 = ThreadLocalPool::allocate(100);
-        assert!(buf1.capacity() >= 100);
-        
-        let batch = ThreadLocalPool::allocate_batch(256, 3);
-        assert_eq!(batch.len(), 3);
-        for buf in &batch {
-            assert!(buf.capacity() >= 256);
+            let obj = pool.acquire().unwrap();
+            assert_eq!(pool.stats().in_use, 1);
+            assert_eq!(pool.stats().available, 4);
         }
         
-        ThreadLocalPool::deallocate(buf1);
-        ThreadLocalPool::deallocate_batch(batch);
+        // Object should be returned after drop
+        assert_eq!(pool.stats().in_use, 0);
+        assert_eq!(pool.stats().available, 5);
     }
 
     #[test]
-    fn test_growth_policy() {
-        let pool = ObjectPool::with_growth_policy(
-            5,
-            || String::new(),
-            |s| s.clear(),
-            GrowthPolicy::Exponential,
-        );
+    fn test_pool_exhaustion() {
+        let pool: MemoryPool<TestObject> = MemoryPool::new(2);
         
-        // Pool should work with growth policy
-        let obj = pool.acquire();
-        pool.release(obj);
+        let _obj1 = pool.acquire().unwrap();
+        let _obj2 = pool.acquire().unwrap();
         
-        assert_eq!(pool.stats().created, 1);
+        assert!(pool.is_exhausted());
+        
+        // Should still work, allocating new object
+        let _obj3 = pool.acquire().unwrap();
+        assert_eq!(pool.stats().pool_exhaustions, 1);
     }
 
     #[test]
-    fn test_memory_tracking() {
-        let pool = ObjectPool::new(
-            10,
-            || Vec::<u8>::with_capacity(1024),
-            |v| v.clear(),
-        );
+    fn test_try_acquire() {
+        let pool: MemoryPool<TestObject> = MemoryPool::new(1);
         
-        pool.track_memory(1024);
-        pool.track_memory(2048);
+        let _obj1 = pool.try_acquire().unwrap();
+        let obj2 = pool.try_acquire();
         
-        let stats = pool.stats();
-        assert_eq!(stats.memory_allocated, 3072);
-        assert_eq!(stats.peak_memory, 3072);
+        assert!(obj2.is_none()); // Pool empty, doesn't allocate
+    }
+
+    #[test]
+    fn test_utilization() {
+        let pool: MemoryPool<TestObject> = MemoryPool::new(10);
+        
+        let _obj1 = pool.acquire().unwrap();
+        let _obj2 = pool.acquire().unwrap();
+        
+        let util = pool.utilization();
+        assert!(util > 0.0 && util <= 1.0);
+    }
+
+    #[test]
+    fn test_preallocate() {
+        let pool: MemoryPool<TestObject> = MemoryPool::new(5);
+        pool.preallocate(5);
+        
+        assert_eq!(pool.stats().available, 10);
+    }
+
+    #[test]
+    fn test_shrink() {
+        let pool: MemoryPool<TestObject> = MemoryPool::new(10);
+        pool.shrink(5);
+        
+        assert_eq!(pool.stats().available, 5);
+    }
+
+    #[test]
+    fn test_vec_resettable() {
+        let pool: MemoryPool<Vec<u8>> = MemoryPool::new(2);
+        
+        {
+            let mut obj = pool.acquire().unwrap();
+            obj.push(1);
+            obj.push(2);
+            obj.push(3);
+        }
+        
+        // Object should be cleared when returned
+        let obj = pool.acquire().unwrap();
+        assert_eq!(obj.len(), 0);
     }
 }

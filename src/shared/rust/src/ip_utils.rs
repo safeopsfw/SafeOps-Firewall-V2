@@ -1,714 +1,512 @@
-//! IP address utilities and CIDR matching
+//! IP address parsing, validation, and CIDR notation handling utilities
 //!
-//! High-performance IP address parsing, validation, and CIDR matching utilities
-//! with zero-copy operations. Supports both IPv4 and IPv6 for firewall rule matching,
-//! threat intelligence lookups, and network traffic analysis.
-//!
-//! # Features
-//! - Zero Allocation: Operations work with borrowed data, no unnecessary copies
-//! - SIMD Acceleration: Uses platform-specific optimizations for batch operations when available
-//! - IPv6 Support: Full support for IPv6 addresses and networks
-//! - RFC Compliance: Follows RFC1918, RFC4291, RFC4632
-//!
-//! # Performance Optimizations
-//! - Prefix tree (trie) for O(log n) CIDR lookups
-//! - Bitmap-based IP sets for dense ranges
-//! - u32 representation for fast IPv4 comparisons
+//! Provides RFC-compliant IPv4 and IPv6 address validation, CIDR subnet parsing,
+//! IP range checking for firewall rule matching, and conversion between string
+//! and binary IP representations.
 
-use ipnet::{Ipv4Net, Ipv6Net, IpNet};
-use std::collections::HashMap;
+use crate::error::{Result, SafeOpsError};
+use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
 
-use crate::error::{Error, Result};
+/// Wrapper around std::net::IpAddr with additional utilities
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct IPAddress(pub IpAddr);
+
+impl IPAddress {
+    /// Creates a new IPAddress from std::net::IpAddr
+    pub fn new(addr: IpAddr) -> Self {
+        IPAddress(addr)
+    }
+
+    /// Returns true if this is an IPv4 address
+    pub fn is_ipv4(&self) -> bool {
+        matches!(self.0, IpAddr::V4(_))
+    }
+
+    /// Returns true if this is an IPv6 address
+    pub fn is_ipv6(&self) -> bool {
+        matches!(self.0, IpAddr::V6(_))
+    }
+
+    /// Detects loopback addresses (127.0.0.0/8 for IPv4, ::1 for IPv6)
+    pub fn is_loopback(&self) -> bool {
+        self.0.is_loopback()
+    }
+
+    /// Detects RFC 1918 private ranges
+    /// - 10.0.0.0/8
+    /// - 172.16.0.0/12
+    /// - 192.168.0.0/16
+    /// - fd00::/8 for IPv6
+    pub fn is_private(&self) -> bool {
+        match self.0 {
+            IpAddr::V4(ipv4) => {
+                let octets = ipv4.octets();
+                octets[0] == 10
+                    || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
+                    || (octets[0] == 192 && octets[1] == 168)
+            }
+            IpAddr::V6(ipv6) => {
+                let segments = ipv6.segments();
+                (segments[0] & 0xfe00) == 0xfc00 // fc00::/7
+            }
+        }
+    }
+
+    /// Detects link-local addresses
+    /// - 169.254.0.0/16 for IPv4
+    /// - fe80::/10 for IPv6
+    pub fn is_link_local(&self) -> bool {
+        match self.0 {
+            IpAddr::V4(ipv4) => {
+                let octets = ipv4.octets();
+                octets[0] == 169 && octets[1] == 254
+            }
+            IpAddr::V6(ipv6) => (ipv6.segments()[0] & 0xffc0) == 0xfe80,
+        }
+    }
+
+    /// Detects multicast addresses
+    pub fn is_multicast(&self) -> bool {
+        self.0.is_multicast()
+    }
+
+    /// Returns true for globally routable addresses
+    pub fn is_global(&self) -> bool {
+        !self.is_private()
+            && !self.is_loopback()
+            && !self.is_link_local()
+            && !self.is_multicast()
+    }
+
+    /// Converts to byte array representation
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self.0 {
+            IpAddr::V4(ipv4) => ipv4.octets().to_vec(),
+            IpAddr::V6(ipv6) => ipv6.octets().to_vec(),
+        }
+    }
+}
+
+impl fmt::Display for IPAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<IpAddr> for IPAddress {
+    fn from(addr: IpAddr) -> Self {
+        IPAddress(addr)
+    }
+}
+
+impl From<Ipv4Addr> for IPAddress {
+    fn from(addr: Ipv4Addr) -> Self {
+        IPAddress(IpAddr::V4(addr))
+    }
+}
+
+impl From<Ipv6Addr> for IPAddress {
+    fn from(addr: Ipv6Addr) -> Self {
+        IPAddress(IpAddr::V6(addr))
+    }
+}
 
 // ============================================================================
-// IP Parsing
+// IP Parsing Functions
 // ============================================================================
 
-/// Parse an IPv4 address from string
-#[inline]
-pub fn parse_ipv4(s: &str) -> Result<Ipv4Addr> {
-    s.parse::<Ipv4Addr>()
-        .map_err(|e| Error::Parse(format!("Invalid IPv4 address '{}': {}", s, e)))
+/// Parses string into IPAddress type
+///
+/// Handles both IPv4 dotted decimal format (192.168.1.1) and
+/// IPv6 colon format (2001:db8::1)
+pub fn parse_ip(input: &str) -> Result<IPAddress> {
+    input
+        .parse::<IpAddr>()
+        .map(IPAddress)
+        .map_err(|_| SafeOpsError::parse(format!("Invalid IP address: {}", input)))
 }
 
-/// Parse an IPv6 address from string
-#[inline]
-pub fn parse_ipv6(s: &str) -> Result<Ipv6Addr> {
-    s.parse::<Ipv6Addr>()
-        .map_err(|e| Error::Parse(format!("Invalid IPv6 address '{}': {}", s, e)))
+/// Parses IP or returns default if parsing fails
+pub fn parse_ip_or_default(input: &str, default: IPAddress) -> IPAddress {
+    parse_ip(input).unwrap_or(default)
 }
 
-/// Parse any IP address from string
-#[inline]
-pub fn parse_ip(s: &str) -> Result<IpAddr> {
-    s.parse::<IpAddr>()
-        .map_err(|e| Error::Parse(format!("Invalid IP address '{}': {}", s, e)))
-}
-
-/// Parse IPv4 from raw bytes (network byte order)
-#[inline(always)]
-pub fn ipv4_from_bytes(bytes: [u8; 4]) -> Ipv4Addr {
-    Ipv4Addr::from(bytes)
-}
-
-/// Parse IPv6 from raw bytes (network byte order)
-#[inline(always)]
-pub fn ipv6_from_bytes(bytes: [u8; 16]) -> Ipv6Addr {
-    Ipv6Addr::from(bytes)
-}
-
-/// Parse IPv4 from u32 (host byte order)
-#[inline(always)]
-pub fn ipv4_from_u32(ip: u32) -> Ipv4Addr {
-    Ipv4Addr::from(ip)
-}
-
-/// Convert IPv4 to u32 (host byte order)
-#[inline(always)]
-pub fn ipv4_to_u32(ip: Ipv4Addr) -> u32 {
-    u32::from(ip)
+/// Returns true if string is valid IP address (fast validation without allocation)
+pub fn validate_ip(input: &str) -> bool {
+    input.parse::<IpAddr>().is_ok()
 }
 
 // ============================================================================
-// CIDR Parsing
+// CIDR Notation Functions
 // ============================================================================
 
-/// Parse CIDR notation (e.g., "192.168.1.0/24")
-pub fn parse_cidr_v4(cidr: &str) -> Result<Ipv4Net> {
-    cidr.parse::<Ipv4Net>()
-        .map_err(|e| Error::Parse(format!("Invalid IPv4 CIDR '{}': {}", cidr, e)))
+/// Parses CIDR notation (192.168.1.0/24)
+///
+/// Returns IP address and prefix length.
+/// Validates prefix length range (0-32 for IPv4, 0-128 for IPv6)
+pub fn parse_cidr(input: &str) -> Result<(IPAddress, u8)> {
+    let parts: Vec<&str> = input.split('/').collect();
+    if parts.len() != 2 {
+        return Err(SafeOpsError::parse(format!(
+            "Invalid CIDR notation: {}",
+            input
+        )));
+    }
+
+    let ip = parse_ip(parts[0])?;
+    let prefix_len = parts[1]
+        .parse::<u8>()
+        .map_err(|_| SafeOpsError::parse(format!("Invalid prefix length: {}", parts[1])))?;
+
+    let max_prefix = if ip.is_ipv4() { 32 } else { 128 };
+    if prefix_len > max_prefix {
+        return Err(SafeOpsError::parse(format!(
+            "Prefix length {} exceeds maximum {} for {}",
+            prefix_len,
+            max_prefix,
+            if ip.is_ipv4() { "IPv4" } else { "IPv6" }
+        )));
+    }
+
+    Ok((ip, prefix_len))
 }
 
-/// Parse IPv6 CIDR
-pub fn parse_cidr_v6(cidr: &str) -> Result<Ipv6Net> {
-    cidr.parse::<Ipv6Net>()
-        .map_err(|e| Error::Parse(format!("Invalid IPv6 CIDR '{}': {}", cidr, e)))
+/// Checks if address is within CIDR subnet
+pub fn cidr_contains(network: IPAddress, prefix_len: u8, addr: IPAddress) -> bool {
+    // Ensure both are same IP version
+    if network.is_ipv4() != addr.is_ipv4() {
+        return false;
+    }
+
+    match (network.0, addr.0) {
+        (IpAddr::V4(net), IpAddr::V4(ip)) => {
+            let net_bits = u32::from_be_bytes(net.octets());
+            let ip_bits = u32::from_be_bytes(ip.octets());
+            let mask = if prefix_len == 0 {
+                0
+            } else {
+                !0u32 << (32 - prefix_len)
+            };
+            (net_bits & mask) == (ip_bits & mask)
+        }
+        (IpAddr::V6(net), IpAddr::V6(ip)) => {
+            let net_bits = u128::from_be_bytes(net.octets());
+            let ip_bits = u128::from_be_bytes(ip.octets());
+            let mask = if prefix_len == 0 {
+                0
+            } else {
+                !0u128 << (128 - prefix_len)
+            };
+            (net_bits & mask) == (ip_bits & mask)
+        }
+        _ => false,
+    }
 }
 
-/// Parse any CIDR notation
-pub fn parse_cidr(cidr: &str) -> Result<IpNet> {
-    cidr.parse::<IpNet>()
-        .map_err(|e| Error::Parse(format!("Invalid CIDR '{}': {}", cidr, e)))
-}
-
-// ============================================================================
-// CIDR Matching
-// ============================================================================
-
-/// Fast CIDR matching for IPv4
-#[inline(always)]
-pub fn ip_in_cidr_v4(ip: Ipv4Addr, network: &Ipv4Net) -> bool {
-    network.contains(&ip)
-}
-
-/// Fast CIDR matching for IPv6
-#[inline(always)]
-pub fn ip_in_cidr_v6(ip: Ipv6Addr, network: &Ipv6Net) -> bool {
-    network.contains(&ip)
-}
-
-/// Check if IP is in any CIDR (generic)
-#[inline]
-pub fn ip_in_cidr(ip: IpAddr, network: &IpNet) -> bool {
-    network.contains(&ip)
-}
-
-/// Batch CIDR matching - check if IP is in any of the networks
-pub fn ip_in_any_cidr_v4(ip: Ipv4Addr, networks: &[Ipv4Net]) -> bool {
-    networks.iter().any(|net| net.contains(&ip))
-}
-
-/// Batch CIDR matching for IPv6
-pub fn ip_in_any_cidr_v6(ip: Ipv6Addr, networks: &[Ipv6Net]) -> bool {
-    networks.iter().any(|net| net.contains(&ip))
-}
-
-/// Check if two CIDR ranges overlap
-pub fn cidrs_overlap_v4(a: &Ipv4Net, b: &Ipv4Net) -> bool {
-    a.contains(&b.network()) ||
-    a.contains(&b.broadcast()) ||
-    b.contains(&a.network()) ||
-    b.contains(&a.broadcast())
-}
-
-/// Check if two IPv6 CIDR ranges overlap
-pub fn cidrs_overlap_v6(a: &Ipv6Net, b: &Ipv6Net) -> bool {
-    // For IPv6, check if network addresses fall within each other's ranges
-    let a_prefix = a.prefix_len();
-    let b_prefix = b.prefix_len();
-    
-    if a_prefix <= b_prefix {
-        a.contains(&b.network())
+/// Converts CIDR to first and last address in range
+pub fn cidr_to_range(network: IPAddress, prefix_len: u8) -> Result<(IPAddress, IPAddress)> {
+    let first = network_address(network, prefix_len)?;
+    let last = if network.is_ipv4() {
+        broadcast_address(network, prefix_len)?
     } else {
-        b.contains(&a.network())
-    }
-}
-
-/// Extract network address from CIDR
-#[inline]
-pub fn cidr_network_v4(cidr: &Ipv4Net) -> Ipv4Addr {
-    cidr.network()
-}
-
-/// Extract network address from IPv6 CIDR
-#[inline]
-pub fn cidr_network_v6(cidr: &Ipv6Net) -> Ipv6Addr {
-    cidr.network()
-}
-
-/// Calculate broadcast address for IPv4 CIDR
-#[inline]
-pub fn cidr_broadcast_v4(cidr: &Ipv4Net) -> Ipv4Addr {
-    cidr.broadcast()
-}
-
-/// Convert CIDR prefix length to netmask (IPv4)
-pub fn prefix_to_netmask(prefix_len: u8) -> Ipv4Addr {
-    if prefix_len == 0 {
-        return Ipv4Addr::new(0, 0, 0, 0);
-    }
-    if prefix_len >= 32 {
-        return Ipv4Addr::new(255, 255, 255, 255);
-    }
-    
-    let mask = !0u32 << (32 - prefix_len);
-    ipv4_from_u32(mask)
-}
-
-/// Convert netmask to prefix length (IPv4)
-pub fn netmask_to_prefix(netmask: Ipv4Addr) -> u8 {
-    ipv4_to_u32(netmask).leading_ones() as u8
-}
-
-// ============================================================================
-// IP Range
-// ============================================================================
-
-/// Represents an IP range (start to end, inclusive)
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ipv4Range {
-    start: u32,
-    end: u32,
-}
-
-impl Ipv4Range {
-    /// Create a new IP range
-    pub fn new(start: Ipv4Addr, end: Ipv4Addr) -> Result<Self> {
-        let start_u32 = ipv4_to_u32(start);
-        let end_u32 = ipv4_to_u32(end);
-        
-        if start_u32 > end_u32 {
-            return Err(Error::InvalidInput(
-                "Range start must be <= end".to_string()
-            ));
+        // IPv6: calculate last address by setting all host bits to 1
+        match network.0 {
+            IpAddr::V6(net) => {
+                let net_bits = u128::from_be_bytes(net.octets());
+                let mask = if prefix_len == 0 {
+                    0
+                } else {
+                    !0u128 << (128 - prefix_len)
+                };
+                let last_bits = net_bits | !mask;
+                IPAddress(IpAddr::V6(Ipv6Addr::from(last_bits)))
+            }
+            _ => unreachable!(),
         }
-        
-        Ok(Self {
-            start: start_u32,
-            end: end_u32,
-        })
-    }
-    
-    /// Create from CIDR
-    pub fn from_cidr(network: &Ipv4Net) -> Self {
-        Self {
-            start: ipv4_to_u32(network.network()),
-            end: ipv4_to_u32(network.broadcast()),
-        }
-    }
-    
-    /// Check if IP is in range
-    #[inline(always)]
-    pub fn contains(&self, ip: Ipv4Addr) -> bool {
-        let ip_u32 = ipv4_to_u32(ip);
-        ip_u32 >= self.start && ip_u32 <= self.end
-    }
-    
-    /// Get the start of the range
-    pub fn start(&self) -> Ipv4Addr {
-        ipv4_from_u32(self.start)
-    }
-    
-    /// Get the end of the range
-    pub fn end(&self) -> Ipv4Addr {
-        ipv4_from_u32(self.end)
-    }
-    
-    /// Get number of IPs in range
-    pub fn size(&self) -> u64 {
-        (self.end - self.start) as u64 + 1
-    }
+    };
+    Ok((first, last))
 }
 
-// ============================================================================
-// Prefix Tree for Fast CIDR Lookups
-// ============================================================================
-
-/// A node in the prefix tree
-#[derive(Default)]
-struct PrefixNode<T> {
-    /// Value stored at this prefix (if any)
-    value: Option<T>,
-    /// Child for bit 0
-    left: Option<Box<PrefixNode<T>>>,
-    /// Child for bit 1
-    right: Option<Box<PrefixNode<T>>>,
-}
-
-/// Prefix tree (trie) for fast CIDR lookups
-/// 
-/// This is optimized for looking up whether an IP matches any of a large
-/// set of CIDR ranges.
-pub struct CidrLookup<T> {
-    root: PrefixNode<T>,
-    count: usize,
-}
-
-impl<T: Clone> CidrLookup<T> {
-    /// Create a new empty lookup table
-    pub fn new() -> Self {
-        Self {
-            root: PrefixNode::default(),
-            count: 0,
-        }
-    }
-    
-    /// Insert a CIDR with associated value
-    pub fn insert(&mut self, network: Ipv4Net, value: T) {
-        let ip_bits = ipv4_to_u32(network.network());
-        let prefix_len = network.prefix_len();
-        
-        let mut node = &mut self.root;
-        
-        for i in 0..prefix_len {
-            let bit = (ip_bits >> (31 - i)) & 1;
-            
-            node = if bit == 0 {
-                node.left.get_or_insert_with(|| Box::new(PrefixNode::default()))
+/// Calculates network address from IP and prefix (zeroes host bits)
+pub fn network_address(ip: IPAddress, prefix_len: u8) -> Result<IPAddress> {
+    match ip.0 {
+        IpAddr::V4(ipv4) => {
+            let ip_bits = u32::from_be_bytes(ipv4.octets());
+            let mask = if prefix_len == 0 {
+                0
             } else {
-                node.right.get_or_insert_with(|| Box::new(PrefixNode::default()))
+                !0u32 << (32 - prefix_len)
             };
+            let network_bits = ip_bits & mask;
+            Ok(IPAddress(IpAddr::V4(Ipv4Addr::from(network_bits))))
         }
-        
-        if node.value.is_none() {
-            self.count += 1;
-        }
-        node.value = Some(value);
-    }
-    
-    /// Lookup the longest matching prefix for an IP
-    pub fn lookup(&self, ip: Ipv4Addr) -> Option<&T> {
-        let ip_bits = ipv4_to_u32(ip);
-        let mut node = &self.root;
-        let mut last_match: Option<&T> = node.value.as_ref();
-        
-        for i in 0..32 {
-            let bit = (ip_bits >> (31 - i)) & 1;
-            
-            let next = if bit == 0 {
-                node.left.as_ref()
+        IpAddr::V6(ipv6) => {
+            let ip_bits = u128::from_be_bytes(ipv6.octets());
+            let mask = if prefix_len == 0 {
+                0
             } else {
-                node.right.as_ref()
+                !0u128 << (128 - prefix_len)
             };
-            
-            match next {
-                Some(n) => {
-                    node = n;
-                    if node.value.is_some() {
-                        last_match = node.value.as_ref();
-                    }
-                }
-                None => break,
-            }
+            let network_bits = ip_bits & mask;
+            Ok(IPAddress(IpAddr::V6(Ipv6Addr::from(network_bits))))
         }
-        
-        last_match
-    }
-    
-    /// Check if any CIDR matches the IP
-    #[inline]
-    pub fn contains(&self, ip: Ipv4Addr) -> bool {
-        self.lookup(ip).is_some()
-    }
-    
-    /// Get the number of CIDRs in the lookup table
-    pub fn len(&self) -> usize {
-        self.count
-    }
-    
-    /// Check if the lookup table is empty
-    pub fn is_empty(&self) -> bool {
-        self.count == 0
     }
 }
 
-impl<T: Clone> Default for CidrLookup<T> {
-    fn default() -> Self {
-        Self::new()
+/// Calculates broadcast address (IPv4 only - sets all host bits to 1)
+pub fn broadcast_address(ip: IPAddress, prefix_len: u8) -> Result<IPAddress> {
+    match ip.0 {
+        IpAddr::V4(ipv4) => {
+            let ip_bits = u32::from_be_bytes(ipv4.octets());
+            let mask = if prefix_len == 0 {
+                0
+            } else {
+                !0u32 << (32 - prefix_len)
+            };
+            let broadcast_bits = ip_bits | !mask;
+            Ok(IPAddress(IpAddr::V4(Ipv4Addr::from(broadcast_bits))))
+        }
+        IpAddr::V6(_) => Err(SafeOpsError::invalid_input(
+            "IPv6 does not have broadcast addresses",
+        )),
     }
 }
 
 // ============================================================================
-// IP Set (for fast membership testing)
+// IP Range Functions
 // ============================================================================
 
-/// A set of IP addresses optimized for fast membership testing
-pub struct Ipv4Set {
-    /// For sparse sets, use a hash set
-    sparse: Option<std::collections::HashSet<u32>>,
-    /// For dense ranges, use a bitmap
-    bitmap: Option<Vec<u64>>,
-    /// Threshold for switching to bitmap
-    bitmap_threshold: usize,
+/// Checks if address is between start and end (inclusive)
+pub fn ip_in_range(addr: IPAddress, start: IPAddress, end: IPAddress) -> bool {
+    // Must be same IP version
+    if addr.is_ipv4() != start.is_ipv4() || addr.is_ipv4() != end.is_ipv4() {
+        return false;
+    }
+
+    match (addr.0, start.0, end.0) {
+        (IpAddr::V4(a), IpAddr::V4(s), IpAddr::V4(e)) => {
+            let a_bits = u32::from_be_bytes(a.octets());
+            let s_bits = u32::from_be_bytes(s.octets());
+            let e_bits = u32::from_be_bytes(e.octets());
+            a_bits >= s_bits && a_bits <= e_bits
+        }
+        (IpAddr::V6(a), IpAddr::V6(s), IpAddr::V6(e)) => {
+            let a_bits = u128::from_be_bytes(a.octets());
+            let s_bits = u128::from_be_bytes(s.octets());
+            let e_bits = u128::from_be_bytes(e.octets());
+            a_bits >= s_bits && a_bits <= e_bits
+        }
+        _ => false,
+    }
 }
 
-impl Ipv4Set {
-    /// Create a new IP set
-    pub fn new() -> Self {
-        Self {
-            sparse: Some(std::collections::HashSet::new()),
-            bitmap: None,
-            bitmap_threshold: 1_000_000,
+/// Returns next IP address in sequence
+pub fn next_ip(addr: IPAddress) -> Option<IPAddress> {
+    match addr.0 {
+        IpAddr::V4(ipv4) => {
+            let bits = u32::from_be_bytes(ipv4.octets());
+            bits.checked_add(1)
+                .map(|b| IPAddress(IpAddr::V4(Ipv4Addr::from(b))))
+        }
+        IpAddr::V6(ipv6) => {
+            let bits = u128::from_be_bytes(ipv6.octets());
+            bits.checked_add(1)
+                .map(|b| IPAddress(IpAddr::V6(Ipv6Addr::from(b))))
         }
     }
-    
-    /// Create with a specific bitmap threshold
-    pub fn with_threshold(threshold: usize) -> Self {
-        Self {
-            sparse: Some(std::collections::HashSet::new()),
-            bitmap: None,
-            bitmap_threshold: threshold,
+}
+
+/// Returns previous IP address
+pub fn prev_ip(addr: IPAddress) -> Option<IPAddress> {
+    match addr.0 {
+        IpAddr::V4(ipv4) => {
+            let bits = u32::from_be_bytes(ipv4.octets());
+            bits.checked_sub(1)
+                .map(|b| IPAddress(IpAddr::V4(Ipv4Addr::from(b))))
+        }
+        IpAddr::V6(ipv6) => {
+            let bits = u128::from_be_bytes(ipv6.octets());
+            bits.checked_sub(1)
+                .map(|b| IPAddress(IpAddr::V6(Ipv6Addr::from(b))))
         }
     }
-    
-    /// Insert an IP address
-    pub fn insert(&mut self, ip: Ipv4Addr) {
-        if let Some(ref mut sparse) = self.sparse {
-            sparse.insert(ipv4_to_u32(ip));
-            
-            // Check if we should switch to bitmap
-            if sparse.len() > self.bitmap_threshold {
-                self.convert_to_bitmap();
-            }
-        } else if let Some(ref mut bitmap) = self.bitmap {
-            let ip_u32 = ipv4_to_u32(ip) as usize;
-            let word = ip_u32 / 64;
-            let bit = ip_u32 % 64;
-            bitmap[word] |= 1u64 << bit;
+}
+
+// ============================================================================
+// Subnet Mask Functions
+// ============================================================================
+
+/// Converts prefix length to subnet mask
+pub fn prefix_to_mask(prefix_len: u8, is_ipv6: bool) -> Result<IPAddress> {
+    if is_ipv6 {
+        if prefix_len > 128 {
+            return Err(SafeOpsError::invalid_input("IPv6 prefix length max is 128"));
         }
-    }
-    
-    /// Check if IP is in the set
-    #[inline]
-    pub fn contains(&self, ip: Ipv4Addr) -> bool {
-        let ip_u32 = ipv4_to_u32(ip);
-        
-        if let Some(ref sparse) = self.sparse {
-            sparse.contains(&ip_u32)
-        } else if let Some(ref bitmap) = self.bitmap {
-            let word = ip_u32 as usize / 64;
-            let bit = ip_u32 as usize % 64;
-            (bitmap[word] >> bit) & 1 == 1
-        } else {
-            false
-        }
-    }
-    
-    /// Convert from sparse to bitmap representation
-    fn convert_to_bitmap(&mut self) {
-        if let Some(sparse) = self.sparse.take() {
-            // Allocate full IPv4 bitmap (512 MB)
-            let mut bitmap = vec![0u64; (1usize << 32) / 64];
-            
-            for ip in sparse {
-                let word = ip as usize / 64;
-                let bit = ip as usize % 64;
-                bitmap[word] |= 1u64 << bit;
-            }
-            
-            self.bitmap = Some(bitmap);
-        }
-    }
-    
-    /// Get the number of IPs in the set
-    pub fn len(&self) -> usize {
-        if let Some(ref sparse) = self.sparse {
-            sparse.len()
-        } else if let Some(ref bitmap) = self.bitmap {
-            bitmap.iter().map(|w| w.count_ones() as usize).sum()
-        } else {
+        let mask = if prefix_len == 0 {
             0
+        } else {
+            !0u128 << (128 - prefix_len)
+        };
+        Ok(IPAddress(IpAddr::V6(Ipv6Addr::from(mask))))
+    } else {
+        if prefix_len > 32 {
+            return Err(SafeOpsError::invalid_input("IPv4 prefix length max is 32"));
+        }
+        let mask = if prefix_len == 0 {
+            0
+        } else {
+            !0u32 << (32 - prefix_len)
+        };
+        Ok(IPAddress(IpAddr::V4(Ipv4Addr::from(mask))))
+    }
+}
+
+/// Converts subnet mask to prefix length (counts leading 1 bits)
+/// Validates that the mask has contiguous 1 bits (e.g., rejects 255.0.255.0)
+pub fn mask_to_prefix(mask: IPAddress) -> Result<u8> {
+    match mask.0 {
+        IpAddr::V4(ipv4) => {
+            let bits = u32::from_be_bytes(ipv4.octets());
+            let prefix = bits.leading_ones() as u8;
+            
+            // Validate mask is contiguous: after leading ones, all bits must be zero
+            let expected_mask = if prefix == 0 { 0 } else { !0u32 << (32 - prefix) };
+            if bits != expected_mask {
+                return Err(SafeOpsError::invalid_input(format!(
+                    "Invalid subnet mask: {} (not contiguous)",
+                    ipv4
+                )));
+            }
+            
+            Ok(prefix)
+        }
+        IpAddr::V6(ipv6) => {
+            let bits = u128::from_be_bytes(ipv6.octets());
+            let prefix = bits.leading_ones() as u8;
+            
+            // Validate mask is contiguous
+            let expected_mask = if prefix == 0 { 0 } else { !0u128 << (128 - prefix) };
+            if bits != expected_mask {
+                return Err(SafeOpsError::invalid_input(format!(
+                    "Invalid subnet mask: {} (not contiguous)",
+                    ipv6
+                )));
+            }
+            
+            Ok(prefix)
         }
     }
-    
-    /// Check if the set is empty
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+}
+
+// ============================================================================
+// Conversion Functions
+// ============================================================================
+
+/// Converts byte slice to IP address
+/// Handles 4 bytes (IPv4) or 16 bytes (IPv6)
+pub fn bytes_to_ip(bytes: &[u8]) -> Result<IPAddress> {
+    match bytes.len() {
+        4 => {
+            let octets: [u8; 4] = bytes
+                .try_into()
+                .map_err(|_| SafeOpsError::parse("Invalid IPv4 bytes"))?;
+            Ok(IPAddress(IpAddr::V4(Ipv4Addr::from(octets))))
+        }
+        16 => {
+            let octets: [u8; 16] = bytes
+                .try_into()
+                .map_err(|_| SafeOpsError::parse("Invalid IPv6 bytes"))?;
+            Ok(IPAddress(IpAddr::V6(Ipv6Addr::from(octets))))
+        }
+        _ => Err(SafeOpsError::parse(format!(
+            "Invalid IP byte length: {} (expected 4 or 16)",
+            bytes.len()
+        ))),
     }
 }
 
-impl Default for Ipv4Set {
-    fn default() -> Self {
-        Self::new()
-    }
+/// Converts IP to string representation
+pub fn ip_to_string(ip: IPAddress) -> String {
+    ip.0.to_string()
 }
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
-/// Check if IP is private (RFC 1918)
-pub fn is_private_v4(ip: Ipv4Addr) -> bool {
-    ip.is_private()
-}
-
-/// Check if IP is loopback
-pub fn is_loopback_v4(ip: Ipv4Addr) -> bool {
-    ip.is_loopback()
-}
-
-/// Check if IP is multicast
-pub fn is_multicast_v4(ip: Ipv4Addr) -> bool {
-    ip.is_multicast()
-}
-
-/// Check if IP is link-local
-pub fn is_link_local_v4(ip: Ipv4Addr) -> bool {
-    ip.is_link_local()
-}
-
-/// Check if IP is broadcast
-pub fn is_broadcast_v4(ip: Ipv4Addr) -> bool {
-    ip.is_broadcast()
-}
-
-/// Check if IP is documentation range (RFC 5737)
-pub fn is_documentation_v4(ip: Ipv4Addr) -> bool {
-    ip.is_documentation()
-}
-
-/// Get the class of an IPv4 address
-pub fn ipv4_class(ip: Ipv4Addr) -> char {
-    let first = ip.octets()[0];
-    match first {
-        0..=127 => 'A',
-        128..=191 => 'B',
-        192..=223 => 'C',
-        224..=239 => 'D',
-        240..=255 => 'E',
-    }
-}
-
-/// Check if IPv4 is globally routable (not private, loopback, link-local, etc.)
-pub fn is_global_v4(ip: Ipv4Addr) -> bool {
-    !ip.is_private() &&
-    !ip.is_loopback() &&
-    !ip.is_link_local() &&
-    !ip.is_multicast() &&
-    !ip.is_broadcast() &&
-    !ip.is_documentation() &&
-    !ip.is_unspecified()
-}
-
-// ============================================================================
-// IPv6 Classification
-// ============================================================================
-
-/// Check if IPv6 is private (unique local address)
-pub fn is_private_v6(ip: Ipv6Addr) -> bool {
-    // fc00::/7 - Unique Local Addresses (ULA)
-    (ip.segments()[0] & 0xfe00) == 0xfc00
-}
-
-/// Check if IPv6 is loopback
-pub fn is_loopback_v6(ip: Ipv6Addr) -> bool {
-    ip.is_loopback()
-}
-
-/// Check if IPv6 is multicast
-pub fn is_multicast_v6(ip: Ipv6Addr) -> bool {
-    ip.is_multicast()
-}
-
-/// Check if IPv6 is link-local
-pub fn is_link_local_v6(ip: Ipv6Addr) -> bool {
-    // fe80::/10
-    (ip.segments()[0] & 0xffc0) == 0xfe80
-}
-
-/// Check if IPv6 is globally routable
-pub fn is_global_v6(ip: Ipv6Addr) -> bool {
-    !ip.is_loopback() &&
-    !ip.is_unspecified() &&
-    !is_link_local_v6(ip) &&
-    !is_private_v6(ip) &&
-    // Not documentation (2001:db8::/32)
-    !((ip.segments()[0] == 0x2001) && (ip.segments()[1] == 0x0db8))
-}
-
-/// Check if IP (v4 or v6) is globally routable
-pub fn is_global(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => is_global_v4(v4),
-        IpAddr::V6(v6) => is_global_v6(v6),
-    }
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_ipv4() {
-        assert_eq!(parse_ipv4("192.168.1.1").unwrap(), Ipv4Addr::new(192, 168, 1, 1));
-        assert!(parse_ipv4("invalid").is_err());
+    fn test_parse_ip() {
+        let ip = parse_ip("192.168.1.1").unwrap();
+        assert!(ip.is_ipv4());
+
+        let ip = parse_ip("2001:db8::1").unwrap();
+        assert!(ip.is_ipv6());
+
+        assert!(parse_ip("invalid").is_err());
     }
 
     #[test]
-    fn test_parse_cidr_v4() {
-        let net = parse_cidr_v4("192.168.1.0/24").unwrap();
-        assert_eq!(net.network(), Ipv4Addr::new(192, 168, 1, 0));
-        assert_eq!(net.prefix_len(), 24);
+    fn test_is_private() {
+        assert!(parse_ip("10.0.0.1").unwrap().is_private());
+        assert!(parse_ip("172.16.0.1").unwrap().is_private());
+        assert!(parse_ip("192.168.1.1").unwrap().is_private());
+        assert!(!parse_ip("8.8.8.8").unwrap().is_private());
     }
 
     #[test]
-    fn test_ipv4_cidr_matching() {
-        let net = parse_cidr_v4("192.168.1.0/24").unwrap();
-        assert!(ip_in_cidr_v4(Ipv4Addr::new(192, 168, 1, 100), &net));
-        assert!(!ip_in_cidr_v4(Ipv4Addr::new(192, 168, 2, 100), &net));
+    fn test_parse_cidr() {
+        let (ip, prefix) = parse_cidr("192.168.1.0/24").unwrap();
+        assert_eq!(prefix, 24);
+        assert!(ip.is_ipv4());
+
+        assert!(parse_cidr("invalid/24").is_err());
+        assert!(parse_cidr("192.168.1.0/33").is_err());
+    }
+
+    #[test]
+    fn test_cidr_contains() {
+        let (network, prefix) = parse_cidr("192.168.1.0/24").unwrap();
+        let addr = parse_ip("192.168.1.100").unwrap();
+        assert!(cidr_contains(network, prefix, addr));
+
+        let addr = parse_ip("192.168.2.1").unwrap();
+        assert!(!cidr_contains(network, prefix, addr));
+    }
+
+    #[test]
+    fn test_network_address() {
+        let ip = parse_ip("192.168.1.100").unwrap();
+        let network = network_address(ip, 24).unwrap();
+        assert_eq!(network.to_string(), "192.168.1.0");
+    }
+
+    #[test]
+    fn test_broadcast_address() {
+        let ip = parse_ip("192.168.1.0").unwrap();
+        let broadcast = broadcast_address(ip, 24).unwrap();
+        assert_eq!(broadcast.to_string(), "192.168.1.255");
     }
 
     #[test]
     fn test_ip_range() {
-        let range = Ipv4Range::new(
-            Ipv4Addr::new(192, 168, 1, 10),
-            Ipv4Addr::new(192, 168, 1, 20),
-        ).unwrap();
-        
-        assert!(range.contains(Ipv4Addr::new(192, 168, 1, 15)));
-        assert!(!range.contains(Ipv4Addr::new(192, 168, 1, 5)));
-        assert_eq!(range.size(), 11);
+        let addr = parse_ip("192.168.1.100").unwrap();
+        let start = parse_ip("192.168.1.1").unwrap();
+        let end = parse_ip("192.168.1.200").unwrap();
+        assert!(ip_in_range(addr, start, end));
+
+        let addr = parse_ip("192.168.2.1").unwrap();
+        assert!(!ip_in_range(addr, start, end));
     }
 
     #[test]
-    fn test_cidr_lookup() {
-        let mut lookup = CidrLookup::new();
-        
-        lookup.insert(parse_cidr_v4("10.0.0.0/8").unwrap(), "private-a");
-        lookup.insert(parse_cidr_v4("172.16.0.0/12").unwrap(), "private-b");
-        lookup.insert(parse_cidr_v4("192.168.0.0/16").unwrap(), "private-c");
-        lookup.insert(parse_cidr_v4("192.168.1.0/24").unwrap(), "subnet");
-        
-        assert_eq!(lookup.lookup(Ipv4Addr::new(10, 1, 2, 3)), Some(&"private-a"));
-        assert_eq!(lookup.lookup(Ipv4Addr::new(192, 168, 1, 100)), Some(&"subnet"));
-        assert_eq!(lookup.lookup(Ipv4Addr::new(192, 168, 2, 100)), Some(&"private-c"));
-        assert_eq!(lookup.lookup(Ipv4Addr::new(8, 8, 8, 8)), None);
-    }
+    fn test_next_prev_ip() {
+        let ip = parse_ip("192.168.1.1").unwrap();
+        let next = next_ip(ip).unwrap();
+        assert_eq!(next.to_string(), "192.168.1.2");
 
-    #[test]
-    fn test_ipv4_set() {
-        let mut set = Ipv4Set::new();
-        
-        set.insert(Ipv4Addr::new(192, 168, 1, 1));
-        set.insert(Ipv4Addr::new(192, 168, 1, 2));
-        set.insert(Ipv4Addr::new(10, 0, 0, 1));
-        
-        assert!(set.contains(Ipv4Addr::new(192, 168, 1, 1)));
-        assert!(set.contains(Ipv4Addr::new(10, 0, 0, 1)));
-        assert!(!set.contains(Ipv4Addr::new(8, 8, 8, 8)));
-        assert_eq!(set.len(), 3);
-    }
-
-    #[test]
-    fn test_ip_classification() {
-        assert!(is_private_v4(Ipv4Addr::new(192, 168, 1, 1)));
-        assert!(!is_private_v4(Ipv4Addr::new(8, 8, 8, 8)));
-        
-        assert!(is_loopback_v4(Ipv4Addr::new(127, 0, 0, 1)));
-        assert!(is_multicast_v4(Ipv4Addr::new(224, 0, 0, 1)));
-        
-        assert_eq!(ipv4_class(Ipv4Addr::new(10, 0, 0, 1)), 'A');
-        assert_eq!(ipv4_class(Ipv4Addr::new(172, 16, 0, 1)), 'B');
-        assert_eq!(ipv4_class(Ipv4Addr::new(192, 168, 1, 1)), 'C');
-    }
-
-    #[test]
-    fn test_cidr_overlap() {
-        let net1 = parse_cidr_v4("192.168.1.0/24").unwrap();
-        let net2 = parse_cidr_v4("192.168.1.128/25").unwrap();
-        let net3 = parse_cidr_v4("192.168.2.0/24").unwrap();
-        
-        assert!(cidrs_overlap_v4(&net1, &net2));
-        assert!(!cidrs_overlap_v4(&net1, &net3));
-    }
-
-    #[test]
-    fn test_network_broadcast() {
-        let cidr = parse_cidr_v4("192.168.1.0/24").unwrap();
-        
-        assert_eq!(cidr_network_v4(&cidr), Ipv4Addr::new(192, 168, 1, 0));
-        assert_eq!(cidr_broadcast_v4(&cidr), Ipv4Addr::new(192, 168, 1, 255));
-    }
-
-    #[test]
-    fn test_prefix_netmask_conversion() {
-        let mask24 = prefix_to_netmask(24);
-        assert_eq!(mask24, Ipv4Addr::new(255, 255, 255, 0));
-        assert_eq!(netmask_to_prefix(mask24), 24);
-        
-        let mask16 = prefix_to_netmask(16);
-        assert_eq!(mask16, Ipv4Addr::new(255, 255, 0, 0));
-        assert_eq!(netmask_to_prefix(mask16), 16);
-    }
-
-    #[test]
-    fn test_global_routing() {
-        // Private IPs are not global
-        assert!(!is_global_v4(Ipv4Addr::new(192, 168, 1, 1)));
-        assert!(!is_global_v4(Ipv4Addr::new(10, 0, 0, 1)));
-        
-        // Loopback is not global
-        assert!(!is_global_v4(Ipv4Addr::new(127, 0, 0, 1)));
-        
-        // Public IPs are global
-        assert!(is_global_v4(Ipv4Addr::new(8, 8, 8, 8)));
-        assert!(is_global_v4(Ipv4Addr::new(1, 1, 1, 1)));
-    }
-
-    #[test]
-    fn test_ipv6_classification() {
-        // Loopback
-        assert!(is_loopback_v6("::1".parse().unwrap()));
-        
-        // Link-local (fe80::/10)
-        assert!(is_link_local_v6("fe80::1".parse().unwrap()));
-        assert!(!is_link_local_v6("2001:db8::1".parse().unwrap()));
-        
-        // Unique local (fc00::/7)
-        assert!(is_private_v6("fc00::1".parse().unwrap()));
-        assert!(is_private_v6("fd00::1".parse().unwrap()));
-        assert!(!is_private_v6("2001:db8::1".parse().unwrap()));
-        
-        // Global
-        assert!(is_global_v6("2001:4860:4860::8888".parse().unwrap())); // Google DNS
-        assert!(!is_global_v6("::1".parse().unwrap())); // Loopback
-        assert!(!is_global_v6("fe80::1".parse().unwrap())); // Link-local
-        assert!(!is_global_v6("fc00::1".parse().unwrap())); // ULA
-    }
-
-    #[test]
-    fn test_ipv6_cidr_overlap() {
-        let net1 = parse_cidr_v6("2001:db8::/32").unwrap();
-        let net2 = parse_cidr_v6("2001:db8:0:1::/64").unwrap();
-        let net3 = parse_cidr_v6("2001:db9::/32").unwrap();
-        
-        assert!(cidrs_overlap_v6(&net1, &net2));
-        assert!(!cidrs_overlap_v6(&net1, &net3));
+        let prev = prev_ip(next).unwrap();
+        assert_eq!(prev.to_string(), "192.168.1.1");
     }
 }

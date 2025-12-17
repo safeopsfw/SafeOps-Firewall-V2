@@ -272,14 +272,25 @@ func (c *Config) Clone() *Config {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	clone := *c
+	// Create new config with field copies (cannot copy mutex)
+	clone := &Config{
+		App:      c.App,
+		Logging:  c.Logging,
+		Server:   c.Server,
+		Database: c.Database,
+		Redis:    c.Redis,
+		GRPC:     c.GRPC,
+		Metrics:  c.Metrics,
+		filePath: c.filePath,
+	}
+
 	if c.Custom != nil {
 		clone.Custom = make(map[string]interface{})
 		for k, v := range c.Custom {
 			clone.Custom[k] = v
 		}
 	}
-	return &clone
+	return clone
 }
 
 // Reload reloads the configuration from file
@@ -296,7 +307,17 @@ func (c *Config) Reload() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	*c = *newCfg
+	// Copy fields individually (cannot copy mutex)
+	c.App = newCfg.App
+	c.Logging = newCfg.Logging
+	c.Server = newCfg.Server
+	c.Database = newCfg.Database
+	c.Redis = newCfg.Redis
+	c.GRPC = newCfg.GRPC
+	c.Metrics = newCfg.Metrics
+	c.Custom = newCfg.Custom
+	// Keep original filePath and mu (mutex cannot be copied)
+
 	return nil
 }
 

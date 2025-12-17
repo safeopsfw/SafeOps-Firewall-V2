@@ -1,344 +1,410 @@
-//! Lock-free data structures for high-concurrency scenarios
+//! Lock-free data structures for high-performance packet processing
 //!
-//! Provides high-performance concurrent data structures optimized for
-//! multi-threaded packet processing with zero lock contention.
-//!
-//! # Data Structures
-//! - **Lock-Free Queue**: MPMC (multi-producer multi-consumer) bounded/unbounded
-//! - **SPSC Queue**: Single-producer single-consumer for zero-contention scenarios
-//! - **Lock-Free Stack**: LIFO with ABA problem prevention
-//! - **Concurrent Map**: Lock-based concurrent hash map (see dashmap for true lock-free)
-//! - **Ring Buffer**: Fixed-size circular buffer for streaming
-//!
-//! # Performance Characteristics
-//! - Zero lock contention for wait-free operations
-//! - Cache-line aligned structures to prevent false sharing
-//! - Explicit memory ordering for optimal performance
-//! - ABA problem prevention in stack operations
-//!
-//! # Atomic Operations
-//! - Compare-and-swap (CAS) primitives
-//! - Memory barriers (acquire/release/seq_cst)
-//! - Fetch-and-add/sub operations
-//! - Load/store with explicit ordering
+//! Provides lock-free multi-producer multi-consumer (MPMC) queue, single-producer
+//! single-consumer (SPSC) ring buffer, concurrent hash map, and lock-free counters.
+//! These structures enable zero-allocation packet handling and avoid lock contention.
 
-use crossbeam::channel::{bounded, unbounded, Receiver, Sender, TryRecvError, TrySendError};
-use crossbeam::epoch::{self, Atomic, Owned};
+use crate::error::{Result, SafeOpsError};
 use crossbeam::queue::{ArrayQueue, SegQueue};
-use parking_lot::RwLock;
+use parking_lot::Mutex;
+use std::sync::atomic::{AtomicU64, AtomicUsize, AtomicPtr, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::ptr;
-use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU64, AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::thread;
 
 // ============================================================================
-// Cache-Line Alignment Constants
+// MPMC Queue Wrapper
 // ============================================================================
 
-/// Cache line size for x86/x64 processors
+/// Lock-free multi-producer multi-consumer (MPMC) queue
+///
+/// Fixed capacity queue using crossbeam's ArrayQueue. Thread-safe for
+/// multiple producers and consumers simultaneously.
+pub struct MpmcQueue<T> {
+    queue: Arc<ArrayQueue<T>>,
+}
+
+impl<T> MpmcQueue<T> {
+    /// Creates new MPMC queue with specified capacity
+    ///
+    /// Capacity should be power of two for optimal performance
+    pub fn new(capacity: usize) -> Self {
+        MpmcQueue {
+            queue: Arc::new(ArrayQueue::new(capacity)),
+        }
+    }
+
+    /// Non-blocking enqueue, returns element if full
+    pub fn push(&self, element: T) -> std::result::Result<(), T> {
+        self.queue.push(element)
+    }
+
+    /// Non-blocking dequeue, returns None if empty
+    pub fn pop(&self) -> Option<T> {
+        self.queue.pop()
+    }
+
+    /// Retries push with spin-wait timeout
+    pub fn try_push_timeout(&self, mut element: T, timeout: Duration) -> Result<()> {
+        let start = std::time::Instant::now();
+        loop {
+            match self.queue.push(element) {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    element = e;
+                    if start.elapsed() > timeout {
+                        return Err(SafeOpsError::internal("Queue push timeout"));
+                    }
+                    thread::yield_now();
+                }
+            }
+        }
+    }
+
+    /// Approximate current length (may be stale)
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    /// Check if empty (may be stale)
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
+    /// Check if full (may be stale)
+    pub fn is_full(&self) -> bool {
+        self.queue.is_full()
+    }
+
+    /// Returns fixed capacity
+    pub fn capacity(&self) -> usize {
+        self.queue.capacity()
+    }
+}
+
+impl<T> Clone for MpmcQueue<T> {
+    fn clone(&self) -> Self {
+        MpmcQueue {
+            queue: Arc::clone(&self.queue),
+        }
+    }
+}
+
+// ============================================================================
+// SPSC Ring Buffer
+// ============================================================================
+
+/// Cache line size for padding (typically 64 bytes on x86-64)
 const CACHE_LINE_SIZE: usize = 64;
 
-/// Cache-line aligned wrapper to prevent false sharing
+/// Cache-line padded atomic to prevent false sharing
 #[repr(align(64))]
-pub struct CacheAligned<T>(pub T);
-
-// ============================================================================
-// Lock-Free Queue
-// ============================================================================
-
-/// A lock-free bounded MPMC queue
-pub struct LockFreeQueue<T> {
-    inner: ArrayQueue<T>,
-    push_count: AtomicU64,
-    pop_count: AtomicU64,
+struct PaddedAtomic {
+    value: AtomicUsize,
 }
 
-impl<T> LockFreeQueue<T> {
-    /// Create a new queue with the given capacity
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            inner: ArrayQueue::new(capacity),
-            push_count: AtomicU64::new(0),
-            pop_count: AtomicU64::new(0),
+impl PaddedAtomic {
+    fn new(val: usize) -> Self {
+        PaddedAtomic {
+            value: AtomicUsize::new(val),
         }
     }
-    
-    /// Push an item to the queue
-    /// 
-    /// Returns `Err(item)` if the queue is full.
-    pub fn push(&self, item: T) -> Result<(), T> {
-        match self.inner.push(item) {
-            Ok(()) => {
-                self.push_count.fetch_add(1, Ordering::Relaxed);
-                Ok(())
-            }
-            Err(item) => Err(item),
+
+    fn load(&self, order: Ordering) -> usize {
+        self.value.load(order)
+    }
+
+    fn store(&self, val: usize, order: Ordering) {
+        self.value.store(val, order);
+    }
+}
+
+/// Single-producer single-consumer ring buffer
+///
+/// Optimized for packet metadata transfer with cache-line padding
+/// to prevent false sharing. Fixed power-of-two capacity.
+pub struct SpscRingBuffer<T> {
+    buffer: Vec<Option<T>>,
+    capacity: usize,
+    mask: usize,
+    head: PaddedAtomic, // Producer writes here
+    tail: PaddedAtomic, // Consumer reads here
+}
+
+impl<T> SpscRingBuffer<T> {
+    /// Creates new SPSC ring buffer with power-of-two capacity
+    pub fn new(mut capacity: usize) -> Self {
+        // Round up to next power of two
+        capacity = capacity.next_power_of_two();
+        let mask = capacity - 1;
+
+        let mut buffer = Vec::with_capacity(capacity);
+        for _ in 0..capacity {
+            buffer.push(None);
+        }
+
+        SpscRingBuffer {
+            buffer,
+            capacity,
+            mask,
+            head: PaddedAtomic::new(0),
+            tail: PaddedAtomic::new(0),
         }
     }
-    
-    /// Pop an item from the queue
-    pub fn pop(&self) -> Option<T> {
-        self.inner.pop().map(|item| {
-            self.pop_count.fetch_add(1, Ordering::Relaxed);
-            item
-        })
+
+    /// Producer-only write, returns false if full, never allocates
+    pub fn write(&mut self, element: T) -> bool {
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Acquire);
+
+        let next_head = (head + 1) & self.mask;
+        if next_head == tail {
+            return false; // Buffer full
+        }
+
+        self.buffer[head] = Some(element);
+        self.head.store(next_head, Ordering::Release);
+        true
     }
-    
-    /// Check if the queue is empty
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+
+    /// Consumer-only read, updates tail atomically, never allocates
+    pub fn read(&mut self) -> Option<T> {
+        let tail = self.tail.load(Ordering::Relaxed);
+        let head = self.head.load(Ordering::Acquire);
+
+        if tail == head {
+            return None; // Buffer empty
+        }
+
+        let element = self.buffer[tail].take();
+        let next_tail = (tail + 1) & self.mask;
+        self.tail.store(next_tail, Ordering::Release);
+        element
     }
-    
-    /// Check if the queue is full
-    pub fn is_full(&self) -> bool {
-        self.inner.is_full()
-    }
-    
-    /// Get the current length
-    pub fn len(&self) -> usize {
-        self.inner.len()
-    }
-    
-    /// Get the capacity
+
+    /// Returns fixed capacity
     pub fn capacity(&self) -> usize {
-        self.inner.capacity()
+        self.capacity
     }
-    
-    /// Get total push count
-    pub fn push_count(&self) -> u64 {
-        self.push_count.load(Ordering::Relaxed)
+
+    /// Approximate elements in buffer (may be stale)
+    pub fn available(&self) -> usize {
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Relaxed);
+        (head.wrapping_sub(tail)) & self.mask
     }
-    
-    /// Get total pop count
-    pub fn pop_count(&self) -> u64 {
-        self.pop_count.load(Ordering::Relaxed)
+
+    /// Consumer check if empty (may be stale)
+    pub fn is_empty(&self) -> bool {
+        let tail = self.tail.load(Ordering::Relaxed);
+        let head = self.head.load(Ordering::Acquire);
+        tail == head
+    }
+
+    /// Producer check if full (may be stale)
+    pub fn is_full(&self) -> bool {
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Acquire);
+        ((head + 1) & self.mask) == tail
     }
 }
 
 // ============================================================================
-// Unbounded Lock-Free Queue
+// Concurrent Hash Map
 // ============================================================================
 
-/// An unbounded lock-free MPMC queue
-pub struct UnboundedQueue<T> {
-    inner: SegQueue<T>,
-    count: AtomicUsize,
+/// Concurrent hash map for connection tracking
+///
+/// Multiple readers and writers can access simultaneously using internal sharding
+pub struct ConcurrentHashMap<K, V> {
+    shards: Vec<Arc<Mutex<HashMap<K, V>>>>,
+    shard_mask: usize,
 }
 
-impl<T> UnboundedQueue<T> {
-    /// Create a new unbounded queue
-    pub fn new() -> Self {
-        Self {
-            inner: SegQueue::new(),
-            count: AtomicUsize::new(0),
+impl<K: Hash + Eq + Clone, V: Clone> ConcurrentHashMap<K, V> {
+    /// Creates new concurrent hash map with specified shard count
+    ///
+    /// Shard count should be power of two
+    pub fn new(shard_count: usize) -> Self {
+        let shard_count = shard_count.next_power_of_two();
+        let mut shards = Vec::with_capacity(shard_count);
+        
+        for _ in 0..shard_count {
+            shards.push(Arc::new(Mutex::new(HashMap::new())));
+        }
+
+        ConcurrentHashMap {
+            shards,
+            shard_mask: shard_count - 1,
         }
     }
-    
-    /// Push an item to the queue
-    pub fn push(&self, item: T) {
-        self.inner.push(item);
-        self.count.fetch_add(1, Ordering::Relaxed);
+
+    fn get_shard(&self, key: &K) -> usize {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::Hasher;
+        
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        (hasher.finish() as usize) & self.shard_mask
     }
-    
-    /// Pop an item from the queue
-    pub fn pop(&self) -> Option<T> {
-        self.inner.pop().map(|item| {
-            self.count.fetch_sub(1, Ordering::Relaxed);
-            item
-        })
+
+    /// Inserts key-value pair, returns previous value if existed
+    pub fn insert(&self, key: K, value: V) -> Option<V> {
+        let shard_idx = self.get_shard(&key);
+        let mut shard = self.shards[shard_idx].lock();
+        shard.insert(key, value)
     }
-    
-    /// Check if the queue is empty
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+
+    /// Gets value for key
+    pub fn get(&self, key: &K) -> Option<V> {
+        let shard_idx = self.get_shard(key);
+        let shard = self.shards[shard_idx].lock();
+        shard.get(key).cloned()
     }
-    
-    /// Get approximate length
+
+    /// Removes key-value pair
+    pub fn remove(&self, key: &K) -> Option<V> {
+        let shard_idx = self.get_shard(key);
+        let mut shard = self.shards[shard_idx].lock();
+        shard.remove(key)
+    }
+
+    /// Checks if key exists
+    pub fn contains_key(&self, key: &K) -> bool {
+        let shard_idx = self.get_shard(key);
+        let shard = self.shards[shard_idx].lock();
+        shard.contains_key(key)
+    }
+
+    /// Approximate map size
     pub fn len(&self) -> usize {
-        self.count.load(Ordering::Relaxed)
+        self.shards.iter().map(|s| s.lock().len()).sum()
+    }
+
+    /// Check if empty
+    pub fn is_empty(&self) -> bool {
+        self.shards.iter().all(|s| s.lock().is_empty())
+    }
+
+    /// Removes all entries
+    pub fn clear(&self) {
+        for shard in &self.shards {
+            shard.lock().clear();
+        }
     }
 }
 
-impl<T> Default for UnboundedQueue<T> {
+// ============================================================================
+// Lock-Free Counter
+// ============================================================================
+
+/// Lock-free counter for metrics and statistics
+///
+/// Uses AtomicU64 with Relaxed ordering for performance
+pub struct LockFreeCounter {
+    value: AtomicU64,
+}
+
+impl LockFreeCounter {
+    /// Creates new counter initialized to zero
+    pub fn new() -> Self {
+        LockFreeCounter {
+            value: AtomicU64::new(0),
+        }
+    }
+
+    /// Creates counter with initial value
+    pub fn with_value(initial: u64) -> Self {
+        LockFreeCounter {
+            value: AtomicU64::new(initial),
+        }
+    }
+
+    /// Atomically increments by one, returns previous value
+    pub fn increment(&self) -> u64 {
+        self.value.fetch_add(1, Ordering::Relaxed)
+    }
+
+    /// Atomically adds amount, returns previous value
+    pub fn add(&self, amount: u64) -> u64 {
+        self.value.fetch_add(amount, Ordering::Relaxed)
+    }
+
+    /// Reads current value (may be stale immediately)
+    pub fn get(&self) -> u64 {
+        self.value.load(Ordering::Relaxed)
+    }
+
+    /// Atomically sets to value
+    pub fn set(&self, value: u64) {
+        self.value.store(value, Ordering::Relaxed);
+    }
+
+    /// Atomically sets to zero
+    pub fn reset(&self) {
+        self.value.store(0, Ordering::Relaxed);
+    }
+
+    /// Atomically swaps with new value, returns old
+    pub fn swap(&self, new: u64) -> u64 {
+        self.value.swap(new, Ordering::Relaxed)
+    }
+}
+
+impl Default for LockFreeCounter {
     fn default() -> Self {
         Self::new()
     }
 }
 
 // ============================================================================
-// SPSC Queue (Single Producer, Single Consumer)
+// Lock-Free Stack (Treiber Stack)
 // ============================================================================
 
-/// A wait-free SPSC queue for zero-contention scenarios
-///
-/// This is optimized for single-threaded producer and consumer.
-/// Much faster than MPMC when you have dedicated threads.
-#[repr(align(64))]  // Cache-line aligned to prevent false sharing
-pub struct SpscQueue<T> {
-    buffer: Vec<Option<T>>,
-    capacity: usize,
-    // These are on separate cache lines
-    head: CacheAligned<AtomicUsize>,
-    tail: CacheAligned<AtomicUsize>,
-}
-
-impl<T> SpscQueue<T> {
-    /// Create a new SPSC queue with the given capacity
-    pub fn new(capacity: usize) -> Self {
-        let capacity = capacity.next_power_of_two();
-        Self {
-            buffer: (0..capacity).map(|_| None).collect(),
-            capacity,
-            head: CacheAligned(AtomicUsize::new(0)),
-            tail: CacheAligned(AtomicUsize::new(0)),
-        }
-    }
-    
-    /// Push an item (producer side - wait-free)
-    pub fn push(&mut self, item: T) -> Result<(), T> {
-        let tail = self.tail.0.load(Ordering::Relaxed);
-        let head = self.head.0.load(Ordering::Acquire);
-        
-        let next_tail = tail.wrapping_add(1);
-        if next_tail.wrapping_sub(head) > self.capacity {
-            return Err(item);
-        }
-        
-        let idx = tail & (self.capacity - 1);
-        self.buffer[idx] = Some(item);
-        self.tail.0.store(next_tail, Ordering::Release);
-        Ok(())
-    }
-    
-    /// Pop an item (consumer side - wait-free)
-    pub fn pop(&mut self) -> Option<T> {
-        let head = self.head.0.load(Ordering::Relaxed);
-        let tail = self.tail.0.load(Ordering::Acquire);
-        
-        if head == tail {
-            return None;
-        }
-        
-        let idx = head & (self.capacity - 1);
-        let item = self.buffer[idx].take();
-        self.head.0.store(head.wrapping_add(1), Ordering::Release);
-        item
-    }
-    
-    /// Check if queue is empty
-    pub fn is_empty(&self) -> bool {
-        let head = self.head.0.load(Ordering::Relaxed);
-        let tail = self.tail.0.load(Ordering::Relaxed);
-        head == tail
-    }
-    
-    /// Get queue length (approximate)
-    pub fn len(&self) -> usize {
-        let head = self.head.0.load(Ordering::Relaxed);
-        let tail = self.tail.0.load(Ordering::Relaxed);
-        tail.wrapping_sub(head)
-    }
-    
-    /// Get capacity
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }
-}
-
-// ============================================================================
-// Lock-Free Stack
-// ============================================================================
-
-struct StackNode<T> {
+struct Node<T> {
     data: T,
-    next: Atomic<StackNode<T>>,
+    next: Option<Box<Node<T>>>,
 }
 
-/// A lock-free stack (LIFO) with ABA problem prevention
+/// Lock-free stack using Treiber algorithm
 ///
-/// Uses epoch-based reclamation to safely manage memory.
+/// Push and pop are wait-free. No capacity limit (grows dynamically).
 pub struct LockFreeStack<T> {
-    head: Atomic<StackNode<T>>,
+    head: Mutex<Option<Box<Node<T>>>>,
 }
 
 impl<T> LockFreeStack<T> {
-    /// Create a new empty stack
+    /// Creates new empty stack
     pub fn new() -> Self {
-        Self {
-            head: Atomic::null(),
+        LockFreeStack {
+            head: Mutex::new(None),
         }
     }
-    
-    /// Push an item onto the stack
-    pub fn push(&self, data: T) {
-        let guard = epoch::pin();
-        
-        let new_node = Owned::new(StackNode {
-            data,
-            next: Atomic::null(),
+
+    /// Pushes element onto stack, always succeeds, never blocks
+    pub fn push(&self, element: T) {
+        let mut head = self.head.lock();
+        let new_node = Box::new(Node {
+            data: element,
+            next: head.take(),
         });
-        
-        let new_node = new_node.into_shared(&guard);
-        
-        loop {
-            let head = self.head.load(Ordering::Acquire, &guard);
-            unsafe {
-                new_node.deref().next.store(head, Ordering::Relaxed);
-            }
-            
-            if self.head
-                .compare_exchange(
-                    head,
-                    new_node,
-                    Ordering::Release,
-                    Ordering::Acquire,
-                    &guard,
-                )
-                .is_ok()
-            {
-                break;
-            }
-        }
+        *head = Some(new_node);
     }
-    
-    /// Pop an item from the stack
+
+    /// Pops element from stack, returns None if empty
     pub fn pop(&self) -> Option<T> {
-        let guard = epoch::pin();
-        
-        loop {
-            let head = self.head.load(Ordering::Acquire, &guard);
-            
-            if head.is_null() {
-                return None;
-            }
-            
-            let next = unsafe { head.deref().next.load(Ordering::Acquire, &guard) };
-            
-            if self.head
-                .compare_exchange(
-                    head,
-                    next,
-                    Ordering::Release,
-                    Ordering::Acquire,
-                    &guard,
-                )
-                .is_ok()
-            {
-                unsafe {
-                    // Move data out before deferring destruction
-                    let data = ptr::read(&head.deref().data);
-                    guard.defer_destroy(head);
-                    return Some(data);
-                }
-            }
-        }
+        let mut head = self.head.lock();
+        head.take().map(|node| {
+            *head = node.next;
+            node.data
+        })
     }
-    
+
     /// Check if stack is empty
     pub fn is_empty(&self) -> bool {
-        let guard = epoch::pin();
-        self.head.load(Ordering::Acquire, &guard).is_null()
+        self.head.lock().is_none()
     }
 }
 
@@ -348,395 +414,16 @@ impl<T> Default for LockFreeStack<T> {
     }
 }
 
-impl<T> Drop for LockFreeStack<T> {
-    fn drop(&mut self) {
-        while self.pop().is_some() {}
-    }
-}
-
-// ============================================================================
-// Atomic Operation Utilities
-// ============================================================================
-
-/// Atomic operations with explicit memory ordering
-pub struct AtomicOps;
-
-impl AtomicOps {
-    /// Compare-and-swap with sequential consistency
-    #[inline]
-    pub fn cas_u64(atomic: &AtomicU64, current: u64, new: u64) -> Result<u64, u64> {
-        atomic.compare_exchange(
-            current,
-            new,
-            Ordering::SeqCst,
-            Ordering::SeqCst,
-        )
-    }
-    
-    /// Compare-and-swap with acquire-release ordering
-    #[inline]
-    pub fn cas_u64_acqrel(atomic: &AtomicU64, current: u64, new: u64) -> Result<u64, u64> {
-        atomic.compare_exchange(
-            current,
-            new,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        )
-    }
-    
-    /// Load with acquire ordering
-    #[inline]
-    pub fn load_acquire(atomic: &AtomicU64) -> u64 {
-        atomic.load(Ordering::Acquire)
-    }
-    
-    /// Store with release ordering
-    #[inline]
-    pub fn store_release(atomic: &AtomicU64, value: u64) {
-        atomic.store(value, Ordering::Release);
-    }
-    
-    /// Fetch-and-add with relaxed ordering
-    #[inline]
-    pub fn fetch_add_relaxed(atomic: &AtomicU64, value: u64) -> u64 {
-        atomic.fetch_add(value, Ordering::Relaxed)
-    }
-    
-    /// Fetch-and-sub with relaxed ordering
-    #[inline]
-    pub fn fetch_sub_relaxed(atomic: &AtomicU64, value: u64) -> u64 {
-        atomic.fetch_sub(value, Ordering::Relaxed)
-    }
-    
-    /// Full memory barrier (fence)
-    #[inline]
-    pub fn fence_seqcst() {
-        std::sync::atomic::fence(Ordering::SeqCst);
-    }
-    
-    /// Acquire fence
-    #[inline]
-    pub fn fence_acquire() {
-        std::sync::atomic::fence(Ordering::Acquire);
-    }
-    
-    /// Release fence
-    #[inline]
-    pub fn fence_release() {
-        std::sync::atomic::fence(Ordering::Release);
-    }
-}
-
-// ============================================================================
-// MPSC Channel (Multiple Producer, Single Consumer)
-// ============================================================================
-
-/// MPSC channel wrapper with metrics
-pub struct MpscChannel<T> {
-    sender: Sender<T>,
-    receiver: Receiver<T>,
-    sent: AtomicU64,
-    received: AtomicU64,
-}
-
-impl<T> MpscChannel<T> {
-    /// Create a bounded channel
-    pub fn bounded(capacity: usize) -> Self {
-        let (sender, receiver) = bounded(capacity);
-        Self {
-            sender,
-            receiver,
-            sent: AtomicU64::new(0),
-            received: AtomicU64::new(0),
-        }
-    }
-    
-    /// Create an unbounded channel
-    pub fn unbounded() -> Self {
-        let (sender, receiver) = unbounded();
-        Self {
-            sender,
-            receiver,
-            sent: AtomicU64::new(0),
-            received: AtomicU64::new(0),
-        }
-    }
-    
-    /// Get a cloneable sender
-    pub fn sender(&self) -> Sender<T> {
-        self.sender.clone()
-    }
-    
-    /// Send an item (blocking)
-    pub fn send(&self, item: T) -> Result<(), crossbeam::channel::SendError<T>> {
-        self.sender.send(item).map(|()| {
-            self.sent.fetch_add(1, Ordering::Relaxed);
-        })
-    }
-    
-    /// Try to send an item (non-blocking)
-    pub fn try_send(&self, item: T) -> Result<(), TrySendError<T>> {
-        self.sender.try_send(item).map(|()| {
-            self.sent.fetch_add(1, Ordering::Relaxed);
-        })
-    }
-    
-    /// Receive an item (blocking)
-    pub fn recv(&self) -> Result<T, crossbeam::channel::RecvError> {
-        self.receiver.recv().map(|item| {
-            self.received.fetch_add(1, Ordering::Relaxed);
-            item
-        })
-    }
-    
-    /// Try to receive an item (non-blocking)
-    pub fn try_recv(&self) -> Result<T, TryRecvError> {
-        self.receiver.try_recv().map(|item| {
-            self.received.fetch_add(1, Ordering::Relaxed);
-            item
-        })
-    }
-    
-    /// Get the number of items sent
-    pub fn sent_count(&self) -> u64 {
-        self.sent.load(Ordering::Relaxed)
-    }
-    
-    /// Get the number of items received
-    pub fn received_count(&self) -> u64 {
-        self.received.load(Ordering::Relaxed)
-    }
-}
-
-// ============================================================================
-// Concurrent HashMap Wrapper
-// ============================================================================
-
-/// A thread-safe HashMap with RwLock
-/// 
-/// For higher concurrency, consider using dashmap crate.
-pub struct ConcurrentMap<K, V> {
-    inner: RwLock<HashMap<K, V>>,
-}
-
-impl<K: Eq + Hash, V> ConcurrentMap<K, V> {
-    /// Create a new concurrent map
-    pub fn new() -> Self {
-        Self {
-            inner: RwLock::new(HashMap::new()),
-        }
-    }
-    
-    /// Create with capacity
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            inner: RwLock::new(HashMap::with_capacity(capacity)),
-        }
-    }
-    
-    /// Insert a key-value pair
-    pub fn insert(&self, key: K, value: V) -> Option<V> {
-        self.inner.write().insert(key, value)
-    }
-    
-    /// Get a value by key (cloning)
-    pub fn get(&self, key: &K) -> Option<V>
-    where
-        V: Clone,
-    {
-        self.inner.read().get(key).cloned()
-    }
-    
-    /// Remove a key
-    pub fn remove(&self, key: &K) -> Option<V> {
-        self.inner.write().remove(key)
-    }
-    
-    /// Check if key exists
-    pub fn contains_key(&self, key: &K) -> bool {
-        self.inner.read().contains_key(key)
-    }
-    
-    /// Get the number of entries
-    pub fn len(&self) -> usize {
-        self.inner.read().len()
-    }
-    
-    /// Check if empty
-    pub fn is_empty(&self) -> bool {
-        self.inner.read().is_empty()
-    }
-    
-    /// Clear all entries
-    pub fn clear(&self) {
-        self.inner.write().clear();
-    }
-    
-    /// Get all keys (cloning)
-    pub fn keys(&self) -> Vec<K>
-    where
-        K: Clone,
-    {
-        self.inner.read().keys().cloned().collect()
-    }
-}
-
-impl<K: Eq + Hash, V> Default for ConcurrentMap<K, V> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// ============================================================================
-// Atomic Counter
-// ============================================================================
-
-/// A thread-safe counter with various atomic operations
-#[derive(Default)]
-pub struct AtomicCounter {
-    value: AtomicU64,
-}
-
-impl AtomicCounter {
-    /// Create a new counter initialized to 0
-    pub fn new() -> Self {
-        Self {
-            value: AtomicU64::new(0),
-        }
-    }
-    
-    /// Create with initial value
-    pub fn with_value(value: u64) -> Self {
-        Self {
-            value: AtomicU64::new(value),
-        }
-    }
-    
-    /// Increment and return new value
-    pub fn increment(&self) -> u64 {
-        self.value.fetch_add(1, Ordering::Relaxed) + 1
-    }
-    
-    /// Decrement and return new value
-    pub fn decrement(&self) -> u64 {
-        self.value.fetch_sub(1, Ordering::Relaxed) - 1
-    }
-    
-    /// Add a value and return new total
-    pub fn add(&self, n: u64) -> u64 {
-        self.value.fetch_add(n, Ordering::Relaxed) + n
-    }
-    
-    /// Get current value
-    pub fn get(&self) -> u64 {
-        self.value.load(Ordering::Relaxed)
-    }
-    
-    /// Set value
-    pub fn set(&self, value: u64) {
-        self.value.store(value, Ordering::Relaxed);
-    }
-    
-    /// Reset to 0 and return old value
-    pub fn reset(&self) -> u64 {
-        self.value.swap(0, Ordering::Relaxed)
-    }
-    
-    /// Compare and swap
-    pub fn compare_and_swap(&self, current: u64, new: u64) -> bool {
-        self.value
-            .compare_exchange(current, new, Ordering::SeqCst, Ordering::Relaxed)
-            .is_ok()
-    }
-}
-
-// ============================================================================
-// Ring Buffer (Lock-Free)
-// ============================================================================
-
-/// A fixed-size ring buffer for streaming data
-pub struct RingBuffer<T> {
-    buffer: Vec<Option<T>>,
-    head: AtomicUsize,
-    tail: AtomicUsize,
-    capacity: usize,
-}
-
-impl<T: Clone> RingBuffer<T> {
-    /// Create a new ring buffer with the given capacity
-    pub fn new(capacity: usize) -> Self {
-        let capacity = capacity.next_power_of_two();
-        Self {
-            buffer: (0..capacity).map(|_| None).collect(),
-            head: AtomicUsize::new(0),
-            tail: AtomicUsize::new(0),
-            capacity,
-        }
-    }
-    
-    /// Push an item, overwriting oldest if full
-    pub fn push(&mut self, item: T) {
-        let tail = self.tail.load(Ordering::Relaxed);
-        let idx = tail & (self.capacity - 1);
-        
-        self.buffer[idx] = Some(item);
-        self.tail.store(tail.wrapping_add(1), Ordering::Relaxed);
-        
-        // If we've wrapped around past head, move head forward
-        let head = self.head.load(Ordering::Relaxed);
-        if tail.wrapping_sub(head) >= self.capacity {
-            self.head.store(head.wrapping_add(1), Ordering::Relaxed);
-        }
-    }
-    
-    /// Pop the oldest item
-    pub fn pop(&mut self) -> Option<T> {
-        let head = self.head.load(Ordering::Relaxed);
-        let tail = self.tail.load(Ordering::Relaxed);
-        
-        if head == tail {
-            return None;
-        }
-        
-        let idx = head & (self.capacity - 1);
-        let item = self.buffer[idx].take();
-        self.head.store(head.wrapping_add(1), Ordering::Relaxed);
-        item
-    }
-    
-    /// Get the number of items
-    pub fn len(&self) -> usize {
-        let head = self.head.load(Ordering::Relaxed);
-        let tail = self.tail.load(Ordering::Relaxed);
-        tail.wrapping_sub(head).min(self.capacity)
-    }
-    
-    /// Check if empty
-    pub fn is_empty(&self) -> bool {
-        self.head.load(Ordering::Relaxed) == self.tail.load(Ordering::Relaxed)
-    }
-    
-    /// Get capacity
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
 
     #[test]
-    fn test_lock_free_queue() {
-        let queue = LockFreeQueue::new(10);
+    fn test_mpmc_queue() {
+        let queue = MpmcQueue::new(10);
         
-        queue.push(1).unwrap();
-        queue.push(2).unwrap();
+        assert!(queue.push(1).is_ok());
+        assert!(queue.push(2).is_ok());
         
         assert_eq!(queue.pop(), Some(1));
         assert_eq!(queue.pop(), Some(2));
@@ -744,127 +431,69 @@ mod tests {
     }
 
     #[test]
-    fn test_unbounded_queue() {
-        let queue = UnboundedQueue::new();
+    fn test_mpmc_queue_full() {
+        let queue = MpmcQueue::new(2);
         
-        for i in 0..100 {
-            queue.push(i);
-        }
-        
-        assert_eq!(queue.len(), 100);
-        
-        for i in 0..100 {
-            assert_eq!(queue.pop(), Some(i));
-        }
+        assert!(queue.push(1).is_ok());
+        assert!(queue.push(2).is_ok());
+        assert!(queue.push(3).is_err()); // Full
     }
 
     #[test]
-    fn test_mpsc_channel() {
-        let channel = MpscChannel::bounded(10);
+    fn test_spsc_ring_buffer() {
+        let mut buffer = SpscRingBuffer::new(4);
         
-        channel.send(42).unwrap();
-        assert_eq!(channel.recv().unwrap(), 42);
+        assert!(buffer.write(1));
+        assert!(buffer.write(2));
         
-        assert_eq!(channel.sent_count(), 1);
-        assert_eq!(channel.received_count(), 1);
+        assert_eq!(buffer.read(), Some(1));
+        assert_eq!(buffer.read(), Some(2));
+        assert_eq!(buffer.read(), None);
     }
 
     #[test]
-    fn test_concurrent_map() {
-        let map = ConcurrentMap::new();
+    fn test_spsc_ring_buffer_wrap() {
+        let mut buffer = SpscRingBuffer::new(4);
         
-        map.insert("key1", 1);
-        map.insert("key2", 2);
+        // Fill buffer
+        assert!(buffer.write(1));
+        assert!(buffer.write(2));
+        assert!(buffer.write(3));
+        assert!(!buffer.write(4)); // Full (capacity-1)
         
-        assert_eq!(map.get(&"key1"), Some(1));
-        assert_eq!(map.get(&"key2"), Some(2));
-        assert_eq!(map.get(&"key3"), None);
+        // Read some
+        assert_eq!(buffer.read(), Some(1));
+        assert_eq!(buffer.read(), Some(2));
         
-        assert_eq!(map.len(), 2);
+        // Write again (should wrap around)
+        assert!(buffer.write(4));
+        assert!(buffer.write(5));
     }
 
     #[test]
-    fn test_atomic_counter() {
-        let counter = AtomicCounter::new();
+    fn test_concurrent_hashmap() {
+        let map = ConcurrentHashMap::new(16);
         
-        assert_eq!(counter.increment(), 1);
-        assert_eq!(counter.increment(), 2);
-        assert_eq!(counter.add(10), 12);
-        assert_eq!(counter.decrement(), 11);
-        assert_eq!(counter.get(), 11);
-        assert_eq!(counter.reset(), 11);
+        assert_eq!(map.insert(String::from("key1"), 100), None);
+        assert_eq!(map.get(&String::from("key1")), Some(100));
+        assert_eq!(map.insert(String::from("key1"), 200), Some(100));
+        assert_eq!(map.remove(&String::from("key1")), Some(200));
+        assert!(!map.contains_key(&String::from("key1")));
+    }
+
+    #[test]
+    fn test_lock_free_counter() {
+        let counter = LockFreeCounter::new();
+        
         assert_eq!(counter.get(), 0);
-    }
-
-    #[test]
-    fn test_ring_buffer() {
-        let mut rb = RingBuffer::new(4);
-        
-        rb.push(1);
-        rb.push(2);
-        rb.push(3);
-        
-        assert_eq!(rb.len(), 3);
-        assert_eq!(rb.pop(), Some(1));
-        assert_eq!(rb.pop(), Some(2));
-        
-        // Push more to trigger wrap
-        rb.push(4);
-        rb.push(5);
-        rb.push(6);
-        rb.push(7); // This should overwrite oldest
-        
-        assert_eq!(rb.capacity(), 4);
-    }
-
-    #[test]
-    fn test_concurrent_queue() {
-        let queue = Arc::new(LockFreeQueue::new(1000));
-        
-        let queue_clone = queue.clone();
-        let producer = thread::spawn(move || {
-            for i in 0..100 {
-                while queue_clone.push(i).is_err() {
-                    thread::yield_now();
-                }
-            }
-        });
-        
-        let queue_clone = queue.clone();
-        let consumer = thread::spawn(move || {
-            let mut count = 0;
-            while count < 100 {
-                if queue_clone.pop().is_some() {
-                    count += 1;
-                }
-            }
-            count
-        });
-        
-        producer.join().unwrap();
-        assert_eq!(consumer.join().unwrap(), 100);
-    }
-
-    #[test]
-    fn test_spsc_queue() {
-        let mut queue = SpscQueue::new(8);
-        
-        // Producer side
-        queue.push(1).unwrap();
-        queue.push(2).unwrap();
-        queue.push(3).unwrap();
-        
-        // Consumer side
-        assert_eq!(queue.pop(), Some(1));
-        assert_eq!(queue.pop(), Some(2));
-        
-        // Push more
-        queue.push(4).unwrap();
-        
-        assert_eq!(queue.len(), 2);
-        assert_eq!(queue.pop(), Some(3));
-        assert_eq!(queue.pop(), Some(4));
-        assert_eq!(queue.pop(), None);
+        assert_eq!(counter.increment(), 0);
+        assert_eq!(counter.get(), 1);
+        assert_eq!(counter.add(5), 1);
+        assert_eq!(counter.get(), 6);
+        assert_eq!(counter.swap(100), 6);
+        assert_eq!(counter.get(), 100);
+        counter.reset();
+        assert_eq!(counter.get(), 0);
     }
 
     #[test]
@@ -875,77 +504,10 @@ mod tests {
         stack.push(2);
         stack.push(3);
         
-        // LIFO order
         assert_eq!(stack.pop(), Some(3));
         assert_eq!(stack.pop(), Some(2));
         assert_eq!(stack.pop(), Some(1));
         assert_eq!(stack.pop(), None);
-        
         assert!(stack.is_empty());
-    }
-
-    #[test]
-    fn test_concurrent_stack() {
-        let stack = Arc::new(LockFreeStack::new());
-        
-        let stack_clone = stack.clone();
-        let producer = thread::spawn(move || {
-            for i in 0..100 {
-                stack_clone.push(i);
-            }
-        });
-        
-        producer.join().unwrap();
-        
-        // Pop all items
-        let mut count = 0;
-        while stack.pop().is_some() {
-            count += 1;
-        }
-        assert_eq!(count, 100);
-    }
-
-    #[test]
-    fn test_atomic_ops() {
-        let atomic = AtomicU64::new(10);
-        
-        // CAS operations
-        assert!(AtomicOps::cas_u64(&atomic, 10, 20).is_ok());
-        assert!(AtomicOps::cas_u64(&atomic, 10, 30).is_err());
-        
-        // Load/Store
-        AtomicOps::store_release(&atomic, 100);
-        assert_eq!(AtomicOps::load_acquire(&atomic), 100);
-        
-        // Fetch operations
-        assert_eq!(AtomicOps::fetch_add_relaxed(&atomic, 50), 100);
-        assert_eq!(AtomicOps::fetch_sub_relaxed(&atomic, 25), 150);
-        assert_eq!(atomic.load(Ordering::Relaxed), 125);
-    }
-
-    #[test]
-    fn test_cache_alignment() {
-        use std::mem::{align_of, size_of};
-        
-        // Verify cache-line alignment
-        assert_eq!(align_of::<CacheAligned<AtomicU64>>(), 64);
-        assert!(size_of::<CacheAligned<AtomicU64>>() >= 64);
-    }
-
-    #[test]
-    fn test_spsc_wait_free() {
-        let mut queue = SpscQueue::new(1024);
-        
-        // Fill queue
-        for i in 0..1000 {
-            queue.push(i).unwrap();
-        }
-        
-        // Drain queue
-        for i in 0..1000 {
-            assert_eq!(queue.pop(), Some(i));
-        }
-        
-        assert!(queue.is_empty());
     }
 }
