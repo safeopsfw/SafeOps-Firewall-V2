@@ -165,6 +165,9 @@ rebuild_structure.ps1
 # =====================================
 directory_tree.txt
 map/
+DEPENDENCY_MAP.md
+DEPENDENCY_MAP_DETAILED.md
+COMPREHENSIVE_DEPENDENCY_MAP.md
 
 # =====================================
 # Keep Empty Directories
