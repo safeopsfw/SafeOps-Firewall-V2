@@ -161,6 +161,12 @@ safeops_structure_generator.ps1
 rebuild_structure.ps1
 
 # =====================================
+# Temporary Documentation
+# =====================================
+directory_tree.txt
+map/
+
+# =====================================
 # Keep Empty Directories
 # =====================================
 !**/.gitkeep

@@ -1,89 +1,109 @@
-# SafeOps Shared Libraries
+# Shared Libraries - Data Structures
 
-This directory contains shared utilities used across all SafeOps components, organized by language.
+> **Common data structures and utilities shared across all SafeOps services**
 
-## Directory Structure
+---
+
+## 📁 Directory Layout
 
 ```
-src/shared/
-├── rust/           # Rust shared library
-├── go/             # Go shared packages
-└── c/              # C shared headers
+shared/
+├── rust/          # Rust shared library (performance-critical)
+├── go/            # Go shared library (services)
+└── c/             # C header files (kernel compatibility)
 ```
 
-## Rust Shared Library (`rust/`)
+---
 
-High-performance utilities for the Rust components:
+## 🦀 Rust Shared Library
 
-| Module | Description |
-|--------|-------------|
-| `ip_utils` | IP parsing, CIDR matching, prefix tree lookup |
-| `hash_utils` | xxHash3, aHash, consistent hashing |
-| `memory_pool` | Thread-safe object pooling |
-| `lock_free` | Lock-free queues, MPSC, ring buffers |
-| `simd_utils` | Fast packet parsing, checksums |
-| `time_utils` | Timestamps, stopwatch, rate limiting |
-| `proto_utils` | Protobuf encode/decode helpers |
-| `buffer_pool` | Buffer pooling, zero-copy views |
-| `metrics` | Counter, Gauge, Histogram, Prometheus |
-| `error` | Structured error types |
+### Location
+`src/shared/rust/src/`
 
-```bash
-cd src/shared/rust
-cargo build
-cargo test
-```
+### Core Type Definitions
 
-## Go Shared Packages (`go/`)
-
-Common utilities for Go services:
-
-| Package | Description |
-|---------|-------------|
-| `config` | Viper-based configuration with hot-reload |
-| `logging` | Structured logging with logrus |
-| `errors` | Structured errors with codes |
-| `health` | Health check framework |
-| `metrics` | Prometheus metrics wrappers |
-| `utils` | Retry, rate limiting, validation |
-| `redis` | Redis client with pub/sub |
-| `postgres` | PostgreSQL pool, transactions, migrations |
-| `grpc_client` | gRPC client with interceptors |
-
-```bash
-cd src/shared/go
-go build ./...
-go test ./...
-```
-
-## C Shared Headers (`c/`)
-
-Shared structures for kernel-userspace communication:
-
-| Header | Description |
-|--------|-------------|
-| `ring_buffer.h` | Ring buffer structures |
-| `packet_structs.h` | Network packet structures |
-| `ioctl_codes.h` | IOCTL command definitions |
-| `shared_constants.h` | Common constants |
-
-## Usage
-
-### Rust
 ```rust
-use safeops_shared::{ip_utils, hash_utils, metrics};
+// src/shared/rust/src/lib.rs
+
+pub mod error;         // Error types
+pub mod ip_utils;      // IP address utilities
+pub mod hash_utils;    // Hashing algorithms
+pub mod memory_pool;   // Object pooling
+pub mod lock_free;     // Lock-free data structures
+pub mod simd_utils;    // SIMD optimizations
+pub mod time_utils;    // Time/timestamp utilities
+pub mod proto_utils;   // Protobuf helpers
+pub mod buffer_pool;   // Buffer pooling
+pub mod metrics;       // Prometheus metrics
+
+---
+
+## 🎯 Protocol Buffers
+
+### Location
+`proto/`
+
+### gRPC Service Definitions
+
+Each service exports gRPC interfaces defined in `.proto` files:
+
+```protobuf
+// proto/firewall_service.proto
+
+syntax = "proto3";
+package safeops.firewall.v1;
+
+service FirewallService {
+  rpc AddRule(AddRuleRequest) returns (AddRuleResponse);
+  rpc DeleteRule(DeleteRuleRequest) returns (DeleteRuleResponse);
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+}
+
+message FirewallRule {
+  uint32 id = 1;
+  string name = 2;
+  string description = 3;
+  bool enabled = 4;
+  uint32 priority = 5;
+  Action action = 6;
+  Direction direction = 7;
+  AddressMatch source = 8;
+  AddressMatch destination = 9;
+  Protocol protocol = 10;
+}
 ```
 
-### Go
-```go
-import (
-    "github.com/safeops/shared/config"
-    "github.com/safeops/shared/logging"
-)
+---
+
+## ⚙️ Configuration
+
+### Location
+`config/templates/`
+
+### TOML Structure
+
+```toml
+# config/templates/safeops.toml
+
+[system]
+version = "2.0.0"
+node_id = "node-001"
+
+[kernel_driver]
+enabled = true
+ring_buffer_size_mb = 16
+
+[firewall]
+default_policy = "BLOCK"
+max_connections = 1000000
+
+[threat_intelligence]
+database_host = "localhost"
+cache_ttl_seconds = 300
 ```
 
-### C
-```c
-#include "shared/ring_buffer.h"
-#include "shared/packet_structs.h"
-```
+---
+
+**Version:** 2.0.0  
+**Last Updated:** 2025-12-17
