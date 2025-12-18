@@ -1,283 +1,377 @@
-// Package errors provides error handling utilities.
 package errors
 
 import (
-	"errors"
 	"fmt"
 	"runtime"
 	"strings"
+	"time"
 )
 
-// Error represents a structured error with code and context
-type Error struct {
-	Code    Code
+// SafeOpsError is a custom error type that provides structured error handling
+// with machine-readable error codes, contextual fields, stack traces, and
+// error wrapping capabilities for consistent error handling across all
+// SafeOps Go services.
+type SafeOpsError struct {
+	// Code is the machine-readable error code (e.g., "DB_CONNECTION_FAILED")
+	Code string
+
+	// Message is the human-readable error description
 	Message string
-	Cause   error
-	Stack   []Frame
-	Context map[string]interface{}
+
+	// Fields contains additional context key-value pairs
+	Fields map[string]interface{}
+
+	// Cause is the underlying error being wrapped (if any)
+	Cause error
+
+	// Stack is the stack trace capturing error origin
+	Stack []string
+
+	// Timestamp records when the error occurred
+	Timestamp time.Time
 }
 
-// Frame represents a stack frame
-type Frame struct {
-	Function string
-	File     string
-	Line     int
-}
-
-// Error implements the error interface
-func (e *Error) Error() string {
-	if e.Cause != nil {
-		return fmt.Sprintf("[%s] %s: %v", e.Code, e.Message, e.Cause)
+// New creates a new SafeOpsError with the given code and message.
+// It captures the stack trace at the point of creation and initializes
+// an empty Fields map.
+//
+// Example:
+//
+//	err := errors.New("DB_CONNECTION_FAILED", "Could not connect to PostgreSQL")
+func New(code, message string) *SafeOpsError {
+	return &SafeOpsError{
+		Code:      code,
+		Message:   message,
+		Fields:    make(map[string]interface{}),
+		Stack:     captureStack(),
+		Timestamp: time.Now(),
 	}
-	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
 }
 
-// Unwrap returns the underlying cause
-func (e *Error) Unwrap() error {
-	return e.Cause
+// Newf creates a new SafeOpsError with formatted message using fmt.Sprintf.
+//
+// Example:
+//
+//	err := errors.Newf("DB_QUERY_FAILED", "Query failed on table %s", tableName)
+func Newf(code, format string, args ...interface{}) *SafeOpsError {
+	return New(code, fmt.Sprintf(format, args...))
 }
 
-// Is checks if the error matches a target
-func (e *Error) Is(target error) bool {
-	if t, ok := target.(*Error); ok {
-		return e.Code == t.Code
+// Wrap wraps an existing error with a SafeOpsError, preserving the original
+// error in the Cause field. This enables error chain navigation while adding
+// context at each layer.
+//
+// Example:
+//
+//	err := errors.Wrap(sqlErr, "DB_CONNECTION_FAILED", "Could not connect to PostgreSQL")
+func Wrap(err error, code, message string) *SafeOpsError {
+	if err == nil {
+		return nil
 	}
-	return false
+
+	return &SafeOpsError{
+		Code:      code,
+		Message:   message,
+		Fields:    make(map[string]interface{}),
+		Cause:     err,
+		Stack:     captureStack(),
+		Timestamp: time.Now(),
+	}
 }
 
-// WithContext adds context to the error
-func (e *Error) WithContext(key string, value interface{}) *Error {
-	if e.Context == nil {
-		e.Context = make(map[string]interface{})
+// Wrapf wraps an existing error with a formatted message.
+//
+// Example:
+//
+//	err := errors.Wrapf(sqlErr, "DB_QUERY_FAILED", "Query failed on table %s", tableName)
+func Wrapf(err error, code, format string, args ...interface{}) *SafeOpsError {
+	return Wrap(err, code, fmt.Sprintf(format, args...))
+}
+
+// WithField adds a single contextual field to the error and returns the same
+// error instance, enabling method chaining.
+//
+// Example:
+//
+//	err.WithField("user_id", 123).WithField("action", "login")
+func (e *SafeOpsError) WithField(key string, value interface{}) *SafeOpsError {
+	if e == nil {
+		return nil
 	}
-	e.Context[key] = value
+	if e.Fields == nil {
+		e.Fields = make(map[string]interface{})
+	}
+	e.Fields[key] = value
 	return e
 }
 
-// New creates a new error
-func New(code Code, message string) *Error {
-	return &Error{
-		Code:    code,
-		Message: message,
-		Stack:   captureStack(2),
-	}
-}
-
-// Newf creates a new formatted error
-func Newf(code Code, format string, args ...interface{}) *Error {
-	return &Error{
-		Code:    code,
-		Message: fmt.Sprintf(format, args...),
-		Stack:   captureStack(2),
-	}
-}
-
-// Wrap wraps an error with additional context
-func Wrap(err error, code Code, message string) *Error {
-	if err == nil {
+// WithFields adds multiple contextual fields at once, merging with existing fields.
+//
+// Example:
+//
+//	err.WithFields(map[string]interface{}{"query": sql, "duration_ms": 150})
+func (e *SafeOpsError) WithFields(fields map[string]interface{}) *SafeOpsError {
+	if e == nil {
 		return nil
 	}
-
-	return &Error{
-		Code:    code,
-		Message: message,
-		Cause:   err,
-		Stack:   captureStack(2),
+	if e.Fields == nil {
+		e.Fields = make(map[string]interface{})
 	}
+	for k, v := range fields {
+		e.Fields[k] = v
+	}
+	return e
 }
 
-// Wrapf wraps an error with formatted message
-func Wrapf(err error, code Code, format string, args ...interface{}) *Error {
-	if err == nil {
+// WithCause sets the underlying cause error. This is used when creating an
+// error from scratch but having an underlying error to associate.
+func (e *SafeOpsError) WithCause(cause error) *SafeOpsError {
+	if e == nil {
 		return nil
 	}
-
-	return &Error{
-		Code:    code,
-		Message: fmt.Sprintf(format, args...),
-		Cause:   err,
-		Stack:   captureStack(2),
-	}
+	e.Cause = cause
+	return e
 }
 
-// captureStack captures the call stack
-func captureStack(skip int) []Frame {
-	var frames []Frame
+// Error implements the standard error interface, returning a formatted string
+// in the format "[CODE] message".
+//
+// Example output: "[DB_CONNECTION_FAILED] Could not connect to PostgreSQL"
+func (e *SafeOpsError) Error() string {
+	if e == nil {
+		return ""
+	}
+	if e.Code != "" {
+		return fmt.Sprintf("[%s] %s", e.Code, e.Message)
+	}
+	return e.Message
+}
 
-	for i := skip; i < 20; i++ {
-		pc, file, line, ok := runtime.Caller(i)
-		if !ok {
+// Unwrap implements the errors.Unwrap interface (Go 1.13+), returning the
+// underlying Cause error. This enables errors.Is() and errors.As() checks
+// to traverse the error chain.
+func (e *SafeOpsError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
+}
+
+// Is implements the errors.Is interface, comparing error codes.
+// Returns true if the target error is a SafeOpsError with matching code.
+func (e *SafeOpsError) Is(target error) bool {
+	if e == nil || target == nil {
+		return false
+	}
+
+	t, ok := target.(*SafeOpsError)
+	if !ok {
+		return false
+	}
+
+	return e.Code == t.Code
+}
+
+// captureStack captures the current call stack, skipping internal error
+// package frames. It uses runtime.Callers() to get program counters and
+// converts them to function names and file:line pairs.
+//
+// Returns a slice of strings like "main.processRequest (/app/main.go:45)"
+func captureStack() []string {
+	const maxStackDepth = 32
+	pcs := make([]uintptr, maxStackDepth)
+	n := runtime.Callers(3, pcs) // Skip captureStack, New/Wrap, and runtime.Callers itself
+
+	if n == 0 {
+		return []string{}
+	}
+
+	frames := runtime.CallersFrames(pcs[:n])
+	stack := make([]string, 0, n)
+
+	for {
+		frame, more := frames.Next()
+
+		// Skip internal error package frames
+		if !strings.Contains(frame.File, "errors/errors.go") {
+			stack = append(stack, fmt.Sprintf("%s (%s:%d)",
+				frame.Function,
+				frame.File,
+				frame.Line,
+			))
+		}
+
+		if !more {
 			break
 		}
-
-		fn := runtime.FuncForPC(pc)
-		funcName := "unknown"
-		if fn != nil {
-			funcName = fn.Name()
-		}
-
-		frames = append(frames, Frame{
-			Function: funcName,
-			File:     file,
-			Line:     line,
-		})
 	}
 
-	return frames
+	return stack
 }
 
-// StackTrace returns the stack trace as a string
-func (e *Error) StackTrace() string {
-	var sb strings.Builder
-
-	for _, frame := range e.Stack {
-		sb.WriteString(fmt.Sprintf("%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line))
+// StackTrace returns the captured stack trace as a slice of strings.
+// Each element is formatted as "function (file:line)".
+func (e *SafeOpsError) StackTrace() []string {
+	if e == nil {
+		return []string{}
 	}
-
-	return sb.String()
+	return e.Stack
 }
 
-// GetCode extracts the error code from an error
-func GetCode(err error) Code {
-	if e, ok := err.(*Error); ok {
-		return e.Code
-	}
-
-	// Check wrapped errors
-	var e *Error
-	if errors.As(err, &e) {
-		return e.Code
-	}
-
-	return Unknown
-}
-
-// GetMessage extracts the error message
-func GetMessage(err error) string {
-	if e, ok := err.(*Error); ok {
-		return e.Message
-	}
-	return err.Error()
-}
-
-// GetContext extracts context from an error
-func GetContext(err error) map[string]interface{} {
-	if e, ok := err.(*Error); ok {
-		return e.Context
-	}
-	return nil
-}
-
-// RootCause returns the root cause of an error
-func RootCause(err error) error {
-	for {
-		unwrapped := errors.Unwrap(err)
-		if unwrapped == nil {
-			return err
-		}
-		err = unwrapped
-	}
-}
-
-// IsCode checks if an error has a specific code
-func IsCode(err error, code Code) bool {
-	return GetCode(err) == code
-}
-
-// Is is a convenience wrapper for errors.Is
-func Is(err, target error) bool {
-	return errors.Is(err, target)
-}
-
-// As is a convenience wrapper for errors.As
-func As(err error, target interface{}) bool {
-	return errors.As(err, target)
-}
-
-// Join combines multiple errors
-func Join(errs ...error) error {
-	return errors.Join(errs...)
-}
-
-// Multi represents multiple errors
-type Multi struct {
-	Errors []error
-}
-
-// Error implements the error interface
-func (m *Multi) Error() string {
-	if len(m.Errors) == 0 {
+// FormatStack formats the stack trace as a multi-line string suitable for
+// logging or display.
+//
+// Example output:
+//
+//	goroutine 1:
+//	  main.processRequest (/app/main.go:45)
+//	  main.handleHTTP (/app/main.go:30)
+//	  main.main (/app/main.go:15)
+func (e *SafeOpsError) FormatStack() string {
+	if e == nil || len(e.Stack) == 0 {
 		return ""
 	}
 
-	if len(m.Errors) == 1 {
-		return m.Errors[0].Error()
-	}
-
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d errors occurred:\n", len(m.Errors)))
-
-	for i, err := range m.Errors {
-		sb.WriteString(fmt.Sprintf("  [%d] %s\n", i+1, err.Error()))
+	sb.WriteString("goroutine 1:\n")
+	for _, frame := range e.Stack {
+		sb.WriteString("  ")
+		sb.WriteString(frame)
+		sb.WriteString("\n")
 	}
-
 	return sb.String()
 }
 
-// Add adds an error to the collection
-func (m *Multi) Add(err error) {
-	if err != nil {
-		m.Errors = append(m.Errors, err)
-	}
-}
-
-// HasErrors returns true if there are any errors
-func (m *Multi) HasErrors() bool {
-	return len(m.Errors) > 0
-}
-
-// ToError returns nil if no errors, or the multi error
-func (m *Multi) ToError() error {
-	if !m.HasErrors() {
-		return nil
-	}
-	return m
-}
-
-// NewMulti creates a new multi-error container
-func NewMulti() *Multi {
-	return &Multi{
-		Errors: make([]error, 0),
-	}
-}
-
-// Collect collects errors from multiple operations
-func Collect(funcs ...func() error) error {
-	multi := NewMulti()
-
-	for _, f := range funcs {
-		if err := f(); err != nil {
-			multi.Add(err)
-		}
+// ToLogFields converts the error to structured log fields suitable for use
+// with structured logging libraries like logrus.
+//
+// Returns a map containing:
+//   - error_code: The error code
+//   - error_message: The error message
+//   - error_stack: The first stack frame (origin of error)
+//   - All custom fields from the Fields map
+//
+// Example return:
+//
+//	{
+//	    "error_code": "DB_CONNECTION_FAILED",
+//	    "error_message": "Could not connect to PostgreSQL",
+//	    "error_stack": "main.connectDB (/app/db.go:23)",
+//	    "user_id": 123,
+//	    "database": "safeops_main"
+//	}
+func (e *SafeOpsError) ToLogFields() map[string]interface{} {
+	if e == nil {
+		return map[string]interface{}{}
 	}
 
-	return multi.ToError()
+	fields := make(map[string]interface{})
+
+	// Add error metadata
+	if e.Code != "" {
+		fields["error_code"] = e.Code
+	}
+	if e.Message != "" {
+		fields["error_message"] = e.Message
+	}
+
+	// Add first stack frame (origin of error)
+	if len(e.Stack) > 0 {
+		fields["error_stack"] = e.Stack[0]
+	}
+
+	// Add timestamp
+	if !e.Timestamp.IsZero() {
+		fields["error_timestamp"] = e.Timestamp
+	}
+
+	// Merge all custom fields
+	for k, v := range e.Fields {
+		fields[k] = v
+	}
+
+	// Add cause error message if present
+	if e.Cause != nil {
+		fields["error_cause"] = e.Cause.Error()
+	}
+
+	return fields
 }
 
-// Retry error helpers
-
-// IsRetryable checks if an error is retryable
-func IsRetryable(err error) bool {
-	if e, ok := err.(*Error); ok {
-		switch e.Code {
-		case Timeout, Unavailable, ResourceExhausted:
-			return true
-		}
+// Is is a standalone function that checks if an error has a specific error code.
+// It works with wrapped errors by traversing the error chain.
+//
+// Example:
+//
+//	if errors.Is(err, "DB_CONNECTION_FAILED") {
+//	    // Handle database connection error
+//	}
+func Is(err error, code string) bool {
+	if err == nil {
+		return false
 	}
+
+	// Check if it's a SafeOpsError directly
+	if se, ok := err.(*SafeOpsError); ok {
+		return se.Code == code
+	}
+
+	// Try to unwrap and check recursively
+	if unwrapped := Unwrap(err); unwrapped != nil {
+		return Is(unwrapped, code)
+	}
+
 	return false
 }
 
-// IsTemporary checks if an error is temporary
-func IsTemporary(err error) bool {
-	return IsRetryable(err)
+// GetCode extracts the error code from an error, searching the entire error chain.
+// Returns an empty string if the error is not a SafeOpsError or has no code.
+//
+// Example:
+//
+//	code := errors.GetCode(err)
+//	if code == "DB_CONNECTION_FAILED" {
+//	    // Handle database connection error
+//	}
+func GetCode(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Check if it's a SafeOpsError
+	if se, ok := err.(*SafeOpsError); ok {
+		return se.Code
+	}
+
+	// Try to unwrap and check recursively
+	if unwrapped := Unwrap(err); unwrapped != nil {
+		return GetCode(unwrapped)
+	}
+
+	return ""
+}
+
+// HasCode returns true if the error is a SafeOpsError with a non-empty code.
+// Returns false for standard Go errors without codes.
+func HasCode(err error) bool {
+	return GetCode(err) != ""
+}
+
+// Unwrap is a standalone function that unwraps an error, returning its cause.
+// This provides compatibility with the standard errors package.
+func Unwrap(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// Check if it implements Unwrap
+	type unwrapper interface {
+		Unwrap() error
+	}
+
+	if u, ok := err.(unwrapper); ok {
+		return u.Unwrap()
+	}
+
+	return nil
 }

@@ -1,511 +1,438 @@
-# SafeOps Rust Shared Library
+# SafeOps v2.0 - Rust Shared Library
 
-High-performance utilities and shared code for SafeOps firewall microservices.
+## 📦 Overview
 
-## Overview
+**Location:** `src/shared/rust/`  
+**Purpose:** High-performance shared utilities and Protocol Buffer bindings for SafeOps services  
+**Language:** Rust  
+**Build System:** Cargo
 
-The SafeOps Rust shared library provides core functionality for packet processing, connection tracking, and threat intelligence operations. Built with zero-cost abstractions, lock-free data structures, and SIMD optimizations for maximum throughput.
-
-**Key Features:**
-- **Zero-Cost Abstractions** - No runtime overhead for safety guarantees
-- **Lock-Free Structures** - MPMC queues, SPSC ring buffers, concurrent maps
-- **SIMD Packet Parsing** - 4-8x faster IPv4/IPv6/TCP/UDP parsing
-- **Fast Hashing** - xxHash (10+ GB/s), aHash (DOS-resistant)
-- **Memory Pooling** - Zero-allocation hot paths for packet processing
-- **Prometheus Metrics** - Built-in monitoring and observability
-
-**Target Services:**
-- `firewall_engine` - High-performance packet filtering
-- `threat_intel` - Real-time threat detection
-
-**Output:** `libsafeops_shared.rlib` static library
-
-**License:** MIT
+This library provides zero-cost abstractions, memory-safe utilities, and high-performance data structures used across all SafeOps Rust-based services and components.
 
 ---
 
-## Architecture
+## 📁 Library Structure
 
-### Module Organization
+### Core Modules
 
-```
-src/
-├── lib.rs           # Library root, public API exports
-├── error.rs         # Unified error handling (SafeOpsError)
-├── ip_utils.rs      # IP parsing, CIDR, subnet calculations
-├── hash_utils.rs    # xxHash, aHash, connection tuple hashing
-├── memory_pool.rs   # Generic object pooling
-├── buffer_pool.rs   # Specialized packet buffer pool
-├── lock_free.rs     # MPMC queue, SPSC ring, concurrent map
-├── simd_utils.rs    # SIMD packet parsers (IPv4/IPv6/TCP/UDP)
-├── time_utils.rs    # Timestamps, durations, timezone handling
-├── proto_utils.rs   # Protocol Buffer conversion & validation
-└── metrics.rs       # Prometheus metrics registry
-```
+#### `lib.rs` - Library Entry Point
+- **Purpose:** Main library module that re-exports all public APIs
+- **Exports:** All public modules and their APIs
+- **Safety:** Carefully manages unsafe code blocks for FFI and performance-critical operations
+- **Features:** Conditional compilation for SIMD and other CPU-specific optimizations
 
-### Design Patterns
-
-- **Newtype Pattern** - `IPAddress` wraps `std::net::IpAddr` for type safety
-- **Builder Pattern** - Memory pool configuration with defaults
-- **Zero-Copy** - Direct buffer parsing without allocation
-- **Drop-Based Cleanup** - `PooledObject` returns to pool automatically
-
-### Performance Philosophy
-
-1. **Avoid Allocations** - Memory pools for hot paths
-2. **Use SIMD** - Parallel field extraction from packets
-3. **Lock-Free** - Atomic operations instead of mutexes
-4. **Fast Hashing** - Non-cryptographic hashes for hash tables
-
-### Security Considerations
-
-- **Input Validation** - All external data validated before use
-- **No Unsafe Code** - `#![forbid(unsafe_code)]` at library level
-- **Bounds Checking** - Rust's memory safety guarantees
+#### `error.rs` - Error Handling
+- **Purpose:** Unified error type for the entire shared library
+- **Key Types:**
+  - `SafeOpsError` - Main error enum covering all module errors
+  - `Result<T>` - Type alias for `std::result::Result<T, SafeOpsError>`
+- **Features:**
+  - Error code propagation
+  - Error context chaining
+  - Integration with `anyhow` and `thiserror`
+- **Usage:** All library functions return `Result<T>` for consistent error handling
 
 ---
 
-## Getting Started
+### Memory Management
 
-### Prerequisites
+#### `memory_pool.rs` - Object Pool Allocator
+- **Purpose:** Thread-safe object pooling for reducing allocator pressure
+- **Key Types:**
+  - `MemoryPool<T>` - Generic memory pool with configurable capacity
+- **Features:**
+  - Zero-allocation object reuse
+  - Thread-safe design with lock-free operations where possible
+  - Automatic growth and shrinking
+  - Drop-based object return to pool
+- **Use Cases:**
+  - Packet buffer allocation
+  - Temporary object reuse in hot paths
+  - Reducing GC pressure in high-throughput services
 
-- **Rust:** 1.74 or later
-- **Protocol Buffers Compiler:** `protoc` 3.12+
-- **Build Tools:** See [DEPENDENCIES.md](../../../DEPENDENCIES.md)
+#### `buffer_pool.rs` - Byte Buffer Pool
+- **Purpose:** Specialized pool for byte buffers (Vec<u8>)
+- **Key Types:**
+  - `BufferPool` - Pool of reusable byte buffers
+  - `PooledBuffer` - RAII wrapper for auto-return to pool
+- **Features:**
+  - Pre-sized buffer allocation
+  - Automatic capacity management
+  - Zero-copy buffer reuse
+- **Use Cases:**
+  - Network packet processing
+  - Log message buffering
+  - Temporary I/O buffers
 
-### Building
+---
 
+### Data Structures
+
+#### `lock_free.rs` - Lock-Free Data Structures
+- **Purpose:** Wait-free and lock-free concurrent data structures
+- **Key Types:**
+  - `LockFreeQueue<T>` - Multi-producer, multi-consumer queue
+  - `LockFreeStack<T>` - Lock-free stack
+- **Features:**
+  - Atomic operations using `crossbeam`
+  - Memory ordering guarantees
+  - ABA problem protection
+- **Use Cases:**
+  - Inter-thread communication
+  - Work stealing schedulers
+  - High-throughput event processing
+
+---
+
+### Network Utilities
+
+#### `ip_utils.rs` - IP Address Utilities
+- **Purpose:** Fast IP address parsing, validation, and manipulation
+- **Key Functions:**
+  - `parse_ipv4()` - Fast IPv4 parsing
+  - `parse_ipv6()` - Fast IPv6 parsing
+  - `is_private_ip()` - Check if IP is in private range (RFC 1918)
+  - `is_multicast()` - Check multicast addresses
+  - `ip_to_network()` - Calculate network address from IP/CIDR
+- **Features:**
+  - SIMD-accelerated parsing (if enabled)
+  - Zero-allocation parsing
+  - Subnet calculations
+- **Use Cases:**
+  - Firewall rule matching
+  - DHCP lease management
+  - Network traffic analysis
+
+---
+
+### Cryptographic Utilities
+
+#### `hash_utils.rs` - Hashing Functions
+- **Purpose:** High-performance non-cryptographic hashing
+- **Key Functions:**
+  - `fast_hash()` - xxHash-based fast hashing
+  - `hash_bytes()` - Hash arbitrary byte slices
+  - `hash_string()` - String hashing
+- **Features:**
+  - SIMD-accelerated xxHash implementation
+  - Streaming hash support
+  - Seeded hashing
+- **Use Cases:**
+  - Hash tables and hash maps
+  - Cache key generation
+  - Data deduplication
+- **⚠️ Not Suitable For:** Cryptographic purposes (use `ring` for crypto)
+
+---
+
+### Performance Utilities
+
+#### `simd_utils.rs` - SIMD Operations
+- **Purpose:** SIMD-accelerated operations for hot paths
+- **Key Functions:**
+  - `simd_memcpy()` - Fast memory copy using SIMD
+  - `simd_compare()` - Fast byte comparison
+  - `simd_search()` - Substring search with SIMD
+- **Requirements:**
+  - CPU with AVX2 support (x86_64)
+  - Falls back to scalar operations on unsupported CPUs
+- **Features:**
+  - Runtime CPU feature detection
+  - Compile-time feature gating
+  - Benchmarked performance gains
+
+#### `time_utils.rs` - Time Utilities
+- **Purpose:** High-resolution timing and duration formatting
+- **Key Functions:**
+  - `now()` - Get current timestamp (nanosecond precision)
+  - `duration_since()` - Calculate elapsed time
+  - `format_duration()` - Human-readable duration formatting
+  - `parse_duration()` - Parse duration strings ("1h30m", "500ms")
+- **Features:**
+  - Monotonic clock support
+  - Nanosecond precision
+  - Cross-platform compatibility
+- **Use Cases:**
+  - Performance monitoring
+  - Request latency tracking
+  - Timeout management
+
+---
+
+### Observability
+
+#### `metrics.rs` - Metrics Collection
+- **Purpose:** High-performance metrics aggregation and export
+- **Key Types:**
+  - `Counter` - Monotonically increasing counter
+  - `Gauge` - Point-in-time value
+  - `Histogram` - Value distribution tracking
+  - `MetricsRegistry` - Global metrics registry
+- **Features:**
+  - Lock-free atomic counters
+  - Thread-safe metric registration
+  - Prometheus-compatible export format
+  - Low-overhead instrumentation
+- **Use Cases:**
+  - Request counting
+  - Latency histograms
+  - Resource usage tracking
+  - Service health monitoring
+
+---
+
+### Protocol Buffers
+
+#### `proto/` - Generated Protocol Buffer Code
+- **Purpose:** Rust bindings for gRPC service definitions
+- **Generated Files:**
+  - `safeops.common.rs` - Common message types
+  - `safeops.orchestrator.rs` - Orchestrator service
+  - `safeops.dns_server.rs` - DNS server service
+  - `safeops.dhcp_server.rs` - DHCP server service
+  - `safeops.firewall.rs` - Firewall service
+  - `safeops.ids_ips.rs` - IDS/IPS service
+  - `safeops.network_logger.rs` - Network logger service
+  - `safeops.network_manager.rs` - Network manager service
+  - `safeops.tls_proxy.rs` - TLS proxy service
+  - `safeops.wifi_ap.rs` - WiFi AP service
+  - `safeops.certificate_manager.rs` - Certificate manager service
+  - `safeops.backup_restore.rs` - Backup/restore service
+  - `safeops.update_manager.rs` - Update manager service
+  - `safeops.threat_intel.rs` - Threat intelligence service
+
+#### `proto_utils.rs` - Protocol Buffer Utilities
+- **Purpose:** Helper functions for Protocol Buffer message handling
+- **Key Functions:**
+  - `serialize_proto()` - Serialize message to bytes
+  - `deserialize_proto()` - Deserialize bytes to message
+  - `proto_to_json()` - Convert proto to JSON
+  - `json_to_proto()` - Parse JSON to proto
+- **Features:**
+  - Error handling for malformed messages
+  - Efficient serialization
+  - JSON interoperability
+
+---
+
+## 🛠️ Build System
+
+### `build.rs` - Build Script
+- **Purpose:** Compiles Protocol Buffer definitions during build
+- **Tasks:**
+  - Generates Rust code from `.proto` files in `proto/`
+  - Configures protobuf compiler (`prost`)
+  - Sets up include paths
+  - Triggers rebuilds when proto files change
+- **Output:** Generated files in `src/proto/`
+
+### `Cargo.toml` - Dependencies
+**Key Dependencies:**
+- `prost` - Protocol Buffer runtime
+- `tokio` - Async runtime
+- `crossbeam` - Lock-free data structures
+- `ring` - Cryptographic operations
+- `parking_lot` - Fast synchronization primitives
+- `thiserror` / `anyhow` - Error handling
+- `tracing` - Structured logging
+- `packed_simd` - SIMD operations
+
+---
+
+## 📊 Benchmarks
+
+### `benches/` - Performance Benchmarks
+- **`hash_performance.rs`** - Hash function benchmarks
+  - Compares xxHash vs. SipHash vs. FNV
+  - Measures throughput for various input sizes
+- **`ip_parsing.rs`** - IP parsing benchmarks
+  - SIMD vs. scalar parsing comparison
+  - IPv4 and IPv6 parsing performance
+
+**Running Benchmarks:**
 ```bash
-# Development build
-cargo build
-
-# Release build with optimizations
-cargo build --release
-
-# Check compilation without building
-cargo check
-```
-
-### Running Tests
-
-```bash
-# All tests
-cargo test
-
-# Specific module
-cargo test hash_utils
-
-# With output
-cargo test -- --nocapture
-```
-
-### Running Benchmarks
-
-```bash
-# All benchmarks
+cd src/shared/rust
 cargo bench
-
-# Specific benchmark
-cargo bench ip_parsing
 ```
 
-### Documentation
+---
 
+## 🧪 Testing
+
+**Run all tests:**
 ```bash
-# Generate and open docs
-cargo doc --open
+cargo test
 ```
 
-### Importing in Services
-
-```rust
-// Convenient prelude import
-use safeops_shared::prelude::*;
-
-// Or specific modules
-use safeops_shared::{
-    ip_utils::parse_cidr,
-    hash_utils::xxhash64,
-    metrics::MetricsRegistry,
-};
-```
-
----
-
-## API Reference
-
-### `error` - Error Handling
-- **SafeOpsError** - Unified error enum (13 variants)
-- **Result<T>** - Type alias for `Result<T, SafeOpsError>`
-- **ErrorContext** - Trait for adding error context
-
-### `ip_utils` - IP Address Utilities
-- **parse_ip()** - Parse IPv4/IPv6 from string
-- **parse_cidr()** - Parse CIDR notation (192.168.1.0/24)
-- **cidr_contains()** - Check if IP in subnet
-- **is_private()** - Detect RFC 1918 private IPs
-
-### `hash_utils` - Fast Hashing
-- **xxhash64()** - Extremely fast hash (10+ GB/s)
-- **ahash_hash()** - DOS-resistant hash for HashMaps
-- **hash_connection_tuple()** - Hash network 5-tuple
-- **AHashMap/AHashSet** - Fast hash collections
-
-### `memory_pool` - Object Pooling
-- **MemoryPool<T>** - Generic pool for any type
-- **acquire()** - Get object from pool
-- **PooledObject<T>** - Smart pointer (auto-returns on drop)
-
-### `lock_free` - Concurrent Structures
-- **MpmcQueue<T>** - Multi-producer multi-consumer queue
-- **SpscRingBuffer<T>** - Single-producer single-consumer ring
-- **ConcurrentHashMap<K,V>** - Sharded concurrent map
-- **LockFreeCounter** - Atomic counter for metrics
-
-### `simd_utils` - Packet Parsing
-- **parse_ipv4()** - Parse IPv4 header (SIMD)
-- **parse_tcp/udp()** - Parse transport headers
-- **verify_checksum()** - Fast checksum validation
-- **parse_packets_batch()** - Batch processing
-
-### `time_utils` - Time Functions
-- **now_unix_timestamp()** - Current timestamp (seconds)
-- **format_duration()** - Human-readable durations
-- **is_expired()** - TTL expiration check
-- **Timer** - High-precision performance timer
-
-### `proto_utils` - Protocol Buffers
-- **serialize_proto()** - Encode to bytes
-- **deserialize_proto()** - Decode from bytes
-- **validate_proto_*()** - Field validation helpers
-
-### `metrics` - Prometheus Metrics
-- **MetricsRegistry** - Global metrics registry
-- **register_counter/gauge/histogram()** - Create metrics
-- **time_operation()** - Automatic timing
-- **metrics_handler()** - Prometheus export endpoint
-
----
-
-## Performance Guide
-
-### Zero-Allocation Paths
-
-Memory pools eliminate allocations in packet processing hot paths:
-
-```rust
-let pool = MemoryPool::<PacketBuffer>::new(8192);
-let mut buffer = pool.acquire()?;
-// Process packet...
-// Buffer automatically returned to pool on drop
-```
-
-### SIMD Acceleration
-
-Packet parsing is 4-8x faster with SIMD:
-
-```rust
-// Automatic SIMD selection based on CPU features
-let header = parse_ipv4(&packet)?;
-// Uses SSE4.2 on x86_64, NEON on ARM64
-```
-
-### Lock-Free Structures
-
-No contention in multi-threaded pipelines:
-
-```rust
-let queue = MpmcQueue::new(16384);
-// Multiple threads can push/pop concurrently
-queue.push(packet)?;
-```
-
-### Fast Hashing
-
-xxHash is 10x faster than cryptographic hashes:
-
-```rust
-// 10+ GB/s throughput
-let hash = xxhash64(data);
-
-// DOS-resistant for HashMaps
-let map = AHashMap::new();
-```
-
-### Compilation Settings
-
-Release builds use aggressive optimizations:
-
-```toml
-[profile.release]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-```
-
-### Expected Performance
-
-- **Packet Parsing:** 10+ million packets/sec (single core)
-- **Hash Operations:** 10+ GB/s throughput
-- **Memory Pool:** ~20ns acquire latency
-- **Total Throughput:** Limited by network bandwidth, not CPU
-
-### Profiling
-
+**Run with backtrace:**
 ```bash
-# CPU profiling with perf
-cargo build --release
-perf record --call-graph dwarf target/release/firewall_engine
-perf report
+RUST_BACKTRACE=1 cargo test
+```
 
-# Flamegraphs
-cargo flamegraph --bin firewall_engine
+**Run specific module tests:**
+```bash
+cargo test --lib memory_pool
+cargo test --lib ip_utils
 ```
 
 ---
 
-## Usage Examples
+## 🚀 Usage Examples
 
-### Parsing Packets
-
-```rust
-use safeops_shared::simd_utils::*;
-
-fn process_packet(data: &[u8]) -> Result<()> {
-    let ipv4 = parse_ipv4(data)?;
-    println!("Source: {}", ipv4.source_ip);
-    
-    let tcp = parse_tcp(&data[20..])?;
-    println!("Port: {}", tcp.dest_port);
-    Ok(())
-}
-```
-
-### Memory Pooling
-
+### Memory Pool
 ```rust
 use safeops_shared::memory_pool::MemoryPool;
 
-let pool = MemoryPool::<Vec<u8>>::new(1024);
-
-{
-    let mut buffer = pool.acquire()?;
-    buffer.extend_from_slice(b"packet data");
-    // Process...
-} // Automatically returned to pool
+let pool = MemoryPool::<Vec<u8>>::new(100); // Capacity of 100
+let mut buffer = pool.acquire().unwrap();
+buffer.extend_from_slice(b"data");
+// Buffer automatically returns to pool on drop
 ```
 
-### CIDR Matching
-
+### Buffer Pool
 ```rust
-use safeops_shared::ip_utils::*;
+use safeops_shared::buffer_pool::BufferPool;
 
-let (network, prefix) = parse_cidr("192.168.1.0/24")?;
-let addr = parse_ip("192.168.1.100")?;
+let pool = BufferPool::new(1024, 10); // 10 buffers of 1KB each
+let buffer = pool.get_buffer();
+// Use buffer...
+// Auto-returns to pool on drop
+```
 
-if cidr_contains(network, prefix, addr) {
-    println!("IP is in subnet");
+### IP Utilities
+```rust
+use safeops_shared::ip_utils::{parse_ipv4, is_private_ip};
+
+if let Some(ip) = parse_ipv4("192.168.1.1") {
+    if is_private_ip(&ip) {
+        println!("Private IP address");
+    }
 }
 ```
 
-### Prometheus Metrics
-
+### Metrics
 ```rust
-use safeops_shared::metrics::*;
+use safeops_shared::metrics::{Counter, MetricsRegistry};
 
-let registry = MetricsRegistry::global();
-let counter = registry.register_counter(
-    "packets_processed_total",
-    "Total packets processed"
-)?;
-
+let registry = MetricsRegistry::new();
+let counter = Counter::new("requests_total");
 counter.inc();
 ```
 
 ---
 
-## Testing
+## 🔒 Safety Considerations
 
-### Unit Tests
+### Unsafe Code Usage
+This library uses `unsafe` in specific, well-documented locations:
+- **SIMD operations** - Requires unsafe for intrinsics
+- **Lock-free data structures** - Atomic pointer operations
+- **FFI boundaries** - C interop for kernel driver communication
 
+**Safety Guarantees:**
+- All unsafe blocks have accompanying safety comments
+- Unsafe code is concentrated in tested modules
+- Extensive use of Rust's type system to prevent misuse
+- No data races (verified by Miri)
+
+---
+
+## 📝 Module Dependency Graph
+
+```
+lib.rs
+├── error.rs (used by all modules)
+├── memory_pool.rs
+├── buffer_pool.rs
+│   └── memory_pool.rs
+├── lock_free.rs
+├── ip_utils.rs
+│   └── simd_utils.rs (optional)
+├── hash_utils.rs
+│   └── simd_utils.rs (optional)
+├── simd_utils.rs
+├── time_utils.rs
+├── metrics.rs
+├── proto/
+│   ├── mod.rs
+│   └── *.rs (generated)
+└── proto_utils.rs
+    └── proto/*
+```
+
+---
+
+## 🔧 Build Features
+
+**Available Cargo Features:**
+- `simd` - Enable SIMD-accelerated operations (default: enabled)
+- `metrics` - Include metrics collection (default: enabled)
+- `proto` - Include Protocol Buffer support (default: enabled)
+
+**Building without SIMD:**
 ```bash
-# Run all tests
-cargo test
-
-# Specific module
-cargo test ip_utils::tests
-
-# Show output
-cargo test -- --nocapture
+cargo build --no-default-features --features metrics,proto
 ```
 
-### Property-Based Testing
+---
 
-Uses `proptest` for randomized testing:
+## 📚 Documentation
 
-```rust
-#[cfg(test)]
-mod tests {
-    use proptest::prelude::*;
-    
-    proptest! {
-        #[test]
-        fn parse_ip_never_panics(s in ".*") {
-            let _ = parse_ip(&s);
-        }
-    }
-}
-```
-
-### Benchmarks
-
-Uses `criterion` for performance benchmarking:
-
+**Generate documentation:**
 ```bash
-cargo bench
-
-# View HTML reports
-open target/criterion/report/index.html
+cargo doc --open
 ```
 
-### Coverage
-
+**Generate docs with private items:**
 ```bash
-cargo install cargo-tarpaulin
-cargo tarpaulin --out Html
+cargo doc --document-private-items --open
 ```
 
 ---
 
-## Dependencies
+## 🐛 Debugging
 
-- **tokio** (1.35) - Async runtime for service integration
-- **serde** (1.0) - Serialization framework
-- **tonic** (0.11) - gRPC framework, proto generation
-- **xxhash-rust** (0.8) - Fast non-cryptographic hashing
-- **ahash** (0.8) - DOS-resistant HashMap hashing
-- **crossbeam** (0.8) - Lock-free data structures
-- **prometheus** (0.13) - Metrics collection and export
-- **chrono** (0.4) - Timezone-aware date/time handling
-- **prost** (0.12) - Protocol Buffers encoding
-- **ipnet** (2.9) - IP network utilities
-
-See [Cargo.toml](Cargo.toml) for complete dependency list.
-
----
-
-## Contributing
-
-### Code Style
-
+**Enable debug logging:**
 ```bash
-# Format code
-cargo fmt
-
-# Run linter
-cargo clippy -- -D warnings
+RUST_LOG=safeops_shared=debug cargo test
 ```
 
-### Documentation
-
-All public items require doc comments:
-
-```rust
-/// Parses IP address from string
-///
-/// # Examples
-/// ```
-/// let ip = parse_ip("192.168.1.1")?;
-/// ```
-pub fn parse_ip(input: &str) -> Result<IPAddress> {
-    // ...
-}
-```
-
-### Testing Requirements
-
-- New features require unit tests
-- Performance-critical code requires benchmarks
-- Breaking changes require migration guide
-
-### Pull Request Process
-
-1. Fork repository
-2. Create feature branch
-3. Run tests: `cargo test`
-4. Run linter: `cargo clippy`
-5. Submit PR with description
-
----
-
-## Troubleshooting
-
-### Compilation Errors
-
-**`protoc` not found:**
+**Run with Miri (detect undefined behavior):**
 ```bash
-# Ubuntu/Debian
-sudo apt install protobuf-compiler
-
-# macOS
-brew install protobuf
+cargo +nightly miri test
 ```
 
-**SIMD intrinsics unavailable:**
-- SIMD functions automatically fall back to scalar implementations
-- Check CPU features: `rustc --print target-features`
-
-### Runtime Issues
-
-**Pool exhaustion warnings:**
-- Increase pool capacity in configuration
-- Check for leaked objects (not returned to pool)
-
-**Metrics not appearing:**
-- Verify `ENABLE_METRICS` not set to "false"
-- Check metrics endpoint: `curl http://localhost:9090/metrics`
-
-**Performance degradation:**
-- Verify release build: `cargo build --release`
-- Check SIMD detection: `has_simd_support()`
+**Memory leak detection:**
+```bash
+valgrind --leak-check=full target/debug/your_binary
+```
 
 ---
 
-## FAQ
+## 📦 Publishing
 
-**Q: Why Rust for the shared library?**
-A: Performance, memory safety, and zero-cost abstractions make Rust ideal for packet processing.
+This is an internal library and is **not published to crates.io**.
 
-**Q: Why not use async for packet processing?**
-A: Synchronous code has lower latency and more predictable performance for hot paths.
-
-**Q: How does SIMD detection work?**
-A: Runtime CPU feature detection via `std::arch::is_x86_feature_detected!()`.
-
-**Q: Why lock-free instead of channels?**
-A: Lower latency (no scheduler involvement) and no allocator contention.
-
-**Q: Why xxHash instead of SHA256?**
-A: 10x faster for hash tables; cryptographic security not required.
-
-**Q: Can this library be used outside SafeOps?**
-A: Yes, but it's optimized for SafeOps use cases.
+**Local usage:**
+```toml
+[dependencies]
+safeops_shared = { path = "../shared/rust" }
+```
 
 ---
 
-## Version History
+## 🤝 Contributing
 
-### Version 2.0.0 (Current)
-- Initial release for SafeOps v2.0
-- Complete rewrite in Rust
-- SIMD packet parsing
-- Lock-free data structures
-- Prometheus metrics integration
+When adding new modules:
+1. Add module declaration to `lib.rs`
+2. Include comprehensive unit tests
+3. Add benchmarks if performance-critical
+4. Document all public APIs with rustdoc
+5. Update this README with module description
+6. Ensure `cargo clippy` passes with no warnings
 
 ---
 
-## License
+## 📄 License
 
-Licensed under the MIT License. See [LICENSE](../../../LICENSE) for details.
-
-Copyright (c) 2024 SafeOps Security Team
+Internal SafeOps project - All rights reserved.
