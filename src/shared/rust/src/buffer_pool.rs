@@ -498,14 +498,15 @@ mod tests {
     #[test]
     fn test_buffer_detach() {
         let pool = create_buffer_pool();
-        let mut buf = pool.acquire().unwrap();
+        let initial_available = pool.stats().available;
         
+        let mut buf = pool.acquire().unwrap();
         buf.copy_from_slice(b"test").unwrap();
         let vec = buf.detach();
         
         assert_eq!(vec, b"test");
-        // Buffer not returned to pool
-        assert_eq!(pool.stats().in_use, 0);
+        // Buffer not returned to pool - available count should be one less than before
+        assert_eq!(pool.stats().available, initial_available - 1);
     }
 
     #[test]

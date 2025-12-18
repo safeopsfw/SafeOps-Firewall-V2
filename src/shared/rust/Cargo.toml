@@ -11,6 +11,13 @@ name = "safeops_shared"
 path = "src/lib.rs"
 crate-type = ["rlib"]  # Rust static library for linking into services
 
+[features]
+default = []
+# Enable parallel packet processing with rayon
+rayon = []
+# Enable warning logs when memory pools are exhausted
+warn_pool_exhaustion = []
+
 [dependencies]
 # Async runtime
 tokio = { version = "1.35", features = ["full", "rt-multi-thread", "macros", "net", "time"] }

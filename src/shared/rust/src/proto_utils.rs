@@ -152,9 +152,13 @@ pub fn ip_from_proto_bytes(is_v6: bool, bytes: &[u8]) -> Result<IPAddress> {
 // ============================================================================
 
 /// Protocol numbers for common protocols
+/// TCP protocol number (Transmission Control Protocol)
 pub const PROTOCOL_TCP: u8 = 6;
+/// UDP protocol number (User Datagram Protocol)
 pub const PROTOCOL_UDP: u8 = 17;
+/// ICMP protocol number (Internet Control Message Protocol for IPv4)
 pub const PROTOCOL_ICMP: u8 = 1;
+/// ICMPv6 protocol number (Internet Control Message Protocol for IPv6)
 pub const PROTOCOL_ICMPV6: u8 = 58;
 
 /// Converts protocol number to name string

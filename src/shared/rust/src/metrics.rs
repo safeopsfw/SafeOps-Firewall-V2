@@ -162,6 +162,7 @@ pub static PACKETS_PROCESSED_TOTAL: Lazy<IntCounter> = Lazy::new(|| {
     ).expect("Failed to register packets_processed_total")
 });
 
+/// Total packets dropped, labeled by drop reason
 pub static PACKETS_DROPPED_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
     METRICS.register_counter_vec(
         "packets_dropped_total",
@@ -170,6 +171,7 @@ pub static PACKETS_DROPPED_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
     ).expect("Failed to register packets_dropped_total")
 });
 
+/// Total bytes processed across all packets
 pub static BYTES_PROCESSED_TOTAL: Lazy<IntCounter> = Lazy::new(|| {
     METRICS.register_counter(
         "bytes_processed_total",
@@ -186,6 +188,7 @@ pub static ERRORS_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
     ).expect("Failed to register errors_total")
 });
 
+/// Total gRPC errors, labeled by service name
 pub static GRPC_ERRORS_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
     METRICS.register_counter_vec(
         "grpc_errors_total",
@@ -202,6 +205,7 @@ pub static POOL_ALLOCATIONS_TOTAL: Lazy<IntCounter> = Lazy::new(|| {
     ).expect("Failed to register pool_allocations_total")
 });
 
+/// Total times memory pool was exhausted (had to allocate new object)
 pub static POOL_EXHAUSTIONS_TOTAL: Lazy<IntCounter> = Lazy::new(|| {
     METRICS.register_counter(
         "pool_exhaustions_total",
@@ -217,6 +221,7 @@ pub static ACTIVE_CONNECTIONS: Lazy<IntGauge> = Lazy::new(|| {
     ).expect("Failed to register active_connections")
 });
 
+/// Current number of objects available in memory pool
 pub static POOL_OBJECTS_AVAILABLE: Lazy<IntGauge> = Lazy::new(|| {
     METRICS.register_gauge(
         "pool_objects_available",
@@ -224,6 +229,7 @@ pub static POOL_OBJECTS_AVAILABLE: Lazy<IntGauge> = Lazy::new(|| {
     ).expect("Failed to register pool_objects_available")
 });
 
+/// Current number of objects checked out from memory pool
 pub static POOL_OBJECTS_IN_USE: Lazy<IntGauge> = Lazy::new(|| {
     METRICS.register_gauge(
         "pool_objects_in_use",
@@ -231,6 +237,7 @@ pub static POOL_OBJECTS_IN_USE: Lazy<IntGauge> = Lazy::new(|| {
     ).expect("Failed to register pool_objects_in_use")
 });
 
+/// Current memory usage in bytes
 pub static MEMORY_BYTES_ALLOCATED: Lazy<IntGauge> = Lazy::new(|| {
     METRICS.register_gauge(
         "memory_bytes_allocated",
@@ -238,6 +245,7 @@ pub static MEMORY_BYTES_ALLOCATED: Lazy<IntGauge> = Lazy::new(|| {
     ).expect("Failed to register memory_bytes_allocated")
 });
 
+/// Current number of active threads
 pub static THREAD_COUNT: Lazy<IntGauge> = Lazy::new(|| {
     METRICS.register_gauge(
         "thread_count",
@@ -254,6 +262,7 @@ pub static PACKET_PROCESSING_DURATION: Lazy<Histogram> = Lazy::new(|| {
     ).expect("Failed to register packet_processing_duration_seconds")
 });
 
+/// Histogram of hash operation durations in seconds
 pub static HASH_OPERATION_DURATION: Lazy<Histogram> = Lazy::new(|| {
     METRICS.register_histogram(
         "hash_operation_duration_seconds",
@@ -262,6 +271,7 @@ pub static HASH_OPERATION_DURATION: Lazy<Histogram> = Lazy::new(|| {
     ).expect("Failed to register hash_operation_duration_seconds")
 });
 
+/// Histogram of gRPC request durations in seconds, labeled by service
 pub static GRPC_REQUEST_DURATION: Lazy<HistogramVec> = Lazy::new(|| {
     METRICS.register_histogram_vec(
         "grpc_request_duration_seconds",

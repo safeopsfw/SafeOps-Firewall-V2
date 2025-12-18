@@ -79,10 +79,15 @@ pub fn new_ahasher() -> AHasher {
 /// Five-tuple structure for network connections
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FiveTuple {
+    /// Source IP address (IPv4 or IPv6)
     pub src_ip: IPAddress,
+    /// Source port number (1-65535)
     pub src_port: u16,
+    /// Destination IP address (IPv4 or IPv6)
     pub dst_ip: IPAddress,
+    /// Destination port number (1-65535)
     pub dst_port: u16,
+    /// IP protocol number (6=TCP, 17=UDP, 1=ICMP)
     pub protocol: u8,
 }
 

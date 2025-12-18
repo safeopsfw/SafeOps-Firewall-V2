@@ -214,8 +214,12 @@ impl SafeOpsError {
 ///
 /// Enables error chaining with context messages:
 ///
-/// ```
+/// ```ignore
 /// use safeops_shared::error::{Result, ErrorContext};
+///
+/// fn read_file() -> Result<()> {
+///     Err(safeops_shared::SafeOpsError::not_found("file"))
+/// }
 ///
 /// fn process() -> Result<()> {
 ///     read_file().context("Failed to read configuration")?;

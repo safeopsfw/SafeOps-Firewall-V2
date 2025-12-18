@@ -38,17 +38,29 @@ pub fn has_simd_support() -> bool {
 /// IPv4 header structure
 #[derive(Debug, Clone, Copy)]
 pub struct Ipv4Header {
+    /// IP version (always 4 for IPv4)
     pub version: u8,
+    /// Internet Header Length in 32-bit words (typically 5)
     pub ihl: u8,
+    /// Type of Service / DSCP + ECN
     pub tos: u8,
+    /// Total packet length in bytes (header + data)
     pub total_length: u16,
+    /// Unique packet identifier for fragmentation reassembly
     pub identification: u16,
+    /// Fragmentation flags (DF, MF bits)
     pub flags: u8,
+    /// Fragment offset in 8-byte units
     pub fragment_offset: u16,
+    /// Time to Live (hop limit)
     pub ttl: u8,
+    /// Transport protocol (6=TCP, 17=UDP, 1=ICMP)
     pub protocol: u8,
+    /// Header checksum for error detection
     pub checksum: u16,
+    /// Source IPv4 address
     pub source_ip: Ipv4Addr,
+    /// Destination IPv4 address
     pub dest_ip: Ipv4Addr,
 }
 
@@ -108,13 +120,21 @@ pub fn parse_ipv4_scalar(packet: &[u8]) -> Result<Ipv4Header> {
 /// IPv6 header structure (40 bytes fixed)
 #[derive(Debug, Clone)]
 pub struct Ipv6Header {
+    /// IP version (always 6 for IPv6)
     pub version: u8,
+    /// Traffic class for QoS (similar to IPv4 TOS)
     pub traffic_class: u8,
+    /// Flow label for packet flow identification
     pub flow_label: u32,
+    /// Length of payload following this header
     pub payload_length: u16,
+    /// Next header type (transport protocol)
     pub next_header: u8,
+    /// Hop limit (decremented at each router)
     pub hop_limit: u8,
+    /// Source IPv6 address (128 bits)
     pub source_ip: Ipv6Addr,
+    /// Destination IPv6 address (128 bits)
     pub dest_ip: Ipv6Addr,
 }
 
@@ -169,27 +189,44 @@ pub fn parse_ipv6_scalar(packet: &[u8]) -> Result<Ipv6Header> {
 /// TCP header structure
 #[derive(Debug, Clone, Copy)]
 pub struct TcpHeader {
+    /// Source port number (1-65535)
     pub source_port: u16,
+    /// Destination port number (1-65535)
     pub dest_port: u16,
+    /// Sequence number for ordered delivery
     pub seq_number: u32,
+    /// Acknowledgment number for reliabile delivery
     pub ack_number: u32,
+    /// Data offset in 32-bit words (header size / 4)
     pub data_offset: u8,
+    /// TCP control flags (SYN, ACK, FIN, etc.)
     pub flags: TcpFlags,
+    /// Receive window size for flow control
     pub window_size: u16,
+    /// Checksum for error detection
     pub checksum: u16,
+    /// Urgent pointer for out-of-band data
     pub urgent_pointer: u16,
 }
 
 /// TCP flags structure
 #[derive(Debug, Clone, Copy)]
 pub struct TcpFlags {
+    /// FIN: No more data from sender
     pub fin: bool,
+    /// SYN: Synchronize sequence numbers (connection start)
     pub syn: bool,
+    /// RST: Reset the connection
     pub rst: bool,
+    /// PSH: Push function (send data immediately)
     pub psh: bool,
+    /// ACK: Acknowledgment field is significant
     pub ack: bool,
+    /// URG: Urgent pointer field is significant
     pub urg: bool,
+    /// ECE: ECN-Echo for congestion notification
     pub ece: bool,
+    /// CWR: Congestion Window Reduced
     pub cwr: bool,
 }
 
@@ -252,9 +289,13 @@ pub fn parse_tcp_scalar(packet: &[u8]) -> Result<TcpHeader> {
 /// UDP header structure (8 bytes)
 #[derive(Debug, Clone, Copy)]
 pub struct UdpHeader {
+    /// Source port number (1-65535)
     pub source_port: u16,
+    /// Destination port number (1-65535)
     pub dest_port: u16,
+    /// Total datagram length in bytes (header + data)
     pub length: u16,
+    /// Checksum for error detection (optional in IPv4)
     pub checksum: u16,
 }
 
@@ -338,11 +379,17 @@ pub fn calculate_checksum(data: &[u8]) -> u16 {
 /// Packet metadata extracted from parsing
 #[derive(Debug)]
 pub struct PacketMetadata {
+    /// IP version (4 or 6)
     pub ip_version: u8,
+    /// Transport protocol number (6=TCP, 17=UDP, 1=ICMP)
     pub protocol: u8,
+    /// Source IP address (IPv4 or IPv6)
     pub source_ip: IpAddr,
+    /// Destination IP address (IPv4 or IPv6)
     pub dest_ip: IpAddr,
+    /// Source port (None for non-TCP/UDP protocols)
     pub source_port: Option<u16>,
+    /// Destination port (None for non-TCP/UDP protocols)
     pub dest_port: Option<u16>,
 }
 
@@ -359,6 +406,7 @@ pub fn parse_packets_parallel(packets: &[&[u8]]) -> Vec<Result<PacketMetadata>> 
 }
 
 #[cfg(not(feature = "rayon"))]
+/// Parses packets sequentially (fallback when rayon feature disabled)
 pub fn parse_packets_parallel(packets: &[&[u8]]) -> Vec<Result<PacketMetadata>> {
     parse_packets_batch(packets)
 }
