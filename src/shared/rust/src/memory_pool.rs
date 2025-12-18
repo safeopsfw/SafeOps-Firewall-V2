@@ -133,7 +133,6 @@ impl<T> MemoryPool<T> {
         Ok(PooledObject {
             obj: Some(obj),
             pool: Arc::downgrade(&self.available),
-            in_use_counter: Some(Arc::clone(&Arc::new(self.current_in_use.clone()))),
         })
     }
 
@@ -153,7 +152,6 @@ impl<T> MemoryPool<T> {
         Some(PooledObject {
             obj: Some(obj),
             pool: Arc::downgrade(&self.available),
-            in_use_counter: Some(Arc::clone(&Arc::new(self.current_in_use.clone()))),
         })
     }
 
@@ -173,7 +171,10 @@ impl<T> MemoryPool<T> {
     pub fn shrink(&self, target_size: usize) {
         let mut available = self.available.lock().unwrap();
         if available.len() > target_size {
+            let removed = available.len() - target_size;
             available.truncate(target_size);
+            // Also update total_allocated since we removed objects
+            self.total_allocated.fetch_sub(removed, Ordering::Relaxed);
         }
     }
 
@@ -193,9 +194,11 @@ impl<T> MemoryPool<T> {
     /// Returns pool statistics
     pub fn stats(&self) -> PoolStats {
         let available = self.available.lock().unwrap().len();
+        let total_allocated = self.total_allocated.load(Ordering::Relaxed);
         PoolStats {
             available,
-            in_use: self.current_in_use.load(Ordering::Relaxed),
+            // Compute in_use from total allocated minus available
+            in_use: total_allocated.saturating_sub(available),
             total_allocations: self.allocation_count.load(Ordering::Relaxed),
             pool_exhaustions: self.exhaustion_count.load(Ordering::Relaxed),
             capacity: self.capacity,
@@ -225,7 +228,6 @@ impl<T> MemoryPool<T> {
 pub struct PooledObject<T> {
     obj: Option<T>,
     pool: Weak<Mutex<Vec<T>>>,
-    in_use_counter: Option<Arc<AtomicUsize>>,
 }
 
 impl<T> PooledObject<T> {
@@ -272,22 +274,12 @@ impl<T> DerefMut for PooledObject<T> {
 
 impl<T> Drop for PooledObject<T> {
     fn drop(&mut self) {
-        if let Some(mut obj) = self.obj.take() {
-            // Reset object if it implements Resettable
-            if let Some(obj_resettable) = (&mut obj as &mut dyn std::any::Any).downcast_mut::<dyn Resettable>() {
-                obj_resettable.reset();
-            }
-
+        if let Some(obj) = self.obj.take() {
             // Return to pool if pool still exists
             if let Some(pool) = self.pool.upgrade() {
                 if let Ok(mut available) = pool.lock() {
                     available.push(obj);
                 }
-            }
-
-            // Decrement in-use counter
-            if let Some(counter) = &self.in_use_counter {
-                counter.fetch_sub(1, Ordering::Relaxed);
             }
         }
     }

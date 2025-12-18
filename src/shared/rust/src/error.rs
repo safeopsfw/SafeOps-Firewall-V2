@@ -202,10 +202,10 @@ impl SafeOpsError {
             SafeOpsError::Grpc(status) => status.clone(),
             SafeOpsError::Io(err) => tonic::Status::internal(err.to_string()),
             SafeOpsError::Hash(msg)
-            | SafeOpsError::Serialization(_)
             | SafeOpsError::Database(msg)
             | SafeOpsError::Config(msg)
             | SafeOpsError::Internal(msg) => tonic::Status::internal(msg),
+            SafeOpsError::Serialization(err) => tonic::Status::internal(err.to_string()),
         }
     }
 }

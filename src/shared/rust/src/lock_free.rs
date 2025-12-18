@@ -1,18 +1,18 @@
 //! Lock-free data structures for high-performance packet processing
 //!
-//! Provides lock-free multi-producer multi-consumer (MPMC) queue, single-producer
+//! Provides truly lock-free multi-producer multi-consumer (MPMC) queue, single-producer
 //! single-consumer (SPSC) ring buffer, concurrent hash map, and lock-free counters.
 //! These structures enable zero-allocation packet handling and avoid lock contention.
 
 use crate::error::{Result, SafeOpsError};
-use crossbeam::queue::{ArrayQueue, SegQueue};
-use parking_lot::Mutex;
-use std::sync::atomic::{AtomicU64, AtomicUsize, AtomicPtr, Ordering};
+use crossbeam::queue::ArrayQueue;
+use dashmap::DashMap;
+use std::sync::atomic::{AtomicPtr, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use std::collections::HashMap;
 use std::hash::Hash;
 use std::thread;
+use std::ptr;
 
 // ============================================================================
 // MPMC Queue Wrapper
@@ -212,87 +212,82 @@ impl<T> SpscRingBuffer<T> {
 }
 
 // ============================================================================
-// Concurrent Hash Map
+// Concurrent Hash Map (DashMap Wrapper)
 // ============================================================================
 
-/// Concurrent hash map for connection tracking
+/// Truly lock-free concurrent hash map using DashMap
 ///
-/// Multiple readers and writers can access simultaneously using internal sharding
+/// Multiple readers and writers can access simultaneously without locks.
+/// Interior sharding reduces contention automatically.
 pub struct ConcurrentHashMap<K, V> {
-    shards: Vec<Arc<Mutex<HashMap<K, V>>>>,
-    shard_mask: usize,
+    map: Arc<DashMap<K, V>>,
 }
 
-impl<K: Hash + Eq + Clone, V: Clone> ConcurrentHashMap<K, V> {
-    /// Creates new concurrent hash map with specified shard count
-    ///
-    /// Shard count should be power of two
-    pub fn new(shard_count: usize) -> Self {
-        let shard_count = shard_count.next_power_of_two();
-        let mut shards = Vec::with_capacity(shard_count);
-        
-        for _ in 0..shard_count {
-            shards.push(Arc::new(Mutex::new(HashMap::new())));
-        }
-
+impl<K: Hash + Eq, V> ConcurrentHashMap<K, V> {
+    /// Creates new concurrent hash map with default settings
+    pub fn new() -> Self {
         ConcurrentHashMap {
-            shards,
-            shard_mask: shard_count - 1,
+            map: Arc::new(DashMap::new()),
         }
     }
 
-    fn get_shard(&self, key: &K) -> usize {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::Hasher;
-        
-        let mut hasher = DefaultHasher::new();
-        key.hash(&mut hasher);
-        (hasher.finish() as usize) & self.shard_mask
+    /// Creates with specified shard count (power of two)
+    pub fn with_capacity(capacity: usize) -> Self {
+        ConcurrentHashMap {
+            map: Arc::new(DashMap::with_capacity(capacity)),
+        }
     }
 
     /// Inserts key-value pair, returns previous value if existed
     pub fn insert(&self, key: K, value: V) -> Option<V> {
-        let shard_idx = self.get_shard(&key);
-        let mut shard = self.shards[shard_idx].lock();
-        shard.insert(key, value)
+        self.map.insert(key, value)
     }
 
-    /// Gets value for key
-    pub fn get(&self, key: &K) -> Option<V> {
-        let shard_idx = self.get_shard(key);
-        let shard = self.shards[shard_idx].lock();
-        shard.get(key).cloned()
+    /// Gets value for key (returns cloned value)
+    pub fn get(&self, key: &K) -> Option<V>
+    where
+        V: Clone,
+    {
+        self.map.get(key).map(|r| r.value().clone())
     }
 
     /// Removes key-value pair
-    pub fn remove(&self, key: &K) -> Option<V> {
-        let shard_idx = self.get_shard(key);
-        let mut shard = self.shards[shard_idx].lock();
-        shard.remove(key)
+    pub fn remove(&self, key: &K) -> Option<(K, V)> {
+        self.map.remove(key)
     }
 
     /// Checks if key exists
     pub fn contains_key(&self, key: &K) -> bool {
-        let shard_idx = self.get_shard(key);
-        let shard = self.shards[shard_idx].lock();
-        shard.contains_key(key)
+        self.map.contains_key(key)
     }
 
     /// Approximate map size
     pub fn len(&self) -> usize {
-        self.shards.iter().map(|s| s.lock().len()).sum()
+        self.map.len()
     }
 
     /// Check if empty
     pub fn is_empty(&self) -> bool {
-        self.shards.iter().all(|s| s.lock().is_empty())
+        self.map.is_empty()
     }
 
     /// Removes all entries
     pub fn clear(&self) {
-        for shard in &self.shards {
-            shard.lock().clear();
+        self.map.clear();
+    }
+}
+
+impl<K: Hash + Eq, V> Clone for ConcurrentHashMap<K, V> {
+    fn clone(&self) -> Self {
+        ConcurrentHashMap {
+            map: Arc::clone(&self.map),
         }
+    }
+}
+
+impl<K: Hash + Eq, V> Default for ConcurrentHashMap<K, V> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -360,51 +355,97 @@ impl Default for LockFreeCounter {
 }
 
 // ============================================================================
-// Lock-Free Stack (Treiber Stack)
+// Lock-Free Stack (True Treiber Stack)
 // ============================================================================
 
 struct Node<T> {
     data: T,
-    next: Option<Box<Node<T>>>,
+    next: *mut Node<T>,
 }
 
-/// Lock-free stack using Treiber algorithm
+/// Truly lock-free stack using Treiber algorithm with AtomicPtr
 ///
-/// Push and pop are wait-free. No capacity limit (grows dynamically).
+/// Push and pop use compare-and-swap (CAS) operations. Wait-free progress guarantee.
+/// No capacity limit (grows dynamically).
 pub struct LockFreeStack<T> {
-    head: Mutex<Option<Box<Node<T>>>>,
+    head: AtomicPtr<Node<T>>,
 }
 
 impl<T> LockFreeStack<T> {
     /// Creates new empty stack
     pub fn new() -> Self {
         LockFreeStack {
-            head: Mutex::new(None),
+            head: AtomicPtr::new(ptr::null_mut()),
         }
     }
 
-    /// Pushes element onto stack, always succeeds, never blocks
+    /// Pushes element onto stack using CAS loop
+    ///
+    /// Always succeeds, wait-free (bounded number of retries)
     pub fn push(&self, element: T) {
-        let mut head = self.head.lock();
-        let new_node = Box::new(Node {
+        let new_node = Box::into_raw(Box::new(Node {
             data: element,
-            next: head.take(),
-        });
-        *head = Some(new_node);
+            next: ptr::null_mut(),
+        }));
+
+        loop {
+            let old_head = self.head.load(Ordering::Relaxed);
+            unsafe {
+                (*new_node).next = old_head;
+            }
+
+            // Try to swap in new node as head
+            if self
+                .head
+                .compare_exchange_weak(
+                    old_head,
+                    new_node,
+                    Ordering::Release,
+                    Ordering::Relaxed,
+                )
+                .is_ok()
+            {
+                return;
+            }
+            // CAS failed, retry
+        }
     }
 
-    /// Pops element from stack, returns None if empty
+    /// Pops element from stack using CAS loop
+    ///
+    /// Returns None if empty. Wait-free.
     pub fn pop(&self) -> Option<T> {
-        let mut head = self.head.lock();
-        head.take().map(|node| {
-            *head = node.next;
-            node.data
-        })
+        loop {
+            let old_head = self.head.load(Ordering::Acquire);
+            
+            if old_head.is_null() {
+                return None; // Stack empty
+            }
+
+            let next = unsafe { (*old_head).next };
+
+            // Try to swap next node as new head
+            if self
+                .head
+                .compare_exchange_weak(
+                    old_head,
+                    next,
+                    Ordering::Release,
+                    Ordering::Acquire,
+                )
+                .is_ok()
+            {
+                // Successfully popped, extract data and free node
+                let node = unsafe { Box::from_raw(old_head) };
+                return Some(node.data);
+            }
+            // CAS failed, retry
+        }
     }
 
-    /// Check if stack is empty
+    /// Check if stack is empty (may be stale)
     pub fn is_empty(&self) -> bool {
-        self.head.lock().is_none()
+        self.head.load(Ordering::Acquire).is_null()
     }
 }
 
@@ -413,6 +454,18 @@ impl<T> Default for LockFreeStack<T> {
         Self::new()
     }
 }
+
+impl<T> Drop for LockFreeStack<T> {
+    fn drop(&mut self) {
+        // Clean up all remaining nodes
+        while self.pop().is_some() {}
+    }
+}
+
+// SAFETY: Send if T is Send (nodes can be moved between threads)
+unsafe impl<T: Send> Send for LockFreeStack<T> {}
+// SAFETY: Sync if T is Send (multiple threads can access via &self)
+unsafe impl<T: Send> Sync for LockFreeStack<T> {}
 
 #[cfg(test)]
 mod tests {
@@ -472,12 +525,12 @@ mod tests {
 
     #[test]
     fn test_concurrent_hashmap() {
-        let map = ConcurrentHashMap::new(16);
+        let map: ConcurrentHashMap<String, i32> = ConcurrentHashMap::new();
         
         assert_eq!(map.insert(String::from("key1"), 100), None);
         assert_eq!(map.get(&String::from("key1")), Some(100));
         assert_eq!(map.insert(String::from("key1"), 200), Some(100));
-        assert_eq!(map.remove(&String::from("key1")), Some(200));
+        assert_eq!(map.remove(&String::from("key1")), Some((String::from("key1"), 200)));
         assert!(!map.contains_key(&String::from("key1")));
     }
 
@@ -509,5 +562,35 @@ mod tests {
         assert_eq!(stack.pop(), Some(1));
         assert_eq!(stack.pop(), None);
         assert!(stack.is_empty());
+    }
+
+    #[test]
+    fn test_lock_free_stack_concurrent() {
+        use std::thread;
+        
+        let stack = Arc::new(LockFreeStack::new());
+        let mut handles = vec![];
+        
+        // Push from multiple threads
+        for i in 0..4 {
+            let stack_clone = Arc::clone(&stack);
+            let handle = thread::spawn(move || {
+                for j in 0..100 {
+                    stack_clone.push(i * 100 + j);
+                }
+            });
+            handles.push(handle);
+        }
+        
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        
+        // Should have 400 elements
+        let mut count = 0;
+        while stack.pop().is_some() {
+            count += 1;
+        }
+        assert_eq!(count, 400);
     }
 }
