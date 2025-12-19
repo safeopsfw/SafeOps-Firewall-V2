@@ -1,0 +1,14 @@
+<Configuration>
+  <VGpu>Enable</VGpu>
+  <Networking>Enable</Networking>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>D:\SafeOpsFV2</HostFolder>
+      <SandboxFolder>C:\SafeOps</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell.exe -ExecutionPolicy Bypass -File C:\SafeOps\sandbox\test-shared-libs.ps1</Command>
+  </LogonCommand>
+</Configuration>
