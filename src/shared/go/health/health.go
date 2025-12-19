@@ -16,6 +16,8 @@ const (
 	StatusHealthy   Status = "healthy"
 	StatusUnhealthy Status = "unhealthy"
 	StatusDegraded  Status = "degraded"
+	StatusStarting  Status = "starting" // Service is initializing
+	StatusStopping  Status = "stopping" // Service is shutting down
 	StatusUnknown   Status = "unknown"
 )
 
@@ -23,6 +25,7 @@ const (
 type Check interface {
 	Name() string
 	Check(ctx context.Context) *Result
+	IsRequired() bool // Returns true if failure should mark service as unhealthy
 }
 
 // Result represents a health check result
@@ -39,8 +42,9 @@ type CheckFunc func(ctx context.Context) *Result
 
 // SimpleCheck wraps a function as a Check
 type SimpleCheck struct {
-	name    string
-	checkFn CheckFunc
+	name     string
+	checkFn  CheckFunc
+	required bool
 }
 
 // Name returns the check name
@@ -53,11 +57,35 @@ func (c *SimpleCheck) Check(ctx context.Context) *Result {
 	return c.checkFn(ctx)
 }
 
-// NewCheck creates a simple check
+// IsRequired returns whether this check is required
+func (c *SimpleCheck) IsRequired() bool {
+	return c.required
+}
+
+// NewCheck creates a simple check (required by default for backward compatibility)
 func NewCheck(name string, fn CheckFunc) Check {
 	return &SimpleCheck{
-		name:    name,
-		checkFn: fn,
+		name:     name,
+		checkFn:  fn,
+		required: true,
+	}
+}
+
+// NewRequiredCheck creates a required check
+func NewRequiredCheck(name string, fn CheckFunc) Check {
+	return &SimpleCheck{
+		name:     name,
+		checkFn:  fn,
+		required: true,
+	}
+}
+
+// NewOptionalCheck creates an optional check
+func NewOptionalCheck(name string, fn CheckFunc) Check {
+	return &SimpleCheck{
+		name:     name,
+		checkFn:  fn,
+		required: false,
 	}
 }
 
@@ -120,8 +148,9 @@ func (c *Checker) Check(ctx context.Context) *Report {
 	// Run checks concurrently
 	var wg sync.WaitGroup
 	results := make(chan struct {
-		name   string
-		result *Result
+		name     string
+		result   *Result
+		required bool
 	}, len(c.checks))
 
 	for _, check := range c.checks {
@@ -135,9 +164,10 @@ func (c *Checker) Check(ctx context.Context) *Report {
 			result.Timestamp = checkStart
 
 			results <- struct {
-				name   string
-				result *Result
-			}{check.Name(), result}
+				name     string
+				result   *Result
+				required bool
+			}{check.Name(), result, check.IsRequired()}
 		}(check)
 	}
 
@@ -151,10 +181,16 @@ func (c *Checker) Check(ctx context.Context) *Report {
 	for r := range results {
 		report.Checks[r.name] = r.result
 
-		// Update overall status
+		// Update overall status based on check result and whether it's required
 		switch r.result.Status {
 		case StatusUnhealthy:
-			report.Status = StatusUnhealthy
+			// Only mark as unhealthy if this is a required check
+			if r.required {
+				report.Status = StatusUnhealthy
+			} else if report.Status != StatusUnhealthy {
+				// Optional check failed - degraded at most
+				report.Status = StatusDegraded
+			}
 		case StatusDegraded:
 			if report.Status != StatusUnhealthy {
 				report.Status = StatusDegraded
@@ -237,6 +273,22 @@ func UnhealthyWithError(err error) *Result {
 func Degraded(msg string) *Result {
 	return &Result{
 		Status:  StatusDegraded,
+		Message: msg,
+	}
+}
+
+// Starting creates a starting result
+func Starting(msg string) *Result {
+	return &Result{
+		Status:  StatusStarting,
+		Message: msg,
+	}
+}
+
+// Stopping creates a stopping result
+func Stopping(msg string) *Result {
+	return &Result{
+		Status:  StatusStopping,
 		Message: msg,
 	}
 }

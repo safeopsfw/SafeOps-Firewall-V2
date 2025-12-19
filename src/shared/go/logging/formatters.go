@@ -5,16 +5,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/term"
 )
 
-// JSONFormatter formats logs as JSON
-type JSONFormatter struct {
-	// TimestampFormat is the format for timestamps
+// SafeOpsJSONFormatter formats logs as JSON with SafeOps conventions
+type SafeOpsJSONFormatter struct {
+	// TimestampFormat is the format for timestamps (default: RFC3339Nano)
 	TimestampFormat string
 
 	// DisableTimestamp disables timestamp output
@@ -30,20 +33,8 @@ type JSONFormatter struct {
 	FieldMap map[string]string
 }
 
-// Format formats the log entry as JSON
-func (f *JSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	data := make(map[string]interface{})
-
-	// Copy fields
-	for k, v := range entry.Data {
-		switch v := v.(type) {
-		case error:
-			data[k] = v.Error()
-		default:
-			data[k] = v
-		}
-	}
-
+// Format formats the log entry as JSON with ordered fields
+func (f *SafeOpsJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	// Get field names
 	timestampField := "timestamp"
 	levelField := "level"
@@ -61,7 +52,10 @@ func (f *JSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		}
 	}
 
-	// Add standard fields
+	// Build ordered data map - fixed fields first, then sorted custom fields
+	data := make(map[string]interface{})
+
+	// 1. Timestamp (first)
 	if !f.DisableTimestamp {
 		format := f.TimestampFormat
 		if format == "" {
@@ -70,8 +64,30 @@ func (f *JSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		data[timestampField] = entry.Time.Format(format)
 	}
 
+	// 2. Level (second)
 	data[levelField] = entry.Level.String()
+
+	// 3. Message (third)
 	data[messageField] = entry.Message
+
+	// 4. Custom fields (sorted alphabetically)
+	// Get sorted keys for custom fields
+	customKeys := make([]string, 0, len(entry.Data))
+	for k := range entry.Data {
+		customKeys = append(customKeys, k)
+	}
+	sort.Strings(customKeys)
+
+	// Add custom fields in sorted order
+	for _, k := range customKeys {
+		v := entry.Data[k]
+		switch v := v.(type) {
+		case error:
+			data[k] = v.Error()
+		default:
+			data[k] = v
+		}
+	}
 
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
@@ -87,9 +103,9 @@ func (f *JSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// TextFormatter formats logs as text
-type TextFormatter struct {
-	// TimestampFormat is the format for timestamps
+// SafeOpsTextFormatter formats logs as text with SafeOps conventions
+type SafeOpsTextFormatter struct {
+	// TimestampFormat is the format for timestamps (default: "2006-01-02 15:04:05")
 	TimestampFormat string
 
 	// DisableTimestamp disables timestamp output
@@ -98,8 +114,8 @@ type TextFormatter struct {
 	// FullTimestamp shows full timestamp instead of delta
 	FullTimestamp bool
 
-	// DisableColors disables ANSI colors
-	DisableColors bool
+	// ColorEnabled enables ANSI colors (auto-detected by default)
+	ColorEnabled bool
 
 	// QuoteStrings quotes string values
 	QuoteStrings bool
@@ -111,57 +127,83 @@ type TextFormatter struct {
 // Color codes
 const (
 	colorRed     = 31
+	colorGreen   = 32
 	colorYellow  = 33
 	colorBlue    = 34
 	colorMagenta = 35
 	colorCyan    = 36
 	colorWhite   = 37
 	colorGray    = 90
+	colorRedBold = "1;31" // Bold red for fatal/panic
 )
 
-// getLevelColor returns the ANSI color for a level
-func getLevelColor(level logrus.Level) int {
+// getLevelColor returns the ANSI color for a level (updated color scheme)
+func getLevelColor(level logrus.Level) string {
 	switch level {
 	case logrus.PanicLevel, logrus.FatalLevel:
-		return colorMagenta
+		return colorRedBold // Red bold
 	case logrus.ErrorLevel:
-		return colorRed
+		return fmt.Sprintf("%d", colorRed) // Red
 	case logrus.WarnLevel:
-		return colorYellow
+		return fmt.Sprintf("%d", colorYellow) // Yellow
 	case logrus.InfoLevel:
-		return colorCyan
+		return fmt.Sprintf("%d", colorGreen) // Green (updated from Cyan)
 	case logrus.DebugLevel:
-		return colorGray
+		return fmt.Sprintf("%d", colorCyan) // Cyan (updated from Gray)
 	case logrus.TraceLevel:
-		return colorWhite
+		return fmt.Sprintf("%d", colorGray) // Gray
 	default:
-		return colorWhite
+		return fmt.Sprintf("%d", colorWhite)
 	}
 }
 
-// Format formats the log entry as text
-func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+// colorizeLevel wraps level string in ANSI color codes
+func colorizeLevel(levelStr string, level logrus.Level) string {
+	// Check NO_COLOR environment variable
+	if os.Getenv("NO_COLOR") != "" {
+		return levelStr
+	}
+	color := getLevelColor(level)
+	return fmt.Sprintf("\x1b[%sm%s\x1b[0m", color, levelStr)
+}
+
+// isTerminal detects if output is terminal (supports colors) vs file/pipe
+func isTerminal(w io.Writer) bool {
+	// Check NO_COLOR environment variable
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+
+	if f, ok := w.(*os.File); ok {
+		return term.IsTerminal(int(f.Fd()))
+	}
+	return false
+}
+
+// Format formats the log entry as text with SafeOps format: [TIMESTAMP] [LEVEL] message field=value
+func (f *SafeOpsTextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var buf bytes.Buffer
 
-	// Timestamp
+	// [Timestamp]
 	if !f.DisableTimestamp {
 		format := f.TimestampFormat
 		if format == "" {
-			format = time.RFC3339
+			format = "2006-01-02 15:04:05" // SafeOps default format
 		}
+		buf.WriteString("[")
 		buf.WriteString(entry.Time.Format(format))
-		buf.WriteString(" ")
+		buf.WriteString("] ")
 	}
 
-	// Level
+	// [Level]
 	levelText := strings.ToUpper(entry.Level.String())
-	if !f.DisableColors {
-		color := getLevelColor(entry.Level)
-		buf.WriteString(fmt.Sprintf("\x1b[%dm%s\x1b[0m", color, levelText))
+	buf.WriteString("[")
+	if f.ColorEnabled {
+		buf.WriteString(colorizeLevel(levelText, entry.Level))
 	} else {
 		buf.WriteString(levelText)
 	}
-	buf.WriteString(" ")
+	buf.WriteString("] ")
 
 	// Message
 	buf.WriteString(entry.Message)
@@ -177,7 +219,7 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 }
 
 // writeFields writes fields to the buffer
-func (f *TextFormatter) writeFields(buf *bytes.Buffer, fields logrus.Fields) {
+func (f *SafeOpsTextFormatter) writeFields(buf *bytes.Buffer, fields logrus.Fields) {
 	keys := make([]string, 0, len(fields))
 	for k := range fields {
 		keys = append(keys, k)
@@ -205,6 +247,18 @@ func (f *TextFormatter) writeFields(buf *bytes.Buffer, fields logrus.Fields) {
 	}
 }
 
+// fieldToString converts field key-value pair to string representation
+func fieldToString(key string, value interface{}) string {
+	switch v := value.(type) {
+	case string:
+		return fmt.Sprintf("%s=%s", key, v)
+	case error:
+		return fmt.Sprintf("%s=%s", key, v.Error())
+	default:
+		return fmt.Sprintf("%s=%v", key, v)
+	}
+}
+
 // ConsoleFormatter provides colored console output
 type ConsoleFormatter struct {
 	TimestampFormat string
@@ -225,7 +279,7 @@ func (f *ConsoleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	// Level with color
 	color := getLevelColor(entry.Level)
 	levelText := strings.ToUpper(entry.Level.String())[:4]
-	buf.WriteString(fmt.Sprintf("\x1b[%dm%-4s\x1b[0m ", color, levelText))
+	buf.WriteString(fmt.Sprintf("\x1b[%sm%-4s\x1b[0m ", color, levelText))
 
 	// Message
 	buf.WriteString(entry.Message)
@@ -250,18 +304,20 @@ func (f *ConsoleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// NewJSONFormatter creates a new JSON formatter
-func NewJSONFormatter() *JSONFormatter {
-	return &JSONFormatter{
+// NewJSONFormatter creates a new SafeOps JSON formatter
+func NewJSONFormatter() *SafeOpsJSONFormatter {
+	return &SafeOpsJSONFormatter{
 		TimestampFormat: time.RFC3339Nano,
+		PrettyPrint:     false, // Production default
 	}
 }
 
-// NewTextFormatter creates a new text formatter
-func NewTextFormatter() *TextFormatter {
-	return &TextFormatter{
+// NewTextFormatter creates a new SafeOps text formatter
+func NewTextFormatter() *SafeOpsTextFormatter {
+	return &SafeOpsTextFormatter{
 		FullTimestamp:   true,
-		TimestampFormat: time.RFC3339,
+		TimestampFormat: "2006-01-02 15:04:05", // SafeOps default
+		ColorEnabled:    isTerminal(os.Stdout), // Auto-detect
 		SortFields:      true,
 	}
 }

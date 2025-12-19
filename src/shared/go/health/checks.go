@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"runtime"
 	"time"
 )
 
@@ -42,6 +44,11 @@ func (c *TCPCheck) Check(ctx context.Context) *Result {
 	return Healthy().WithDetails(map[string]interface{}{
 		"address": c.address,
 	})
+}
+
+// IsRequired returns if this check is required (default: true)
+func (c *TCPCheck) IsRequired() bool {
+	return true
 }
 
 // HTTPCheck checks if an HTTP endpoint is healthy
@@ -100,6 +107,11 @@ func (c *HTTPCheck) Check(ctx context.Context) *Result {
 	})
 }
 
+// IsRequired returns if this check is required (default: true)
+func (c *HTTPCheck) IsRequired() bool {
+	return true
+}
+
 // SQLCheck checks database connectivity
 type SQLCheck struct {
 	name string
@@ -133,6 +145,11 @@ func (c *SQLCheck) Check(ctx context.Context) *Result {
 	})
 }
 
+// IsRequired returns if this check is required (default: true)
+func (c *SQLCheck) IsRequired() bool {
+	return true
+}
+
 // MemoryCheck checks memory usage
 type MemoryCheck struct {
 	name         string
@@ -158,6 +175,11 @@ func (c *MemoryCheck) Check(ctx context.Context) *Result {
 	return Healthy().WithDetails(map[string]interface{}{
 		"threshold": c.maxThreshold,
 	})
+}
+
+// IsRequired returns if this check is required (default: false - memory is optional)
+func (c *MemoryCheck) IsRequired() bool {
+	return false
 }
 
 // DiskCheck checks disk space
@@ -188,6 +210,11 @@ func (c *DiskCheck) Check(ctx context.Context) *Result {
 		"path":           c.path,
 		"min_free_bytes": c.minFreeBytes,
 	})
+}
+
+// IsRequired returns if this check is required (default: true)
+func (c *DiskCheck) IsRequired() bool {
+	return true
 }
 
 // CompositeCheck runs multiple checks
@@ -234,6 +261,17 @@ func (c *CompositeCheck) Check(ctx context.Context) *Result {
 	}
 }
 
+// IsRequired returns if this check is required (aggregates from sub-checks)
+func (c *CompositeCheck) IsRequired() bool {
+	// Composite is required if any sub-check is required
+	for _, check := range c.checks {
+		if check.IsRequired() {
+			return true
+		}
+	}
+	return false
+}
+
 // ThrottledCheck wraps a check with rate limiting
 type ThrottledCheck struct {
 	check       Check
@@ -264,4 +302,213 @@ func (c *ThrottledCheck) Check(ctx context.Context) *Result {
 	c.lastResult = c.check.Check(ctx)
 	c.lastCheck = time.Now()
 	return c.lastResult
+}
+
+// IsRequired delegates to the wrapped check
+func (c *ThrottledCheck) IsRequired() bool {
+	return c.check.IsRequired()
+}
+
+// ============================================================================
+// Specialized Health Checkers
+// ============================================================================
+
+// RedisCheck checks Redis connectivity with PING command
+type RedisCheck struct {
+	name             string
+	address          string
+	timeout          time.Duration
+	latencyThreshold time.Duration
+}
+
+// NewRedisCheck creates a Redis health check
+func NewRedisCheck(name, address string, timeout time.Duration) *RedisCheck {
+	return &RedisCheck{
+		name:             name,
+		address:          address,
+		timeout:          timeout,
+		latencyThreshold: 500 * time.Millisecond, // Default: degraded if >500ms
+	}
+}
+
+// WithLatencyThreshold sets the latency threshold for degraded status
+func (c *RedisCheck) WithLatencyThreshold(threshold time.Duration) *RedisCheck {
+	c.latencyThreshold = threshold
+	return c
+}
+
+// Name returns the check name
+func (c *RedisCheck) Name() string {
+	return c.name
+}
+
+// Check performs the Redis PING check
+func (c *RedisCheck) Check(ctx context.Context) *Result {
+	start := time.Now()
+
+	// Connect to Redis
+	conn, err := net.DialTimeout("tcp", c.address, c.timeout)
+	if err != nil {
+		return Unhealthy(fmt.Sprintf("failed to connect to Redis at %s: %v", c.address, err))
+	}
+	defer conn.Close()
+
+	// Send PING command (Redis protocol: *1\r\n$4\r\nPING\r\n)
+	if _, err := fmt.Fprintf(conn, "*1\r\n$4\r\nPING\r\n"); err != nil {
+		return Unhealthy(fmt.Sprintf("failed to send PING: %v", err))
+	}
+
+	// Read PONG response
+	buf := make([]byte, 7)
+	if _, err := conn.Read(buf); err != nil {
+		return Unhealthy(fmt.Sprintf("failed to read PONG: %v", err))
+	}
+
+	latency := time.Since(start)
+
+	// Check if latency exceeds threshold
+	if latency > c.latencyThreshold {
+		return Degraded(fmt.Sprintf("Redis responding slowly (%s)", latency)).WithDetails(map[string]interface{}{
+			"address":      c.address,
+			"latency_ms":   latency.Milliseconds(),
+			"threshold_ms": c.latencyThreshold.Milliseconds(),
+		})
+	}
+
+	return Healthy().WithDetails(map[string]interface{}{
+		"address":    c.address,
+		"latency_ms": latency.Milliseconds(),
+	})
+}
+
+// IsRequired returns if this check is required (default: true)
+func (c *RedisCheck) IsRequired() bool {
+	return true
+}
+
+// FileSystemCheck checks filesystem accessibility and writability
+type FileSystemCheck struct {
+	name      string
+	paths     []string
+	testWrite bool
+}
+
+// NewFileSystemCheck creates a filesystem health check
+func NewFileSystemCheck(name string, paths []string) *FileSystemCheck {
+	return &FileSystemCheck{
+		name:      name,
+		paths:     paths,
+		testWrite: true,
+	}
+}
+
+// WithWriteTest enables or disables write permission testing
+func (c *FileSystemCheck) WithWriteTest(enabled bool) *FileSystemCheck {
+	c.testWrite = enabled
+	return c
+}
+
+// Name returns the check name
+func (c *FileSystemCheck) Name() string {
+	return c.name
+}
+
+// Check performs the filesystem check
+func (c *FileSystemCheck) Check(ctx context.Context) *Result {
+	details := make(map[string]interface{})
+	allHealthy := true
+
+	for _, path := range c.paths {
+		pathInfo := make(map[string]interface{})
+
+		// Check if path exists
+		info, err := os.Stat(path)
+		if err != nil {
+			allHealthy = false
+			pathInfo["error"] = fmt.Sprintf("path does not exist: %v", err)
+			details[path] = pathInfo
+			continue
+		}
+
+		pathInfo["exists"] = true
+		pathInfo["is_dir"] = info.IsDir()
+
+		// Test write permissions if enabled
+		if c.testWrite {
+			testFile := fmt.Sprintf("%s/.health_check_%d", path, time.Now().UnixNano())
+			if err := os.WriteFile(testFile, []byte("health check"), 0644); err != nil {
+				allHealthy = false
+				pathInfo["writable"] = false
+				pathInfo["write_error"] = err.Error()
+			} else {
+				pathInfo["writable"] = true
+				os.Remove(testFile) // Clean up
+			}
+		}
+
+		details[path] = pathInfo
+	}
+
+	if !allHealthy {
+		return Unhealthy("one or more filesystem checks failed").WithDetails(details)
+	}
+
+	return Healthy().WithDetails(details)
+}
+
+// IsRequired returns if this check is required (default: true)
+func (c *FileSystemCheck) IsRequired() bool {
+	return true
+}
+
+// EnhancedMemoryCheck checks system and process memory usage
+type EnhancedMemoryCheck struct {
+	name      string
+	maxHeapMB float64
+}
+
+// NewEnhancedMemoryCheck creates a memory health check
+func NewEnhancedMemoryCheck(name string, maxHeapMB float64) *EnhancedMemoryCheck {
+	return &EnhancedMemoryCheck{
+		name:      name,
+		maxHeapMB: maxHeapMB,
+	}
+}
+
+// Name returns the check name
+func (c *EnhancedMemoryCheck) Name() string {
+	return c.name
+}
+
+// Check performs the memory check
+func (c *EnhancedMemoryCheck) Check(ctx context.Context) *Result {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	heapMB := float64(m.HeapAlloc) / 1024 / 1024
+	heapSysMB := float64(m.HeapSys) / 1024 / 1024
+	totalAllocMB := float64(m.TotalAlloc) / 1024 / 1024
+	gcPauseMicros := m.PauseNs[(m.NumGC+255)%256] / 1000
+
+	details := map[string]interface{}{
+		"heap_alloc_mb":   heapMB,
+		"heap_sys_mb":     heapSysMB,
+		"total_alloc_mb":  totalAllocMB,
+		"num_gc":          m.NumGC,
+		"gc_pause_micros": gcPauseMicros,
+		"num_goroutine":   runtime.NumGoroutine(),
+	}
+
+	// Check if heap exceeds threshold
+	if c.maxHeapMB > 0 && heapMB > c.maxHeapMB {
+		return Degraded(fmt.Sprintf("heap usage (%.2f MB) exceeds threshold (%.2f MB)", heapMB, c.maxHeapMB)).
+			WithDetails(details)
+	}
+
+	return Healthy().WithDetails(details)
+}
+
+// IsRequired returns if this check is required (default: false for memory)
+func (c *EnhancedMemoryCheck) IsRequired() bool {
+	return false
 }

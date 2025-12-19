@@ -11,6 +11,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Context key type for type-safe context values
+type contextKey string
+
+const (
+	requestIDKey contextKey = "request_id"
+	userIDKey    contextKey = "user_id"
+	traceIDKey   contextKey = "trace_id"
+)
+
 // Logger wraps logrus.Logger with additional functionality
 type Logger struct {
 	*logrus.Logger
@@ -36,9 +45,7 @@ func New() *Logger {
 	l := logrus.New()
 	l.SetOutput(os.Stdout)
 	l.SetLevel(logrus.InfoLevel)
-	l.SetFormatter(&logrus.JSONFormatter{
-		TimestampFormat: time.RFC3339Nano,
-	})
+	l.SetFormatter(NewJSONFormatter())
 
 	return &Logger{
 		Logger: l,
@@ -76,28 +83,43 @@ func NewWithConfig(cfg Config) *Logger {
 	// Set format
 	switch cfg.Format {
 	case "json":
-		l.SetFormatter(&logrus.JSONFormatter{
-			TimestampFormat: cfg.TimeFormat,
-		})
+		formatter := NewJSONFormatter()
+		if cfg.TimeFormat != "" {
+			formatter.TimestampFormat = cfg.TimeFormat
+		}
+		l.SetFormatter(formatter)
 	case "text", "console":
-		l.SetFormatter(&logrus.TextFormatter{
-			TimestampFormat: cfg.TimeFormat,
-			FullTimestamp:   true,
-		})
+		formatter := NewTextFormatter()
+		if cfg.TimeFormat != "" {
+			formatter.TimestampFormat = cfg.TimeFormat
+		}
+		l.SetFormatter(formatter)
 	}
 
-	// Set output
+	// Set output with rotation support for file output
 	switch cfg.Output {
 	case "stdout", "":
 		l.SetOutput(os.Stdout)
 	case "stderr":
 		l.SetOutput(os.Stderr)
 	default:
-		if f, err := os.OpenFile(cfg.Output, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err == nil {
-			l.SetOutput(f)
-		}
+		// File output - use lumberjack for rotation
+		l.SetOutput(SetupRotation(
+			cfg.Output,
+			100,  // 100 MB default
+			5,    // 5 backups default
+			30,   // 30 days default
+			true, // compression enabled
+		))
 	}
 
+	return l
+}
+
+// NewWithFields creates a logger with permanent context fields
+func NewWithFields(fields Fields) *Logger {
+	l := New()
+	l.AddPermanentFields(fields)
 	return l
 }
 
@@ -136,22 +158,27 @@ func (l *Logger) WithError(err error) *logrus.Entry {
 	return l.WithField("error", err)
 }
 
-// WithContext adds context fields
+// WithContext adds context fields using typed context keys
 func (l *Logger) WithContext(ctx context.Context) *logrus.Entry {
 	entry := l.WithFields(l.fields)
 
-	// Extract common context values
-	if requestID := ctx.Value("request_id"); requestID != nil {
+	// Extract common context values using typed keys
+	if requestID := ctx.Value(requestIDKey); requestID != nil {
 		entry = entry.WithField("request_id", requestID)
 	}
-	if userID := ctx.Value("user_id"); userID != nil {
+	if userID := ctx.Value(userIDKey); userID != nil {
 		entry = entry.WithField("user_id", userID)
 	}
-	if traceID := ctx.Value("trace_id"); traceID != nil {
+	if traceID := ctx.Value(traceIDKey); traceID != nil {
 		entry = entry.WithField("trace_id", traceID)
 	}
 
 	return entry
+}
+
+// WithTime overrides the log timestamp
+func (l *Logger) WithTime(t time.Time) *logrus.Entry {
+	return l.Logger.WithTime(t)
 }
 
 // AddPermanentField adds a field that persists across all log calls
@@ -195,6 +222,35 @@ func (l *Logger) SetFormatter(formatter logrus.Formatter) {
 	l.Logger.SetFormatter(formatter)
 }
 
+// GetLevel returns the current log level as a string
+func (l *Logger) GetLevel() string {
+	return LevelToString(l.Logger.GetLevel())
+}
+
+// GetLevelValue returns the current log level as a Level constant
+func (l *Logger) GetLevelValue() Level {
+	return l.Logger.GetLevel()
+}
+
+// IsLevelEnabled checks if the given level would be logged
+func (l *Logger) IsLevelEnabled(level string) bool {
+	lvl, err := ParseLevel(level)
+	if err != nil {
+		return false
+	}
+	return l.Logger.IsLevelEnabled(lvl)
+}
+
+// IsDebugEnabled returns true if debug logging is enabled
+func (l *Logger) IsDebugEnabled() bool {
+	return l.Logger.IsLevelEnabled(DebugLevel)
+}
+
+// IsTraceEnabled returns true if trace logging is enabled
+func (l *Logger) IsTraceEnabled() bool {
+	return l.Logger.IsLevelEnabled(TraceLevel)
+}
+
 // Clone creates a copy of the logger
 func (l *Logger) Clone() *Logger {
 	l.mu.RLock()
@@ -217,6 +273,23 @@ func (l *Logger) Child(fields Fields) *Logger {
 	child := l.Clone()
 	child.AddPermanentFields(fields)
 	return child
+}
+
+// Context key helpers for external use
+
+// WithRequestID adds request_id to context
+func WithRequestID(ctx context.Context, requestID string) context.Context {
+	return context.WithValue(ctx, requestIDKey, requestID)
+}
+
+// WithUserID adds user_id to context
+func WithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
+
+// WithTraceID adds trace_id to context
+func WithTraceID(ctx context.Context, traceID string) context.Context {
+	return context.WithValue(ctx, traceIDKey, traceID)
 }
 
 // Package-level logging functions that use the default logger

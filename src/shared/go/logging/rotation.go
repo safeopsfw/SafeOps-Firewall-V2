@@ -11,7 +11,76 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
+
+// ============================================================================
+// Lumberjack-Based Rotation (Recommended)
+// ============================================================================
+// These functions use the industry-standard Lumberjack library for automatic
+// log rotation. This is the recommended approach for most use cases.
+
+// SetupRotation creates a Lumberjack logger configured for automatic rotation.
+// Returns io.Writer that can be passed to logrus.SetOutput() or Logger.SetOutput().
+//
+// Parameters:
+//   - filename: Path to the log file (e.g., "/var/log/safeops/dns-server.log")
+//   - maxSizeMB: Max size in MB before rotation (e.g., 100)
+//   - maxBackups: Number of old log files to keep (e.g., 5)
+//   - maxAgeDays: Max age in days to retain old logs (e.g., 30)
+//   - compress: Enable gzip compression of rotated logs (recommended: true)
+//
+// Rotation Behavior:
+//   - Size-based: Rotates when file reaches maxSizeMB
+//   - Age-based: Deletes logs older than maxAgeDays
+//   - Backup limit: Keeps only maxBackups old files
+//   - Compression: Rotated files saved as .log.gz (70-90% space savings)
+//   - Thread-safe: Safe for concurrent writes
+//   - Atomic: No log loss during rotation
+//
+// Example:
+//
+//	logger := logging.New()
+//	logger.SetOutput(logging.SetupRotation(
+//	    "/var/log/safeops/dns.log",
+//	    100,  // 100 MB max size
+//	    5,    // Keep 5 backups
+//	    30,   // 30 days max age
+//	    true, // Enable compression
+//	))
+func SetupRotation(filename string, maxSizeMB, maxBackups, maxAgeDays int, compress bool) io.Writer {
+	return &lumberjack.Logger{
+		Filename:   filename,   // Path to log file
+		MaxSize:    maxSizeMB,  // MB before rotation
+		MaxBackups: maxBackups, // Number of old logs to keep
+		MaxAge:     maxAgeDays, // Days to retain old logs
+		Compress:   compress,   // Gzip rotated logs
+	}
+}
+
+// SetupRotationWithConfig creates a Lumberjack logger from RotatingConfig.
+// This is a convenience wrapper around SetupRotation() for use with config structs.
+//
+// Example:
+//
+//	cfg := logging.RotatingConfig{
+//	    Filename:   "/var/log/safeops/dns.log",
+//	    MaxSizeMB:  100,
+//	    MaxBackups: 5,
+//	    MaxAgeDays: 30,
+//	    Compress:   true,
+//	}
+//	logger.SetOutput(logging.SetupRotationWithConfig(cfg))
+func SetupRotationWithConfig(cfg RotatingConfig) io.Writer {
+	return SetupRotation(cfg.Filename, cfg.MaxSizeMB, cfg.MaxBackups, cfg.MaxAgeDays, cfg.Compress)
+}
+
+// ============================================================================
+// Custom Rotation Implementation (Advanced Use Cases)
+// ============================================================================
+// The following custom implementation provides advanced features like MultiWriter
+// and AsyncWriter. Use these when you need functionality beyond basic rotation.
 
 // RotatingWriter is a file writer with rotation support
 type RotatingWriter struct {

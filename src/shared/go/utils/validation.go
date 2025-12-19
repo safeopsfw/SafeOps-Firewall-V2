@@ -408,7 +408,11 @@ func IsValidFileName(name string) bool {
 
 	// Check for Windows reserved names
 	upperName := strings.ToUpper(name)
-	baseName := strings.Split(upperName, ".")[0]
+	// Extract base name (before first dot, if any)
+	baseName := upperName
+	if dotIndex := strings.Index(upperName, "."); dotIndex > 0 {
+		baseName = upperName[:dotIndex]
+	}
 	if windowsReservedNames[baseName] {
 		return false
 	}
