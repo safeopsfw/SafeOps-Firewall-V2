@@ -3,6 +3,7 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/go-redis/redis/v8"
@@ -189,4 +190,27 @@ func (c *Client) NewPublisher() *Publisher {
 // Publish publishes a message
 func (p *Publisher) Publish(ctx context.Context, channel, message string) error {
 	return p.client.Client.Publish(ctx, channel, message).Err()
+}
+// PublishJSON publishes a JSON-encoded message
+func (ps *PubSub) PublishJSON(ctx context.Context, channel string, data interface{}) error {
+bytes, err := json.Marshal(data)
+if err != nil {
+return err
+}
+return ps.Publish(ctx, channel, string(bytes))
+}
+
+// Receive receives a message (blocking)
+func (ps *PubSub) Receive(ctx context.Context) (*redis.Message, error) {
+if ps.pubsub == nil {
+return nil, nil
+}
+msg, err := ps.pubsub.Receive(ctx)
+if err != nil {
+return nil, err
+}
+if redisMsg, ok := msg.(*redis.Message); ok {
+return redisMsg, nil
+}
+return nil, nil
 }

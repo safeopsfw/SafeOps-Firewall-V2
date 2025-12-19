@@ -4,6 +4,8 @@ package grpc_client
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,6 +20,8 @@ type LoadBalancingStrategy int
 const (
 	// RoundRobin distributes requests evenly across endpoints
 	RoundRobin LoadBalancingStrategy = iota
+	// Random selects endpoints randomly
+	Random
 	// WeightedRoundRobin distributes based on endpoint weights
 	WeightedRoundRobin
 	// LeastConnections routes to endpoint with fewest active connections
@@ -33,7 +37,6 @@ type Endpoint struct {
 	conn        *grpc.ClientConn
 	activeConns int64
 	healthy     atomic.Bool
-	mu          sync.RWMutex
 }
 
 // LoadBalancer manages multiple service endpoints
@@ -83,7 +86,7 @@ func NewLoadBalancer(ctx context.Context, cfg LoadBalancerConfig) (*LoadBalancer
 
 		// Create connection
 		clientCfg := cfg.Config
-		clientCfg.Address = epCfg.Address
+		clientCfg.Target = epCfg.Address
 
 		client, err := NewClient(ctx, clientCfg)
 		if err != nil {
@@ -115,6 +118,8 @@ func (lb *LoadBalancer) GetConnection() (*grpc.ClientConn, error) {
 	switch lb.strategy {
 	case RoundRobin:
 		return lb.roundRobin()
+	case Random:
+		return lb.random()
 	case WeightedRoundRobin:
 		return lb.weightedRoundRobin()
 	case LeastConnections:
@@ -131,6 +136,12 @@ func (lb *LoadBalancer) roundRobin() (*grpc.ClientConn, error) {
 	idx := atomic.AddUint64(&lb.index, 1)
 	endpoint := lb.endpoints[int(idx)%len(lb.endpoints)]
 	return endpoint.conn, nil
+}
+
+// random returns a random endpoint
+func (lb *LoadBalancer) random() (*grpc.ClientConn, error) {
+	idx := rand.Intn(len(lb.endpoints))
+	return lb.endpoints[idx].conn, nil
 }
 
 // weightedRoundRobin returns endpoint based on weights
@@ -305,7 +316,7 @@ func (lb *LoadBalancer) AddEndpoint(ctx context.Context, epCfg EndpointConfig) e
 
 	// Create connection
 	clientCfg := lb.cfg
-	clientCfg.Address = epCfg.Address
+	clientCfg.Target = epCfg.Address
 
 	client, err := NewClient(ctx, clientCfg)
 	if err != nil {
@@ -367,6 +378,8 @@ func (s LoadBalancingStrategy) String() string {
 	switch s {
 	case RoundRobin:
 		return "RoundRobin"
+	case Random:
+		return "Random"
 	case WeightedRoundRobin:
 		return "WeightedRoundRobin"
 	case LeastConnections:
@@ -376,4 +389,29 @@ func (s LoadBalancingStrategy) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+// NewLoadBalancerFromEnv creates load balancer from environment variables
+func NewLoadBalancerFromEnv(ctx context.Context, endpoints []EndpointConfig) (*LoadBalancer, error) {
+	strategy := RoundRobin
+	if policy := os.Getenv("GRPC_LB_POLICY"); policy != "" {
+		switch policy {
+		case "round_robin":
+			strategy = RoundRobin
+		case "random":
+			strategy = Random
+		case "weighted":
+			strategy = WeightedRoundRobin
+		case "least_connections":
+			strategy = LeastConnections
+		}
+	}
+
+	cfg := LoadBalancerConfig{
+		Strategy:  strategy,
+		Endpoints: endpoints,
+		Config:    Config{}, // Use defaults
+	}
+
+	return NewLoadBalancer(ctx, cfg)
 }

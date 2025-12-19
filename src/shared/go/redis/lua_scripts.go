@@ -28,9 +28,17 @@ func NewScript(src string) *Script {
 	}
 }
 
-// Run executes the script
+// Run executes the script using EVALSHA, falls back to EVAL if needed
 func (s *Script) Run(ctx context.Context, c *Client, keys []string, args ...interface{}) *redis.Cmd {
-	return c.Client.EvalSha(ctx, s.hash, keys, args...)
+// Try EVALSHA first (faster, uses cached script)
+cmd := c.Client.EvalSha(ctx, s.hash, keys, args...)
+
+// If script not cached, fallback to EVAL
+if err := cmd.Err(); err != nil && err.Error() == "NOSCRIPT No matching script. Please use EVAL." {
+return c.Client.Eval(ctx, s.src, keys, args...)
+}
+
+return cmd
 }
 
 // Load loads the script into Redis
@@ -179,4 +187,88 @@ func (sm *ScriptManager) RegisterCommonScripts() {
 	sm.Register("get_or_set", GetOrSetScript)
 	sm.Register("compare_and_swap", CompareAndSwapScript)
 	sm.Register("decr_if_positive", DecrIfPositiveScript)
+}
+// DistLockAcquireScript acquires a distributed lock with TTL
+var DistLockAcquireScript = `
+local key = KEYS[1]
+local value = ARGV[1]
+local ttl = tonumber(ARGV[2])
+
+if redis.call('EXISTS', key) == 0 then
+    redis.call('SET', key, value, 'PX', ttl)
+    return 1
+else
+    return 0
+end
+`
+
+// DistLockReleaseScript releases a lock only if owned
+var DistLockReleaseScript = `
+local key = KEYS[1]
+local value = ARGV[1]
+
+if redis.call('GET', key) == value then
+    return redis.call('DEL', key)
+else
+    return 0
+end
+`
+
+// DistLockExtendScript extends lock TTL if owned
+var DistLockExtendScript = `
+local key = KEYS[1]
+local value = ARGV[1]
+local ttl = tonumber(ARGV[2])
+
+if redis.call('GET', key) == value then
+    return redis.call('PEXPIRE', key, ttl)
+else
+    return 0
+end
+`
+
+// TokenBucketScript implements token bucket rate limiting
+var TokenBucketScript = `
+local key = KEYS[1]
+local max_tokens = tonumber(ARGV[1])
+local refill_rate = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local requested = tonumber(ARGV[4])
+
+local bucket = redis.call('HMGET', key, 'tokens', 'last_refill')
+local tokens = tonumber(bucket[1])
+local last_refill = tonumber(bucket[2])
+
+if not tokens then
+    tokens = max_tokens
+    last_refill = now
+end
+
+-- Calculate tokens to add based on time elapsed
+local elapsed = (now - last_refill) / 1000.0
+local tokens_to_add = elapsed * refill_rate
+tokens = math.min(max_tokens, tokens + tokens_to_add)
+
+-- Try to consume requested tokens
+if tokens >= requested then
+    tokens = tokens - requested
+    redis.call('HMSET', key, 'tokens', tokens, 'last_refill', now)
+    redis.call('EXPIRE', key, 3600)
+    return {1, tokens}
+else
+    return {0, tokens}
+end
+`
+// RegisterDistributedLockScripts registers distributed lock scripts
+func (sm *ScriptManager) RegisterDistributedLockScripts() {
+sm.Register("dist_lock_acquire", DistLockAcquireScript)
+sm.Register("dist_lock_release", DistLockReleaseScript)
+sm.Register("dist_lock_extend", DistLockExtendScript)
+sm.Register("token_bucket", TokenBucketScript)
+}
+
+// RegisterAllScripts registers all common and distributed lock scripts
+func (sm *ScriptManager) RegisterAllScripts() {
+sm.RegisterCommonScripts()
+sm.RegisterDistributedLockScripts()
 }
