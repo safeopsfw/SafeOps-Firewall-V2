@@ -304,159 +304,160 @@ func NewCommonMetrics(namespace string) *CommonMetrics {
 func Handler() http.Handler {
 	return promhttp.Handler()
 }
+
 // ============================================================================
 // MetricsRegistry - High-Level Metrics Recording API
 // ============================================================================
 
 // MetricsRegistry provides a centralized registry for common service metrics
 type MetricsRegistry struct {
-namespace string
+	namespace string
 
-// Core service metrics
-requestsTotal   *prometheus.CounterVec
-requestDuration *prometheus.HistogramVec
-errorsTotal     *prometheus.CounterVec
+	// Core service metrics
+	requestsTotal   *prometheus.CounterVec
+	requestDuration *prometheus.HistogramVec
+	errorsTotal     *prometheus.CounterVec
 
-// Database metrics
-dbQueryDuration *prometheus.HistogramVec
-dbQueriesTotal  *prometheus.CounterVec
+	// Database metrics
+	dbQueryDuration *prometheus.HistogramVec
+	dbQueriesTotal  *prometheus.CounterVec
 
-// Cache metrics
-cacheHitsTotal   *prometheus.CounterVec
-cacheMissesTotal *prometheus.CounterVec
+	// Cache metrics
+	cacheHitsTotal   *prometheus.CounterVec
+	cacheMissesTotal *prometheus.CounterVec
 }
 
 // NewMetricsRegistry creates a new metrics registry with pre-configured metrics
 func NewMetricsRegistry(namespace string) *MetricsRegistry {
-mr := &MetricsRegistry{
-namespace: namespace,
+	mr := &MetricsRegistry{
+		namespace: namespace,
 
-requestsTotal: prometheus.NewCounterVec(
-prometheus.CounterOpts{
-Namespace: namespace,
-Name:      "requests_total",
-Help:      "Total number of requests processed",
-},
-[]string{"service", "method", "status"},
-),
+		requestsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "requests_total",
+				Help:      "Total number of requests processed",
+			},
+			[]string{"service", "method", "status"},
+		),
 
-requestDuration: prometheus.NewHistogramVec(
-prometheus.HistogramOpts{
-Namespace: namespace,
-Name:      "request_duration_seconds",
-Help:      "Request duration in seconds",
-Buckets:   DefaultBuckets,
-},
-[]string{"service", "method"},
-),
+		requestDuration: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: namespace,
+				Name:      "request_duration_seconds",
+				Help:      "Request duration in seconds",
+				Buckets:   DefaultBuckets,
+			},
+			[]string{"service", "method"},
+		),
 
-errorsTotal: prometheus.NewCounterVec(
-prometheus.CounterOpts{
-Namespace: namespace,
-Name:      "errors_total",
-Help:      "Total number of errors",
-},
-[]string{"service", "type"},
-),
+		errorsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "errors_total",
+				Help:      "Total number of errors",
+			},
+			[]string{"service", "type"},
+		),
 
-dbQueryDuration: prometheus.NewHistogramVec(
-prometheus.HistogramOpts{
-Namespace: namespace,
-Name:      "db_query_duration_seconds",
-Help:      "Database query duration in seconds",
-Buckets:   []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5},
-},
-[]string{"query_type"},
-),
+		dbQueryDuration: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: namespace,
+				Name:      "db_query_duration_seconds",
+				Help:      "Database query duration in seconds",
+				Buckets:   []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5},
+			},
+			[]string{"query_type"},
+		),
 
-dbQueriesTotal: prometheus.NewCounterVec(
-prometheus.CounterOpts{
-Namespace: namespace,
-Name:      "db_queries_total",
-Help:      "Total number of database queries",
-},
-[]string{"query_type", "status"},
-),
+		dbQueriesTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "db_queries_total",
+				Help:      "Total number of database queries",
+			},
+			[]string{"query_type", "status"},
+		),
 
-cacheHitsTotal: prometheus.NewCounterVec(
-prometheus.CounterOpts{
-Namespace: namespace,
-Name:      "cache_hits_total",
-Help:      "Total number of cache hits",
-},
-[]string{"operation"},
-),
+		cacheHitsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "cache_hits_total",
+				Help:      "Total number of cache hits",
+			},
+			[]string{"operation"},
+		),
 
-cacheMissesTotal: prometheus.NewCounterVec(
-prometheus.CounterOpts{
-Namespace: namespace,
-Name:      "cache_misses_total",
-Help:      "Total number of cache misses",
-},
-[]string{"operation"},
-),
-}
+		cacheMissesTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "cache_misses_total",
+				Help:      "Total number of cache misses",
+			},
+			[]string{"operation"},
+		),
+	}
 
-// Register all metrics
-prometheus.MustRegister(mr.requestsTotal)
-prometheus.MustRegister(mr.requestDuration)
-prometheus.MustRegister(mr.errorsTotal)
-prometheus.MustRegister(mr.dbQueryDuration)
-prometheus.MustRegister(mr.dbQueriesTotal)
-prometheus.MustRegister(mr.cacheHitsTotal)
-prometheus.MustRegister(mr.cacheMissesTotal)
+	// Register all metrics
+	prometheus.MustRegister(mr.requestsTotal)
+	prometheus.MustRegister(mr.requestDuration)
+	prometheus.MustRegister(mr.errorsTotal)
+	prometheus.MustRegister(mr.dbQueryDuration)
+	prometheus.MustRegister(mr.dbQueriesTotal)
+	prometheus.MustRegister(mr.cacheHitsTotal)
+	prometheus.MustRegister(mr.cacheMissesTotal)
 
-return mr
+	return mr
 }
 
 // RecordRequest records a service request with duration
 func (mr *MetricsRegistry) RecordRequest(service, method string, duration time.Duration, status string) {
-mr.requestsTotal.WithLabelValues(service, method, status).Inc()
-mr.requestDuration.WithLabelValues(service, method).Observe(duration.Seconds())
+	mr.requestsTotal.WithLabelValues(service, method, status).Inc()
+	mr.requestDuration.WithLabelValues(service, method).Observe(duration.Seconds())
 }
 
 // RecordError records an error occurrence
 func (mr *MetricsRegistry) RecordError(service, errorType string) {
-mr.errorsTotal.WithLabelValues(service, errorType).Inc()
+	mr.errorsTotal.WithLabelValues(service, errorType).Inc()
 }
 
 // RecordDBQuery records a database query with duration and result
 func (mr *MetricsRegistry) RecordDBQuery(queryType string, duration time.Duration, err error) {
-mr.dbQueryDuration.WithLabelValues(queryType).Observe(duration.Seconds())
+	mr.dbQueryDuration.WithLabelValues(queryType).Observe(duration.Seconds())
 
-status := "success"
-if err != nil {
-status = "error"
-}
-mr.dbQueriesTotal.WithLabelValues(queryType, status).Inc()
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+	mr.dbQueriesTotal.WithLabelValues(queryType, status).Inc()
 }
 
 // RecordCacheHit records a cache hit
 func (mr *MetricsRegistry) RecordCacheHit(operation string) {
-mr.cacheHitsTotal.WithLabelValues(operation).Inc()
+	mr.cacheHitsTotal.WithLabelValues(operation).Inc()
 }
 
 // RecordCacheMiss records a cache miss
 func (mr *MetricsRegistry) RecordCacheMiss(operation string) {
-mr.cacheMissesTotal.WithLabelValues(operation).Inc()
+	mr.cacheMissesTotal.WithLabelValues(operation).Inc()
 }
 
 // GetRequestsTotal returns the requests counter
 func (mr *MetricsRegistry) GetRequestsTotal() *prometheus.CounterVec {
-return mr.requestsTotal
+	return mr.requestsTotal
 }
 
 // GetRequestDuration returns the request duration histogram
 func (mr *MetricsRegistry) GetRequestDuration() *prometheus.HistogramVec {
-return mr.requestDuration
+	return mr.requestDuration
 }
 
 // GetErrorsTotal returns the errors counter
 func (mr *MetricsRegistry) GetErrorsTotal() *prometheus.CounterVec {
-return mr.errorsTotal
+	return mr.errorsTotal
 }
 
 // GetDBQueryDuration returns the database query duration histogram
 func (mr *MetricsRegistry) GetDBQueryDuration() *prometheus.HistogramVec {
-return mr.dbQueryDuration
+	return mr.dbQueryDuration
 }

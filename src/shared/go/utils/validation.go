@@ -449,11 +449,30 @@ func IsSafePath(path, baseDir string) bool {
 		return false
 	}
 
+	// Check for Unix-style absolute paths (even on Windows)
+	// This catches paths like /etc/passwd which are absolute on Unix
+	if strings.HasPrefix(path, "/") {
+		return false // Unix absolute paths are never safe as relative paths
+	}
+
 	// Clean both paths
 	cleanPath := filepath.Clean(path)
 	cleanBase := filepath.Clean(baseDir)
 
-	// If path is absolute, check it's within base
+	// Check for path traversal attempts in the original path
+	if strings.Contains(path, "..") {
+		// After cleaning, verify it doesn't escape
+		fullPath := filepath.Join(cleanBase, cleanPath)
+		rel, err := filepath.Rel(cleanBase, fullPath)
+		if err != nil {
+			return false
+		}
+		if strings.HasPrefix(rel, "..") || rel == ".." {
+			return false
+		}
+	}
+
+	// If path is absolute (platform-specific), check it's within base
 	if filepath.IsAbs(cleanPath) {
 		rel, err := filepath.Rel(cleanBase, cleanPath)
 		if err != nil {

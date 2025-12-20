@@ -323,14 +323,22 @@ func IsNonRetryableHTTPStatus(statusCode int) bool {
 // ============================================================================
 
 // SimpleRetry retries with default config
+// All errors are treated as retryable for simple retry scenarios
 func SimpleRetry(ctx context.Context, fn func() error) error {
-	return Retry(ctx, fn, DefaultRetryConfig())
+	cfg := DefaultRetryConfig().WithCustomRetryable(func(err error) bool {
+		return err != nil // Retry all errors
+	})
+	return Retry(ctx, fn, cfg)
 }
 
 // RetryN retries up to n times
+// All errors are treated as retryable for basic retry scenarios
 func RetryN(ctx context.Context, n int, fn func() error) error {
-	cfg := DefaultRetryConfig()
-	cfg.MaxAttempts = n
+	cfg := DefaultRetryConfig().
+		WithMaxAttempts(n).
+		WithCustomRetryable(func(err error) bool {
+			return err != nil // Retry all errors
+		})
 	return Retry(ctx, fn, cfg)
 }
 

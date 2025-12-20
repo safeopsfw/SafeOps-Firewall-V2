@@ -345,28 +345,29 @@ func ValidateLabelNames(names []string) error {
 
 	return nil
 }
+
 // ValidateCounterName validates that a counter name ends with _total
 func ValidateCounterName(name string) error {
-if len(name) < 6 || name[len(name)-6:] != "_total" {
-return fmt.Errorf("counter '%s' should end with '_total' suffix", name)
-}
-return nil
+	if len(name) < 6 || name[len(name)-6:] != "_total" {
+		return fmt.Errorf("counter '%s' should end with '_total' suffix", name)
+	}
+	return nil
 }
 
 // bucketsEqual compares two bucket slices for equality
 func bucketsEqual(a, b []float64) bool {
-if len(a) != len(b) {
-return false
-}
-for i := range a {
-if a[i] != b[i] {
-return false
-}
-}
-return true
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // logWarning logs a warning message
 func logWarning(format string, args ...interface{}) {
-fmt.Printf("METRICS WARNING: "+format+"\n", args...)
+	fmt.Printf("METRICS WARNING: "+format+"\n", args...)
 }

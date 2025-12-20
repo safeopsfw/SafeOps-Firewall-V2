@@ -668,18 +668,19 @@ func LoadTLSConfig(cfg TLSConfig) (*tls.Config, error) {
 
 	return tlsConfig, nil
 }
+
 // ============================================================================
 // Instrumentation
 // ============================================================================
 
 // WithMetrics attaches a metrics registry to the client
 func (c *Client) WithMetrics(m *metrics.MetricsRegistry) *Client {
-c.metrics = m
-return c
+	c.metrics = m
+	return c
 }
 
 // WithLogger attaches a logger to the client
 func (c *Client) WithLogger(l *logging.Logger) *Client {
-c.logger = l
-return c
+	c.logger = l
+	return c
 }

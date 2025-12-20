@@ -1,0 +1,14 @@
+==================================================
+SafeOps Shared Library - Build Verification Tool
+==================================================
+{"level":"info","message":"Logging package: OK","timestamp":"2025-12-20T23:55:51.1843405+05:30"}
+Config package: OK
+Errors package: OK
+Health package: OK
+Metrics package: OK
+Redis package: OK
+Postgres package: OK
+gRPC Client package: OK
+==================================================
+SUCCESS: All 9 shared packages compiled and linked.
+==================================================

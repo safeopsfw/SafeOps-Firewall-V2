@@ -30,15 +30,15 @@ func NewScript(src string) *Script {
 
 // Run executes the script using EVALSHA, falls back to EVAL if needed
 func (s *Script) Run(ctx context.Context, c *Client, keys []string, args ...interface{}) *redis.Cmd {
-// Try EVALSHA first (faster, uses cached script)
-cmd := c.Client.EvalSha(ctx, s.hash, keys, args...)
+	// Try EVALSHA first (faster, uses cached script)
+	cmd := c.Client.EvalSha(ctx, s.hash, keys, args...)
 
-// If script not cached, fallback to EVAL
-if err := cmd.Err(); err != nil && err.Error() == "NOSCRIPT No matching script. Please use EVAL." {
-return c.Client.Eval(ctx, s.src, keys, args...)
-}
+	// If script not cached, fallback to EVAL
+	if err := cmd.Err(); err != nil && err.Error() == "NOSCRIPT No matching script. Please use EVAL." {
+		return c.Client.Eval(ctx, s.src, keys, args...)
+	}
 
-return cmd
+	return cmd
 }
 
 // Load loads the script into Redis
@@ -188,6 +188,7 @@ func (sm *ScriptManager) RegisterCommonScripts() {
 	sm.Register("compare_and_swap", CompareAndSwapScript)
 	sm.Register("decr_if_positive", DecrIfPositiveScript)
 }
+
 // DistLockAcquireScript acquires a distributed lock with TTL
 var DistLockAcquireScript = `
 local key = KEYS[1]
@@ -259,16 +260,17 @@ else
     return {0, tokens}
 end
 `
+
 // RegisterDistributedLockScripts registers distributed lock scripts
 func (sm *ScriptManager) RegisterDistributedLockScripts() {
-sm.Register("dist_lock_acquire", DistLockAcquireScript)
-sm.Register("dist_lock_release", DistLockReleaseScript)
-sm.Register("dist_lock_extend", DistLockExtendScript)
-sm.Register("token_bucket", TokenBucketScript)
+	sm.Register("dist_lock_acquire", DistLockAcquireScript)
+	sm.Register("dist_lock_release", DistLockReleaseScript)
+	sm.Register("dist_lock_extend", DistLockExtendScript)
+	sm.Register("token_bucket", TokenBucketScript)
 }
 
 // RegisterAllScripts registers all common and distributed lock scripts
 func (sm *ScriptManager) RegisterAllScripts() {
-sm.RegisterCommonScripts()
-sm.RegisterDistributedLockScripts()
+	sm.RegisterCommonScripts()
+	sm.RegisterDistributedLockScripts()
 }

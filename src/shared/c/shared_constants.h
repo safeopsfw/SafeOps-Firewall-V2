@@ -1,266 +1,462 @@
 /*
- * shared_constants.h
- * Shared constants, limits, and configuration values used across kernel and
- * userspace
+ * SafeOps Firewall v2.0 - Shared Constants Header
  *
- * Categories: Buffer Sizes, Network Limits, Timing, Performance Tuning, Feature
- * Flags
+ * Purpose: Provides foundational constants, limits, and preprocessor
+ * definitions shared between the Windows kernel driver and userspace service to
+ * ensure consistent behavior and ABI compatibility.
+ *
+ * Author: SafeOps Development Team
+ * Created: 2025-12-20
+ *
+ * CRITICAL: This header establishes the ABI contract between kernel and
+ * userspace. Changes to constants require rebuilding BOTH components. Version
+ * mismatches will cause initialization failures.
  */
 
 #ifndef SAFEOPS_SHARED_CONSTANTS_H
 #define SAFEOPS_SHARED_CONSTANTS_H
 
+/*
+ * =============================================================================
+ * REQUIRED INCLUDES
+ * =============================================================================
+ */
+
+#ifdef _KERNEL_MODE
+/* Kernel mode: Use WDK headers */
+#include <ntddk.h>
+#include <wdf.h>
+#else
+/* User mode: Use Windows SDK headers */
+/* Define WIN32_LEAN_AND_MEAN to exclude rarely-used Windows headers */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+/* Include winsock2.h BEFORE windows.h to prevent redefinition errors */
+#include <windows.h>
+#include <winsock2.h>
+
+/* Standard integer types */
 #include <stdint.h>
+#endif
 
-// ============================================================================
-// BUFFER SIZES
-// ============================================================================
+/*
+ * =============================================================================
+ * VERSION AND BUILD INFORMATION
+ * =============================================================================
+ * Purpose: Version tracking enables kernel driver and userspace service to
+ *          verify compatibility at initialization. Mismatched versions prevent
+ *          incorrect structure interpretations that could cause crashes.
+ */
 
-// Ring buffer configuration
-#define RING_BUFFER_SIZE (2ULL * 1024 * 1024 * 1024)  // 2 GB
-#define RING_BUFFER_ENTRY_SIZE 128                    // 128 bytes per entry
-#define RING_BUFFER_ENTRY_COUNT (16ULL * 1024 * 1024) // 16 million entries
+#define SAFEOPS_DRIVER_VERSION_MAJOR 2
+#define SAFEOPS_DRIVER_VERSION_MINOR 0
+#define SAFEOPS_DRIVER_VERSION_PATCH 0
+#define SAFEOPS_DRIVER_BUILD_NUMBER 1
 
-// Packet buffer sizes
-#define PACKET_BUFFER_SIZE 2048 // 2 KB per packet buffer
-#define MAX_PACKET_SIZE 65536   // 64 KB maximum packet size
-#define MIN_PACKET_SIZE 64      // Minimum Ethernet frame
-#define JUMBO_FRAME_SIZE 9000   // Jumbo frame MTU
+/* ABI version - increment when binary compatibility breaks */
+#define SAFEOPS_ABI_VERSION 0x00020000 /* v2.0.0 */
 
-// Batch processing
-#define BATCH_SIZE 128     // 128 packets per batch
-#define MAX_BATCH_SIZE 256 // Maximum batch size
-#define MIN_BATCH_SIZE 16  // Minimum batch size
+/* String representation for logging */
+#define SAFEOPS_VERSION_STRING "2.0.0"
 
-// Buffer pools
-#define SMALL_BUFFER_SIZE 256   // 256 bytes
-#define MEDIUM_BUFFER_SIZE 2048 // 2 KB
-#define LARGE_BUFFER_SIZE 16384 // 16 KB
+/*
+ * =============================================================================
+ * RING BUFFER CONFIGURATION
+ * =============================================================================
+ * Purpose: Defines lock-free ring buffer dimensions used for high-speed packet
+ *          capture from kernel to userspace. 2GB size accommodates burst
+ * traffic while 16KB entries handle jumbo frames.
+ */
 
-// ============================================================================
-// NETWORK LIMITS
-// ============================================================================
+/* Memory allocation */
+#define RING_BUFFER_SIZE 2147483648ULL /* 2 GB */
+#define RING_BUFFER_ENTRY_SIZE 16384   /* 16 KB */
+#define RING_BUFFER_MAX_ENTRIES (RING_BUFFER_SIZE / RING_BUFFER_ENTRY_SIZE)
+#define RING_BUFFER_ALIGNMENT 4096 /* Page size */
 
-// NIC configuration
-#define MAX_NICS 3              // Maximum 3 NICs (WAN/LAN/WiFi)
-#define MAX_NIC_NAME_LENGTH 128 // Maximum NIC name length
-#define MAX_ADAPTERS 8          // Maximum network adapters
+/* Performance indicators */
+#define RING_BUFFER_WATERMARK_HIGH 90 /* 90% full - apply backpressure */
+#define RING_BUFFER_WATERMARK_LOW 50  /* 50% full - resume normal operation */
+#define RING_BUFFER_FLUSH_THRESHOLD 1000 /* Entries before forced flush */
 
-// Firewall rules
-#define MAX_FIREWALL_RULES 100000 // 100,000 firewall rules
-#define MAX_RULE_NAME_LENGTH 256  // Maximum rule name
-#define MAX_RULE_DESCRIPTION 512  // Maximum rule description
+/*
+ * =============================================================================
+ * PACKET SIZE LIMITS
+ * =============================================================================
+ * Purpose: Validates packet sizes to prevent buffer overflows and reject
+ *          malformed packets. Supports standard MTU (1,500 bytes) and jumbo
+ *          frames (9,000 bytes) for high-performance networks.
+ */
 
-// Connection tracking
-#define MAX_CONNECTIONS (10ULL * 1000 * 1000) // 10 million connections
-#define MAX_SESSIONS (5ULL * 1000 * 1000)     // 5 million sessions
-#define MAX_FLOWS (20ULL * 1000 * 1000)       // 20 million flows
+/* Layer-specific limits */
+#define MAX_PACKET_SIZE 16384                    /* 16 KB maximum capture */
+#define MAX_ETHERNET_FRAME 9000                  /* Jumbo frame support */
+#define MIN_PACKET_SIZE 64                       /* Minimum valid packet */
+#define MAX_IP_PACKET_SIZE 65535                 /* Theoretical IP max */
+#define MAX_PAYLOAD_SIZE (MAX_PACKET_SIZE - 256) /* After headers */
 
-// Address limits
-#define MAX_IP_ADDRESSES 65536 // Maximum tracked IPs
-#define MAX_PORT_RANGES 1024   // Maximum port ranges
-#define MAX_PROTOCOL_COUNT 256 // All IP protocols
+/* Header sizes - used for packet parsing */
+#define ETHERNET_HEADER_SIZE 14 /* Ethernet II header */
+#define VLAN_TAG_SIZE 4         /* 802.1Q VLAN tag */
+#define IPV4_MIN_HEADER_SIZE 20 /* IPv4 no options */
+#define IPV4_MAX_HEADER_SIZE 60 /* IPv4 with options */
+#define IPV6_HEADER_SIZE 40     /* IPv6 fixed header */
+#define TCP_MIN_HEADER_SIZE 20  /* TCP no options */
+#define TCP_MAX_HEADER_SIZE 60  /* TCP with options */
+#define UDP_HEADER_SIZE 8       /* UDP fixed header */
+#define ICMP_HEADER_SIZE 8      /* ICMP header */
+#define ICMPV6_HEADER_SIZE 8    /* ICMPv6 header */
 
-// Packet queue limits
-#define MAX_QUEUE_SIZE 65536     // Maximum queue entries
-#define MAX_PENDING_PACKETS 4096 // Maximum pending packets
+/*
+ * =============================================================================
+ * PROTOCOL IDENTIFIERS
+ * =============================================================================
+ * Purpose: Enables packet classification and protocol-specific parsing in both
+ *          kernel driver and userspace service. Used for filtering and
+ * statistics.
+ */
 
-// ============================================================================
-// TIMING CONSTANTS (in seconds unless specified)
-// ============================================================================
+/* EtherType values (network byte order) */
+#define ETHERTYPE_IPV4 0x0800 /* Internet Protocol v4 */
+#define ETHERTYPE_ARP 0x0806  /* Address Resolution Protocol */
+#define ETHERTYPE_RARP 0x8035 /* Reverse ARP */
+#define ETHERTYPE_IPV6 0x86DD /* Internet Protocol v6 */
+#define ETHERTYPE_VLAN 0x8100 /* 802.1Q VLAN tagging */
+#define ETHERTYPE_QINQ 0x88A8 /* 802.1ad QinQ */
 
-// Connection timeouts
-#define CONNECTION_TIMEOUT 300 // 5 minutes
-#define TCP_TIMEOUT 300        // 5 minutes
-#define UDP_TIMEOUT 180        // 3 minutes
-#define ICMP_TIMEOUT 60        // 1 minute
+/* IP Protocol numbers (as defined by IANA) */
+#define IPPROTO_ICMP 1    /* Internet Control Message Protocol */
+#define IPPROTO_IGMP 2    /* Internet Group Management Protocol */
+#define IPPROTO_TCP 6     /* Transmission Control Protocol */
+#define IPPROTO_UDP 17    /* User Datagram Protocol */
+#define IPPROTO_IPV6 41   /* IPv6 encapsulation */
+#define IPPROTO_GRE 47    /* Generic Routing Encapsulation */
+#define IPPROTO_ESP 50    /* Encapsulating Security Payload */
+#define IPPROTO_AH 51     /* Authentication Header */
+#define IPPROTO_ICMPV6 58 /* Internet Control Message Protocol v6 */
+#define IPPROTO_SCTP 132  /* Stream Control Transmission Protocol */
 
-// TCP specific timeouts
-#define TCP_KEEPALIVE_INTERVAL 60 // 60 seconds
-#define TCP_SYN_TIMEOUT 30        // 30 seconds
-#define TCP_FIN_TIMEOUT 120       // 2 minutes
-#define TCP_TIME_WAIT_TIMEOUT 30  // 30 seconds
+/*
+ * =============================================================================
+ * NETWORK INTERFACE TAGS
+ * =============================================================================
+ * Purpose: Kernel driver tags each interface based on connectivity type.
+ *          Firewall rules, DNS filtering, and IDS policies differ based on
+ *          whether traffic originates from WAN (untrusted) vs LAN (trusted).
+ */
 
-// Intervals (in seconds)
-#define STATISTICS_INTERVAL 1   // 1 second
-#define HEALTH_CHECK_INTERVAL 5 // 5 seconds
-#define CLEANUP_INTERVAL 60     // 1 minute
-#define WATCHDOG_INTERVAL 10    // 10 seconds
+#define NIC_TAG_UNKNOWN 0x00  /* Unclassified interface */
+#define NIC_TAG_WAN 0x01      /* Wide Area Network (Internet) */
+#define NIC_TAG_LAN 0x02      /* Local Area Network (Internal) */
+#define NIC_TAG_WIFI 0x03     /* Wireless interface */
+#define NIC_TAG_VPN 0x04      /* Virtual Private Network */
+#define NIC_TAG_LOOPBACK 0x05 /* Loopback interface */
+#define NIC_TAG_BRIDGE 0x06   /* Bridge interface */
+#define NIC_TAG_VIRTUAL 0x07  /* Virtual adapter */
 
-// Timeouts (in milliseconds)
-#define POLL_INTERVAL_MS 1   // 1 ms
-#define SPIN_TIMEOUT_MS 100  // 100 ms
-#define LOCK_TIMEOUT_MS 5000 // 5 seconds
-#define IO_TIMEOUT_MS 30000  // 30 seconds
+/*
+ * =============================================================================
+ * IOCTL COMMAND RANGES
+ * =============================================================================
+ * Purpose: Organizes 20+ IOCTL commands into logical categories. Ranges prevent
+ *          conflicts and enable future expansion within each category.
+ */
 
-// ============================================================================
-// PERFORMANCE TUNING
-// ============================================================================
+/* Base codes for CTL_CODE macro */
+#define IOCTL_SAFEOPS_BASE 0x8000 /* Device type code */
+#define IOCTL_FUNCTION_BASE 0x800 /* Function code base */
 
-// Thread configuration
-#define WORKER_THREAD_COUNT 16 // 16 worker threads
-#define MIN_WORKER_THREADS 4   // Minimum workers
-#define MAX_WORKER_THREADS 64  // Maximum workers
+/* Command categories (function code ranges) */
+#define IOCTL_CATEGORY_GENERAL 0x00     /* 0x00 - 0x0F */
+#define IOCTL_CATEGORY_STATS 0x10       /* 0x10 - 0x1F */
+#define IOCTL_CATEGORY_FILTER 0x20      /* 0x20 - 0x2F */
+#define IOCTL_CATEGORY_CAPTURE 0x30     /* 0x30 - 0x3F */
+#define IOCTL_CATEGORY_NIC 0x40         /* 0x40 - 0x4F */
+#define IOCTL_CATEGORY_RING_BUFFER 0x50 /* 0x50 - 0x5F */
 
-// Queue configuration
-#define QUEUE_DEPTH 1024     // Queue depth
-#define MAX_QUEUE_DEPTH 8192 // Maximum queue depth
-#define MIN_QUEUE_DEPTH 64   // Minimum queue depth
+/* Method codes for data transfer (Windows IOCTL methods) */
+#ifndef METHOD_BUFFERED
+#define METHOD_BUFFERED 0   /* Buffered I/O */
+#define METHOD_IN_DIRECT 1  /* Direct input */
+#define METHOD_OUT_DIRECT 2 /* Direct output */
+#define METHOD_NEITHER 3    /* Neither (rare) */
+#endif
 
-// CPU affinity
-#define CPU_CORE_COUNT 16 // Expected CPU cores
-#define RSS_QUEUE_COUNT 8 // RSS queues
+/* Access rights */
+#ifndef FILE_ANY_ACCESS
+#define FILE_ANY_ACCESS 0
+#define FILE_READ_ACCESS 0x0001
+#define FILE_WRITE_ACCESS 0x0002
+#endif
 
-// Cache optimization
-#define CACHE_LINE_SIZE 64  // 64-byte cache line
-#define PREFETCH_DISTANCE 8 // Prefetch 8 entries ahead
+/*
+ * =============================================================================
+ * PERFORMANCE AND TIMING CONSTANTS
+ * =============================================================================
+ * Purpose: Defines timing constraints for real-time packet processing and
+ *          monitoring. 100ms packet timeout prevents system hangs on malformed
+ *          packets.
+ */
 
-// ============================================================================
-// FEATURE FLAGS
-// ============================================================================
+/* Thresholds (in milliseconds) */
+#define PACKET_PROCESSING_TIMEOUT_MS 100 /* Max time per packet */
+#define RING_BUFFER_POLL_INTERVAL_MS 10  /* Userspace poll interval */
+#define STATS_UPDATE_INTERVAL_MS 5000    /* Statistics update (5 sec) */
+#define HEALTH_CHECK_INTERVAL_MS 30000   /* Health check (30 sec) */
+#define WATCHDOG_TIMEOUT_MS 60000        /* Watchdog timeout (60 sec) */
 
-// Checksumming
-#define FEATURE_ENABLE_CHECKSUMMING (1 << 0) // Enable checksum verification
-#define FEATURE_OFFLOAD_CHECKSUM_TX (1 << 1) // Offload TX checksum
-#define FEATURE_OFFLOAD_CHECKSUM_RX (1 << 2) // Offload RX checksum
+/* Batch processing */
+#define BATCH_PROCESS_SIZE 100             /* Packets per batch */
+#define MAX_CONCURRENT_FLOWS 1000000       /* 1M concurrent connections */
+#define FLOW_TIMEOUT_SEC 300               /* 5 min idle timeout */
+#define CONNECTION_CLEANUP_INTERVAL_SEC 60 /* Cleanup every minute */
 
-// Fragmentation
-#define FEATURE_ENABLE_FRAGMENTATION (1 << 3) // Enable IP fragmentation
-#define FEATURE_ENABLE_REASSEMBLY (1 << 4)    // Enable fragment reassembly
+/*
+ * =============================================================================
+ * ERROR AND STATUS CODES
+ * =============================================================================
+ * Purpose: Custom status codes supplement NTSTATUS for SafeOps-specific error
+ *          conditions. Enables precise error reporting from kernel to
+ * userspace.
+ */
 
-// Connection tracking
-#define FEATURE_ENABLE_CONNTRACK (1 << 5)      // Enable connection tracking
-#define FEATURE_ENABLE_NAT (1 << 6)            // Enable NAT
-#define FEATURE_ENABLE_STATE_TRACKING (1 << 7) // Enable stateful firewall
+/* Success codes */
+#define SAFEOPS_SUCCESS 0x00000000 /* Operation succeeded */
+#define SAFEOPS_PENDING 0x00000001 /* Operation in progress */
 
-// Statistics
-#define FEATURE_ENABLE_STATISTICS (1 << 8) // Enable statistics
-#define FEATURE_DETAILED_STATS (1 << 9)    // Enable detailed stats
-#define FEATURE_FLOW_STATISTICS (1 << 10)  // Enable per-flow stats
+/* Error codes (using NTSTATUS-style 0xC prefix for errors) */
+#define SAFEOPS_ERROR_INVALID_PARAMETER 0xC0000001 /* Invalid parameter */
+#define SAFEOPS_ERROR_BUFFER_TOO_SMALL 0xC0000002  /* Buffer insufficient */
+#define SAFEOPS_ERROR_NOT_INITIALIZED 0xC0000003   /* Driver not initialized */
+#define SAFEOPS_ERROR_ALREADY_INITIALIZED 0xC0000004 /* Already initialized */
+#define SAFEOPS_ERROR_OUT_OF_MEMORY 0xC0000005    /* Memory allocation failed */
+#define SAFEOPS_ERROR_RING_BUFFER_FULL 0xC0000006 /* Ring buffer at capacity   \
+                                                   */
+#define SAFEOPS_ERROR_DEVICE_NOT_READY 0xC0000007 /* Device not ready */
+#define SAFEOPS_ERROR_VERSION_MISMATCH 0xC0000008 /* ABI version mismatch */
+#define SAFEOPS_ERROR_TIMEOUT 0xC0000009          /* Operation timed out */
+#define SAFEOPS_ERROR_ACCESS_DENIED 0xC000000A    /* Access denied */
+#define SAFEOPS_ERROR_NOT_FOUND 0xC000000B        /* Resource not found */
+#define SAFEOPS_ERROR_ALREADY_EXISTS 0xC000000C   /* Resource already exists */
+#define SAFEOPS_ERROR_INVALID_STATE 0xC000000D    /* Invalid state */
+#define SAFEOPS_ERROR_CORRUPTED_DATA 0xC000000E   /* Data corruption detected */
 
-// Offloading
-#define FEATURE_ENABLE_TSO (1 << 11) // TCP Segmentation Offload
-#define FEATURE_ENABLE_LRO (1 << 12) // Large Receive Offload
-#define FEATURE_ENABLE_GSO (1 << 13) // Generic Segmentation Offload
-#define FEATURE_ENABLE_GRO (1 << 14) // Generic Receive Offload
+/*
+ * =============================================================================
+ * FEATURE FLAGS
+ * =============================================================================
+ * Purpose: Conditional compilation allows building specialized driver variants.
+ *          Production builds disable debug logging; development builds enable
+ *          verbose diagnostics.
+ */
 
-// Advanced features
-#define FEATURE_ENABLE_DPI (1 << 15)            // Deep Packet Inspection
-#define FEATURE_ENABLE_QOS (1 << 16)            // Quality of Service
-#define FEATURE_ENABLE_RATE_LIMITING (1 << 17)  // Rate limiting
-#define FEATURE_ENABLE_LOAD_BALANCING (1 << 18) // Load balancing
+/* Compilation feature flags (define before including this header) */
+#ifdef SAFEOPS_DEBUG
+#define SAFEOPS_ENABLE_DEBUG_LOGGING 1
+#define SAFEOPS_ENABLE_ASSERTIONS 1
+#else
+#define SAFEOPS_ENABLE_DEBUG_LOGGING 0
+#define SAFEOPS_ENABLE_ASSERTIONS 0
+#endif
 
-// Default feature set
-#define DEFAULT_FEATURES                                                       \
-  (FEATURE_ENABLE_CHECKSUMMING | FEATURE_ENABLE_REASSEMBLY |                   \
-   FEATURE_ENABLE_CONNTRACK | FEATURE_ENABLE_STATISTICS)
+/* Runtime capability flags (bitmask) */
+#define CAP_PACKET_INSPECTION 0x0001 /* Deep packet inspection */
+#define CAP_STATEFUL_FIREWALL 0x0002 /* Connection tracking */
+#define CAP_NAT_SUPPORT 0x0004       /* Network address translation */
+#define CAP_VLAN_SUPPORT 0x0008      /* VLAN tagging */
+#define CAP_JUMBO_FRAMES 0x0010      /* Jumbo frame support */
+#define CAP_IPV6_SUPPORT 0x0020      /* IPv6 support */
+#define CAP_PACKET_CAPTURE 0x0040    /* Packet capture */
+#define CAP_TRAFFIC_SHAPING 0x0080   /* QoS/traffic shaping */
 
-// ============================================================================
-// LOG LEVELS
-// ============================================================================
+/*
+ * =============================================================================
+ * MEMORY AND RESOURCE LIMITS
+ * =============================================================================
+ * Purpose: Prevents unbounded memory growth by capping resource usage. 10,000
+ *          firewall rules and 1M connection tracking entries support enterprise
+ *          deployments.
+ */
 
-#define LOG_LEVEL_TRACE 0    // Trace (most verbose)
-#define LOG_LEVEL_DEBUG 1    // Debug
-#define LOG_LEVEL_VERBOSE 2  // Verbose
-#define LOG_LEVEL_INFO 3     // Info
-#define LOG_LEVEL_WARN 4     // Warning
-#define LOG_LEVEL_ERROR 5    // Error
-#define LOG_LEVEL_CRITICAL 6 // Critical (least verbose)
+/* Pool allocations */
+#define MAX_FILTER_RULES 10000  /* Maximum firewall rules */
+#define MAX_NAT_ENTRIES 100000  /* Maximum NAT translations */
+#define MAX_CONNECTIONS 1000000 /* Maximum tracked connections */
+#define PACKET_POOL_SIZE 10000  /* Pre-allocated packet buffers */
+#define MAX_INTERFACES 64       /* Maximum network interfaces */
 
-// Legacy aliases
-#define LOG_TRACE LOG_LEVEL_TRACE
-#define LOG_DEBUG LOG_LEVEL_DEBUG
-#define LOG_VERBOSE LOG_LEVEL_VERBOSE
-#define LOG_INFO LOG_LEVEL_INFO
-#define LOG_WARN LOG_LEVEL_WARN
-#define LOG_ERROR LOG_LEVEL_ERROR
+/* Cache sizes (power of 2 for hash tables) */
+#define HASH_TABLE_SIZE 65536         /* 64K buckets */
+#define DNS_CACHE_SIZE 10000          /* DNS resolution cache */
+#define IP_REPUTATION_CACHE 100000    /* IP reputation cache */
+#define CONNECTION_HASH_BUCKETS 32768 /* 32K buckets for connections */
 
-// ============================================================================
-// PACKET DIRECTIONS
-// ============================================================================
+/* Memory pool tags (for debugging memory leaks) */
+#define POOL_TAG_PACKET 'tPFS'     /* SFPt - Packet buffers */
+#define POOL_TAG_FILTER 'lFFS'     /* SFFl - Filter rules */
+#define POOL_TAG_CONNECTION 'nCFS' /* SFCn - Connection tracking */
+#define POOL_TAG_NAT 'aNFS'        /* SFNa - NAT entries */
+#define POOL_TAG_GENERAL 'neFS'    /* SFGe - General allocations */
 
-#define PKT_DIR_INBOUND 0x01  // Inbound packet
-#define PKT_DIR_OUTBOUND 0x02 // Outbound packet
-#define PKT_DIR_BOTH 0x03     // Both directions
-#define PKT_DIR_LOCAL 0x04    // Local loopback
+/*
+ * =============================================================================
+ * STRING AND BUFFER SIZES
+ * =============================================================================
+ * Purpose: Defines buffer sizes for string fields in structures. Prevents
+ *          buffer overflows and ensures consistency across kernel/userspace.
+ */
 
-// ============================================================================
-// PROTOCOLS (IP Protocol Numbers)
-// ============================================================================
+#define MAX_INTERFACE_NAME_LENGTH 256 /* Network interface name */
+#define MAX_FILTER_NAME_LENGTH 128    /* Firewall rule name */
+#define MAX_ERROR_MESSAGE_LENGTH 512  /* Error message buffer */
+#define MAX_PATH_LENGTH 260           /* Windows MAX_PATH */
+#define MAX_DOMAIN_NAME_LENGTH 255    /* DNS domain name */
+#define MAX_IP_STRING_LENGTH 46       /* IPv6 string (39) + safety */
 
-#define PROTO_HOPOPT 0    // IPv6 Hop-by-Hop
-#define PROTO_ICMP 1      // ICMP
-#define PROTO_IGMP 2      // IGMP
-#define PROTO_TCP 6       // TCP
-#define PROTO_UDP 17      // UDP
-#define PROTO_IPV6 41     // IPv6 encapsulation
-#define PROTO_ROUTING 43  // IPv6 Routing
-#define PROTO_FRAGMENT 44 // IPv6 Fragment
-#define PROTO_GRE 47      // GRE
-#define PROTO_ESP 50      // IPsec ESP
-#define PROTO_AH 51       // IPsec AH
-#define PROTO_ICMPV6 58   // ICMPv6
-#define PROTO_NONE 59     // IPv6 No Next Header
-#define PROTO_SCTP 132    // SCTP
+/*
+ * =============================================================================
+ * MAGIC NUMBERS AND SIGNATURES
+ * =============================================================================
+ * Purpose: Magic numbers detect memory corruption and validate structure
+ *          integrity. Each structure begins with signature to catch parsing
+ *          errors.
+ */
 
-// ============================================================================
-// FILTER ACTIONS
-// ============================================================================
+/* Structure validation signatures */
+#define SAFEOPS_MAGIC_NUMBER 0x53414645       /* "SAFE" in hex */
+#define RING_BUFFER_SIGNATURE 0x52494E47      /* "RING" in hex */
+#define PACKET_ENTRY_SIGNATURE 0x504B5420     /* "PKT " in hex */
+#define FILTER_RULE_SIGNATURE 0x46495220      /* "FIR " in hex */
+#define CONNECTION_ENTRY_SIGNATURE 0x434F4E4E /* "CONN" in hex */
+#define NAT_ENTRY_SIGNATURE 0x4E415420        /* "NAT " in hex */
 
-#define FILTER_ACTION_ALLOW 0    // Allow packet
-#define FILTER_ACTION_BLOCK 1    // Block packet
-#define FILTER_ACTION_DROP 1     // Drop packet (alias)
-#define FILTER_ACTION_REJECT 2   // Reject with ICMP
-#define FILTER_ACTION_LOG 3      // Log packet
-#define FILTER_ACTION_COUNT 4    // Count only
-#define FILTER_ACTION_MIRROR 5   // Mirror packet
-#define FILTER_ACTION_REDIRECT 6 // Redirect packet
+/* Version markers for structure versioning */
+#define STRUCT_VERSION_V1 0x0001 /* Structure version 1 */
+#define STRUCT_VERSION_V2 0x0002 /* Structure version 2 */
+#define STRUCT_VERSION_CURRENT STRUCT_VERSION_V1
 
-// ============================================================================
-// ERROR CODES
-// ============================================================================
+/*
+ * =============================================================================
+ * TCP FLAGS AND CONNECTION STATES
+ * =============================================================================
+ * Purpose: Connection tracking and stateful firewall support
+ */
 
-#define SAFEOPS_SUCCESS 0            // Success
-#define SAFEOPS_ERROR -1             // Generic error
-#define SAFEOPS_INVALID_PARAM -2     // Invalid parameter
-#define SAFEOPS_NO_MEMORY -3         // Out of memory
-#define SAFEOPS_BUFFER_FULL -4       // Buffer full
-#define SAFEOPS_BUFFER_EMPTY -5      // Buffer empty
-#define SAFEOPS_NOT_FOUND -6         // Not found
-#define SAFEOPS_ALREADY_EXISTS -7    // Already exists
-#define SAFEOPS_TIMEOUT -8           // Timeout
-#define SAFEOPS_PERMISSION_DENIED -9 // Permission denied
-#define SAFEOPS_NOT_SUPPORTED -10    // Not supported
-#define SAFEOPS_BUSY -11             // Resource busy
-#define SAFEOPS_INVALID_STATE -12    // Invalid state
+/* TCP flags (standard definitions) */
+#define TCP_FLAG_FIN 0x01 /* Finish */
+#define TCP_FLAG_SYN 0x02 /* Synchronize */
+#define TCP_FLAG_RST 0x04 /* Reset */
+#define TCP_FLAG_PSH 0x08 /* Push */
+#define TCP_FLAG_ACK 0x10 /* Acknowledgment */
+#define TCP_FLAG_URG 0x20 /* Urgent */
+#define TCP_FLAG_ECE 0x40 /* ECN Echo */
+#define TCP_FLAG_CWR 0x80 /* Congestion Window Reduced */
 
-// ============================================================================
-// VERSION INFORMATION
-// ============================================================================
+/* Connection states */
+#define CONN_STATE_NEW 0x00         /* New connection */
+#define CONN_STATE_ESTABLISHED 0x01 /* Established connection */
+#define CONN_STATE_CLOSING 0x02     /* Connection closing */
+#define CONN_STATE_CLOSED 0x03      /* Connection closed */
+#define CONN_STATE_INVALID 0xFF     /* Invalid state */
 
-#define SAFEOPS_VERSION_MAJOR 2 // Major version
-#define SAFEOPS_VERSION_MINOR 0 // Minor version
-#define SAFEOPS_VERSION_PATCH 0 // Patch version
-#define SAFEOPS_VERSION_BUILD 1 // Build number
+/*
+ * =============================================================================
+ * FIREWALL ACTION CODES
+ * =============================================================================
+ * Purpose: Define actions for firewall rules
+ */
 
-#define SAFEOPS_VERSION_STRING "2.0.0.1"
+#define ACTION_ALLOW 0x01     /* Allow packet */
+#define ACTION_DENY 0x02      /* Drop packet silently */
+#define ACTION_REJECT 0x03    /* Drop and send ICMP reject */
+#define ACTION_LOG 0x04       /* Log packet */
+#define ACTION_LOG_ALLOW 0x05 /* Log and allow */
+#define ACTION_LOG_DENY 0x06  /* Log and deny */
 
-// ============================================================================
-// MEMORY ALIGNMENT
-// ============================================================================
+/*
+ * =============================================================================
+ * COMPILE-TIME ASSERTIONS
+ * =============================================================================
+ * Purpose: Validate constant values at compile time to catch errors early
+ */
 
-#define ALIGNMENT_DEFAULT 8     // Default 8-byte alignment
-#define ALIGNMENT_CACHE_LINE 64 // Cache line alignment
-#define ALIGNMENT_PAGE 4096     // Page alignment
+#ifdef _KERNEL_MODE
+/* Kernel mode - use C_ASSERT */
+#define SAFEOPS_STATIC_ASSERT(expr, msg) C_ASSERT(expr)
+#else
+/* User mode - use static_assert (C11) */
+#ifdef __cplusplus
+#define SAFEOPS_STATIC_ASSERT(expr, msg) static_assert(expr, msg)
+#else
+#define SAFEOPS_STATIC_ASSERT(expr, msg) _Static_assert(expr, msg)
+#endif
+#endif
 
-// ============================================================================
-// PRIORITY LEVELS
-// ============================================================================
+/* Validate critical constants */
+SAFEOPS_STATIC_ASSERT(RING_BUFFER_SIZE == 2147483648ULL,
+                      "Ring buffer must be 2GB");
+SAFEOPS_STATIC_ASSERT(RING_BUFFER_ENTRY_SIZE == 16384,
+                      "Entry size must be 16KB");
+SAFEOPS_STATIC_ASSERT(MAX_PACKET_SIZE == 16384,
+                      "Max packet must match entry size");
+SAFEOPS_STATIC_ASSERT((RING_BUFFER_SIZE % RING_BUFFER_ALIGNMENT) == 0,
+                      "Buffer size must be page-aligned");
 
-#define PRIORITY_CRITICAL 0   // Critical priority
-#define PRIORITY_HIGH 1       // High priority
-#define PRIORITY_NORMAL 2     // Normal priority
-#define PRIORITY_LOW 3        // Low priority
-#define PRIORITY_BACKGROUND 4 // Background priority
+/*
+ * =============================================================================
+ * UTILITY MACROS
+ * =============================================================================
+ */
 
-#endif // SAFEOPS_SHARED_CONSTANTS_H
+/* Alignment macros */
+#define ALIGN_UP(x, align) (((x) + ((align) - 1)) & ~((align) - 1))
+#define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
+#define IS_ALIGNED(x, align) (((x) & ((align) - 1)) == 0)
+
+/* Min/Max macros */
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+
+/* Array size */
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+/* Bit manipulation */
+#define BIT(n) (1UL << (n))
+#define SET_BIT(flags, bit) ((flags) |= (bit))
+#define CLEAR_BIT(flags, bit) ((flags) &= ~(bit))
+#define TEST_BIT(flags, bit) (((flags) & (bit)) != 0)
+
+/*
+ * =============================================================================
+ * END OF HEADER
+ * =============================================================================
+ */
+
+#endif /* SAFEOPS_SHARED_CONSTANTS_H */
+
+/*
+ * INTEGRATION NOTES:
+ *
+ * 1. This header MUST be included by both kernel driver and userspace service
+ * 2. Constants are compiled directly into binaries - no runtime configuration
+ * 3. Changing values requires rebuilding BOTH components
+ * 4. ABI version must be validated at initialization
+ * 5. Magic numbers in structures prevent memory corruption
+ * 6. Protocol identifiers must match proto/network.proto definitions
+ *
+ * DEPENDENCIES:
+ * - Windows SDK 10.0.22621.0+ (userspace)
+ * - Windows Driver Kit 10.0.22621.0+ (kernel)
+ * - Used by: ring_buffer.h, packet_structs.h, ioctl_codes.h
+ *
+ * TESTING:
+ * - Build-time: Static assertions validate constant relationships
+ * - Runtime: Version checking prevents incompatible binaries
+ * - Integration: Magic number validation catches memory corruption
+ */
