@@ -740,3 +740,739 @@ func TestSpecialCharactersInFields(t *testing.T) {
 		t.Error("newlines not properly handled")
 	}
 }
+
+// ==============================================================================
+// Rotation Tests
+// ==============================================================================
+
+func TestSetupRotation(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := tmpDir + "/test.log"
+
+	writer := SetupRotation(logFile, 1, 3, 7, true)
+
+	if writer == nil {
+		t.Fatal("SetupRotation returned nil")
+	}
+
+	// Write something to verify it works
+	n, err := writer.Write([]byte("test log entry\n"))
+	if err != nil {
+		t.Errorf("Write error: %v", err)
+	}
+	if n == 0 {
+		t.Error("Expected bytes written")
+	}
+
+	// Close the writer to release file handle (important on Windows)
+	if closer, ok := writer.(interface{ Close() error }); ok {
+		closer.Close()
+	}
+}
+
+func TestSetupRotationWithConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := tmpDir + "/test.log"
+
+	cfg := RotatingConfig{
+		Filename:   logFile,
+		MaxSizeMB:  1,
+		MaxBackups: 3,
+		MaxAgeDays: 7,
+		Compress:   true,
+	}
+
+	writer := SetupRotationWithConfig(cfg)
+
+	if writer == nil {
+		t.Fatal("SetupRotationWithConfig returned nil")
+	}
+}
+
+func TestNewRotatingWriter(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := tmpDir + "/test.log"
+
+	cfg := RotatingConfig{
+		Filename:   logFile,
+		MaxSizeMB:  1,
+		MaxBackups: 3,
+		MaxAgeDays: 7,
+		Compress:   false,
+	}
+
+	writer, err := NewRotatingWriter(cfg)
+	if err != nil {
+		t.Fatalf("NewRotatingWriter error: %v", err)
+	}
+	defer writer.Close()
+
+	// Write some data
+	n, err := writer.Write([]byte("test log entry\n"))
+	if err != nil {
+		t.Errorf("Write error: %v", err)
+	}
+	if n != 15 {
+		t.Errorf("Written bytes = %d, want 15", n)
+	}
+}
+
+func TestRotatingWriterClose(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := tmpDir + "/test.log"
+
+	cfg := RotatingConfig{
+		Filename:   logFile,
+		MaxSizeMB:  1,
+		MaxBackups: 3,
+		MaxAgeDays: 7,
+	}
+
+	writer, err := NewRotatingWriter(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writer.Write([]byte("test\n"))
+	err = writer.Close()
+	if err != nil {
+		t.Errorf("Close error: %v", err)
+	}
+}
+
+func TestRotatingWriterForceRotate(t *testing.T) {
+	tmpDir := t.TempDir()
+	logFile := tmpDir + "/test.log"
+
+	cfg := RotatingConfig{
+		Filename:   logFile,
+		MaxSizeMB:  100, // Large to prevent auto-rotation
+		MaxBackups: 3,
+		MaxAgeDays: 7,
+		Compress:   false,
+	}
+
+	writer, err := NewRotatingWriter(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Close()
+
+	// Write initial data
+	writer.Write([]byte("initial log\n"))
+
+	// Force rotation
+	err = writer.Rotate()
+	if err != nil {
+		t.Errorf("Rotate error: %v", err)
+	}
+
+	// Write more data after rotation
+	writer.Write([]byte("after rotation\n"))
+}
+
+// ==============================================================================
+// MultiWriter Tests
+// ==============================================================================
+
+func TestMultiWriter(t *testing.T) {
+	var buf1, buf2 bytes.Buffer
+
+	multi := NewMultiWriter(&buf1, &buf2)
+
+	n, err := multi.Write([]byte("test"))
+	if err != nil {
+		t.Errorf("Write error: %v", err)
+	}
+	if n != 4 {
+		t.Errorf("Written = %d, want 4", n)
+	}
+
+	if buf1.String() != "test" {
+		t.Error("Buffer 1 should have content")
+	}
+	if buf2.String() != "test" {
+		t.Error("Buffer 2 should have content")
+	}
+}
+
+func TestMultiWriterAdd(t *testing.T) {
+	var buf1, buf2 bytes.Buffer
+
+	multi := NewMultiWriter(&buf1)
+	multi.Add(&buf2)
+
+	multi.Write([]byte("test"))
+
+	if buf1.String() != "test" {
+		t.Error("Buffer 1 should have content")
+	}
+	if buf2.String() != "test" {
+		t.Error("Added buffer should receive writes")
+	}
+}
+
+// ==============================================================================
+// AsyncWriter Tests
+// ==============================================================================
+
+func TestAsyncWriter(t *testing.T) {
+	var buf bytes.Buffer
+	async := NewAsyncWriter(&buf, 100)
+	defer async.Close()
+
+	for i := 0; i < 10; i++ {
+		async.Write([]byte("test\n"))
+	}
+
+	// Wait for async processing
+	time.Sleep(100 * time.Millisecond)
+
+	output := buf.String()
+	count := strings.Count(output, "test")
+	if count != 10 {
+		t.Errorf("Expected 10 writes, got %d", count)
+	}
+}
+
+func TestAsyncWriterClose(t *testing.T) {
+	var buf bytes.Buffer
+	async := NewAsyncWriter(&buf, 100)
+
+	async.Write([]byte("test\n"))
+	err := async.Close()
+
+	if err != nil {
+		t.Errorf("Close error: %v", err)
+	}
+
+	// After close with drain, write should be present
+	time.Sleep(50 * time.Millisecond)
+	if !strings.Contains(buf.String(), "test") {
+		t.Error("Buffer should contain written data after close")
+	}
+}
+
+// ==============================================================================
+// Package-Level Function Tests
+// ==============================================================================
+
+func TestPackageLevelLogging(t *testing.T) {
+	var buf bytes.Buffer
+	original := Default()
+
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(NewJSONFormatter())
+	SetDefault(logger)
+	defer SetDefault(original)
+
+	Info("info message")
+	Warn("warn message")
+	Error("error message")
+
+	output := buf.String()
+	if !strings.Contains(output, "info message") {
+		t.Error("Info() should log")
+	}
+	if !strings.Contains(output, "warn message") {
+		t.Error("Warn() should log")
+	}
+	if !strings.Contains(output, "error message") {
+		t.Error("Error() should log")
+	}
+}
+
+func TestPackageLevelDebug(t *testing.T) {
+	var buf bytes.Buffer
+	original := Default()
+
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(NewJSONFormatter())
+	logger.SetLevel(DebugLevel)
+	SetDefault(logger)
+	defer SetDefault(original)
+
+	Debug("debug message")
+	Debugf("debug formatted %s", "value")
+
+	output := buf.String()
+	if !strings.Contains(output, "debug message") {
+		t.Error("Debug() should log")
+	}
+	if !strings.Contains(output, "debug formatted value") {
+		t.Error("Debugf() should log")
+	}
+}
+
+func TestPackageLevelFormatted(t *testing.T) {
+	var buf bytes.Buffer
+	original := Default()
+
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(NewJSONFormatter())
+	SetDefault(logger)
+	defer SetDefault(original)
+
+	Infof("info %d", 123)
+	Warnf("warn %s", "test")
+	Errorf("error %v", errors.New("test error"))
+
+	output := buf.String()
+	if !strings.Contains(output, "info 123") {
+		t.Error("Infof() should format correctly")
+	}
+	if !strings.Contains(output, "warn test") {
+		t.Error("Warnf() should format correctly")
+	}
+	if !strings.Contains(output, "error test error") {
+		t.Error("Errorf() should format correctly")
+	}
+}
+
+func TestPackageLevelWithField(t *testing.T) {
+	var buf bytes.Buffer
+	original := Default()
+
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(NewJSONFormatter())
+	SetDefault(logger)
+	defer SetDefault(original)
+
+	WithField("key", "value").Info("test")
+
+	data := parseJSONLog(t, buf.String())
+	if data["key"] != "value" {
+		t.Error("WithField should add field")
+	}
+}
+
+func TestPackageLevelWithFields(t *testing.T) {
+	var buf bytes.Buffer
+	original := Default()
+
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(NewJSONFormatter())
+	SetDefault(logger)
+	defer SetDefault(original)
+
+	WithFields(Fields{"k1": "v1", "k2": "v2"}).Info("test")
+
+	data := parseJSONLog(t, buf.String())
+	if data["k1"] != "v1" || data["k2"] != "v2" {
+		t.Error("WithFields should add all fields")
+	}
+}
+
+func TestPackageLevelWithError(t *testing.T) {
+	var buf bytes.Buffer
+	original := Default()
+
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(NewJSONFormatter())
+	SetDefault(logger)
+	defer SetDefault(original)
+
+	testErr := errors.New("package level error")
+	WithError(testErr).Error("operation failed")
+
+	data := parseJSONLog(t, buf.String())
+	if data["error"] != "package level error" {
+		t.Error("WithError should add error field")
+	}
+}
+
+// ==============================================================================
+// Level Hook Tests
+// ==============================================================================
+
+func TestLevelFilter(t *testing.T) {
+	var errorCount int
+	filter := NewLevelFilter(ErrorLevel, ErrorLevel, func(entry *Entry) error {
+		errorCount++
+		return nil
+	})
+
+	levels := filter.Levels()
+	if len(levels) != 1 || levels[0] != ErrorLevel {
+		t.Errorf("LevelFilter should only include ErrorLevel, got %v", levels)
+	}
+}
+
+func TestErrorOnlyHook(t *testing.T) {
+	var count int
+	hook := &ErrorOnlyHook{
+		Handler: func(entry *Entry) error {
+			count++
+			return nil
+		},
+	}
+
+	levels := hook.Levels()
+	if len(levels) != 3 {
+		t.Errorf("ErrorOnlyHook should handle 3 levels (error, fatal, panic), got %d", len(levels))
+	}
+
+	// Fire the hook
+	hook.Fire(&Entry{})
+	if count != 1 {
+		t.Error("Handler should be called")
+	}
+}
+
+func TestLevelFilterNilHandler(t *testing.T) {
+	filter := NewLevelFilter(ErrorLevel, ErrorLevel, nil)
+
+	// Should not panic with nil handler
+	err := filter.Fire(&Entry{})
+	if err != nil {
+		t.Errorf("Fire with nil handler should return nil, got %v", err)
+	}
+}
+
+func TestErrorOnlyHookNilHandler(t *testing.T) {
+	hook := &ErrorOnlyHook{Handler: nil}
+
+	// Should not panic with nil handler
+	err := hook.Fire(&Entry{})
+	if err != nil {
+		t.Errorf("Fire with nil handler should return nil, got %v", err)
+	}
+}
+
+// ==============================================================================
+// Additional Level Tests
+// ==============================================================================
+
+func TestMustParseLevel(t *testing.T) {
+	// Valid level should not panic
+	level := MustParseLevel("debug")
+	if level != DebugLevel {
+		t.Errorf("Expected DebugLevel, got %v", level)
+	}
+}
+
+func TestMustParseLevelPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("MustParseLevel should panic for invalid level")
+		}
+	}()
+
+	MustParseLevel("invalid_level")
+}
+
+func TestAllLevels(t *testing.T) {
+	levels := AllLevels()
+
+	if len(levels) != 7 {
+		t.Errorf("Expected 7 levels, got %d", len(levels))
+	}
+
+	// Verify all expected levels are present
+	expectedLevels := []Level{PanicLevel, FatalLevel, ErrorLevel, WarnLevel, InfoLevel, DebugLevel, TraceLevel}
+	for _, expected := range expectedLevels {
+		found := false
+		for _, level := range levels {
+			if level == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Level %v not found in AllLevels()", expected)
+		}
+	}
+}
+
+func TestLevelNames(t *testing.T) {
+	names := LevelNames()
+
+	if len(names) != 7 {
+		t.Errorf("Expected 7 level names, got %d", len(names))
+	}
+
+	expectedNames := []string{"panic", "fatal", "error", "warn", "info", "debug", "trace"}
+	for _, expected := range expectedNames {
+		found := false
+		for _, name := range names {
+			if name == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Level name %s not found in LevelNames()", expected)
+		}
+	}
+}
+
+func TestIsTraceEnabled(t *testing.T) {
+	l := New()
+
+	// Default level is INFO, trace should not be enabled
+	if l.IsTraceEnabled() {
+		t.Error("Trace should not be enabled at INFO level")
+	}
+
+	// Set to TRACE
+	l.SetLevel(TraceLevel)
+	if !l.IsTraceEnabled() {
+		t.Error("Trace should be enabled at TRACE level")
+	}
+}
+
+// ==============================================================================
+// Context Key Tests
+// ==============================================================================
+
+func TestWithTraceID(t *testing.T) {
+	l, buf := newTestLogger(t)
+
+	ctx := context.Background()
+	ctx = WithTraceID(ctx, "trace-abc-123")
+
+	l.WithContext(ctx).Info("traced log")
+
+	data := parseJSONLog(t, buf.String())
+	if data["trace_id"] != "trace-abc-123" {
+		t.Errorf("trace_id not extracted from context, got '%v'", data["trace_id"])
+	}
+}
+
+func TestWithTime(t *testing.T) {
+	l, buf := newTestLogger(t)
+
+	customTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	l.WithTime(customTime).Info("timed log")
+
+	data := parseJSONLog(t, buf.String())
+	timestamp, ok := data["timestamp"].(string)
+	if !ok {
+		t.Fatal("timestamp not found")
+	}
+
+	// Should contain the custom year
+	if !strings.Contains(timestamp, "2025") {
+		t.Errorf("Expected timestamp with 2025, got %s", timestamp)
+	}
+}
+
+// ==============================================================================
+// Default Logger Tests
+// ==============================================================================
+
+func TestDefaultLogger(t *testing.T) {
+	d := Default()
+	if d == nil {
+		t.Error("Default() should not return nil")
+	}
+}
+
+func TestSetDefault(t *testing.T) {
+	original := Default()
+	defer SetDefault(original)
+
+	custom := New()
+	custom.AddPermanentField("custom", true)
+
+	SetDefault(custom)
+
+	if Default() != custom {
+		t.Error("SetDefault should change the default logger")
+	}
+}
+
+// ==============================================================================
+// Formatter Edge Cases
+// ==============================================================================
+
+func TestJSONFormatterPrettyPrint(t *testing.T) {
+	var buf bytes.Buffer
+	l := New()
+	l.SetOutput(&buf)
+
+	formatter := NewJSONFormatter()
+	formatter.PrettyPrint = true
+	l.SetFormatter(formatter)
+
+	l.Info("test")
+
+	output := buf.String()
+	// Pretty print should have indentation
+	if !strings.Contains(output, "\n  ") {
+		t.Error("Pretty print should have indentation")
+	}
+}
+
+func TestJSONFormatterDisableTimestamp(t *testing.T) {
+	var buf bytes.Buffer
+	l := New()
+	l.SetOutput(&buf)
+
+	formatter := &SafeOpsJSONFormatter{
+		DisableTimestamp: true,
+	}
+	l.SetFormatter(formatter)
+
+	l.Info("test")
+
+	data := parseJSONLog(t, buf.String())
+	if data["timestamp"] != nil {
+		t.Error("Timestamp should not be present when disabled")
+	}
+}
+
+func TestJSONFormatterFieldMap(t *testing.T) {
+	var buf bytes.Buffer
+	l := New()
+	l.SetOutput(&buf)
+
+	formatter := &SafeOpsJSONFormatter{
+		FieldMap: map[string]string{
+			"timestamp": "ts",
+			"level":     "lvl",
+			"message":   "msg",
+		},
+	}
+	l.SetFormatter(formatter)
+
+	l.Info("test message")
+
+	data := parseJSONLog(t, buf.String())
+	if data["ts"] == nil {
+		t.Error("timestamp should be renamed to 'ts'")
+	}
+	if data["lvl"] != "info" {
+		t.Error("level should be renamed to 'lvl'")
+	}
+	if data["msg"] != "test message" {
+		t.Error("message should be renamed to 'msg'")
+	}
+}
+
+func TestTextFormatterQuoteStrings(t *testing.T) {
+	var buf bytes.Buffer
+	l := New()
+	l.SetOutput(&buf)
+
+	formatter := &SafeOpsTextFormatter{
+		ColorEnabled: false,
+		QuoteStrings: true,
+		SortFields:   true,
+	}
+	l.SetFormatter(formatter)
+
+	l.WithField("key", "value with spaces").Info("test")
+
+	output := buf.String()
+	if !strings.Contains(output, `key="value with spaces"`) {
+		t.Errorf("String values should be quoted, got: %s", output)
+	}
+}
+
+func TestTextFormatterDisableTimestamp(t *testing.T) {
+	var buf bytes.Buffer
+	l := New()
+	l.SetOutput(&buf)
+
+	formatter := &SafeOpsTextFormatter{
+		ColorEnabled:     false,
+		DisableTimestamp: true,
+	}
+	l.SetFormatter(formatter)
+
+	l.Info("test message")
+
+	output := buf.String()
+	// Should start with [INFO] not [timestamp]
+	if !strings.HasPrefix(output, "[INFO]") {
+		t.Errorf("Output should start with [INFO] when timestamp is disabled, got: %s", output)
+	}
+}
+
+// ==============================================================================
+// Benchmark Tests
+// ==============================================================================
+
+func BenchmarkLoggerInfo(b *testing.B) {
+	logger := New()
+	logger.SetOutput(&bytes.Buffer{})
+	logger.SetFormatter(NewJSONFormatter())
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		logger.Info("benchmark log message")
+	}
+}
+
+func BenchmarkLoggerWithField(b *testing.B) {
+	logger := New()
+	logger.SetOutput(&bytes.Buffer{})
+	logger.SetFormatter(NewJSONFormatter())
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		logger.WithField("key", "value").Info("benchmark")
+	}
+}
+
+func BenchmarkLoggerWithFields(b *testing.B) {
+	logger := New()
+	logger.SetOutput(&bytes.Buffer{})
+	logger.SetFormatter(NewJSONFormatter())
+
+	fields := Fields{
+		"key1": "value1",
+		"key2": "value2",
+		"key3": "value3",
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		logger.WithFields(fields).Info("benchmark")
+	}
+}
+
+func BenchmarkJSONFormat(b *testing.B) {
+	var buf bytes.Buffer
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(NewJSONFormatter())
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		logger.WithField("key", "value").Info("benchmark")
+	}
+}
+
+func BenchmarkTextFormat(b *testing.B) {
+	var buf bytes.Buffer
+	logger := New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(&SafeOpsTextFormatter{ColorEnabled: false})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		logger.WithField("key", "value").Info("benchmark")
+	}
+}
+
+func BenchmarkConcurrentLogging(b *testing.B) {
+	logger := New()
+	logger.SetOutput(&bytes.Buffer{})
+	logger.SetFormatter(NewJSONFormatter())
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			logger.WithField("goroutine", 1).Info("concurrent")
+		}
+	})
+}

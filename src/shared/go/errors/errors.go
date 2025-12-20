@@ -313,10 +313,17 @@ func Is(err error, code string) bool {
 
 	// Check if it's a SafeOpsError directly
 	if se, ok := err.(*SafeOpsError); ok {
-		return se.Code == code
+		if se.Code == code {
+			return true
+		}
+		// If code doesn't match, continue checking the wrapped error
+		if se.Cause != nil {
+			return Is(se.Cause, code)
+		}
+		return false
 	}
 
-	// Try to unwrap and check recursively
+	// Try to unwrap and check recursively (for non-SafeOpsError wrappers)
 	if unwrapped := Unwrap(err); unwrapped != nil {
 		return Is(unwrapped, code)
 	}
