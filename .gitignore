@@ -77,6 +77,11 @@ yarn.lock
 # =====================================
 logs/*.log
 logs/**/*.log
+# =====================================
+# Threat Intel Data
+# =====================================
+src/threat_intel/data/
+!src/threat_intel/data/.gitkeep
 feeds/threat_feeds/*
 !feeds/threat_feeds/.gitkeep
 certs/distribution/*

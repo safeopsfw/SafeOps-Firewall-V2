@@ -1,320 +1,191 @@
-# SafeOps Threat Intelligence Database
-
-> PostgreSQL 16+ database for high-performance threat intelligence storage and querying.
+# Threat Intelligence Database
 
 ## Overview
 
-The SafeOps database stores IP/domain/hash reputation, IOCs, geolocation, and ASN data with sub-10ms query response times. Designed for 100K+ queries/second with proper indexing and partitioned tables.
+A standalone PostgreSQL 18 database system for comprehensive threat intelligence management. This database can be used independently or integrated with any application for IP/Domain/Hash/IOC intelligence queries.
 
-### Key Features
+## Database Name
 
-- **Real-time threat intelligence** - Multi-feed aggregation with conflict resolution
-- **Geographic/network context** - IP geolocation, ASN tracking, threat zones
-- **Campaign attribution** - Threat actor and campaign correlation
-- **Automated maintenance** - Cleanup, partitioning, and optimization
-- **Audit trails** - Complete history tracking for all changes
-
----
+```
+threat_intel_db
+```
 
 ## Architecture
 
-| Component | Count | Description |
-|-----------|-------|-------------|
-| Schema Files | 10 | Table definitions and relationships |
-| Views | 3 | Aggregated threat intelligence |
-| Seed Files | 3 | Initial configuration and test data |
-| Tables | 50+ | Comprehensive threat data storage |
-| Indexes | 100+ | Performance optimization |
+### Core Tables (8)
+1. **`ip_geolocation`** - IP address location and network information
+2. **`ip_blacklist`** - Malicious and blacklisted IP addresses  
+3. **`ip_anonymization`** - VPN/Tor/Proxy/Datacenter detection
+4. **`domains`** - Domain reputation and intelligence
+5. **`hashes`** - File hash intelligence and malware analysis
+6. **`iocs`** - Indicators of Compromise (centralized repository)
+7. **`threat_feeds`** - Feed source management (management table)
+8. **`feed_history`** - Feed execution history and logs (management table)
 
----
+### Supporting Components
+- **11 Views** - Common queries and statistics
+- **2 Materialized Views** - Performance-optimized aggregations
+- **8 Functions** - Helper functions for threat checking
+- **6 Triggers** - Automatic timestamp and validation updates
 
-## Schema Files
+## Quick Setup
 
-Applied in order:
+### Prerequisites
+- PostgreSQL 18+ installed
+- `pg_trgm`, `btree_gin`, `btree_gist` extensions (auto-enabled by init script)
 
-| File | Purpose |
-|------|---------|
-| `001_initial_setup.sql` | Database, extensions, core tables (threat_feeds, threat_categories) |
-| `002_ip_reputation.sql` | IP reputation scoring, whitelist/blacklist, history |
-| `003_domain_reputation.sql` | Domain reputation, DNS filtering, fuzzy matching |
-| `004_hash_reputation.sql` | Multi-hash support (MD5/SHA1/SHA256/SHA512), malware families |
-| `005_ioc_storage.sql` | 15+ IOC types, STIX/TAXII support, campaigns |
-| `006_proxy_anonymizer.sql` | VPN/proxy/TOR detection, hosting providers |
-| `007_geolocation.sql` | IP geolocation, geofencing, threat zones |
-| `008_threat_feeds.sql` | Feed credentials, scheduling, health monitoring |
-| `009_asn_data.sql` | ASN ownership, BGP prefixes, peering, abuse tracking |
-| `999_indexes_and_maintenance.sql` | Performance indexes, maintenance functions |
+### Installation
 
----
+```bash
+# Method 1: Run complete init script
+psql -U postgres -f database/init_threat_intel.sql
 
-## Views
-
-| View | Purpose |
-|------|---------|
-| `active_threats_view` | Real-time feed of active high-severity threats with priority scoring |
-| `high_confidence_iocs` | Validated IOCs (confidence ≥0.80) suitable for automated blocking |
-| `threat_summary_stats` | Aggregated statistics for dashboards (24H/7D/30D/90D) |
-
----
-
-## Quick Start
-
-### Installation (Windows PowerShell)
-
-```powershell
-cd SafeOps\database
-
-# Run initialization script
-.\init_database.ps1
-
-# With options
-.\init_database.ps1 -DatabaseName my_threat_db -SkipTestData
-
-# Dry run (preview)
-.\init_database.ps1 -DryRun
+# Method 2: Run individual files in order
+psql -U postgres -c "CREATE DATABASE threat_intel_db"
+psql -U postgres -d threat_intel_db -f database/init_threat_intel.sql
 ```
 
-### Verification
+### Create Application User
 
 ```sql
--- Connect to database
-psql -U safeops_admin -d safeops_threat_intel
-
--- Check tables
-SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';
-
--- Check seed data
-SELECT COUNT(*) FROM threat_categories;  -- Expected: 37
-SELECT COUNT(*) FROM threat_feeds;       -- Expected: 18
-
--- Test query
-SELECT * FROM active_threats_view LIMIT 10;
+CREATE USER threat_intel_app WITH PASSWORD 'your_secure_password';
+GRANT CONNECT ON DATABASE threat_intel_db TO threat_intel_app;
+-- Use threat_intel_reader or threat_intel_writer roles as needed
 ```
-
----
 
 ## Usage Examples
 
-### IP Reputation Lookup
+### Check if IP is Malicious
 
 ```sql
-SELECT reputation_score, confidence_level, tc.category_name
-FROM ip_reputation ir
-LEFT JOIN threat_categories tc ON ir.threat_category_id = tc.category_id
-WHERE ir.ip_address = '203.0.113.10';
+-- Using function
+SELECT * FROM is_ip_malicious('1.2.3.4'::INET);
+
+-- Direct query
+SELECT is_malicious, threat_score, abuse_type 
+FROM ip_blacklist 
+WHERE ip_address = '1.2.3.4';
+
+-- Get full intelligence (all IP tables combined)
+SELECT * FROM get_ip_intelligence('1.2.3.4'::INET);
 ```
 
-### Domain Reputation (Case-Insensitive)
+### Check if Domain is Malicious
 
 ```sql
-SELECT reputation_score, confidence_level, last_seen
-FROM domain_reputation
-WHERE domain_name = 'evil.example.com';
+-- Using function
+SELECT * FROM is_domain_malicious('example.com');
+
+-- Find similar domains (typosquatting detection)
+SELECT domain, similarity(domain, 'paypal.com') AS sim
+FROM domains 
+WHERE domain % 'paypal.com' 
+ORDER BY sim DESC LIMIT 10;
 ```
 
-### File Hash Lookup (Any Hash Type)
+### Check if Hash is Malicious
 
 ```sql
-SELECT reputation_score, malware_family, file_type
-FROM hash_reputation
-WHERE sha256_hash = 'abc123...'
-   OR md5_hash = 'def456...';
+-- Checks MD5, SHA1, or SHA256
+SELECT * FROM is_hash_malicious('abc123def456...');
+
+-- Get detailed malware info
+SELECT sha256, malware_family, av_detection_rate
+FROM hashes 
+WHERE sha256 = 'abc123...';
 ```
 
-### Get Active Threats for Blocking
+### Get Statistics
 
 ```sql
-SELECT threat_type, threat_value, priority, action_recommended
-FROM active_threats_view
-WHERE priority > 75 AND action_recommended = 'BLOCK'
-ORDER BY priority DESC LIMIT 100;
+-- Overall threat stats
+SELECT * FROM threat_stats;
+
+-- High threat IPs
+SELECT * FROM high_threat_ips LIMIT 100;
+
+-- Active Tor exit nodes
+SELECT * FROM active_tor_exits;
+
+-- Top threat actors
+SELECT * FROM top_threat_actors LIMIT 20;
 ```
 
-### Geographic Threat Distribution
-
-```sql
-SELECT country_code, COUNT(*) as threat_count
-FROM ip_reputation
-WHERE reputation_score < -50 AND country_code IS NOT NULL
-GROUP BY country_code
-ORDER BY threat_count DESC LIMIT 10;
-```
-
----
-
-## PostgreSQL Configuration
-
-### Recommended Settings (postgresql.conf)
-
-```ini
-# Memory (adjust based on available RAM)
-shared_buffers = 4GB              # 25% of RAM
-effective_cache_size = 12GB       # 75% of RAM
-maintenance_work_mem = 2GB
-work_mem = 256MB
-
-# Performance (SSD optimized)
-random_page_cost = 1.1
-effective_io_concurrency = 200
-
-# Autovacuum (high-update workload)
-autovacuum_naptime = 30s
-autovacuum_vacuum_scale_factor = 0.05
-```
-
-### Connection Pooling (PgBouncer Recommended)
-
-```ini
-[databases]
-safeops_threat_intel = host=localhost port=5432
-
-[pgbouncer]
-pool_mode = transaction
-max_client_conn = 1000
-default_pool_size = 25
-```
-
----
-
-## Maintenance
-
-### Automated (via pg_cron)
-
-| Schedule | Function | Purpose |
-|----------|----------|---------|
-| Daily 2:00 AM | `cleanup_expired_records()` | Remove expired data |
-| Daily 3:00 AM | `update_reputation_scores()` | Recalculate with decay |
-| Daily 4:00 AM | `vacuum_and_analyze_tables()` | Database maintenance |
-| Weekly Sunday | `partition_maintenance()` | Create/drop partitions |
-| Hourly | `update_statistics()` | Refresh aggregates |
-
-### Manual Commands
-
-```sql
--- Force cleanup
-SELECT cleanup_expired_records(dry_run := false);
-
--- Recalculate scores
-SELECT update_reputation_scores();
-
--- Detect anomalies
-SELECT detect_anomalies(sensitivity := 3);
-
--- Refresh materialized views
-REFRESH MATERIALIZED VIEW CONCURRENTLY threat_summary_stats;
-```
-
----
-
-## Backup & Recovery
-
-### Backup
-
-```bash
-# Full backup (daily)
-pg_dump -U safeops_admin -F c safeops_threat_intel > backup_$(date +%Y%m%d).dump
-
-# Schema only
-pg_dump -U safeops_admin -s safeops_threat_intel > schema.sql
-```
-
-### Restore
-
-```bash
-pg_restore -U safeops_admin -d safeops_threat_intel backup.dump
-```
-
----
-
-## Integration
-
-### Service Connections
-
-| Service | Purpose | Operations |
-|---------|---------|------------|
-| `threat_intel` (Rust) | Feed ingestion | Write threat data, update scores |
-| `firewall_engine` (Rust) | Packet filtering | Query IP/domain reputation |
-| `ids_ips` (Go) | Detection | Query IOCs, record sightings |
-| `dns_server` (Go) | DNS filtering | Domain reputation lookups |
-
-### Connection Details
-
-```
-Host:     localhost (or PgBouncer)
-Port:     5432 (or 6432 for PgBouncer)
-Database: safeops_threat_intel
-User:     safeops_admin
-SSL:      require (production)
-```
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Slow queries | Check `pg_stat_statements`, verify indexes with `EXPLAIN ANALYZE` |
-| High disk usage | Run `VACUUM FULL`, check partition cleanup |
-| Connection errors | Check `max_connections`, verify PgBouncer status |
-| Missing data | Verify feed updates, check `feed_update_history` |
-
-### Monitoring Queries
-
-```sql
--- Check index usage
-SELECT indexname, idx_scan FROM pg_stat_user_indexes ORDER BY idx_scan ASC;
-
--- Find slow queries
-SELECT query, mean_exec_time FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 10;
-
--- Check table sizes
-SELECT tablename, pg_size_pretty(pg_total_relation_size('public.' || tablename))
-FROM pg_tables WHERE schemaname = 'public' ORDER BY pg_total_relation_size('public.' || tablename) DESC;
-```
-
----
-
-## Security
-
-- **Credentials**: Encrypt all API keys in `feed_credentials` table using pgcrypto
-- **Access**: Limit network access via `pg_hba.conf`, use SSL
-- **Audit**: All schema changes logged, admin operations tracked
-- **Roles**: Separate roles for different services (read-only, read-write)
-
----
-
-## File Structure
+## Files Structure
 
 ```
 database/
-├── schemas/
-│   ├── 001_initial_setup.sql
-│   ├── 002_ip_reputation.sql
-│   ├── 003_domain_reputation.sql
-│   ├── 004_hash_reputation.sql
-│   ├── 005_ioc_storage.sql
-│   ├── 006_proxy_anonymizer.sql
-│   ├── 007_geolocation.sql
-│   ├── 008_threat_feeds.sql
-│   ├── 009_asn_data.sql
-│   └── 999_indexes_and_maintenance.sql
+├── init_threat_intel.sql              # Complete setup script (run this)
+├── schemas/                           # Individual table schemas
+│   ├── 001_ip_geolocation.sql
+│   ├── 002_ip_blacklist.sql
+│   ├── 003_ip_anonymization.sql
+│   ├── 004_domains.sql
+│   ├── 005_hashes.sql
+│   ├── 006_iocs.sql
+│   ├── 007_threat_feeds.sql
+│   └── 008_feed_history.sql
 ├── views/
-│   ├── active_threats_view.sql
-│   ├── high_confidence_iocs.sql
-│   └── threat_summary_stats.sql
+│   └── threat_intel_views.sql         # All views and materialized views
+├── functions/
+│   └── threat_intel_functions.sql     # Helper functions
+├── triggers/
+│   └── threat_intel_triggers.sql      # Automatic triggers
 ├── seeds/
-│   ├── feed_sources_config.sql      (18 feeds)
-│   ├── initial_threat_categories.sql (37 categories)
-│   └── test_ioc_data.sql            (sample data)
-├── init_database.ps1                 (Windows setup script)
-└── README.md                         (this file)
+│   └── initial_threat_feeds.sql       # Default feed sources
+└── README.md                          # This file
 ```
 
----
+## Connection String
 
-## Version
+```
+postgresql://username:password@host:port/threat_intel_db
 
-**v1.0.0** - Initial Release
-- 10 schema files, 3 views, 3 seed files
-- PostgreSQL 16+ support
-- Automated maintenance and partitioning
+# Example
+postgresql://threat_intel_app:password@localhost:5432/threat_intel_db
+```
+
+## Maintenance
+
+### Daily Tasks
+```sql
+-- Refresh statistics
+SELECT refresh_all_materialized_views();
+
+-- Update threat scores
+SELECT update_threat_scores();
+
+-- Clean expired IOCs
+SELECT cleanup_expired_iocs();
+```
+
+### Weekly Tasks
+```sql
+-- Archive old feed history
+SELECT archive_old_feed_history();
+
+-- Vacuum and analyze
+VACUUM ANALYZE;
+```
+
+## Storage Estimates
+
+| Data Type | Typical Size | Enterprise Size |
+|-----------|-------------|-----------------|
+| Small Deployment | ~5-10 GB | ~500 GB |
+| Medium Deployment | ~50-100 GB | ~2 TB |
+| Large Deployment | ~500 GB | ~10+ TB |
+
+## Features
+
+✅ **PostgreSQL Native Types** - INET for IPs, JSONB for flexible metadata  
+✅ **Full-Text Search** - Fuzzy matching for domains and IOCs  
+✅ **Automatic Timestamps** - Triggers maintain last_seen/last_updated  
+✅ **Partial Indexes** - Optimized for malicious-only queries  
+✅ **GIN Indexes** - Fast JSONB tag searches  
+✅ **Materialized Views** - Pre-computed statistics  
+✅ **10 Default Feeds** - Pre-configured threat intelligence sources  
+
+## License
+
+Part of the SafeOps Firewall V2 project.

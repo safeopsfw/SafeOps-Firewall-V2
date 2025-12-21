@@ -1,0 +1,551 @@
+# ============================================================================
+# Threat Intelligence Feed Sources Configuration
+# Complete list of 48+ open-source threat intelligence feeds
+# ============================================================================
+
+feeds:
+  # ==========================================================================
+  # CATEGORY 1: IP GEOLOCATION (3 feeds)
+  # ==========================================================================
+  
+  - name: "MaxMind GeoLite2"
+    category: "ip_geo"
+    url: "https://github.com/P3TERX/GeoLite.mmdb/releases/latest/download/GeoLite2-City.mmdb"
+    format: "mmdb"
+    enabled: true
+    update_frequency: 604800  # Weekly
+    description: "IP geolocation database with city-level accuracy"
+    
+  - name: "IP2Location LITE"
+    category: "ip_geo"
+    url: "https://download.ip2location.com/lite/IP2LOCATION-LITE-DB3.CSV.ZIP"
+    format: "csv"
+    enabled: true
+    update_frequency: 2592000  # Monthly
+    description: "IP to country, region, city mapping"
+    
+  - name: "DB-IP Lite"
+    category: "ip_geo"
+    url: "https://download.db-ip.com/free/dbip-country-lite-2024-01.csv.gz"
+    format: "csv"
+    enabled: true
+    update_frequency: 2592000  # Monthly
+    description: "IP to country code mapping"
+
+  # ==========================================================================
+  # CATEGORY 2: IP BLACKLIST / MALICIOUS IPs (13 feeds)
+  # ==========================================================================
+  
+  - name: "Feodo Tracker C2 IPs"
+    category: "ip_blacklist"
+    url: "https://feodotracker.abuse.ch/downloads/ipblocklist.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "Botnet C2 server IP addresses"
+    
+  - name: "URLhaus Malicious IPs"
+    category: "ip_blacklist"
+    url: "https://urlhaus.abuse.ch/downloads/csv_recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "IPs hosting malicious URLs"
+    
+  - name: "Blocklist.de All"
+    category: "ip_blacklist"
+    url: "https://lists.blocklist.de/lists/all.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 900  # 15 minutes
+    description: "IPs attempting SSH/FTP/Mail attacks"
+    
+  - name: "Emerging Threats Block IPs"
+    category: "ip_blacklist"
+    url: "https://rules.emergingthreats.net/fwrules/emerging-Block-IPs.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Known compromised IP addresses"
+    
+  - name: "IPsum Aggregated"
+    category: "ip_blacklist"
+    url: "https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Aggregated IP blacklist with threat scores"
+    
+  - name: "CI Army List"
+    category: "ip_blacklist"
+    url: "http://www.ciarmy.com/list/ci-badguys.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "IPs involved in malicious activities"
+    
+  - name: "Spamhaus DROP"
+    category: "ip_blacklist"
+    url: "https://www.spamhaus.org/drop/drop.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Hijacked/illegitimate IP ranges"
+    
+  - name: "FireHOL Level1"
+    category: "ip_blacklist"
+    url: "https://iplists.firehol.org/files/firehol_level1.netset"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Aggregated threat IP addresses"
+    
+  - name: "Snort IP Blacklist"
+    category: "ip_blacklist"
+    url: "https://www.snort.org/downloads/ip-block-list"
+    format: "txt"
+    enabled: false  # May require registration
+    update_frequency: 86400  # Daily
+    description: "IPs flagged by Snort community"
+    
+  - name: "AlienVault Reputation"
+    category: "ip_blacklist"
+    url: "https://reputation.alienvault.com/reputation.generic"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "AlienVault IP reputation feed"
+    
+  - name: "Talos Intelligence"
+    category: "ip_blacklist"
+    url: "https://talosintelligence.com/documents/ip-blacklist"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Cisco Talos IP reputation data"
+    
+  - name: "SSL Blacklist IPs"
+    category: "ip_blacklist"
+    url: "https://sslbl.abuse.ch/blacklist/sslipblacklist.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "IPs with malicious SSL certificates"
+    
+  - name: "Blocklist.de SSH"
+    category: "ip_blacklist"
+    url: "https://lists.blocklist.de/lists/ssh.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 900  # 15 minutes
+    description: "IPs attempting SSH brute-force"
+    
+  - name: "Blocklist.de FTP"
+    category: "ip_blacklist"
+    url: "https://lists.blocklist.de/lists/ftp.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 900  # 15 minutes
+    description: "IPs attempting FTP brute-force"
+
+  # ==========================================================================
+  # CATEGORY 3: VPN / TOR / PROXY / ANONYMIZATION (5 feeds)
+  # ==========================================================================
+  
+  - name: "Tor Exit Nodes"
+    category: "ip_anonymization"
+    url: "https://check.torproject.org/exit-addresses"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Current Tor exit node IP addresses"
+    
+  - name: "VPN Gate"
+    category: "ip_anonymization"
+    url: "https://www.vpngate.net/api/iphone/"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Active VPN server IPs and locations"
+    
+  - name: "IPHub VPN/Proxy List"
+    category: "ip_anonymization"
+    url: "https://raw.githubusercontent.com/X4BNet/lists_vpn/main/output/vpn/ipv4.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 604800  # Weekly
+    description: "Known VPN and proxy IP addresses"
+    
+  - name: "Proxy List Raw"
+    category: "ip_anonymization"
+    url: "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Open proxy servers (IP:PORT format)"
+
+  # ==========================================================================
+  # CATEGORY 4: DOMAIN INTELLIGENCE / BLACKLISTED DOMAINS (7 feeds)
+  # ==========================================================================
+  
+  - name: "PhishTank"
+    category: "domain"
+    url: "http://data.phishtank.com/data/online-valid.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Verified phishing URLs"
+    
+  - name: "OpenPhish"
+    category: "domain"
+    url: "https://openphish.com/feed.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Active phishing URLs"
+    
+  - name: "URLhaus Domains"
+    category: "domain"
+    url: "https://urlhaus.abuse.ch/downloads/csv/"
+    format: "csv"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "Domains distributing malware"
+    
+  - name: "MalwareDomains"
+    category: "domain"
+    url: "https://mirror1.malwaredomains.com/files/domains.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Domains hosting malware"
+    
+  - name: "SANS ISC Suspicious Domains"
+    category: "domain"
+    url: "https://isc.sans.edu/feeds/suspiciousdomains_High.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "High-confidence suspicious domains"
+    
+  - name: "Bambenek C2 Domains"
+    category: "domain"
+    url: "https://osint.bambenekconsulting.com/feeds/c2-dommasterlist.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "C2 domains associated with malware families"
+    
+  - name: "Botvrij.eu IOC List"
+    category: "domain"
+    url: "https://www.botvrij.eu/data/ioclist.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Botnet C2 domains and IPs"
+
+  # ==========================================================================
+  # CATEGORY 5: FILE HASH INTELLIGENCE (6 feeds)
+  # ==========================================================================
+  
+  - name: "MalwareBazaar Recent"
+    category: "hash"
+    url: "https://bazaar.abuse.ch/export/csv/recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "Recent malware file hashes (MD5, SHA256)"
+    
+  - name: "MalwareBazaar Full"
+    category: "hash"
+    url: "https://bazaar.abuse.ch/export/csv/full/"
+    format: "csv"
+    enabled: false  # Large dataset, enable if needed
+    update_frequency: 86400  # Daily
+    description: "Complete malware hash database"
+    
+  - name: "ThreatFox Recent IOCs"
+    category: "hash"
+    url: "https://threatfox.abuse.ch/export/csv/recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "Recent IOCs including hashes"
+    
+  - name: "Hybrid Analysis Feed"
+    category: "hash"
+    url: "https://www.hybrid-analysis.com/feed"
+    format: "json"
+    enabled: false  # Requires API key
+    update_frequency: 3600  # Hourly
+    description: "Sandbox analysis results and hashes"
+    auth_required: true
+    auth_type: "api_key"
+    
+  - name: "VirusShare Hashes"
+    category: "hash"
+    url: "https://virusshare.com/hashfiles/VirusShare_00000.md5"
+    format: "txt"
+    enabled: false  # Large dataset, enable if needed
+    update_frequency: 86400  # Daily
+    description: "MD5 hashes of known malware"
+
+  # ==========================================================================
+  # CATEGORY 6: COMBINED IOC FEEDS (5 feeds)
+  # ==========================================================================
+  
+  - name: "AlienVault OTX"
+    category: "ioc"
+    url: "https://otx.alienvault.com/api/v1/pulses/subscribed"
+    format: "json"
+    enabled: false  # Requires free account
+    update_frequency: 3600  # Hourly
+    description: "Community-shared IOCs (IPs, domains, hashes)"
+    auth_required: true
+    auth_type: "api_key"
+    
+  - name: "CIRCL OSINT Feed"
+    category: "ioc"
+    url: "https://www.circl.lu/doc/misp/feed-osint/"
+    format: "json"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "MISP format mixed IOCs"
+    
+  - name: "ThreatFox IOCs"
+    category: "ioc"
+    url: "https://threatfox.abuse.ch/export/json/recent/"
+    format: "json"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "Multi-type IOCs from threat campaigns"
+
+  # ==========================================================================
+  # CATEGORY 7: ASN DATA (1 feed)
+  # ==========================================================================
+  
+  - name: "IPtoASN"
+    category: "asn"
+    url: "https://iptoasn.com/data/ip2asn-v4.tsv.gz"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "IP to ASN mapping database"
+
+  # ==========================================================================
+  # ADDITIONAL IP BLACKLISTS (5 feeds)
+  # ==========================================================================
+  
+  - name: "DShield Attack IPs"
+    category: "ip_blacklist"
+    url: "https://feeds.dshield.org/block.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Top attacking IPs from SANS ISC intrusion detection logs"
+    
+  - name: "CINS Army"
+    category: "ip_blacklist"
+    url: "https://cinsscore.com/list/ci-badguys.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Threat intelligence list from CINS Active Threat Intelligence"
+    
+  - name: "threatview.io Botnets"
+    category: "ip_blacklist"
+    url: "https://threatview.io/download/threatview_botnets.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Known botnet C2 servers and compromised hosts"
+    
+  - name: "BlockListDE Mail"
+    category: "ip_blacklist"
+    url: "https://lists.blocklist.de/lists/mail.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 900  # 15 minutes
+    description: "IPs attempting mail server attacks"
+    
+  - name: "BruteForceBlocker"
+    category: "ip_blacklist"
+    url: "http://danger.rulez.sk/projects/bruteforceblocker/blist.php"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "SSH brute-force attackers from Distributed IDS"
+
+  # ==========================================================================
+  # ADVANCED DOMAIN & URL THREATS (6 feeds)
+  # ==========================================================================
+  
+  - name: "ThreatMiner Domains"
+    category: "domain"
+    url: "https://threatminer.org/feeds/domains.php"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Domains associated with malware and phishing"
+    
+  - name: "DGArchive"
+    category: "domain"
+    url: "https://dgarchive.caad.fkie.fraunhofer.de/today"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Daily DGA (Domain Generation Algorithm) domains from malware"
+    
+  - name: "PhishStats"
+    category: "domain"
+    url: "https://phishstats.info/phish_score.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Real-time phishing URLs with detection scores"
+    
+  - name: "CyberCrime Tracker"
+    category: "domain"
+    url: "https://cybercrime-tracker.net/ccamlist.php"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "C2 panels and malware distribution domains"
+    
+  - name: "ClearSky IOCs"
+    category: "domain"
+    url: "https://www.clearsky-security.com/wp-content/uploads/feed/iocs.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Iranian APT campaigns and threat actor infrastructure"
+    
+  - name: "Ransomware.live"
+    category: "domain"
+    url: "https://ransomware.live/api/ransomware"
+    format: "json"
+    enabled: true
+    update_frequency: 3600  # Hourly
+    description: "Live ransomware leak site domains"
+
+  # ==========================================================================
+  # CERTIFICATE & SSL THREATS (1 feed)
+  # ==========================================================================
+  
+  - name: "Abuse.ch SSL Certificates"
+    category: "hash"
+    url: "https://sslbl.abuse.ch/blacklist/sslblacklist.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "SHA1 fingerprints of malicious SSL certificates"
+
+  # ==========================================================================
+  # RANSOMWARE & FINANCIAL CRIME (3 feeds)
+  # ==========================================================================
+  
+  - name: "Ransomware Payment Wallets"
+    category: "ioc"
+    url: "https://raw.githubusercontent.com/CryptOCurrencyMonitor/WalletRansomware/main/wallets.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Bitcoin wallets used for ransom payments"
+    
+  - name: "Cryptojacking Pools"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/curated-intel/cryptojacking/main/pools.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Known cryptomining pool domains"
+    
+  - name: "Blockchain Scam Database"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/CryptOCurrencyMonitor/AllCryptoSites/main/scams.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Crypto scam and phishing domains"
+
+  # ==========================================================================
+  # VULNERABILITY & EXPLOIT INTELLIGENCE (3 feeds)
+  # ==========================================================================
+  
+  - name: "Exploit-DB"
+    category: "ioc"
+    url: "https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Exploits and CVE mappings"
+    
+  - name: "Packet Storm Security"
+    category: "ioc"
+    url: "https://rss.packetstormsecurity.com/rss.xml"
+    format: "rss"
+    enabled: false  # Need RSS parser
+    update_frequency: 3600  # Hourly
+    description: "Latest exploits and security tools"
+    
+  - name: "NIST NVD CVE"
+    category: "ioc"
+    url: "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-recent.json.zip"
+    format: "json"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Recent CVE vulnerabilities"
+
+  # ==========================================================================
+  # MOBILE & IoT MALWARE (1 feed)
+  # ==========================================================================
+  
+  - name: "Feodo Tracker Mobile C2"
+    category: "ip_blacklist"
+    url: "https://feodotracker.abuse.ch/downloads/ipblocklist_mobile.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 300  # 5 minutes
+    description: "Mobile botnet C2 servers"
+
+  # ==========================================================================
+  # MISCELLANEOUS IOC AGGREGATORS (1 feed)
+  # ==========================================================================
+  
+  - name: "Mandiant APT IOCs"
+    category: "ioc"
+    url: "https://raw.githubusercontent.com/mandiant/ioc/master/APT1/indicators.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 86400  # Daily
+    description: "Historical APT IOCs from Mandiant reports"
+
+# ==========================================================================
+# Parser Configuration Hints
+# ==========================================================================
+parser_config:
+  csv:
+    default_delimiter: ","
+    skip_header: true
+    comment_char: "#"
+  
+  txt:
+    comment_chars: ["#", "//", ";"]
+    trim_whitespace: true
+  
+  json:
+    validate_schema: true
+  
+  mmdb:
+    reader_mode: "memory"
+
+# ==========================================================================
+# Global Settings
+# ==========================================================================
+settings:
+  max_concurrent_fetches: 5
+  download_timeout_seconds: 120
+  retry_attempts: 3
+  retry_delay_seconds: 5
+  user_agent: "SafeOps-ThreatIntel/2.0"
+  feeds_storage_path: "./feeds"
