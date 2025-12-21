@@ -1,0 +1,11 @@
+module github.com/safeops/shared/go/logging
+
+go 1.25.5
+
+require (
+	github.com/sirupsen/logrus v1.9.3
+	golang.org/x/term v0.38.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+)
+
+require golang.org/x/sys v0.39.0 // indirect

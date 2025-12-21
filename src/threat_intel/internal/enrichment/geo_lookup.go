@@ -196,6 +196,11 @@ func (s *GeoLookupService) EnrichIPBatch(iocs []*types.IOC, ctx context.Context,
 
 // lookupInDatabase queries geolocation database
 func (s *GeoLookupService) lookupInDatabase(ipStr string, ctx context.Context) (*GeoResult, error) {
+	// Check context cancellation
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		return nil, fmt.Errorf("invalid IP address: %s", ipStr)
@@ -213,6 +218,11 @@ func (s *GeoLookupService) lookupInDatabase(ipStr string, ctx context.Context) (
 
 // lookupWithFallback attempts external API lookup
 func (s *GeoLookupService) lookupWithFallback(ipStr string, ctx context.Context) (*GeoResult, error) {
+	// Check context cancellation
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	// Simulated fallback API lookup
 	// Real implementation would call external geolocation API
 
@@ -221,7 +231,7 @@ func (s *GeoLookupService) lookupWithFallback(ipStr string, ctx context.Context)
 		return nil, fmt.Errorf("private IP address")
 	}
 
-	// Placeholder - would make HTTP request to API
+	// Placeholder - would make HTTP request to API with context for timeout
 	return nil, fmt.Errorf("fallback not implemented")
 }
 
@@ -329,6 +339,11 @@ func (s *GeoLookupService) validateGeoResult(result *GeoResult) bool {
 		return false
 	}
 
+	// Calculate and update confidence if not set
+	if result.Confidence == 0 {
+		result.Confidence = s.calculateConfidence(result)
+	}
+
 	// Check confidence threshold
 	if result.Confidence < s.confidenceThreshold {
 		return false
@@ -395,29 +410,6 @@ func (s *GeoLookupService) calculateConfidence(result *GeoResult) float64 {
 	}
 
 	return baseScore
-}
-
-// getCIDRMatch finds most specific network containing IP
-func (s *GeoLookupService) getCIDRMatch(ip net.IP, networks []GeoNetwork) (*GeoNetwork, bool) {
-	var bestMatch *GeoNetwork
-	var longestPrefix int
-
-	for i := range networks {
-		network := &networks[i]
-		if network.Network.Contains(ip) {
-			ones, _ := network.Network.Mask.Size()
-			if ones > longestPrefix {
-				longestPrefix = ones
-				bestMatch = network
-			}
-		}
-	}
-
-	if bestMatch != nil {
-		return bestMatch, true
-	}
-
-	return nil, false
 }
 
 // GetStatistics returns cache performance statistics
