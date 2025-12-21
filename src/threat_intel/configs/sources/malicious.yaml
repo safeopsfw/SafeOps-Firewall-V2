@@ -1,0 +1,536 @@
+# =============================================================================
+# SafeOps Threat Intelligence - Malicious Feed Sources
+# =============================================================================
+# This file defines external threat intelligence feeds for malicious IPs and domains.
+# Each feed specifies URL, format, parsing rules, enrichment, and error handling.
+# =============================================================================
+
+feeds:
+  # ===========================================================================
+  # Abuse.ch Feodo Tracker - Botnet C2 IPs
+  # ===========================================================================
+  - id: feodo-tracker-c2
+    name: "Feodo Tracker Botnet C2"
+    description: "Tracks Feodo/Emotet/Dridex C2 servers"
+    enabled: true
+    
+    # Source URL
+    url: https://feodotracker.abuse.ch/downloads/ipblocklist.txt
+    format: plain_text
+    update_interval: 6h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    # Authentication
+    authentication:
+      auth_type: none
+    
+    # Parser Configuration
+    parser:
+      parser_type: plain_text
+      extraction_regex: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+      ip_extraction_enabled: true
+      domain_extraction_enabled: false
+      url_extraction_enabled: false
+    
+    # Enrichment Settings
+    enrichment:
+      default_threat_type: c2
+      default_confidence: 85
+      default_severity: high
+      tags:
+        - botnet
+        - feodo
+        - emotet
+        - c2
+      enrich_geo: true
+      enrich_asn: true
+      enrich_anonymizer: true
+      calculate_threat_score: true
+      ttl_days: 30
+    
+    # Filtering Rules
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_bogon_ips: true
+      min_confidence_threshold: 50
+    
+    # Rate Limiting
+    rate_limiting:
+      requests_per_hour: 20
+      concurrent_requests: 1
+      rate_limit_strategy: wait
+    
+    # Error Handling
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+      cache_ttl: 24h
+    
+    # Validation
+    validation:
+      validate_ip_format: true
+      validate_domain_format: true
+      deduplication_enabled: true
+      cross_feed_deduplication: true
+      validation_strictness: moderate
+    
+    # Monitoring
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50
+
+  # ===========================================================================
+  # Abuse.ch URLhaus - Malware Distribution URLs
+  # ===========================================================================
+  - id: urlhaus-malware-urls
+    name: "URLhaus Malware URLs"
+    description: "Malware distribution URLs and domains"
+    enabled: true
+    
+    url: https://urlhaus.abuse.ch/downloads/csv_recent/
+    format: csv
+    update_interval: 1h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: csv
+      csv_delimiter: comma
+      csv_comment_char: '#'
+      csv_skip_lines: 9
+      csv_ip_column: 6  # host_ip column
+      csv_domain_column: 3  # url_host column
+      csv_threat_type_column: 5  # threat column
+      csv_confidence_column: -1  # No confidence column
+      ip_extraction_enabled: true
+      domain_extraction_enabled: true
+      url_extraction_enabled: true
+    
+    enrichment:
+      default_threat_type: malware
+      default_confidence: 80
+      default_severity: high
+      tags:
+        - malware_distribution
+        - urlhaus
+      enrich_geo: true
+      enrich_asn: true
+      enrich_anonymizer: false
+      calculate_threat_score: true
+      ttl_days: 30
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_bogon_ips: true
+      min_confidence_threshold: 60
+    
+    rate_limiting:
+      requests_per_hour: 60
+      concurrent_requests: 1
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+      cache_ttl: 12h
+    
+    validation:
+      validate_ip_format: true
+      validate_domain_format: true
+      deduplication_enabled: true
+      cross_feed_deduplication: true
+      validation_strictness: moderate
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 100
+
+  # ===========================================================================
+  # Blocklist.de - SSH Attackers
+  # ===========================================================================
+  - id: blocklistde-ssh
+    name: "Blocklist.de SSH Attackers"
+    description: "IPs performing SSH brute force attacks"
+    enabled: true
+    
+    url: https://lists.blocklist.de/lists/ssh.txt
+    format: plain_text
+    update_interval: 6h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: plain_text
+      extraction_regex: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+      ip_extraction_enabled: true
+      domain_extraction_enabled: false
+      url_extraction_enabled: false
+    
+    enrichment:
+      default_threat_type: brute_force
+      default_confidence: 75
+      default_severity: medium
+      tags:
+        - ssh_attacker
+        - brute_force
+        - blocklist_de
+      enrich_geo: true
+      enrich_asn: true
+      enrich_anonymizer: true
+      calculate_threat_score: true
+      ttl_days: 14
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_bogon_ips: true
+      min_confidence_threshold: 50
+    
+    rate_limiting:
+      requests_per_hour: 24
+      concurrent_requests: 1
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+      cache_ttl: 24h
+    
+    validation:
+      validate_ip_format: true
+      deduplication_enabled: true
+      cross_feed_deduplication: true
+      validation_strictness: moderate
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50
+
+  # ===========================================================================
+  # Emerging Threats - Compromised IPs
+  # ===========================================================================
+  - id: emerging-threats-compromised
+    name: "Emerging Threats Compromised IPs"
+    description: "Known compromised hosts"
+    enabled: true
+    
+    url: https://rules.emergingthreats.net/blockrules/compromised-ips.txt
+    format: plain_text
+    update_interval: 24h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: plain_text
+      extraction_regex: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+      ip_extraction_enabled: true
+      domain_extraction_enabled: false
+      url_extraction_enabled: false
+    
+    enrichment:
+      default_threat_type: malware
+      default_confidence: 80
+      default_severity: high
+      tags:
+        - compromised
+        - emerging_threats
+        - botnet_member
+      enrich_geo: true
+      enrich_asn: true
+      enrich_anonymizer: true
+      calculate_threat_score: true
+      ttl_days: 30
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_bogon_ips: true
+      min_confidence_threshold: 60
+    
+    rate_limiting:
+      requests_per_hour: 10
+      concurrent_requests: 1
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+      cache_ttl: 48h
+    
+    validation:
+      validate_ip_format: true
+      deduplication_enabled: true
+      cross_feed_deduplication: true
+      validation_strictness: moderate
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50
+
+  # ===========================================================================
+  # Spamhaus DROP - Hijacked/Illegal Networks
+  # ===========================================================================
+  - id: spamhaus-drop
+    name: "Spamhaus DROP List"
+    description: "Don't Route Or Peer - hijacked/illegal networks"
+    enabled: true
+    
+    url: https://www.spamhaus.org/drop/drop.txt
+    format: netset
+    update_interval: 24h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: netset
+      extraction_regex: '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2})\s*;'
+      ip_extraction_enabled: true
+      domain_extraction_enabled: false
+      url_extraction_enabled: false
+    
+    enrichment:
+      default_threat_type: spam
+      default_confidence: 90
+      default_severity: high
+      tags:
+        - spamhaus
+        - hijacked_network
+        - spam
+      enrich_geo: true
+      enrich_asn: true
+      enrich_anonymizer: false
+      calculate_threat_score: true
+      ttl_days: 90
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_bogon_ips: false  # DROP list includes these intentionally
+      min_confidence_threshold: 70
+    
+    rate_limiting:
+      requests_per_hour: 5
+      concurrent_requests: 1
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+      cache_ttl: 72h
+    
+    validation:
+      validate_ip_format: true
+      deduplication_enabled: true
+      cross_feed_deduplication: true
+      validation_strictness: moderate
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 25
+
+  # ===========================================================================
+  # Cybercrime Tracker - C2 Panels
+  # ===========================================================================
+  - id: cybercrime-tracker-c2
+    name: "Cybercrime Tracker C2 Panels"
+    description: "Known C2 panel locations"
+    enabled: true
+    
+    url: https://cybercrime-tracker.net/all.php
+    format: plain_text
+    update_interval: 6h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: plain_text
+      extraction_regex: '(?:https?://)?([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+      ip_extraction_enabled: false
+      domain_extraction_enabled: true
+      url_extraction_enabled: true
+    
+    enrichment:
+      default_threat_type: c2
+      default_confidence: 85
+      default_severity: critical
+      tags:
+        - c2_panel
+        - malware_c2
+        - cybercrime_tracker
+      enrich_geo: false
+      enrich_asn: false
+      enrich_anonymizer: false
+      calculate_threat_score: true
+      ttl_days: 30
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_domains_regex: '^(localhost|127\.0\.0\.1|example\.(com|org|net))$'
+      min_confidence_threshold: 70
+    
+    rate_limiting:
+      requests_per_hour: 20
+      concurrent_requests: 1
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+      cache_ttl: 24h
+    
+    validation:
+      validate_domain_format: true
+      deduplication_enabled: true
+      cross_feed_deduplication: true
+      validation_strictness: moderate
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50
+
+  # ===========================================================================
+  # Example: Disabled Feed Template
+  # ===========================================================================
+  - id: example-disabled-feed
+    name: "Example Disabled Feed"
+    description: "Template for adding new feeds - currently disabled"
+    enabled: false  # Set to true to activate
+    
+    url: https://example.com/threat-feed.txt
+    format: plain_text
+    update_interval: 6h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: api_key
+      header_name: X-API-Key
+      header_value: ${EXAMPLE_API_KEY}
+    
+    parser:
+      parser_type: plain_text
+      extraction_regex: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+      ip_extraction_enabled: true
+      domain_extraction_enabled: false
+      url_extraction_enabled: false
+    
+    enrichment:
+      default_threat_type: malware
+      default_confidence: 70
+      default_severity: medium
+      tags:
+        - example
+      enrich_geo: true
+      enrich_asn: true
+      enrich_anonymizer: true
+      calculate_threat_score: true
+      ttl_days: 30
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_bogon_ips: true
+      min_confidence_threshold: 50
+    
+    rate_limiting:
+      requests_per_hour: 60
+      concurrent_requests: 1
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+      cache_ttl: 24h
+    
+    validation:
+      validate_ip_format: true
+      validate_domain_format: true
+      deduplication_enabled: true
+      cross_feed_deduplication: true
+      validation_strictness: moderate
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50

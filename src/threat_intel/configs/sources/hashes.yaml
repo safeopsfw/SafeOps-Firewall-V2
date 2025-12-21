@@ -1,0 +1,603 @@
+# =============================================================================
+# SafeOps Threat Intelligence - Hash Feed Sources
+# =============================================================================
+# This file defines file hash reputation sources for malware identification,
+# known-good file verification, and threat actor tool tracking. Used for
+# detecting malicious files through cryptographic signatures.
+# =============================================================================
+
+feeds:
+  # ===========================================================================
+  # MalwareBazaar - Recent Malware Samples
+  # ===========================================================================
+  - id: malwarebazaar-recent
+    name: "MalwareBazaar Recent Malware"
+    description: "abuse.ch database of recent malware samples"
+    enabled: true
+    
+    # Source URL
+    url: https://bazaar.abuse.ch/export/csv/recent/
+    format: csv
+    update_interval: 1h  # Hourly for active malware
+    timeout: 60s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    # Hash Type Configuration
+    hash_config:
+      hash_algorithms:
+        - md5
+        - sha1
+        - sha256
+      primary_hash_algorithm: sha256
+      reputation_type: malicious
+      malware_classification: mixed
+      threat_family_provided: true
+      actor_attribution_provided: false
+      confidence_level: confirmed
+    
+    # Authentication
+    authentication:
+      auth_type: none
+    
+    # Parser Configuration
+    parser:
+      parser_type: csv
+      csv_delimiter: comma
+      csv_skip_lines: 1
+      csv_hash_column: 2  # sha256_hash
+      csv_hash_type_column: -1
+      csv_filename_column: 3  # filename
+      csv_filesize_column: 4  # file_size
+      csv_malware_family_column: 7  # signature
+      csv_threat_category_column: 6  # file_type
+      csv_first_seen_column: 0  # first_seen
+      csv_last_seen_column: -1
+      extract_multiple_hashes: true  # MD5, SHA1, SHA256 all available
+    
+    # Malware Intelligence Fields
+    malware_intel:
+      provides_malware_family: true
+      provides_threat_category: true
+      provides_actor_attribution: false
+      provides_campaign_id: false
+      provides_file_metadata: true
+      provides_detection_names: true
+      provides_yara_rules: false
+      provides_iocs: false
+      provides_ttps: false
+      provides_sandbox_reports: false
+      provides_sample_availability: true
+    
+    # Enrichment Integration
+    enrichment:
+      priority_order: 1  # Primary malware hash source
+      use_for_malware_detection: true
+      use_for_false_positive_reduction: false
+      use_for_threat_scoring: true
+      use_for_actor_attribution: false
+      cross_reference_iocs: true
+      auto_generate_alerts: true
+      alert_severity_threshold: high
+    
+    # File Context Metadata
+    file_context:
+      track_file_names: true
+      track_file_sizes: true
+      track_file_types: true
+      track_pe_metadata: false
+      track_magic_bytes: false
+      track_packer_info: false
+      track_digital_signatures: false
+      track_submission_source: true
+    
+    # Temporal Analysis
+    temporal:
+      track_first_seen: true
+      track_last_seen: false
+      track_prevalence: false
+      time_based_reputation: true
+      recent_hash_priority: true
+      historical_analysis_enabled: true
+    
+    # Data Quality and Validation
+    validation:
+      validate_hash_format: true
+      validate_hash_length: true
+      validate_malware_family: false
+      reject_duplicate_hashes: true
+      cross_feed_deduplication: true
+      require_minimum_metadata: false
+      validation_strictness: moderate
+    
+    # False Positive Mitigation
+    false_positive:
+      check_against_known_good: false
+      exclude_system_files: false
+      exclude_commercial_software: false
+      min_detection_threshold: 0
+      require_sandbox_confirmation: false
+      whitelist_vendors: []
+      whitelist_file_paths: []
+    
+    # Caching and Performance
+    performance:
+      enable_local_cache: true
+      cache_size_mb: 512
+      cache_ttl_hours: 24
+      preload_database: false
+      index_by_hash_type: true
+      concurrent_lookup_limit: 1000
+      bloom_filter_enabled: true
+    
+    # Sample Acquisition
+    samples:
+      sample_download_enabled: false  # Disabled by default
+      sample_download_url_template: ""
+      sample_storage_path: ./data/malware_samples/
+      sample_storage_encrypted: true
+      sample_encryption_password: ${SAMPLE_ENCRYPTION_PASSWORD}
+      auto_download_new_samples: false
+      download_size_limit_mb: 50
+      quarantine_downloads: true
+    
+    # Rate Limiting
+    rate_limiting:
+      requests_per_minute: 60
+      requests_per_hour: 0
+      requests_per_day: 0
+      burst_allowed: false
+      rate_limit_strategy: wait
+      fallback_source_id: ""
+    
+    # Error Handling
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_lookup_error: skip
+      on_sample_download_error: log
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    # Compliance and Legal
+    licensing:
+      license_type: free
+      attribution_required: true
+      sample_sharing_restrictions:
+        - research_only
+      law_enforcement_only: false
+      export_control_restrictions: false
+      compliance_notes: "MalwareBazaar data from abuse.ch - CC0 Public Domain"
+    
+    # Monitoring
+    monitoring:
+      track_fetch_duration: true
+      track_lookup_latency: true
+      track_cache_hit_rate: true
+      track_error_rate: true
+      alert_on_update_failure: true
+
+  # ===========================================================================
+  # NIST NSRL - Known Good File Hashes
+  # ===========================================================================
+  - id: nist-nsrl-known-good
+    name: "NIST NSRL Reference Data Set"
+    description: "National Software Reference Library - legitimate software hashes"
+    enabled: true
+    
+    url: https://s3.amazonaws.com/rds.nsrl.nist.gov/RDS/current/RDS_modern.iso
+    format: csv
+    update_interval: 168h  # Weekly updates
+    timeout: 600s  # 10 minutes for large download
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    hash_config:
+      hash_algorithms:
+        - md5
+        - sha1
+        - sha256
+      primary_hash_algorithm: sha256
+      reputation_type: benign
+      malware_classification: none
+      threat_family_provided: false
+      actor_attribution_provided: false
+      confidence_level: confirmed
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: csv
+      csv_delimiter: comma
+      csv_skip_lines: 1
+      csv_hash_column: 0  # SHA-1
+      csv_filename_column: 1  # FileName
+      csv_filesize_column: 2  # FileSize
+      extract_multiple_hashes: false
+    
+    malware_intel:
+      provides_malware_family: false
+      provides_threat_category: false
+      provides_actor_attribution: false
+      provides_campaign_id: false
+      provides_file_metadata: true
+      provides_detection_names: false
+      provides_yara_rules: false
+      provides_iocs: false
+      provides_ttps: false
+      provides_sandbox_reports: false
+      provides_sample_availability: false
+    
+    # Known-Good Hash Handling
+    known_good:
+      is_known_good_database: true
+      software_vendor: mixed
+      operating_system: mixed
+      software_category: commercial_software
+      hash_exclusion_list: true  # Use as whitelist
+      version_tracking: false
+    
+    enrichment:
+      priority_order: 1  # Primary known-good source
+      use_for_malware_detection: false
+      use_for_false_positive_reduction: true
+      use_for_threat_scoring: false
+      use_for_actor_attribution: false
+      cross_reference_iocs: false
+      auto_generate_alerts: false
+      alert_severity_threshold: none
+    
+    file_context:
+      track_file_names: true
+      track_file_sizes: true
+      track_file_types: false
+      track_pe_metadata: false
+      track_magic_bytes: false
+      track_packer_info: false
+      track_digital_signatures: false
+      track_submission_source: false
+    
+    temporal:
+      track_first_seen: false
+      track_last_seen: false
+      track_prevalence: false
+      time_based_reputation: false
+      recent_hash_priority: false
+      historical_analysis_enabled: false
+    
+    validation:
+      validate_hash_format: true
+      validate_hash_length: true
+      validate_malware_family: false
+      reject_duplicate_hashes: true
+      cross_feed_deduplication: false
+      require_minimum_metadata: false
+      validation_strictness: moderate
+    
+    false_positive:
+      check_against_known_good: false  # This IS the known-good DB
+      exclude_system_files: false
+      exclude_commercial_software: false
+    
+    performance:
+      enable_local_cache: true
+      cache_size_mb: 2048  # Large for NSRL
+      cache_ttl_hours: 168  # Week
+      preload_database: false  # Too large
+      index_by_hash_type: true
+      concurrent_lookup_limit: 2000
+      bloom_filter_enabled: true  # Very effective for NSRL
+    
+    samples:
+      sample_download_enabled: false
+    
+    rate_limiting:
+      requests_per_minute: 0  # Local database
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_lookup_error: skip
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    licensing:
+      license_type: free
+      attribution_required: true
+      sample_sharing_restrictions: []
+      law_enforcement_only: false
+      export_control_restrictions: false
+      compliance_notes: "NIST NSRL is public domain"
+    
+    monitoring:
+      track_fetch_duration: true
+      track_lookup_latency: true
+      track_cache_hit_rate: true
+      track_error_rate: true
+      alert_on_update_failure: true
+
+  # ===========================================================================
+  # ThreatFox - IOC Database
+  # ===========================================================================
+  - id: threatfox-ioc-hashes
+    name: "ThreatFox IOC Database"
+    description: "abuse.ch threat intelligence sharing platform"
+    enabled: true
+    
+    url: https://threatfox.abuse.ch/export/csv/recent/
+    format: csv
+    update_interval: 4h  # Every 4 hours
+    timeout: 60s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    hash_config:
+      hash_algorithms:
+        - md5
+        - sha256
+      primary_hash_algorithm: sha256
+      reputation_type: malicious
+      malware_classification: mixed
+      threat_family_provided: true
+      actor_attribution_provided: false
+      confidence_level: confirmed
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: csv
+      csv_delimiter: comma
+      csv_skip_lines: 9
+      csv_hash_column: 2  # ioc value
+      csv_malware_family_column: 4  # malware
+      csv_threat_category_column: 5  # malware_alias
+      csv_first_seen_column: 0  # first_seen_utc
+      extract_multiple_hashes: false
+    
+    malware_intel:
+      provides_malware_family: true
+      provides_threat_category: true
+      provides_actor_attribution: false
+      provides_campaign_id: false
+      provides_file_metadata: false
+      provides_detection_names: false
+      provides_yara_rules: false
+      provides_iocs: true
+      provides_ttps: false
+      provides_sandbox_reports: false
+      provides_sample_availability: false
+    
+    enrichment:
+      priority_order: 2  # Secondary malware source
+      use_for_malware_detection: true
+      use_for_false_positive_reduction: false
+      use_for_threat_scoring: true
+      use_for_actor_attribution: false
+      cross_reference_iocs: true
+      auto_generate_alerts: true
+      alert_severity_threshold: medium
+    
+    file_context:
+      track_file_names: false
+      track_file_sizes: false
+      track_file_types: false
+      track_pe_metadata: false
+      track_magic_bytes: false
+      track_packer_info: false
+      track_digital_signatures: false
+      track_submission_source: false
+    
+    temporal:
+      track_first_seen: true
+      track_last_seen: false
+      track_prevalence: false
+      time_based_reputation: true
+      recent_hash_priority: true
+      historical_analysis_enabled: true
+    
+    validation:
+      validate_hash_format: true
+      validate_hash_length: true
+      validate_malware_family: false
+      reject_duplicate_hashes: true
+      cross_feed_deduplication: true
+      require_minimum_metadata: false
+      validation_strictness: moderate
+    
+    false_positive:
+      check_against_known_good: true
+      exclude_system_files: false
+      exclude_commercial_software: false
+    
+    performance:
+      enable_local_cache: true
+      cache_size_mb: 256
+      cache_ttl_hours: 12
+      preload_database: false
+      index_by_hash_type: true
+      concurrent_lookup_limit: 1000
+      bloom_filter_enabled: true
+    
+    samples:
+      sample_download_enabled: false
+    
+    rate_limiting:
+      requests_per_minute: 60
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_lookup_error: skip
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    licensing:
+      license_type: free
+      attribution_required: true
+      sample_sharing_restrictions: []
+      law_enforcement_only: false
+      export_control_restrictions: false
+      compliance_notes: "ThreatFox from abuse.ch - CC BY-NC"
+    
+    monitoring:
+      track_fetch_duration: true
+      track_lookup_latency: true
+      track_cache_hit_rate: true
+      track_error_rate: true
+      alert_on_update_failure: true
+
+  # ===========================================================================
+  # Example: VirusTotal API
+  # ===========================================================================
+  - id: virustotal-api-service
+    name: "VirusTotal Hash Reputation API"
+    description: "Real-time hash reputation lookup service (disabled template)"
+    enabled: false  # Disabled - API template
+    
+    url: https://www.virustotal.com/api/v3/files/{hash}
+    format: json
+    update_interval: 0  # Real-time API
+    timeout: 10s
+    retry_attempts: 2
+    retry_backoff: linear
+    
+    hash_config:
+      hash_algorithms:
+        - md5
+        - sha1
+        - sha256
+      primary_hash_algorithm: sha256
+      reputation_type: mixed
+      malware_classification: mixed
+      threat_family_provided: true
+      actor_attribution_provided: false
+      confidence_level: confirmed
+    
+    authentication:
+      auth_type: api_key
+      api_key: ${VIRUSTOTAL_API_KEY}
+    
+    # API Service Configuration
+    api:
+      is_rest_api: true
+      api_endpoint_template: https://www.virustotal.com/api/v3/files/{hash}
+      api_method: GET
+      api_key_location: header
+      api_key_name: x-apikey
+      api_rate_limit_per_minute: 4  # Free tier
+      api_rate_limit_per_day: 500
+      api_batch_lookup_supported: false
+      api_batch_size: 1
+      api_response_format: json
+      api_cache_ttl_seconds: 3600  # 1 hour
+      api_pagination_supported: false
+    
+    parser:
+      parser_type: json
+      json_path_hash: "$.data.id"
+      json_path_malware_family: "$.data.attributes.popular_threat_classification.suggested_threat_label"
+      json_path_attributes: "$.data.attributes"
+    
+    malware_intel:
+      provides_malware_family: true
+      provides_threat_category: true
+      provides_actor_attribution: false
+      provides_campaign_id: false
+      provides_file_metadata: true
+      provides_detection_names: true
+      provides_yara_rules: false
+      provides_iocs: false
+      provides_ttps: false
+      provides_sandbox_reports: true
+      provides_sample_availability: false
+    
+    enrichment:
+      priority_order: 3  # Lower priority for API
+      use_for_malware_detection: true
+      use_for_false_positive_reduction: true
+      use_for_threat_scoring: true
+      use_for_actor_attribution: false
+      cross_reference_iocs: false
+      auto_generate_alerts: false  # Too slow for bulk
+      alert_severity_threshold: high
+    
+    file_context:
+      track_file_names: true
+      track_file_sizes: true
+      track_file_types: true
+      track_pe_metadata: true
+      track_magic_bytes: true
+      track_packer_info: true
+      track_digital_signatures: true
+      track_submission_source: false
+    
+    temporal:
+      track_first_seen: true
+      track_last_seen: true
+      track_prevalence: false
+      time_based_reputation: true
+      recent_hash_priority: false
+      historical_analysis_enabled: false
+    
+    validation:
+      validate_hash_format: true
+      validate_hash_length: true
+      validate_malware_family: false
+      reject_duplicate_hashes: false
+      cross_feed_deduplication: false
+      require_minimum_metadata: false
+      validation_strictness: moderate
+    
+    false_positive:
+      check_against_known_good: false
+      exclude_system_files: false
+      exclude_commercial_software: false
+      min_detection_threshold: 5  # 5+ AV detections
+    
+    performance:
+      enable_local_cache: true
+      cache_size_mb: 128
+      cache_ttl_hours: 1  # Short for API
+      preload_database: false
+      index_by_hash_type: true
+      concurrent_lookup_limit: 4  # Match rate limit
+      bloom_filter_enabled: false
+    
+    samples:
+      sample_download_enabled: false
+    
+    rate_limiting:
+      requests_per_minute: 4  # VT free tier
+      requests_per_day: 500
+      burst_allowed: false
+      rate_limit_strategy: wait
+      fallback_source_id: malwarebazaar-recent
+    
+    error_handling:
+      on_fetch_error: skip
+      on_parse_error: skip
+      on_lookup_error: fallback
+      error_alert_threshold: 10
+      auto_disable_after_failures: 20
+      fallback_to_cache: true
+    
+    licensing:
+      license_type: commercial
+      attribution_required: false
+      sample_sharing_restrictions:
+        - api_terms_apply
+      law_enforcement_only: false
+      export_control_restrictions: false
+      compliance_notes: "VirusTotal API terms - check subscription tier"
+    
+    monitoring:
+      track_fetch_duration: true
+      track_lookup_latency: true
+      track_cache_hit_rate: true
+      track_error_rate: true
+      alert_on_update_failure: false

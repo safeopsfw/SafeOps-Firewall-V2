@@ -1,0 +1,362 @@
+# =============================================================================
+# SafeOps Threat Intelligence - Web UI Configuration
+# =============================================================================
+# This file contains web UI specific settings separate from backend config.
+# For security, sensitive values use environment variable substitution.
+# =============================================================================
+
+# =============================================================================
+# HTTP Server Configuration
+# =============================================================================
+server:
+  host: 0.0.0.0  # Bind to all interfaces; use 127.0.0.1 for localhost only
+  port: 8085     # Fixed port to avoid conflicts with other SafeOps services
+  base_url: http://localhost:8085
+  
+  # Timeouts
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+  
+  # Limits
+  max_header_bytes: 1048576  # 1MB
+  max_connections: 1000
+  graceful_shutdown_timeout: 30s
+
+# =============================================================================
+# Authentication Configuration
+# =============================================================================
+authentication:
+  enabled: true
+  method: BasicAuth  # Options: BasicAuth, LDAP, OAuth2, JWT
+  
+  # Access Control
+  allow_anonymous_read: false
+  require_strong_passwords: true
+  min_password_length: 12
+  password_expiry_days: 90  # 0 = never expire
+  
+  # Brute Force Protection
+  max_login_attempts: 5
+  lockout_duration: 15m
+  
+  # Basic Authentication Settings
+  basic_auth:
+    username: admin
+    password_hash: ${THREAT_INTEL_WEBUI_PASSWORD_HASH}  # Bcrypt hash via env var
+    password_hash_rounds: 12
+  
+  # LDAP Settings (if method=LDAP)
+  ldap:
+    enabled: false
+    server_url: ldap://ldap.safeops.local:389
+    bind_dn: cn=admin,dc=safeops,dc=local
+    bind_password: ${THREAT_INTEL_LDAP_BIND_PASSWORD}
+    base_dn: ou=users,dc=safeops,dc=local
+    user_filter: "(uid=%s)"
+    group_filter: "(memberOf=cn=%s,ou=groups,dc=safeops,dc=local)"
+    required_group: threat-intel-users
+  
+  # OAuth2 Settings (if method=OAuth2)
+  oauth2:
+    enabled: false
+    provider: Google  # Options: Google, GitHub, AzureAD, Okta
+    client_id: ${THREAT_INTEL_OAUTH_CLIENT_ID}
+    client_secret: ${THREAT_INTEL_OAUTH_CLIENT_SECRET}
+    redirect_url: http://localhost:8085/auth/callback
+    scopes:
+      - openid
+      - email
+      - profile
+    auth_url: https://accounts.google.com/o/oauth2/auth
+    token_url: https://oauth2.googleapis.com/token
+    user_info_url: https://www.googleapis.com/oauth2/v2/userinfo
+
+# =============================================================================
+# Session Management
+# =============================================================================
+session:
+  # Session Encryption
+  secret: ${THREAT_INTEL_SESSION_SECRET}  # MUST be 32+ characters
+  
+  # Cookie Settings
+  cookie_name: threat_intel_session
+  cookie_path: /
+  cookie_domain: ""  # Empty for current domain
+  cookie_secure: true  # Set to true in production (requires HTTPS)
+  cookie_http_only: true
+  cookie_same_site: Strict  # Options: Strict, Lax, None
+  
+  # Timeout Settings
+  timeout: 24h
+  max_idle_duration: 2h
+  rolling_timeout: true  # Extend timeout on activity
+  
+  # Session Storage
+  storage_type: Memory  # Options: Memory, Redis, Database
+  redis_url: ${THREAT_INTEL_REDIS_URL}  # If storage_type=Redis
+
+# =============================================================================
+# Security Headers and Policies
+# =============================================================================
+security:
+  # HTTP Strict Transport Security
+  enable_hsts: true
+  hsts_max_age: 31536000  # 1 year in seconds
+  hsts_include_subdomains: false
+  
+  # Content Security Policy
+  content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+  
+  # Security Headers
+  x_frame_options: DENY
+  x_content_type_options: nosniff
+  xss_protection: "1; mode=block"
+  referrer_policy: strict-origin-when-cross-origin
+  
+  # CSRF Protection
+  enable_csrf_protection: true
+  csrf_token_length: 32
+
+# =============================================================================
+# CORS Configuration
+# =============================================================================
+cors:
+  enabled: false
+  allowed_origins:
+    - http://localhost:3000
+    - http://localhost:8080
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+  allowed_headers:
+    - Authorization
+    - Content-Type
+    - X-Requested-With
+  exposed_headers:
+    - X-Total-Count
+    - X-Page-Number
+  allow_credentials: false
+  max_age: 3600  # Preflight cache duration in seconds
+
+# =============================================================================
+# Rate Limiting
+# =============================================================================
+rate_limiting:
+  enabled: true
+  requests_per_minute: 100
+  burst_size: 20
+  limit_by: IP  # Options: IP, Session, User
+  block_duration: 5m
+  
+  # Exemptions
+  exempt_ips:
+    - 127.0.0.1
+    - ::1
+  
+  # Adaptive Rate Limiting
+  enable_adaptive: false
+  adaptive_threshold: 0.8  # Reduce limits at 80% system load
+
+# =============================================================================
+# TLS/SSL Configuration
+# =============================================================================
+tls:
+  enabled: false  # Set to true for production
+  certificate_file: ./certs/threat_intel.crt
+  key_file: ./certs/threat_intel.key
+  min_tls_version: TLS1.2  # Options: TLS1.2, TLS1.3
+  
+  # Cipher Suites (empty = secure defaults)
+  cipher_suites: []
+  
+  # HTTP/2 Support
+  enable_http2: true
+  
+  # HTTP to HTTPS Redirect
+  redirect_http_to_https: true
+
+# =============================================================================
+# Feature Toggles
+# =============================================================================
+features:
+  # Core Features
+  enable_dashboard: true
+  enable_feed_management: true
+  enable_manual_fetch: true
+  enable_ioc_search: true
+  enable_ioc_export: true
+  enable_ioc_import: false  # Manual IOC import disabled by default
+  enable_statistics: true
+  
+  # Advanced Features
+  enable_advanced_search: true
+  enable_bulk_operations: false  # Bulk operations disabled for safety
+  enable_api_access: true
+  enable_graph_visualization: true
+  
+  # Experimental Features
+  enable_threat_hunting: false
+  enable_custom_dashboards: false
+
+# =============================================================================
+# UI Customization
+# =============================================================================
+customization:
+  # Branding
+  application_name: "SafeOps Threat Intelligence"
+  logo_url: /static/img/logo.png
+  favicon_url: /static/img/favicon.ico
+  
+  # Theme
+  theme: Dark  # Options: Light, Dark, Auto
+  primary_color: "#2563eb"  # Blue
+  
+  # Display Settings
+  items_per_page: 50
+  date_time_format: ISO8601  # ISO8601, US, EU, Custom
+  timezone: UTC
+  
+  # User Experience
+  enable_notifications: true
+  auto_refresh_interval: 5m  # Dashboard auto-refresh (0=disabled)
+  
+  # Search Defaults
+  default_search_limit: 100
+  max_search_results: 10000
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  # Log Levels
+  level: info  # Options: debug, info, warn, error
+  
+  # Request Logging
+  log_requests: true
+  log_request_body: false  # Security: disabled by default
+  log_response_body: false  # Security: disabled by default
+  
+  # Log Files
+  access_log_file: ./logs/webui_access.log
+  error_log_file: ./logs/webui_error.log
+  
+  # Security
+  sensitive_field_redaction: true
+  redacted_fields:
+    - password
+    - password_hash
+    - secret
+    - token
+    - api_key
+    - session_id
+
+# =============================================================================
+# API Configuration
+# =============================================================================
+api:
+  # API Settings
+  enabled: true
+  base_path: /api/v1
+  enable_swagger: true  # Swagger UI for API documentation
+  swagger_path: /api/docs
+  
+  # API Authentication
+  require_authentication: true
+  api_key_header: X-API-Key
+  
+  # API Rate Limiting
+  rate_limit_enabled: true
+  rate_limit_per_hour: 1000
+  rate_limit_burst: 50
+
+# =============================================================================
+# Dashboard Configuration
+# =============================================================================
+dashboard:
+  # Default Widgets
+  show_feed_status: true
+  show_recent_iocs: true
+  show_threat_statistics: true
+  show_geolocation_map: true
+  show_top_threats: true
+  show_source_breakdown: true
+  
+  # Widget Limits
+  recent_iocs_limit: 10
+  top_threats_limit: 10
+  
+  # Update Frequency
+  auto_refresh: true
+  refresh_interval: 5m
+
+# =============================================================================
+# Export Configuration
+# =============================================================================
+export:
+  # Allowed Formats
+  allowed_formats:
+    - CSV
+    - JSON
+    - STIX
+    - MISP
+  
+  # Export Limits
+  max_export_records: 100000
+  max_export_size: 104857600  # 100MB
+  
+  # Export Directory
+  export_directory: ./data/exports
+  export_retention_days: 7
+
+# =============================================================================
+# Search Configuration
+# =============================================================================
+search:
+  # Search Engine
+  enable_full_text_search: true
+  enable_fuzzy_search: true
+  fuzzy_threshold: 0.8
+  
+  # Search Limits
+  max_results: 10000
+  default_page_size: 50
+  max_page_size: 500
+  
+  # Search Filters
+  enable_date_range_filter: true
+  enable_confidence_filter: true
+  enable_severity_filter: true
+  enable_source_filter: true
+  enable_tag_filter: true
+
+# =============================================================================
+# Cache Configuration
+# =============================================================================
+cache:
+  # UI Cache
+  enable_response_cache: true
+  cache_ttl: 5m
+  cache_max_size: 1000  # Number of cached responses
+  
+  # Static Assets
+  enable_static_cache: true
+  static_cache_max_age: 86400  # 24 hours
+
+# =============================================================================
+# Monitoring & Health
+# =============================================================================
+monitoring:
+  # Health Check
+  enable_health_endpoint: true
+  health_endpoint_path: /health
+  
+  # Readiness Check
+  enable_readiness_endpoint: true
+  readiness_endpoint_path: /ready
+  
+  # Metrics
+  enable_metrics: true
+  metrics_endpoint_path: /metrics

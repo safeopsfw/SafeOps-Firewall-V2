@@ -1,0 +1,538 @@
+# =============================================================================
+# SafeOps Threat Intelligence - Phishing Feed Sources
+# =============================================================================
+# This file defines external feeds for phishing URLs, domains, and credential
+# harvesting sites. Phishing feeds have shorter TTLs and update intervals due
+# to the ephemeral nature of phishing infrastructure.
+# =============================================================================
+
+feeds:
+  # ===========================================================================
+  # PhishTank - Community Phishing Database
+  # ===========================================================================
+  - id: phishtank-verified
+    name: "PhishTank Verified Phishing"
+    description: "Community-verified phishing URLs with brand targets"
+    enabled: true
+    
+    # Source URL
+    url: http://data.phishtank.com/data/${PHISHTANK_API_KEY}/online-valid.json
+    format: json
+    update_interval: 1h  # PhishTank has hourly rate limits
+    timeout: 45s
+    retry_attempts: 2
+    retry_backoff: exponential
+    
+    # Authentication
+    authentication:
+      auth_type: api_key
+      api_key_param: none  # API key in URL path
+    
+    # Parser Configuration
+    parser:
+      parser_type: json
+      json_path_url: "$[*].url"
+      json_path_domain: "$[*].url"  # Extract domain from URL
+      json_path_target: "$[*].target"
+      json_path_timestamp: "$[*].submission_time"
+      extract_full_url: true
+      extract_path_patterns: true
+      normalize_urls: true
+    
+    # Phishing Classification
+    classification:
+      phishing_type: credential_harvesting
+      target_sector: generic
+      target_brands: []  # Populated from feed data
+      confidence_level: verified_high
+      default_severity: high
+      tags:
+        - phishtank
+        - verified
+        - community_reported
+    
+    # Enrichment Settings
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_whois: true
+      enrich_ssl_cert: true
+      enrich_domain_age: true
+      detect_typosquatting: true
+      detect_homograph_attacks: true
+      screenshot_enabled: false  # Disabled by default
+      html_analysis_enabled: false
+      ttl_hours: 72  # 3 days
+    
+    # Takedown Tracking
+    takedown:
+      track_takedown_status: true
+      verify_before_storage: false  # Trust PhishTank verification
+      recheck_interval: 6h
+      auto_expire_inactive: true
+      inactive_threshold_hours: 48
+      preserve_historical_data: true
+    
+    # False Positive Mitigation
+    false_positive:
+      exclude_legitimate_domains: true
+      whitelist_file: ./configs/whitelists/legitimate_domains.txt
+      exclude_parked_domains: false
+      exclude_sinkholed_domains: true
+      min_confidence_threshold: 80
+      require_verification: true
+      cross_check_other_feeds: false
+    
+    # Rate Limiting
+    rate_limiting:
+      requests_per_hour: 1  # PhishTank strict hourly limit
+      rate_limit_strategy: wait
+      burst_allowed: false
+    
+    # Error Handling
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: log
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    # Alerting
+    alerting:
+      generate_alerts_for_brands:
+        - paypal
+        - microsoft
+        - apple
+        - amazon
+      alert_severity_threshold: high
+      alert_channels:
+        - email
+        - slack
+      alert_on_new_campaigns: true
+      campaign_detection_enabled: true
+    
+    # Monitoring
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 100
+
+  # ===========================================================================
+  # OpenPhish - High-Confidence Phishing Feed
+  # ===========================================================================
+  - id: openphish-premium
+    name: "OpenPhish Premium Feed"
+    description: "Automated high-confidence phishing detection"
+    enabled: true
+    
+    url: https://openphish.com/feed.txt
+    format: plain_text
+    update_interval: 1h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none  # Public feed
+    
+    parser:
+      parser_type: plain_text
+      extraction_regex: '^https?://.*$'
+      extract_full_url: true
+      extract_path_patterns: true
+      normalize_urls: true
+    
+    classification:
+      phishing_type: credential_harvesting
+      target_sector: generic
+      target_brands: []
+      confidence_level: automated_detection
+      default_severity: high
+      tags:
+        - openphish
+        - automated
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_whois: true
+      enrich_ssl_cert: true
+      enrich_domain_age: true
+      detect_typosquatting: true
+      detect_homograph_attacks: true
+      screenshot_enabled: false
+      html_analysis_enabled: false
+      ttl_hours: 48  # 2 days
+    
+    takedown:
+      track_takedown_status: true
+      verify_before_storage: true  # Verify accessibility
+      recheck_interval: 6h
+      auto_expire_inactive: true
+      inactive_threshold_hours: 24
+      preserve_historical_data: true
+    
+    false_positive:
+      exclude_legitimate_domains: true
+      whitelist_file: ./configs/whitelists/legitimate_domains.txt
+      exclude_parked_domains: true
+      exclude_sinkholed_domains: true
+      min_confidence_threshold: 75
+      require_verification: false
+      cross_check_other_feeds: true
+    
+    rate_limiting:
+      requests_per_hour: 60
+      rate_limit_strategy: wait
+      burst_allowed: true
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    alerting:
+      generate_alerts_for_brands:
+        - banking
+        - financial
+      alert_severity_threshold: high
+      alert_channels:
+        - email
+      alert_on_new_campaigns: true
+      campaign_detection_enabled: true
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 100
+
+  # ===========================================================================
+  # URLhaus - Phishing URLs Subset
+  # ===========================================================================
+  - id: urlhaus-phishing
+    name: "URLhaus Phishing URLs"
+    description: "Phishing URLs from URLhaus threat feed"
+    enabled: true
+    
+    url: https://urlhaus.abuse.ch/downloads/csv_recent/
+    format: csv
+    update_interval: 1h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    parser:
+      parser_type: csv
+      csv_delimiter: comma
+      csv_comment_char: '#'
+      csv_skip_lines: 9
+      csv_url_column: 2  # url column
+      csv_domain_column: 3  # url_host column
+      csv_target_brand_column: -1  # Not provided
+      csv_submission_time_column: 1  # dateadded column
+      csv_status_column: 4  # url_status column
+      extract_full_url: true
+      extract_path_patterns: true
+      normalize_urls: true
+    
+    classification:
+      phishing_type: credential_harvesting
+      target_sector: generic
+      target_brands: []
+      confidence_level: community_reported
+      default_severity: high
+      tags:
+        - urlhaus
+        - abuse_ch
+        - phishing
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_whois: false
+      enrich_ssl_cert: false
+      enrich_domain_age: true
+      detect_typosquatting: true
+      detect_homograph_attacks: true
+      screenshot_enabled: false
+      html_analysis_enabled: false
+      ttl_hours: 48
+    
+    takedown:
+      track_takedown_status: true
+      verify_before_storage: false
+      recheck_interval: 6h
+      auto_expire_inactive: true
+      inactive_threshold_hours: 48
+      preserve_historical_data: true
+    
+    false_positive:
+      exclude_legitimate_domains: true
+      whitelist_file: ./configs/whitelists/legitimate_domains.txt
+      exclude_parked_domains: true
+      exclude_sinkholed_domains: true
+      min_confidence_threshold: 70
+      require_verification: false
+      cross_check_other_feeds: false
+    
+    rate_limiting:
+      requests_per_hour: 60
+      rate_limit_strategy: wait
+      burst_allowed: false
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: log
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    alerting:
+      generate_alerts_for_brands: []
+      alert_severity_threshold: critical
+      alert_channels:
+        - email
+      alert_on_new_campaigns: false
+      campaign_detection_enabled: true
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: false
+      alert_on_significant_change: true
+      change_threshold_percent: 150
+
+  # ===========================================================================
+  # Example: Financial Sector Phishing Feed
+  # ===========================================================================
+  - id: financial-phishing-example
+    name: "Example Financial Sector Phishing"
+    description: "Targeted phishing against financial institutions"
+    enabled: false  # Template - disabled by default
+    
+    url: https://example.com/financial-phishing-feed.json
+    format: json
+    update_interval: 30m  # Faster updates for targeted phishing
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: bearer
+      header_value: ${BRAND_PROTECTION_TOKEN}
+    
+    parser:
+      parser_type: json
+      json_path_url: "$.phishing[*].url"
+      json_path_domain: "$.phishing[*].domain"
+      json_path_target: "$.phishing[*].targeted_brand"
+      json_path_timestamp: "$.phishing[*].discovered_at"
+      extract_full_url: true
+      extract_path_patterns: true
+      normalize_urls: true
+    
+    classification:
+      phishing_type: credential_harvesting
+      target_sector: financial
+      target_brands:
+        - bank_of_america
+        - chase
+        - wells_fargo
+        - citibank
+        - paypal
+      confidence_level: verified_high
+      default_severity: critical
+      tags:
+        - financial_phishing
+        - brand_protection
+        - high_priority
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_whois: true
+      enrich_ssl_cert: true
+      enrich_domain_age: true
+      detect_typosquatting: true
+      detect_homograph_attacks: true
+      screenshot_enabled: true
+      html_analysis_enabled: true
+      ttl_hours: 168  # 7 days for analysis
+    
+    takedown:
+      track_takedown_status: true
+      verify_before_storage: true
+      recheck_interval: 1h  # Frequent checks for financial phishing
+      auto_expire_inactive: true
+      inactive_threshold_hours: 12
+      preserve_historical_data: true
+    
+    false_positive:
+      exclude_legitimate_domains: true
+      whitelist_file: ./configs/whitelists/financial_legitimate.txt
+      exclude_parked_domains: true
+      exclude_sinkholed_domains: true
+      min_confidence_threshold: 90  # High threshold for financial
+      require_verification: true
+      cross_check_other_feeds: true
+    
+    rate_limiting:
+      requests_per_hour: 120
+      rate_limit_strategy: queue
+      burst_allowed: true
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: alert
+      on_verification_error: retry
+      error_alert_threshold: 2  # Lower threshold for critical feeds
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    alerting:
+      generate_alerts_for_brands:
+        - bank_of_america
+        - chase
+        - wells_fargo
+        - citibank
+        - paypal
+      alert_severity_threshold: medium
+      alert_channels:
+        - email
+        - slack
+        - webhook
+        - siem
+      alert_on_new_campaigns: true
+      campaign_detection_enabled: true
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50
+
+  # ===========================================================================
+  # Example: Business Email Compromise Feed
+  # ===========================================================================
+  - id: bec-phishing-example
+    name: "Example BEC Phishing Feed"
+    description: "Business Email Compromise and executive impersonation"
+    enabled: false  # Template - disabled by default
+    
+    url: https://example.com/bec-feed.csv
+    format: csv
+    update_interval: 1h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: basic
+      username: ${APWG_USERNAME}
+      password: ${APWG_PASSWORD}
+    
+    parser:
+      parser_type: csv
+      csv_delimiter: comma
+      csv_skip_lines: 1
+      csv_url_column: 0
+      csv_domain_column: 1
+      csv_target_brand_column: 3
+      csv_submission_time_column: 4
+      csv_verified_column: 5
+      extract_full_url: true
+      extract_path_patterns: false
+      normalize_urls: true
+    
+    classification:
+      phishing_type: business_email_compromise
+      target_sector: generic
+      target_brands: []
+      confidence_level: verified_high
+      default_severity: critical
+      tags:
+        - bec
+        - whaling
+        - executive_impersonation
+        - wire_fraud
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_whois: true
+      enrich_ssl_cert: false
+      enrich_domain_age: true
+      detect_typosquatting: true
+      detect_homograph_attacks: true
+      screenshot_enabled: false
+      html_analysis_enabled: false
+      ttl_hours: 240  # 10 days for BEC tracking
+    
+    takedown:
+      track_takedown_status: true
+      verify_before_storage: true
+      recheck_interval: 12h
+      auto_expire_inactive: true
+      inactive_threshold_hours: 72
+      preserve_historical_data: true
+    
+    false_positive:
+      exclude_legitimate_domains: true
+      whitelist_file: ./configs/whitelists/legitimate_domains.txt
+      exclude_parked_domains: true
+      exclude_sinkholed_domains: true
+      min_confidence_threshold: 85
+      require_verification: true
+      cross_check_other_feeds: true
+    
+    rate_limiting:
+      requests_per_hour: 30
+      rate_limit_strategy: wait
+      burst_allowed: false
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: alert
+      on_verification_error: skip_entry
+      error_alert_threshold: 2
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    alerting:
+      generate_alerts_for_brands: []
+      alert_severity_threshold: high
+      alert_channels:
+        - email
+        - webhook
+      alert_on_new_campaigns: true
+      campaign_detection_enabled: true
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 75

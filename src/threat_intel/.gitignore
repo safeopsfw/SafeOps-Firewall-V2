@@ -1,0 +1,15 @@
+# Threat Intel Data and Logs
+data/
+logs/
+*.log
+
+# Downloaded threat feeds
+downloads/
+
+# Temporary files
+*.tmp
+*.cache
+
+# Environment files
+.env
+.env.local

@@ -1,0 +1,538 @@
+# =============================================================================
+# SafeOps Threat Intelligence - Anonymizer Feed Sources
+# =============================================================================
+# This file defines feeds for anonymization infrastructure (Tor, VPN, proxies).
+# Used for enriching threat data with anonymizer context and distinguishing
+# legitimate privacy use from malicious abuse of anonymization services.
+# =============================================================================
+
+feeds:
+  # ===========================================================================
+  # Tor Exit Nodes - Official Consensus
+  # ===========================================================================
+  - id: tor-exit-nodes-official
+    name: "Tor Exit Nodes (Official)"
+    description: "Official Tor exit node list from directory authorities"
+    enabled: true
+    
+    # Source URL
+    url: https://check.torproject.org/torbulkexitlist
+    format: plain_text
+    update_interval: 1h  # Tor exits change frequently
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    # Authentication
+    authentication:
+      auth_type: none
+    
+    # Anonymizer Classification
+    classification:
+      anonymizer_type: tor_exit_node
+      anonymizer_subtype: tor_network
+      protocol: tor
+      legitimacy_classification: legitimate_privacy
+      tags:
+        - tor
+        - exit_node
+        - high_anonymity
+        - darknet
+    
+    # Parser Configuration
+    parser:
+      parser_type: plain_text
+      extraction_regex: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+      extract_ip_only: true
+      extract_cidr_ranges: false
+      include_ipv6: false
+    
+    # Tor-Specific Configuration
+    tor_config:
+      is_tor_feed: true
+      tor_node_type: exit
+      exit_policy_parsing: false
+      track_exit_addresses: true
+      track_relay_bandwidth: false
+      track_uptime: false
+      tor_consensus_source: true
+    
+    # Enrichment Settings
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_port_scan: false
+      enrich_reverse_dns: true
+      detect_hosting_provider: true
+      cross_reference_abuse: true
+      calculate_anonymity_score: true
+      ttl_days: 2  # Short TTL for dynamic Tor exits
+    
+    # Abuse Correlation
+    abuse:
+      track_abuse_reports: true
+      correlate_with_malicious_feeds: true
+      flag_high_abuse_nodes: true
+      abuse_threshold_percent: 10
+      separate_benign_malicious: true
+      temporal_analysis_enabled: true
+    
+    # Filtering Rules
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_inactive_nodes: false
+      min_uptime_percent: 0
+    
+    # Verification
+    verification:
+      verify_before_storage: false  # Trust official consensus
+      auto_remove_dead_nodes: false
+      preserve_historical_data: true
+    
+    # Rate Limiting
+    rate_limiting:
+      requests_per_hour: 60
+      rate_limit_strategy: wait
+    
+    # Error Handling
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: log
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    # Privacy & Compliance
+    privacy:
+      log_connection_attempts: false
+      anonymize_stored_metadata: false
+      compliance_notes: "Tor exit nodes are public information published by Tor Project"
+      data_retention_justification: "Threat enrichment and abuse detection while respecting legitimate privacy use"
+    
+    # Monitoring
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 30
+
+  # ===========================================================================
+  # Tor Relay Nodes
+  # ===========================================================================
+  - id: tor-relay-nodes
+    name: "Tor Relay Nodes"
+    description: "Tor relay/guard nodes (non-exit)"
+    enabled: true
+    
+    url: https://onionoo.torproject.org/summary?running=true
+    format: json
+    update_interval: 6h  # Relays more stable than exits
+    timeout: 45s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    classification:
+      anonymizer_type: tor_relay
+      anonymizer_subtype: tor_network
+      protocol: tor
+      legitimacy_classification: legitimate_privacy
+      tags:
+        - tor
+        - relay
+        - guard_node
+    
+    parser:
+      parser_type: json
+      json_path_ip: "$.relays[*].a[0]"  # First address
+      json_path_bandwidth: "$.relays[*].c"
+      extract_ip_only: true
+      include_ipv6: true
+    
+    tor_config:
+      is_tor_feed: true
+      tor_node_type: relay
+      exit_policy_parsing: false
+      track_exit_addresses: false
+      track_relay_bandwidth: true
+      track_uptime: true
+      tor_consensus_source: true
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_port_scan: false
+      enrich_reverse_dns: false
+      detect_hosting_provider: true
+      cross_reference_abuse: false
+      calculate_anonymity_score: false
+      ttl_days: 7  # Relays more stable
+    
+    abuse:
+      track_abuse_reports: false
+      correlate_with_malicious_feeds: false
+      flag_high_abuse_nodes: false
+      abuse_threshold_percent: 0
+      separate_benign_malicious: false
+      temporal_analysis_enabled: false
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_inactive_nodes: true
+      inactive_threshold_days: 7
+    
+    verification:
+      verify_before_storage: false
+      auto_remove_dead_nodes: true
+      preserve_historical_data: true
+    
+    rate_limiting:
+      requests_per_hour: 20
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: log
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    privacy:
+      log_connection_attempts: false
+      anonymize_stored_metadata: false
+      compliance_notes: "Tor relay data is public consensus information"
+      data_retention_justification: "Network topology analysis for threat context"
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50
+
+  # ===========================================================================
+  # VPN Gate - Free VPN Service
+  # ===========================================================================
+  - id: vpngate-free-vpn
+    name: "VPN Gate Free VPN"
+    description: "Academic free VPN service endpoints"
+    enabled: true
+    
+    url: https://www.vpngate.net/api/iphone/
+    format: csv
+    update_interval: 6h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    classification:
+      anonymizer_type: vpn_endpoint
+      anonymizer_subtype: vpn_free
+      protocol: openvpn
+      legitimacy_classification: legitimate_privacy
+      tags:
+        - vpn
+        - free_vpn
+        - vpngate
+        - academic
+    
+    parser:
+      parser_type: csv
+      csv_delimiter: comma
+      csv_skip_lines: 2
+      csv_ip_column: 1  # IP address column
+      csv_port_column: -1
+      csv_country_column: 5  # Country code
+      extract_ip_only: true
+      extract_cidr_ranges: false
+      include_ipv6: false
+    
+    vpn_proxy_config:
+      vpn_provider_name: "VPN Gate"
+      is_commercial_vpn: false
+      is_residential_proxy: false
+      is_datacenter_proxy: false
+      rotation_frequency: hourly
+      requires_authentication: false
+      open_proxy_detection: false
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_port_scan: false
+      enrich_reverse_dns: true
+      detect_hosting_provider: true
+      cross_reference_abuse: true
+      calculate_anonymity_score: true
+      ttl_days: 3  # Short TTL for free VPN
+    
+    abuse:
+      track_abuse_reports: true
+      correlate_with_malicious_feeds: true
+      flag_high_abuse_nodes: true
+      abuse_threshold_percent: 15
+      separate_benign_malicious: true
+      temporal_analysis_enabled: true
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_inactive_nodes: false
+    
+    verification:
+      verify_before_storage: false
+      verification_method: tcp_connect
+      verification_timeout: 5s
+      recheck_interval: 12h
+      auto_remove_dead_nodes: true
+      preserve_historical_data: true
+    
+    rate_limiting:
+      requests_per_hour: 30
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    privacy:
+      log_connection_attempts: false
+      anonymize_stored_metadata: false
+      compliance_notes: "VPN Gate publishes server list publicly"
+      data_retention_justification: "Abuse detection and threat context enrichment"
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 50
+
+  # ===========================================================================
+  # Public SOCKS Proxy List
+  # ===========================================================================
+  - id: public-socks-proxies
+    name: "Public SOCKS Proxies"
+    description: "Open SOCKS4/5 proxy servers"
+    enabled: true
+    
+    url: https://www.proxy-list.download/api/v1/get?type=socks5
+    format: plain_text
+    update_interval: 12h
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: none
+    
+    classification:
+      anonymizer_type: proxy_server
+      anonymizer_subtype: socks5
+      protocol: socks5
+      legitimacy_classification: grey_area
+      tags:
+        - socks_proxy
+        - open_proxy
+        - public
+    
+    parser:
+      parser_type: plain_text
+      extraction_regex: '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}$'
+      extract_ip_only: false  # Keep IP:port
+      extract_cidr_ranges: false
+      include_ipv6: false
+    
+    vpn_proxy_config:
+      vpn_provider_name: ""
+      is_commercial_vpn: false
+      is_residential_proxy: false
+      is_datacenter_proxy: true
+      rotation_frequency: per_request
+      requires_authentication: false
+      open_proxy_detection: true
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_port_scan: true
+      enrich_reverse_dns: true
+      detect_hosting_provider: true
+      cross_reference_abuse: true
+      calculate_anonymity_score: true
+      ttl_days: 1  # Very short TTL for open proxies
+    
+    abuse:
+      track_abuse_reports: true
+      correlate_with_malicious_feeds: true
+      flag_high_abuse_nodes: true
+      abuse_threshold_percent: 20
+      separate_benign_malicious: true
+      temporal_analysis_enabled: true
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_inactive_nodes: true
+      inactive_threshold_days: 1
+      port_filter:
+        - 1080
+        - 1081
+        - 9050
+        - 9051
+    
+    verification:
+      verify_before_storage: true
+      verification_method: socks_handshake
+      verification_timeout: 5s
+      recheck_interval: 6h
+      auto_remove_dead_nodes: true
+      preserve_historical_data: false
+    
+    rate_limiting:
+      requests_per_hour: 120
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: skip_entry
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    privacy:
+      log_connection_attempts: true
+      anonymize_stored_metadata: false
+      compliance_notes: "Open proxies are publicly accessible infrastructure"
+      data_retention_justification: "Abuse detection - open proxies frequently used for malicious activity"
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: false
+      alert_on_significant_change: true
+      change_threshold_percent: 100
+
+  # ===========================================================================
+  # Example: Commercial VPN Provider Ranges
+  # ===========================================================================
+  - id: commercial-vpn-example
+    name: "Example Commercial VPN Ranges"
+    description: "IP ranges for commercial VPN provider (template)"
+    enabled: false  # Disabled template
+    
+    url: https://example.com/vpn-ranges.json
+    format: json
+    update_interval: 24h  # Commercial VPN ranges more stable
+    timeout: 30s
+    retry_attempts: 3
+    retry_backoff: exponential
+    
+    authentication:
+      auth_type: api_key
+      header_name: X-API-Key
+      header_value: ${VPN_DETECTION_API_KEY}
+    
+    classification:
+      anonymizer_type: vpn_endpoint
+      anonymizer_subtype: vpn_commercial
+      protocol: openvpn
+      legitimacy_classification: legitimate_privacy
+      tags:
+        - vpn
+        - commercial
+        - subscription_service
+    
+    parser:
+      parser_type: json
+      json_path_ip: "$.vpn_ranges[*].cidr"
+      extract_ip_only: false
+      extract_cidr_ranges: true
+      include_ipv6: true
+    
+    vpn_proxy_config:
+      vpn_provider_name: "Example VPN Provider"
+      is_commercial_vpn: true
+      is_residential_proxy: false
+      is_datacenter_proxy: true
+      rotation_frequency: static
+      requires_authentication: true
+      open_proxy_detection: false
+    
+    enrichment:
+      enrich_geo: true
+      enrich_asn: true
+      enrich_port_scan: false
+      enrich_reverse_dns: true
+      detect_hosting_provider: true
+      cross_reference_abuse: true
+      calculate_anonymity_score: true
+      ttl_days: 30  # Commercial VPN ranges stable
+    
+    abuse:
+      track_abuse_reports: true
+      correlate_with_malicious_feeds: true
+      flag_high_abuse_nodes: false
+      abuse_threshold_percent: 25
+      separate_benign_malicious: true
+      temporal_analysis_enabled: true
+    
+    filtering:
+      exclude_private_ips: true
+      exclude_reserved_ips: true
+      exclude_inactive_nodes: false
+    
+    verification:
+      verify_before_storage: false
+      auto_remove_dead_nodes: false
+      preserve_historical_data: true
+    
+    rate_limiting:
+      requests_per_day: 100
+      rate_limit_strategy: wait
+    
+    error_handling:
+      on_fetch_error: retry
+      on_parse_error: skip_entry
+      on_verification_error: log
+      error_alert_threshold: 3
+      auto_disable_after_failures: 5
+      fallback_to_cache: true
+    
+    privacy:
+      log_connection_attempts: false
+      anonymize_stored_metadata: true
+      compliance_notes: "Commercial VPN users have reasonable expectation of privacy"
+      data_retention_justification: "Legitimate privacy service - retained only for abuse correlation"
+    
+    monitoring:
+      track_fetch_duration: true
+      track_parse_duration: true
+      track_ioc_count: true
+      track_error_rate: true
+      alert_on_zero_results: true
+      alert_on_significant_change: true
+      change_threshold_percent: 25
