@@ -621,13 +621,18 @@
 #ifdef _KERNEL_MODE
 /* Kernel mode - use C_ASSERT */
 #define IOCTL_STATIC_ASSERT(expr, msg) C_ASSERT(expr)
-#else
-/* User mode - use static_assert (C11) */
-#ifdef __cplusplus
+#elif defined(__cplusplus)
 #define IOCTL_STATIC_ASSERT(expr, msg) static_assert(expr, msg)
+#elif defined(_MSC_VER)
+/* MSVC C mode - use typedef trick since _Static_assert not supported */
+#define IOCTL_STATIC_ASSERT_JOIN(a, b) a##b
+#define IOCTL_STATIC_ASSERT_NAME(line)                                         \
+  IOCTL_STATIC_ASSERT_JOIN(ioctl_static_assertion_, line)
+#define IOCTL_STATIC_ASSERT(expr, msg)                                         \
+  typedef char IOCTL_STATIC_ASSERT_NAME(__LINE__)[(expr) ? 1 : -1]
 #else
+/* C11 compilers - use _Static_assert */
 #define IOCTL_STATIC_ASSERT(expr, msg) _Static_assert(expr, msg)
-#endif
 #endif
 
 /* Verify IOCTL codes are unique (no duplicates) */

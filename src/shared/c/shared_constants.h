@@ -231,8 +231,9 @@
 #define SAFEOPS_ERROR_BUFFER_TOO_SMALL 0xC0000002  /* Buffer insufficient */
 #define SAFEOPS_ERROR_NOT_INITIALIZED 0xC0000003   /* Driver not initialized */
 #define SAFEOPS_ERROR_ALREADY_INITIALIZED 0xC0000004 /* Already initialized */
-#define SAFEOPS_ERROR_OUT_OF_MEMORY 0xC0000005    /* Memory allocation failed */
-#define SAFEOPS_ERROR_RING_BUFFER_FULL 0xC0000006 /* Ring buffer at capacity   \
+#define SAFEOPS_ERROR_OUT_OF_MEMORY 0xC0000005 /* Memory allocation failed */
+#define SAFEOPS_ERROR_RING_BUFFER_FULL                                         \
+  0xC0000006                                      /* Ring buffer at capacity   \
                                                    */
 #define SAFEOPS_ERROR_DEVICE_NOT_READY 0xC0000007 /* Device not ready */
 #define SAFEOPS_ERROR_VERSION_MISMATCH 0xC0000008 /* ABI version mismatch */
@@ -383,15 +384,21 @@
  */
 
 #ifdef _KERNEL_MODE
-/* Kernel mode - use C_ASSERT */
+/* Kernel mode - use C_ASSERT from WDK */
 #define SAFEOPS_STATIC_ASSERT(expr, msg) C_ASSERT(expr)
-#else
-/* User mode - use static_assert (C11) */
-#ifdef __cplusplus
+#elif defined(__cplusplus)
+/* C++ mode - use static_assert */
 #define SAFEOPS_STATIC_ASSERT(expr, msg) static_assert(expr, msg)
+#elif defined(_MSC_VER)
+/* MSVC C mode - use typedef trick since _Static_assert not supported */
+#define SAFEOPS_STATIC_ASSERT_JOIN(a, b) a##b
+#define SAFEOPS_STATIC_ASSERT_NAME(line)                                       \
+  SAFEOPS_STATIC_ASSERT_JOIN(static_assertion_, line)
+#define SAFEOPS_STATIC_ASSERT(expr, msg)                                       \
+  typedef char SAFEOPS_STATIC_ASSERT_NAME(__LINE__)[(expr) ? 1 : -1]
 #else
+/* C11 compilers - use _Static_assert */
 #define SAFEOPS_STATIC_ASSERT(expr, msg) _Static_assert(expr, msg)
-#endif
 #endif
 
 /* Validate critical constants */

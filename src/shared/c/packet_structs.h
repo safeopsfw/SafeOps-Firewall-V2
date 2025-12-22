@@ -887,12 +887,16 @@ typedef struct _SAFEOPS_PACKET {
 
 #ifdef _KERNEL_MODE
 #define PACKET_STATIC_ASSERT(expr, msg) C_ASSERT(expr)
-#else
-#ifdef __cplusplus
+#elif defined(__cplusplus)
 #define PACKET_STATIC_ASSERT(expr, msg) static_assert(expr, msg)
+#elif defined(_MSC_VER)
+#define PACKET_STATIC_ASSERT_JOIN(a, b) a##b
+#define PACKET_STATIC_ASSERT_NAME(line)                                        \
+  PACKET_STATIC_ASSERT_JOIN(pkt_static_assertion_, line)
+#define PACKET_STATIC_ASSERT(expr, msg)                                        \
+  typedef char PACKET_STATIC_ASSERT_NAME(__LINE__)[(expr) ? 1 : -1]
 #else
 #define PACKET_STATIC_ASSERT(expr, msg) _Static_assert(expr, msg)
-#endif
 #endif
 
 /* Validate structure sizes match wire format */

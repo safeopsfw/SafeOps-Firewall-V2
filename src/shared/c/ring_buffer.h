@@ -276,15 +276,21 @@ typedef struct _RING_BUFFER_MAPPING {
  */
 
 #ifdef _KERNEL_MODE
-/* Kernel mode - use C_ASSERT */
+/* Kernel mode - use C_ASSERT from WDK */
 #define RING_BUFFER_STATIC_ASSERT(expr, msg) C_ASSERT(expr)
-#else
-/* User mode - use static_assert (C11) */
-#ifdef __cplusplus
+#elif defined(__cplusplus)
+/* C++ mode - use static_assert */
 #define RING_BUFFER_STATIC_ASSERT(expr, msg) static_assert(expr, msg)
+#elif defined(_MSC_VER)
+/* MSVC C mode - use typedef trick since _Static_assert not supported */
+#define RING_BUFFER_STATIC_ASSERT_JOIN(a, b) a##b
+#define RING_BUFFER_STATIC_ASSERT_NAME(line)                                   \
+  RING_BUFFER_STATIC_ASSERT_JOIN(rb_static_assertion_, line)
+#define RING_BUFFER_STATIC_ASSERT(expr, msg)                                   \
+  typedef char RING_BUFFER_STATIC_ASSERT_NAME(__LINE__)[(expr) ? 1 : -1]
 #else
+/* C11 compilers - use _Static_assert */
 #define RING_BUFFER_STATIC_ASSERT(expr, msg) _Static_assert(expr, msg)
-#endif
 #endif
 
 /* Validate ring buffer header is cache-line aligned */
