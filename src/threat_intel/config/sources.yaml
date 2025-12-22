@@ -1,167 +1,292 @@
 # ============================================================================
-# Threat Intelligence Feed Sources - CURATED TOP 3 PER CATEGORY
-# Only the most reliable, accurate, and well-structured sources
+# Threat Intelligence Feed Sources
+# Comprehensive list of IP, Domain, Hash, and Geolocation feeds
 # ============================================================================
 
 feeds:
   # ==========================================================================
-  # CATEGORY 1: IP GEOLOCATION (Top 3)
+  # CATEGORY 1: IP THREAT INTEL (General Abuse / Malicious IPs)
   # ==========================================================================
 
-  # 1. IPtoASN - Best free IP to ASN/Country mapping
-  - name: "IPtoASN"
-    category: "ip_geo"
-    url: "https://iptoasn.com/data/ip2asn-v4.tsv.gz"
-    format: "tsv"
-    enabled: true
-    update_frequency: 86400 # Daily
-    description: "IP to ASN mapping with country codes - auto-decompressed from gzip"
-
-  # ==========================================================================
-  # CATEGORY 2: IP BLACKLIST / MALICIOUS IPs (Top 3)
-  # ==========================================================================
-
-  # 1. Feodo Tracker - Best for botnet C2 IPs, updated frequently
-  - name: "Feodo Tracker C2 IPs"
+  - name: "Blackbook"
     category: "ip_blacklist"
-    url: "https://feodotracker.abuse.ch/downloads/ipblocklist.txt"
+    url: "https://raw.githubusercontent.com/stamparm/blackbook/master/blackbook.txt"
     format: "txt"
     enabled: true
-    update_frequency: 300 # 5 minutes
-    description: "Botnet C2 server IPs - highly accurate, abuse.ch"
+    update_frequency: 3600
+    description: "High confidence blacklist"
 
-  # 2. Blocklist.de All - Comprehensive attack IPs
+  - name: "EmergingThreats Compromised IPs"
+    category: "ip_blacklist"
+    url: "https://rules.emergingthreats.net/blockrules/compromised-ips.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "Compromised IPs from Emerging Threats"
+
   - name: "Blocklist.de All"
     category: "ip_blacklist"
-    url: "https://lists.blocklist.de/lists/all.txt"
+    url: "http://lists.blocklist.de/lists/all.txt"
     format: "txt"
     enabled: true
-    update_frequency: 900 # 15 minutes
-    description: "IPs from SSH/FTP/Mail attacks - German honeypot network"
+    update_frequency: 3600
+    description: "All Blocklist.de feeds combined"
 
-  # 3. FireHOL Level1 - Aggregated high-confidence threats
-  - name: "FireHOL Level1"
+  - name: "Botvrij.eu Destination IoT"
     category: "ip_blacklist"
-    url: "https://iplists.firehol.org/files/firehol_level1.netset"
+    url: "https://www.botvrij.eu/data/ioclist.ip-dst.raw"
     format: "txt"
     enabled: true
-    update_frequency: 3600 # Hourly
-    description: "Aggregated IPs from multiple sources - high confidence"
+    update_frequency: 3600
+    description: "Malicious destination IPs from Botvrij.eu"
 
   # ==========================================================================
-  # CATEGORY 3: VPN / TOR / PROXY (Top 3)
+  # CATEGORY 2: BOTNET / C2 / MALWARE IPs
   # ==========================================================================
 
-  # 1. Tor Exit Nodes - Official Tor Project list
-  - name: "Tor Exit Nodes"
-    category: "ip_anonymization"
-    url: "https://check.torproject.org/exit-addresses"
-    format: "txt"
-    enabled: true
-    update_frequency: 3600 # Hourly
-    description: "Official Tor exit nodes - most accurate"
-
-  # 2. VPN Gate - Academic VPN project
-  - name: "VPN Gate"
-    category: "ip_anonymization"
-    url: "https://www.vpngate.net/api/iphone/"
+  - name: "Feodo Tracker"
+    category: "ip_blacklist"
+    url: "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
     format: "csv"
     enabled: true
-    update_frequency: 3600 # Hourly
-    description: "Public VPN servers with details"
+    update_frequency: 3600
+    description: "Botnet C2 IPs"
 
-  # 3. Proxy List - Open proxies
-  - name: "Proxy List Raw"
-    category: "ip_anonymization"
-    url: "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt"
-    format: "txt"
-    enabled: true
-    update_frequency: 86400 # Daily
-    description: "Open proxy servers IP:PORT"
-
-  # ==========================================================================
-  # CATEGORY 4: DOMAIN INTELLIGENCE (Top 3)
-  # ==========================================================================
-
-  # 1. PhishTank - Best phishing database with verification
-  - name: "PhishTank"
-    category: "domain"
-    url: "http://data.phishtank.com/data/online-valid.csv"
+  - name: "SSL Blacklist IPs"
+    category: "ip_blacklist"
+    url: "https://sslbl.abuse.ch/blacklist/sslipblacklist.csv"
     format: "csv"
     enabled: true
-    update_frequency: 3600 # Hourly
-    description: "Verified phishing URLs with details"
+    update_frequency: 3600
+    description: "Malicious SSL IPs"
 
-  # 2. URLhaus - Malware distribution URLs (use text feed instead of zip)
-  - name: "URLhaus Domains"
-    category: "domain"
-    url: "https://urlhaus.abuse.ch/downloads/text/"
+  # Talos might require a browser check or be blocked for bots, keeping enabled for now
+  - name: "Talos IP Blacklist"
+    category: "ip_blacklist"
+    url: "https://www.talosintelligence.com/documents/ip-blacklist"
     format: "txt"
     enabled: true
-    update_frequency: 300 # 5 minutes
-    description: "Malware hosting URLs - abuse.ch"
+    update_frequency: 86400
+    description: "Cisco Talos IP Blacklist"
 
-  # 3. OpenPhish - Real-time phishing URLs
+  # ==========================================================================
+  # CATEGORY 3: FIREWALL / BROAD BLOCKLISTS
+  # ==========================================================================
+
+  - name: "FireHOL Level 1"
+    category: "ip_blacklist"
+    url: "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "FireHOL Level 1 - High Confidence"
+
+  - name: "FireHOL Level 2"
+    category: "ip_blacklist"
+    url: "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "FireHOL Level 2 - Medium Confidence"
+
+  # ==========================================================================
+  # CATEGORY 4: DOMAIN THREAT INTEL (Phishing)
+  # ==========================================================================
+
   - name: "OpenPhish"
     category: "domain"
     url: "https://openphish.com/feed.txt"
     format: "txt"
     enabled: true
-    update_frequency: 3600 # Hourly
-    description: "Active phishing URLs - simple list"
+    update_frequency: 3600 # Multiple times per day
+    description: "Phishing URLs/domains - High accuracy, minimal false positives (Tier-2)"
+
+  - name: "Phishing Army"
+    category: "domain"
+    url: "https://phishing.army/download/phishing_army_blocklist_extended.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400 # Daily
+    description: "Phishing domains - Community-validated (Tier-2)"
+
+  - name: "Phishing Database"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "Active Phishing Domains"
+
+  - name: "Spam404"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/Spam404/lists/master/main-blacklist.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Spam404 Regex/Domain List"
 
   # ==========================================================================
-  # CATEGORY 5: FILE HASH INTELLIGENCE (Top 3)
+  # CATEGORY 5: MALWARE / COMPROMISED DOMAINS
   # ==========================================================================
 
-  # 1. MalwareBazaar - Best malware hash database
+  - name: "URLhaus Recent"
+    category: "domain" # Contains URLs but we extract domains
+    url: "https://urlhaus.abuse.ch/downloads/csv_recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Recent Malware URLs"
+
+  - name: "ThreatFox Recent"
+    category: "domain"
+    url: "https://threatfox.abuse.ch/export/csv/recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Recent IOCs including domains"
+
+  - name: "Hacked Malware Web Sites"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/mitchellkrogza/The-Big-List-of-Hacked-Malware-Web-Sites/master/hacked-domains.list"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Compromised Domains"
+
+  - name: "ThreatView High Confidence"
+    category: "domain"
+    url: "https://threatview.io/Downloads/DOMAIN-High-Confidence-Feed.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "High Confidence Malicious Domains"
+
+  # ==========================================================================
+  # CATEGORY 6: MIXED / HOSTS-BASED
+  # ==========================================================================
+
+  - name: "StevenBlack Hosts"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Unified Hosts File"
+
+  - name: "Badd Boyz Hosts"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/mitchellkrogza/Badd-Boyz-Hosts/master/hosts"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Badd Boyz Hosts File"
+
+  # ==========================================================================
+  # CATEGORY 7: IP ANONYMIZATION (VPN / TOR / PROXY)
+  # ==========================================================================
+
+  - name: "Tor Exit Nodes"
+    category: "ip_anonymization"
+    url: "https://check.torproject.org/exit-addresses"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "Official Tor exit nodes"
+
+  - name: "VPN Gate"
+    category: "ip_anonymization"
+    url: "https://www.vpngate.net/api/iphone/"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Public VPN servers"
+
+  - name: "Proxy List Raw"
+    category: "ip_anonymization"
+    url: "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Open proxy servers"
+
+  # ==========================================================================
+  # CATEGORY 8: FILE HASH INTELLIGENCE
+  # ==========================================================================
+
   - name: "MalwareBazaar Recent"
     category: "hash"
     url: "https://bazaar.abuse.ch/export/csv/recent/"
     format: "csv"
     enabled: true
-    update_frequency: 300 # 5 minutes
-    description: "Recent malware hashes with details - abuse.ch"
+    update_frequency: 300
+    description: "Recent malware hashes"
 
-  # 2. ThreatFox IOCs - Multi-type IOCs including hashes
-  - name: "ThreatFox Recent IOCs"
-    category: "hash"
-    url: "https://threatfox.abuse.ch/export/csv/recent/"
-    format: "csv"
-    enabled: true
-    update_frequency: 300 # 5 minutes
-    description: "Recent IOCs with threat context"
-
-  # 3. SSL Blacklist - Malicious SSL certificates
   - name: "Abuse.ch SSL Certificates"
     category: "hash"
     url: "https://sslbl.abuse.ch/blacklist/sslblacklist.csv"
     format: "csv"
     enabled: true
-    update_frequency: 300 # 5 minutes
+    update_frequency: 300
     description: "Malicious SSL certificate fingerprints"
 
   # ==========================================================================
-  # CATEGORY 6: COMBINED IOC FEEDS (Top 2)
+  # CATEGORY 9: COMBINED IOC FEEDS
   # ==========================================================================
 
-  # 1. ThreatFox JSON - Rich IOC data
   - name: "ThreatFox IOCs"
     category: "ioc"
     url: "https://threatfox.abuse.ch/export/json/recent/"
     format: "json"
     enabled: true
-    update_frequency: 300 # 5 minutes
+    update_frequency: 300
     description: "Multi-type IOCs in JSON format"
 
-  # 2. Exploit-DB - Vulnerability/exploit data
   - name: "Exploit-DB"
     category: "ioc"
     url: "https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv"
     format: "csv"
     enabled: true
-    update_frequency: 86400 # Daily
-    description: "Exploit database with CVE mappings"
+    update_frequency: 86400
+    description: "Exploit database"
+
+  # ==========================================================================
+  # CATEGORY 10: GEO / ASN / ENRICHMENT
+  # ==========================================================================
+
+  # Using IPtoASN as the primary free source that is direct download
+  - name: "IPtoASN"
+    category: "ip_geo"
+    url: "https://iptoasn.com/data/ip2asn-v4.tsv.gz"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "IP to ASN and Country Mapping"
+
+  # Keeping IPtoASN as valid default. Users can manually download IP2Location.
+
+  - name: "IP-Location-DB Country"
+    category: "ip_geo"
+    url: "https://raw.githubusercontent.com/sapics/ip-location-db/main/country/ip2location-country.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 86400
+    description: "IP to Country mapping (GitHub/sapics)"
+
+  - name: "IP-Location-DB ASN"
+    category: "asn"
+    url: "https://raw.githubusercontent.com/sapics/ip-location-db/main/asn/ip2location-asn.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 86400
+    description: "IP to ASN mapping (GitHub/sapics)"
+
+  - name: "IPLocate.io ASN"
+    category: "asn"
+    url: "https://iplocate.io/downloads/ip-to-asn.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 86400
+    description: "IP to ASN mapping (Daily)"
 
 # ==========================================================================
 # Parser Configuration
@@ -181,15 +306,4 @@ parser_config:
 
   tsv:
     delimiter: "\t"
-    skip_header: true
-
-# ==========================================================================
-# Global Settings
-# ==========================================================================
-settings:
-  max_concurrent_fetches: 10
-  download_timeout_seconds: 45
-  retry_attempts: 2
-  retry_delay_seconds: 2
-  user_agent: "SafeOps-ThreatIntel/2.0"
-  feeds_storage_path: "./feeds"
+    skip_header: false # IMPORTANT: IPtoASN has no header

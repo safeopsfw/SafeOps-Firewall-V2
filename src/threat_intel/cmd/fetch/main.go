@@ -17,9 +17,9 @@ func main() {
 	fmt.Println("SafeOps Threat Intelligence - Feed Fetcher Utility")
 	fmt.Println("==========================================================")
 
-	// Load configuration (adjust path for running from cmd/fetch/)
+	// Load configuration (running from project root)
 	fmt.Println("📋 Loading configuration...")
-	configPath := filepath.Join("..", "..", "config", "config.yaml")
+	configPath := filepath.Join("config", "config.yaml")
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatalf("❌ Failed to load config: %v", err)
@@ -28,7 +28,7 @@ func main() {
 
 	// Load threat intelligence sources
 	fmt.Println("📂 Loading threat intelligence sources...")
-	sourcesPath := filepath.Join("..", "..", "config", "sources.yaml")
+	sourcesPath := filepath.Join("config", "sources.yaml")
 	configSources, err := config.LoadSources(sourcesPath)
 	if err != nil {
 		log.Fatalf("❌ Failed to load sources: %v", err)

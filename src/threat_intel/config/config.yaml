@@ -11,39 +11,39 @@ database:
   port: 5432
   database: threat_intel_db
   user: threat_intel_app
-  password: ${DB_PASSWORD}  # Use environment variable for security
-  sslmode: disable  # Options: disable, require, verify-full
-  
+  password: ${DB_PASSWORD} # Use environment variable for security
+  sslmode: disable # Options: disable, require, verify-full
+
   # Connection Pooling
   max_connections: 25
   max_idle_connections: 5
-  connection_lifetime: 30  # minutes
+  connection_lifetime: 30 # minutes
 
 # ==========================================================================
 # API SERVER CONFIGURATION
 # REST/gRPC API settings
 # ==========================================================================
 api:
-  host: 0.0.0.0  # Bind to all interfaces
+  host: 0.0.0.0 # Bind to all interfaces
   port: 8080
-  
+
   # CORS Settings
   enable_cors: true
   cors_origins:
-    - "*"  # Allow all origins (restrict in production)
-  
+    - "*" # Allow all origins (restrict in production)
+
   # Rate Limiting
-  rate_limit: 100  # Requests per minute per IP
-  
+  rate_limit: 100 # Requests per minute per IP
+
   # Authentication
-  enable_auth: false  # Enable for production
-  auth_type: api_key  # Options: jwt, api_key, none
-  auth_secret: ${API_AUTH_SECRET}  # JWT signing key or API key
-  
+  enable_auth: false # Enable for production
+  auth_type: api_key # Options: jwt, api_key, none
+  auth_secret: ${API_AUTH_SECRET} # JWT signing key or API key
+
   # Timeouts
-  read_timeout: 30  # seconds
-  write_timeout: 30  # seconds
-  idle_timeout: 60  # seconds
+  read_timeout: 30 # seconds
+  write_timeout: 30 # seconds
+  idle_timeout: 60 # seconds
 
 # ==========================================================================
 # WORKER CONFIGURATION
@@ -51,58 +51,58 @@ api:
 # ==========================================================================
 worker:
   enabled: true
-  concurrent_jobs: 5  # Number of parallel feed fetches
-  
+  concurrent_jobs: 5 # Number of parallel feed fetches
+
   # Retry Logic
   retry_attempts: 3
-  retry_delay: 60  # seconds between retries
-  
+  retry_delay: 60 # seconds between retries
+
   # Job Execution
-  job_timeout: 300  # Max seconds per fetch job (5 minutes)
-  
+  job_timeout: 300 # Max seconds per fetch job (5 minutes)
+
   # Cleanup
-  cleanup_interval: 24  # Hours between cleanup runs
-  cleanup_age_days: 7  # Delete files older than this
+  cleanup_interval: 24 # Hours between cleanup runs
+  cleanup_age_days: 7 # Delete files older than this
 
 # ==========================================================================
 # STORAGE CONFIGURATION
 # File storage settings for downloaded feeds
 # ==========================================================================
 storage:
-  base_path: "../../data/feeds/" # Centralized data directory (./data/feeds relative to project root)
-  create_subdirs: true  # Auto-create category folders
-  max_file_size: 500  # Max download size in MB
-  compression: false  # Enable gzip compression
-  retention_days: 7  # Days to keep downloaded files
+  base_path: "./data/feeds/" # Centralized data directory (./data/feeds relative to execution root)
+  create_subdirs: true # Auto-create category folders
+  max_file_size: 500 # Max download size in MB
+  compression: false # Enable gzip compression
+  retention_days: 7 # Days to keep downloaded files
 
 # ==========================================================================
 # LOGGING CONFIGURATION
 # Application logging settings
 # ==========================================================================
 logging:
-  level: info  # Options: debug, info, warn, error
-  format: json  # Options: json, text, logfmt
-  output: stdout  # Options: stdout, file, both
-  
+  level: info # Options: debug, info, warn, error
+  format: json # Options: json, text, logfmt
+  output: stdout # Options: stdout, file, both
+
   # File Logging (when output=file or both)
   file_path: ./logs/threat_intel.log
-  max_size: 100  # MB before rotation
-  max_backups: 5  # Number of old log files to keep
-  max_age: 30  # Days to keep old log files
-  compress: true  # Compress rotated logs
+  max_size: 100 # MB before rotation
+  max_backups: 5 # Number of old log files to keep
+  max_age: 30 # Days to keep old log files
+  compress: true # Compress rotated logs
 
 # ==========================================================================
 # PERFORMANCE TUNING
 # Optimization settings
 # ==========================================================================
 performance:
-  batch_size: 1000  # Records to insert per transaction
-  buffer_size: 10  # Memory buffer for parsing in MB
-  parallel_parsers: 0  # 0 = CPU count, >0 = specific number
-  
+  batch_size: 1000 # Records to insert per transaction
+  buffer_size: 10 # Memory buffer for parsing in MB
+  parallel_parsers: 0 # 0 = CPU count, >0 = specific number
+
   # Caching
   enable_caching: true
-  cache_ttl: 300  # Cache expiration in seconds (5 minutes)
+  cache_ttl: 300 # Cache expiration in seconds (5 minutes)
 
 # ==========================================================================
 # MONITORING CONFIGURATION
@@ -110,8 +110,8 @@ performance:
 # ==========================================================================
 monitoring:
   enable_metrics: true
-  metrics_port: 9090  # Prometheus metrics endpoint
-  health_check_interval: 30  # Seconds between health checks
+  metrics_port: 9090 # Prometheus metrics endpoint
+  health_check_interval: 30 # Seconds between health checks
 
 # ==========================================================================
 # ENVIRONMENT-SPECIFIC OVERRIDES
@@ -122,7 +122,7 @@ monitoring:
 #     level: debug
 #   api:
 #     enable_auth: false
-# 
+#
 # production:
 #   logging:
 #     level: info
