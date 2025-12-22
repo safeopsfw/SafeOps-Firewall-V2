@@ -143,25 +143,70 @@ func (f *Fetcher) Start() error {
 	return nil
 }
 
-// FetchAll performs one-time fetch of all enabled sources
+// FetchAll performs parallel fetch of all enabled sources
 func (f *Fetcher) FetchAll() (*FetchStats, error) {
-	if err := f.Start(); err != nil {
-		return nil, err
+	enabledSources := GetEnabledSources(f.sources)
+	if len(enabledSources) == 0 {
+		return nil, fmt.Errorf("no enabled sources to fetch")
 	}
 
-	// Wait for all jobs to complete
-	done := make(chan bool)
-	go func() {
-		f.wg.Wait()
-		done <- true
-	}()
+	log.Printf("Starting parallel fetch of %d enabled sources (10 concurrent)", len(enabledSources))
 
-	select {
-	case <-done:
-		return f.GetStats(), nil
-	case <-time.After(time.Duration(f.config.Worker.JobTimeout*len(f.sources)) * time.Second):
-		return f.GetStats(), fmt.Errorf("fetch timeout exceeded")
+	// Create job channel and result channel
+	jobs := make(chan Source, len(enabledSources))
+	results := make(chan bool, len(enabledSources))
+
+	// Start 10 worker goroutines
+	numWorkers := 10
+	for w := 0; w < numWorkers; w++ {
+		go func(workerID int) {
+			for source := range jobs {
+				sourceCopy := source
+
+				// Try up to 2 times
+				var lastErr error
+				for attempt := 1; attempt <= 2; attempt++ {
+					startTime := time.Now()
+					err := f.FetchSource(&sourceCopy)
+					duration := time.Since(startTime)
+
+					if err == nil {
+						// Success!
+						f.updateStats(true, 0, duration)
+						break
+					}
+
+					lastErr = err
+					log.Printf("Fetch failed for %s (attempt %d/2): %v", sourceCopy.Name, attempt, err)
+
+					if attempt < 2 {
+						time.Sleep(2 * time.Second)
+					}
+				}
+
+				if lastErr != nil {
+					log.Printf("⏭️ Skipping %s after 2 failed attempts", sourceCopy.Name)
+					f.updateStats(false, 0, 0)
+				}
+
+				results <- lastErr == nil
+			}
+		}(w)
 	}
+
+	// Send all jobs
+	for _, source := range enabledSources {
+		jobs <- source
+	}
+	close(jobs)
+
+	// Wait for all results
+	for i := 0; i < len(enabledSources); i++ {
+		<-results
+	}
+
+	log.Printf("Fetch complete: %d success, %d failed", f.stats.SuccessfulJobs, f.stats.FailedJobs)
+	return f.GetStats(), nil
 }
 
 // FetchSource fetches a single source
@@ -288,15 +333,17 @@ func (f *Fetcher) processFetchJob(job *FetchJob) {
 	if err != nil {
 		job.Status = "failed"
 		job.Error = err
-		log.Printf("Fetch failed for %s (attempt %d/%d): %v",
-			job.Source.Name, job.Attempt, f.config.Worker.RetryAttempts, err)
+		log.Printf("Fetch failed for %s (attempt %d/2): %v",
+			job.Source.Name, job.Attempt, err)
 
-		// Retry if attempts remaining
-		if job.Attempt < f.config.Worker.RetryAttempts {
+		// Retry only once (max 2 attempts total), then skip
+		if job.Attempt < 2 {
 			f.retryJob(job)
 		} else {
-			log.Printf("Fetch permanently failed for %s after %d attempts",
-				job.Source.Name, job.Attempt)
+			log.Printf("⏭️ Skipping %s after 2 failed attempts - moving to next source",
+				job.Source.Name)
+			// Update stats for failure
+			f.updateStats(false, 0, job.Duration)
 		}
 	} else {
 		job.Status = "success"
@@ -314,10 +361,10 @@ func (f *Fetcher) retryJob(job *FetchJob) {
 	job.Attempt++
 	job.Status = "retrying"
 
-	// Calculate exponential backoff delay
-	delay := time.Duration(f.config.Worker.RetryDelay*job.Attempt) * time.Second
-	log.Printf("Retrying %s in %v (attempt %d/%d)",
-		job.Source.Name, delay, job.Attempt, f.config.Worker.RetryAttempts)
+	// Use very short fixed delay (2 seconds) - don't wait long on retries
+	delay := 2 * time.Second
+	log.Printf("Retrying %s in %v (attempt %d/2)",
+		job.Source.Name, delay, job.Attempt)
 
 	// Schedule retry
 	go func() {

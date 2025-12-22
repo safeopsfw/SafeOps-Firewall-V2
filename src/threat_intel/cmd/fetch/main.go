@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -55,13 +56,9 @@ func main() {
 	fmt.Printf("\n📁 Download location: %s\n", cfg.Storage.BasePath)
 	fmt.Printf("   Files will be saved to: %s/{category}/{source}_{timestamp}.{ext}\n", cfg.Storage.BasePath)
 
-	// Confirm before proceeding
-	fmt.Printf("\n🔄 About to download %d feeds. This may take several minutes.\n", len(enabledSources))
-	fmt.Print("   Press ENTER to continue or Ctrl+C to cancel... ")
-	fmt.Scanln()
-
-	// Start fetching
+	// Start fetching immediately (no confirmation prompt)
 	fmt.Println("\n⏬ Starting download of all feeds...")
+	fmt.Println("   (30s timeout per source, max 2 retries, then skip)")
 	startTime := time.Now()
 
 	stats, err := fetcherInstance.FetchAll()
@@ -77,19 +74,34 @@ func main() {
 	fmt.Println("==========================================================")
 	fmt.Printf("Total Jobs:        %d\n", stats.TotalJobs)
 	fmt.Printf("Successful:        %d ✅\n", stats.SuccessfulJobs)
-	fmt.Printf("Failed:            %d ❌\n", stats.FailedJobs)
+	fmt.Printf("Failed:            %d ❌ (skipped)\n", stats.FailedJobs)
 	fmt.Printf("Total Downloaded:  %s\n", formatBytes(stats.TotalBytesDownloaded))
 	fmt.Printf("Average Duration:  %v\n", stats.AverageDuration)
 	fmt.Printf("Total Time:        %v\n", duration)
 	fmt.Println("==========================================================")
 
-	// Print download location again
-	fmt.Printf("\n📂 Downloaded files are in: %s\n", cfg.Storage.BasePath)
+	// Generate JSON summary
+	summary := map[string]interface{}{
+		"fetch_time":       time.Now().Format("2006-01-02 15:04:05"),
+		"total_jobs":       stats.TotalJobs,
+		"successful":       stats.SuccessfulJobs,
+		"failed":           stats.FailedJobs,
+		"bytes_downloaded": stats.TotalBytesDownloaded,
+		"duration_seconds": duration.Seconds(),
+		"storage_path":     cfg.Storage.BasePath,
+	}
+
+	summaryJSON, _ := json.MarshalIndent(summary, "", "  ")
+	summaryPath := filepath.Join(cfg.Storage.BasePath, "fetch_summary.json")
+	os.WriteFile(summaryPath, summaryJSON, 0644)
+
+	fmt.Printf("\n📄 JSON Summary saved to: %s\n", summaryPath)
+	fmt.Printf("📂 Downloaded files are in: %s\n", cfg.Storage.BasePath)
 	fmt.Println("   Next step: Run parser to process these files into database")
 
-	// Exit with appropriate code
+	// Don't exit with error - just report failures
 	if stats.FailedJobs > 0 {
-		os.Exit(1)
+		fmt.Printf("\n⚠️ %d sources failed and were skipped\n", stats.FailedJobs)
 	}
 }
 

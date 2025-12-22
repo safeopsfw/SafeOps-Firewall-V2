@@ -1,10 +1,12 @@
 package fetcher
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,18 +38,23 @@ type ProgressCallback func(bytesDownloaded int64, totalBytes int64, percentage f
 
 // NewHTTPDownloader creates and configures an HTTP downloader
 func NewHTTPDownloader(cfg *config.Config) *HTTPDownloader {
-	// Create custom HTTP client with timeouts
+	// Create HTTP client with reasonable timeout for varied file sizes
 	client := &http.Client{
-		Timeout: 5 * time.Minute, // Default timeout for large files
+		Timeout: 45 * time.Second, // 45s timeout - balance between speed and reliability
 		Transport: &http.Transport{
-			MaxIdleConns:        10,
-			IdleConnTimeout:     30 * time.Second,
-			DisableCompression:  false,
-			DisableKeepAlives:   false,
-			MaxIdleConnsPerHost: 5,
+			MaxIdleConns:          10,
+			IdleConnTimeout:       15 * time.Second,
+			DisableCompression:    false,
+			DisableKeepAlives:     false,
+			MaxIdleConnsPerHost:   5,
+			ResponseHeaderTimeout: 15 * time.Second,
+			DialContext: (&net.Dialer{
+				Timeout:   10 * time.Second,
+				KeepAlive: 15 * time.Second,
+			}).DialContext,
 		},
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
+			if len(via) >= 5 {
 				return fmt.Errorf("too many redirects")
 			}
 			return nil
@@ -57,9 +64,9 @@ func NewHTTPDownloader(cfg *config.Config) *HTTPDownloader {
 	return &HTTPDownloader{
 		client:        client,
 		userAgent:     "SafeOps-ThreatIntel/2.0",
-		timeout:       5 * time.Minute,
-		maxFileSize:   int64(cfg.Storage.MaxFileSize) * 1024 * 1024, // Convert MB to bytes
-		retryAttempts: 3,
+		timeout:       45 * time.Second, // 45 second timeout
+		maxFileSize:   int64(cfg.Storage.MaxFileSize) * 1024 * 1024,
+		retryAttempts: 2, // Max 2 retries then skip
 	}
 }
 
@@ -122,24 +129,45 @@ func (d *HTTPDownloader) DownloadWithAuth(url, outputPath string, auth *AuthConf
 		return 0, fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	// Check if URL is gzip compressed (ends with .gz)
+	isGzip := strings.HasSuffix(strings.ToLower(url), ".gz")
+
+	// Adjust output path - remove .gz extension if decompressing
+	finalOutputPath := outputPath
+	if isGzip && strings.HasSuffix(outputPath, ".gz") {
+		finalOutputPath = strings.TrimSuffix(outputPath, ".gz")
+	}
+
 	// Create output file
-	outFile, err := os.Create(outputPath)
+	outFile, err := os.Create(finalOutputPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer outFile.Close()
 
+	// Handle gzip decompression if needed
+	var reader io.Reader = resp.Body
+	if isGzip {
+		gzReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			os.Remove(finalOutputPath)
+			return 0, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer gzReader.Close()
+		reader = gzReader
+	}
+
 	// Stream response body to file (efficient for large files)
-	bytesWritten, err := io.Copy(outFile, resp.Body)
+	bytesWritten, err := io.Copy(outFile, reader)
 	if err != nil {
 		// Clean up partial download
-		os.Remove(outputPath)
+		os.Remove(finalOutputPath)
 		return 0, fmt.Errorf("failed to write file: %w", err)
 	}
 
-	// Verify downloaded size matches Content-Length (if provided)
-	if resp.ContentLength > 0 && bytesWritten != resp.ContentLength {
-		os.Remove(outputPath)
+	// Skip size verification for gzip (compressed vs uncompressed size differs)
+	if !isGzip && resp.ContentLength > 0 && bytesWritten != resp.ContentLength {
+		os.Remove(finalOutputPath)
 		return 0, fmt.Errorf("size mismatch: expected %d bytes, got %d bytes",
 			resp.ContentLength, bytesWritten)
 	}
