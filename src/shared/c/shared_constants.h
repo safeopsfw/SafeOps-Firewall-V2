@@ -33,9 +33,11 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-/* Include winsock2.h BEFORE windows.h to prevent redefinition errors */
+/* IMPORTANT: Include winsock2.h BEFORE windows.h to prevent redefinition errors
+ */
 #include <windows.h>
 #include <winsock2.h>
+
 
 /* Standard integer types */
 #include <stdint.h>
@@ -217,32 +219,13 @@
  * =============================================================================
  * ERROR AND STATUS CODES
  * =============================================================================
- * Purpose: Custom status codes supplement NTSTATUS for SafeOps-specific error
- *          conditions. Enables precise error reporting from kernel to
- * userspace.
+ * NOTE: Error codes have been moved to error_codes.h for comprehensive
+ *       hierarchical error handling with 69 error codes across 10 categories.
+ *       Include "error_codes.h" for all error code definitions.
+ *
+ * See: src/shared/c/error_codes.h
+ * =============================================================================
  */
-
-/* Success codes */
-#define SAFEOPS_SUCCESS 0x00000000 /* Operation succeeded */
-#define SAFEOPS_PENDING 0x00000001 /* Operation in progress */
-
-/* Error codes (using NTSTATUS-style 0xC prefix for errors) */
-#define SAFEOPS_ERROR_INVALID_PARAMETER 0xC0000001 /* Invalid parameter */
-#define SAFEOPS_ERROR_BUFFER_TOO_SMALL 0xC0000002  /* Buffer insufficient */
-#define SAFEOPS_ERROR_NOT_INITIALIZED 0xC0000003   /* Driver not initialized */
-#define SAFEOPS_ERROR_ALREADY_INITIALIZED 0xC0000004 /* Already initialized */
-#define SAFEOPS_ERROR_OUT_OF_MEMORY 0xC0000005 /* Memory allocation failed */
-#define SAFEOPS_ERROR_RING_BUFFER_FULL                                         \
-  0xC0000006                                      /* Ring buffer at capacity   \
-                                                   */
-#define SAFEOPS_ERROR_DEVICE_NOT_READY 0xC0000007 /* Device not ready */
-#define SAFEOPS_ERROR_VERSION_MISMATCH 0xC0000008 /* ABI version mismatch */
-#define SAFEOPS_ERROR_TIMEOUT 0xC0000009          /* Operation timed out */
-#define SAFEOPS_ERROR_ACCESS_DENIED 0xC000000A    /* Access denied */
-#define SAFEOPS_ERROR_NOT_FOUND 0xC000000B        /* Resource not found */
-#define SAFEOPS_ERROR_ALREADY_EXISTS 0xC000000C   /* Resource already exists */
-#define SAFEOPS_ERROR_INVALID_STATE 0xC000000D    /* Invalid state */
-#define SAFEOPS_ERROR_CORRUPTED_DATA 0xC000000E   /* Data corruption detected */
 
 /*
  * =============================================================================
