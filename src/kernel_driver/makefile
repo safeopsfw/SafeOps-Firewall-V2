@@ -218,12 +218,14 @@ LIBS= \
 # C source files
 SOURCES= \
     $(SRC_DIR)\driver.c \
+    $(SRC_DIR)\driver_part2.c \
     $(SRC_DIR)\packet_capture.c \
     $(SRC_DIR)\filter_engine.c \
     $(SRC_DIR)\shared_memory.c \
     $(SRC_DIR)\ioctl_handler.c \
     $(SRC_DIR)\nic_management.c \
-    $(SRC_DIR)\performance.c
+    $(SRC_DIR)\performance.c \
+    $(SRC_DIR)\statistics.c
 
 # Header files (for dependency tracking)
 HEADERS= \
@@ -234,17 +236,20 @@ HEADERS= \
     $(SRC_DIR)\ioctl_handler.h \
     $(SRC_DIR)\nic_management.h \
     $(SRC_DIR)\performance.h \
+    $(SRC_DIR)\statistics.h \
     $(SRC_DIR)\common.h
 
 # Object files (derived from sources)
 OBJS= \
     $(OBJ_DIR)\driver.obj \
+    $(OBJ_DIR)\driver_part2.obj \
     $(OBJ_DIR)\packet_capture.obj \
     $(OBJ_DIR)\filter_engine.obj \
     $(OBJ_DIR)\shared_memory.obj \
     $(OBJ_DIR)\ioctl_handler.obj \
     $(OBJ_DIR)\nic_management.obj \
-    $(OBJ_DIR)\performance.obj
+    $(OBJ_DIR)\performance.obj \
+    $(OBJ_DIR)\statistics.obj
 
 # Resource file
 RC_FILE=$(SRC_DIR)\driver.rc
@@ -385,6 +390,14 @@ $(OBJ_DIR)\nic_management.obj: $(SRC_DIR)\nic_management.c $(HEADERS)
 $(OBJ_DIR)\performance.obj: $(SRC_DIR)\performance.c $(HEADERS)
 	@echo Compiling performance.c...
 	$(CC) $(CFLAGS) $(INCLUDES) /Fo$@ $(SRC_DIR)\performance.c
+
+$(OBJ_DIR)\driver_part2.obj: $(SRC_DIR)\driver_part2.c $(HEADERS)
+	@echo Compiling driver_part2.c...
+	$(CC) $(CFLAGS) $(INCLUDES) /Fo$@ $(SRC_DIR)\driver_part2.c
+
+$(OBJ_DIR)\statistics.obj: $(SRC_DIR)\statistics.c $(HEADERS)
+	@echo Compiling statistics.c...
+	$(CC) $(CFLAGS) $(INCLUDES) /Fo$@ $(SRC_DIR)\statistics.c
 
 #===============================================================================
 # Section 9: Driver Signing

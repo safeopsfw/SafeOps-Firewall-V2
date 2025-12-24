@@ -1,940 +1,1444 @@
 /*******************************************************************************
- * FILE: src/kernel_driver/nic_management.c - PHASE 1
- * 
- * SafeOps NIC Management - Implementation (Part 1 of 3)
- * 
+ * FILE: src/kernel_driver/nic_management.c
+ *
+ * SafeOps v2.0 - Network Interface Card Management Implementation
+ *
  * PURPOSE:
- *   Manages 3-NIC setup (WAN, LAN, WiFi) with enumeration, auto-detection,
- *   binding, hotplug, statistics, and registry integration.
- * 
- * PHASE 1 SECTIONS:
- *   1. Initialization
- *   2. NIC Enumeration
- *   3. NIC Role Assignment  
- *   4. NDIS Filter Binding
- * 
+ *   Implements comprehensive Network Interface Card (NIC) registration,
+ *   enumeration, configuration, and state management for the SafeOps kernel
+ *   driver. Maintains a registry of all network adapters attached to the NDIS
+ *   filter, assigns logical tags (WAN, LAN, WiFi) to each NIC for policy-based
+ *   filtering, tracks per-NIC statistics and configuration, handles NIC
+ *   attach/detach events, and provides lookup functions for other driver
+ *   subsystems to access NIC information.
+ *
+ * ARCHITECTURE:
+ *   - Global NIC_TABLE with fixed-size array (MAX_NIC_COUNT = 8)
+ *   - Spinlock-protected concurrent access
+ *   - O(1) lookup by index, O(N) lookup by handle/GUID/MAC
+ *   - Atomic statistics counters for lock-free per-packet updates
+ *   - Registry preservation of NIC context after detach for historical stats
+ *
  * AUTHOR: SafeOps Team
  * VERSION: 2.0.0
+ * DATE: December 24, 2024
  ******************************************************************************/
 
 #include "nic_management.h"
 
 //=============================================================================
-// SECTION 1: INITIALIZATION
+// SECTION 1: Global Variables
 //=============================================================================
 
+// Global NIC table (single instance for entire driver)
+static NIC_TABLE g_NicTable = {0};
+
+//=============================================================================
+// SECTION 2: Initialization Functions
+//=============================================================================
+
+/**
+ * NicTableInitialize
+ *
+ * Initializes the global NIC table during driver load. Allocates the NIC
+ * context array, initializes the spinlock, and zeros all entries.
+ *
+ * Parameters: None
+ * Returns: NTSTATUS - STATUS_SUCCESS or error code
+ * IRQL: PASSIVE_LEVEL
+ */
 NTSTATUS
-NicManagementInitialize(_Out_ PNIC_MANAGEMENT_CONTEXT* Context)
-{
-    PNIC_MANAGEMENT_CONTEXT ctx;
-    NTSTATUS status;
+NicTableInitialize(VOID) {
+  DbgPrint("[NicManagement] Initializing NIC table...\n");
 
-    DbgPrint("[NicManagement] Initializing...\n");
+  // Zero the entire table structure
+  RtlZeroMemory(&g_NicTable, sizeof(NIC_TABLE));
 
-    // Allocate context
-    ctx = ExAllocatePoolWithTag(NonPagedPool, sizeof(NIC_MANAGEMENT_CONTEXT), 'NicM');
-    if (!ctx) {
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
+  // Initialize the spinlock for table protection
+  KeInitializeSpinLock(&g_NicTable.TableLock);
 
-    RtlZeroMemory(ctx, sizeof(NIC_MANAGEMENT_CONTEXT));
+  // Initialize all NIC context entries
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
 
-    // Initialize spinlock
-    KeInitializeSpinLock(&ctx->nic_lock);
+    // Zero the context
+    RtlZeroMemory(ctx, sizeof(NIC_CONTEXT));
 
-    // Initialize hotplug event
-    KeInitializeEvent(&ctx->hotplug_event, NotificationEvent, FALSE);
+    // Set default state to DETACHED
+    ctx->CurrentState = NIC_STATE_DETACHED;
 
-    // Set defaults
-    ctx->auto_detect_enabled = TRUE;
-    ctx->nic_count = 0;
+    // Initialize per-NIC statistics spinlock
+    KeInitializeSpinLock(&ctx->StatisticsLock);
+  }
 
-    // Load configuration from registry
-    status = LoadNicConfigFromRegistry(ctx);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[NicManagement] Registry config not found, will auto-detect\n");
-        ctx->auto_detect_enabled = TRUE;
-    }
+  // Mark table as initialized
+  g_NicTable.IsInitialized = TRUE;
+  g_NicTable.AttachedCount = 0;
+  g_NicTable.EnabledCount = 0;
 
-    // Enumerate network adapters
-    status = EnumerateNetworkAdapters(ctx);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[NicManagement] Failed to enumerate adapters: 0x%08X\n", status);
-        ExFreePoolWithTag(ctx, 'NicM');
-        return status;
-    }
-
-    // Assign NIC roles
-    status = AssignNicRoles(ctx);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[NicManagement] Failed to assign NIC roles: 0x%08X\n", status);
-        ExFreePoolWithTag(ctx, 'NicM');
-        return status;
-    }
-
-    // Bind NDIS filters
-    status = BindNdisFilters(ctx);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[NicManagement] Failed to bind NDIS filters: 0x%08X\n", status);
-        ExFreePoolWithTag(ctx, 'NicM');
-        return status;
-    }
-
-    // Register hotplug notifications
-    status = RegisterHotplugNotification(ctx);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[NicManagement] Warning: Hotplug registration failed\n");
-        // Continue anyway - hotplug is not critical
-    }
-
-    *Context = ctx;
-    DbgPrint("[NicManagement] Initialized successfully (%u NICs found)\n", ctx->nic_count);
-    
-    return STATUS_SUCCESS;
+  DbgPrint("[NicManagement] NIC table initialized successfully\n");
+  return STATUS_SUCCESS;
 }
 
-VOID
-NicManagementCleanup(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    UINT32 i;
+/**
+ * NicTableCleanup
+ *
+ * Cleans up the NIC table during driver unload. Marks all NICs as detached
+ * and resets the table.
+ *
+ * Parameters: None
+ * Returns: None
+ * IRQL: PASSIVE_LEVEL
+ */
+VOID NicTableCleanup(VOID) {
+  KIRQL oldIrql;
 
-    if (!Context) return;
+  DbgPrint("[NicManagement] Cleaning up NIC table...\n");
 
-    DbgPrint("[NicManagement] Cleaning up...\n");
+  if (!g_NicTable.IsInitialized) {
+    return;
+  }
 
-    // Unregister hotplug
-    UnregisterHotplugNotification(Context);
+  // Acquire table lock
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
 
-    // Unbind all NICs
-    for (i = 0; i < Context->nic_count; i++) {
-        UnbindSingleNic(&Context->nics[i]);
+  // Mark all NICs as detached
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED) {
+      ctx->CurrentState = NIC_STATE_DETACHED;
+      ctx->Configuration.IsEnabled = FALSE;
     }
+  }
 
-    // Save final config to registry
-    SaveNicConfigToRegistry(Context);
+  g_NicTable.AttachedCount = 0;
+  g_NicTable.EnabledCount = 0;
+  g_NicTable.IsInitialized = FALSE;
 
-    ExFreePoolWithTag(Context, 'NicM');
-    DbgPrint("[NicManagement] Cleanup complete\n");
+  // Release lock
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  DbgPrint("[NicManagement] NIC table cleanup complete\n");
 }
 
 //=============================================================================
-// SECTION 2: NIC ENUMERATION
+// SECTION 3: Registration Functions
 //=============================================================================
 
+/**
+ * NicTableRegister
+ *
+ * Registers a new network adapter when NDIS filter attaches. Allocates a NIC
+ * context slot, stores the NDIS filter handle, queries adapter properties
+ * (MAC address, friendly name, link speed, GUID), and initializes the context.
+ *
+ * Parameters:
+ *   FilterHandle - NDIS filter handle for this adapter
+ *   AttachParams - NDIS attach parameters (contains adapter info)
+ *   OutContext - Receives pointer to allocated NIC_CONTEXT
+ *
+ * Returns: NTSTATUS
+ * IRQL: PASSIVE_LEVEL (called from NDIS filter attach handler)
+ */
 NTSTATUS
-EnumerateNetworkAdapters(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    // NOTE: In a real implementation, this would use IoGetDeviceInterfaces()
-    // or other NDIS enumeration APIs. This is a simplified version.
-    
-    UINT32 nicIndex = 0;
-    PNIC_INFO nic;
+NicTableRegister(_In_ NDIS_HANDLE FilterHandle, _In_ PVOID AttachParams,
+                 _Out_ PNIC_CONTEXT *OutContext) {
+  KIRQL oldIrql;
+  PNIC_CONTEXT nicCtx = NULL;
+  ULONG slotIndex = 0;
+  BOOLEAN foundSlot = FALSE;
 
-    DbgPrint("[NicManagement] Enumerating network adapters...\n");
+  UNREFERENCED_PARAMETER(AttachParams);
 
-    // Simulate finding 3 NICs (in reality, query from NDIS)
-    // NIC 1: Intel I225-V (likely WAN or LAN)
-    if (nicIndex < MAX_NICS) {
-        nic = &Context->nics[nicIndex];
-        nic->nic_id = nicIndex + 1;
-        nic->role = NIC_ROLE_UNKNOWN;
-        wcscpy_s(nic->friendly_name, MAX_NIC_NAME_LENGTH, L"Intel(R) I225-V");
-        wcscpy_s(nic->description, MAX_NIC_DESC_LENGTH, L"Intel I225-V 2.5GbE Network Adapter");
-        wcscpy_s(nic->guid, NIC_GUID_LENGTH, L"{12345678-1234-1234-1234-123456789012}");
-        nic->mac_address[0] = 0x00; nic->mac_address[1] = 0x11;
-        nic->mac_address[2] = 0x22; nic->mac_address[3] = 0x33;
-        nic->mac_address[4] = 0x44; nic->mac_address[5] = 0x55;
-        nic->link_state = NIC_LINK_UP;
-        nic->link_speed_mbps = 2500;
-        nic->enabled = TRUE;
-        nicIndex++;
+  if (!g_NicTable.IsInitialized) {
+    DbgPrint("[NicManagement] ERROR: Table not initialized\n");
+    return STATUS_DEVICE_NOT_READY;
+  }
+
+  if (OutContext == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  *OutContext = NULL;
+
+  // Acquire table lock
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  // Find available slot (DETACHED state)
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    if (g_NicTable.NICs[i].CurrentState == NIC_STATE_DETACHED) {
+      nicCtx = &g_NicTable.NICs[i];
+      slotIndex = i;
+      foundSlot = TRUE;
+      break;
     }
+  }
 
-    // NIC 2: Realtek PCIe GbE (likely LAN)
-    if (nicIndex < MAX_NICS) {
-        nic = &Context->nics[nicIndex];
-        nic->nic_id = nicIndex + 1;
-        nic->role = NIC_ROLE_UNKNOWN;
-        wcscpy_s(nic->friendly_name, MAX_NIC_NAME_LENGTH, L"Realtek PCIe GbE Family Controller");
-        wcscpy_s(nic->description, MAX_NIC_DESC_LENGTH, L"Realtek Gaming GbE Network Adapter");
-        wcscpy_s(nic->guid, NIC_GUID_LENGTH, L"{23456789-2345-2345-2345-234567890123}");
-        nic->mac_address[0] = 0xAA; nic->mac_address[1] = 0xBB;
-        nic->mac_address[2] = 0xCC; nic->mac_address[3] = 0xDD;
-        nic->mac_address[4] = 0xEE; nic->mac_address[5] = 0xFF;
-        nic->link_state = NIC_LINK_UP;
-        nic->link_speed_mbps = 1000;
-        nic->enabled = TRUE;
-        nicIndex++;
-    }
+  if (!foundSlot) {
+    KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+    DbgPrint("[NicManagement] ERROR: NIC table full (max %u NICs)\n",
+             MAX_NIC_COUNT);
+    return STATUS_INSUFFICIENT_RESOURCES;
+  }
 
-    // NIC 3: WiFi adapter
-    if (nicIndex < MAX_NICS) {
-        nic = &Context->nics[nicIndex];
-        nic->nic_id = nicIndex + 1;
-        nic->role = NIC_ROLE_UNKNOWN;
-        wcscpy_s(nic->friendly_name, MAX_NIC_NAME_LENGTH, L"Intel(R) Wi-Fi 6 AX200 160MHz");
-        wcscpy_s(nic->description, MAX_NIC_DESC_LENGTH, L"Intel WiFi 6 AX200 Wireless Network Adapter");
-        wcscpy_s(nic->guid, NIC_GUID_LENGTH, L"{34567890-3456-3456-3456-345678901234}");
-        nic->mac_address[0] = 0x11; nic->mac_address[1] = 0x22;
-        nic->mac_address[2] = 0x33; nic->mac_address[3] = 0x44;
-        nic->mac_address[4] = 0x55; nic->mac_address[5] = 0x66;
-        nic->link_state = NIC_LINK_UP;
-        nic->link_speed_mbps = 1200;  // WiFi 6
-        nic->enabled = TRUE;
-        nicIndex++;
-    }
+  // Initialize NIC context
+  RtlZeroMemory(nicCtx, sizeof(NIC_CONTEXT));
 
-    Context->nic_count = nicIndex;
+  // Store NDIS filter handle
+  nicCtx->Identifier.FilterHandle = FilterHandle;
+  nicCtx->Identifier.InterfaceIndex = slotIndex;
 
-    DbgPrint("[NicManagement] Found %u network adapters\n", Context->nic_count);
-    return STATUS_SUCCESS;
+  // Initialize state
+  nicCtx->CurrentState = NIC_STATE_ATTACHED;
+  nicCtx->Configuration.NICType = NIC_TYPE_UNTAGGED;
+  nicCtx->Configuration.IsEnabled = FALSE; // Disabled until explicitly enabled
+  nicCtx->Configuration.IsPromiscuous = FALSE;
+  nicCtx->Configuration.CaptureInbound = TRUE;
+  nicCtx->Configuration.CaptureOutbound = TRUE;
+  nicCtx->Configuration.MaxPacketsPerSecond = 0; // Unlimited
+  nicCtx->Configuration.MTU = 1500;              // Default Ethernet MTU
+
+  // Initialize statistics spinlock
+  KeInitializeSpinLock(&nicCtx->StatisticsLock);
+
+  // Initialize media type (default to Ethernet)
+  nicCtx->MediaType = 0;      // NdisMedium802_3 in real NDIS
+  nicCtx->PhysicalMedium = 0; // NdisPhysicalMedium802_3
+  nicCtx->LinkState = NIC_LINK_UNKNOWN;
+
+  // Increment attached count
+  g_NicTable.AttachedCount++;
+
+  // Release lock
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+#ifdef SAFEOPS_WDK_BUILD
+  // Query NDIS for adapter properties (only in WDK build)
+  // In real implementation, use NdisFGetAttributes, OID queries, etc.
+  // For now, we'll set placeholder values
+#endif
+
+  // Set default friendly name
+  RtlStringCbPrintfW(nicCtx->Identifier.FriendlyName,
+                     sizeof(nicCtx->Identifier.FriendlyName), L"NIC%u",
+                     slotIndex);
+
+  *OutContext = nicCtx;
+
+  DbgPrint("[NicManagement] Registered NIC at slot %u (Handle: %p)\n",
+           slotIndex, FilterHandle);
+
+  return STATUS_SUCCESS;
 }
 
-BOOLEAN
-IsVirtualAdapter(_In_ PCWSTR Description)
-{
-    // Check for common virtual adapter keywords
-    if (wcsstr(Description, L"Virtual") != NULL) return TRUE;
-    if (wcsstr(Description, L"VPN") != NULL) return TRUE;
-    if (wcsstr(Description, L"Loopback") != NULL) return TRUE;
-    if (wcsstr(Description, L"Hyper-V") != NULL) return TRUE;
-    if (wcsstr(Description, L"VMware") != NULL) return TRUE;
-    if (wcsstr(Description, L"VirtualBox") != NULL) return TRUE;
-    
-    return FALSE;
-}
-
-BOOLEAN
-IsWirelessAdapter(_In_ PCWSTR Description)
-{
-    // Check for wireless keywords
-    if (wcsstr(Description, L"Wi-Fi") != NULL) return TRUE;
-    if (wcsstr(Description, L"WiFi") != NULL) return TRUE;
-    if (wcsstr(Description, L"Wireless") != NULL) return TRUE;
-    if (wcsstr(Description, L"802.11") != NULL) return TRUE;
-    if (wcsstr(Description, L"WLAN") != NULL) return TRUE;
-    
-    return FALSE;
-}
-
-//=============================================================================
-// SECTION 3: NIC ROLE ASSIGNMENT
-//=============================================================================
-
+/**
+ * NicTableUnregister
+ *
+ * Unregisters a network adapter when NDIS filter detaches. Marks the NIC
+ * context as DETACHED but preserves the entry for historical statistics.
+ *
+ * Parameters:
+ *   FilterHandle - NDIS filter handle to unregister
+ *
+ * Returns: NTSTATUS
+ * IRQL: PASSIVE_LEVEL
+ */
 NTSTATUS
-AssignNicRoles(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    NTSTATUS status;
+NicTableUnregister(_In_ NDIS_HANDLE FilterHandle) {
+  KIRQL oldIrql;
+  PNIC_CONTEXT nicCtx = NULL;
+  BOOLEAN found = FALSE;
 
-    DbgPrint("[NicManagement] Assigning NIC roles...\n");
+  if (!g_NicTable.IsInitialized) {
+    return STATUS_DEVICE_NOT_READY;
+  }
 
-    // Try registry configuration first
-    if (Context->wan_guid[0] != L'\0' ||
-        Context->lan_guid[0] != L'\0' ||
-        Context->wifi_guid[0] != L'\0') {
-        
-        DbgPrint("[NicManagement] Using registry configuration\n");
-        
-        // Assign based on GUIDs
-        for (UINT32 i = 0; i < Context->nic_count; i++) {
-            PNIC_INFO nic = &Context->nics[i];
-            
-            if (wcscmp(nic->guid, Context->wan_guid) == 0) {
-                nic->role = NIC_ROLE_WAN;
-                nic->detect_method = NIC_DETECT_REGISTRY;
-            } else if (wcscmp(nic->guid, Context->lan_guid) == 0) {
-                nic->role = NIC_ROLE_LAN;
-                nic->detect_method = NIC_DETECT_REGISTRY;
-            } else if (wcscmp(nic->guid, Context->wifi_guid) == 0) {
-                nic->role = NIC_ROLE_WIFI;
-                nic->detect_method = NIC_DETECT_REGISTRY;
-            }
-        }
+  // Acquire table lock
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  // Find NIC by filter handle
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    if (g_NicTable.NICs[i].Identifier.FilterHandle == FilterHandle &&
+        g_NicTable.NICs[i].CurrentState != NIC_STATE_DETACHED) {
+      nicCtx = &g_NicTable.NICs[i];
+      found = TRUE;
+      break;
     }
+  }
 
-    // Auto-detect if enabled or registry incomplete
-    if (Context->auto_detect_enabled) {
-        status = AutoDetectNicRoles(Context);
-        if (!NT_SUCCESS(status)) {
-            return status;
-        }
-    }
+  if (!found) {
+    KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+    DbgPrint("[NicManagement] WARNING: NIC not found for handle %p\n",
+             FilterHandle);
+    return STATUS_NOT_FOUND;
+  }
 
-    // Verify we have all 3 roles assigned
-    BOOLEAN hasWan = FALSE, hasLan = FALSE, hasWifi = FALSE;
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        if (Context->nics[i].role == NIC_ROLE_WAN) hasWan = TRUE;
-        if (Context->nics[i].role == NIC_ROLE_LAN) hasLan = TRUE;
-        if (Context->nics[i].role == NIC_ROLE_WIFI) hasWifi = TRUE;
-    }
+  // Mark as detached (preserve statistics)
+  nicCtx->CurrentState = NIC_STATE_DETACHED;
+  nicCtx->Configuration.IsEnabled = FALSE;
 
-    if (!hasWan || !hasLan || !hasWifi) {
-        DbgPrint("[NicManagement] Warning: Not all roles assigned (WAN:%d LAN:%d WiFi:%d)\n",
-                 hasWan, hasLan, hasWifi);
-    }
+  // Decrement counts
+  if (g_NicTable.AttachedCount > 0) {
+    g_NicTable.AttachedCount--;
+  }
+  if (nicCtx->Configuration.IsEnabled && g_NicTable.EnabledCount > 0) {
+    g_NicTable.EnabledCount--;
+  }
 
-    // Print assignments
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        PNIC_INFO nic = &Context->nics[i];
-        const WCHAR* roleStr = L"UNKNOWN";
-        if (nic->role == NIC_ROLE_WAN) roleStr = L"WAN";
-        else if (nic->role == NIC_ROLE_LAN) roleStr = L"LAN";
-        else if (nic->role == NIC_ROLE_WIFI) roleStr = L"WiFi";
-        
-        DbgPrint("[NicManagement] NIC %u: %ws -> %ws\n", 
-                 nic->nic_id, nic->friendly_name, roleStr);
-    }
+  // Release lock
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
 
-    return STATUS_SUCCESS;
+  DbgPrint("[NicManagement] Unregistered NIC (Handle: %p)\n", FilterHandle);
+
+  return STATUS_SUCCESS;
 }
 
-NTSTATUS
-AutoDetectNicRoles(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    DbgPrint("[NicManagement] Auto-detecting NIC roles...\n");
+/**
+ * NicTableGetCount
+ *
+ * Returns the number of currently registered (attached) NICs.
+ *
+ * Parameters: None
+ * Returns: ULONG - Number of attached NICs
+ * IRQL: <= DISPATCH_LEVEL
+ */
+ULONG
+NicTableGetCount(VOID) {
+  KIRQL oldIrql;
+  ULONG count;
 
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        PNIC_INFO nic = &Context->nics[i];
-        
-        // Skip if already assigned
-        if (nic->role != NIC_ROLE_UNKNOWN) continue;
-        
-        // Query IP addresses
-        QueryNicIpAddresses(nic);
-        
-        // Determine role
-        NIC_ROLE detectedRole = DetermineNicRole(nic);
-        
-        if (detectedRole != NIC_ROLE_UNKNOWN) {
-            nic->role = detectedRole;
-            nic->detect_method = NIC_DETECT_AUTO;
-        }
-    }
+  if (!g_NicTable.IsInitialized) {
+    return 0;
+  }
 
-    return STATUS_SUCCESS;
-}
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+  count = g_NicTable.AttachedCount;
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
 
-NIC_ROLE
-DetermineNicRole(_In_ PNIC_INFO Nic)
-{
-    // WiFi detection
-    if (IsWirelessAdapter(Nic->description)) {
-        return NIC_ROLE_WIFI;
-    }
-
-    // LAN detection (private IP)
-    if (IsPrivateIp(Nic->ipv4_address)) {
-        // If has gateway, could be WAN (NAT router)
-        if (Nic->gateway != 0) {
-            // Check if gateway is also private
-            if (IsPrivateIp(Nic->gateway)) {
-                return NIC_ROLE_LAN;  // Private network
-            } else {
-                return NIC_ROLE_WAN;  // Gateway to internet
-            }
-        }
-        return NIC_ROLE_LAN;  // Default for private IP
-    }
-
-    // WAN detection (public IP or has gateway)
-    if (Nic->gateway != 0 || !IsPrivateIp(Nic->ipv4_address)) {
-        return NIC_ROLE_WAN;
-    }
-
-    // Default: fastest NIC is WAN
-    if (Nic->link_speed_mbps >= 2000) {
-        return NIC_ROLE_WAN;
-    }
-
-    return NIC_ROLE_UNKNOWN;
+  return count;
 }
 
 //=============================================================================
-// SECTION 4: NDIS FILTER BINDING
+// SECTION 4: Lookup Operations
 //=============================================================================
 
-NTSTATUS
-BindNdisFilters(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    NTSTATUS status;
+/**
+ * NicFindByFilterHandle
+ *
+ * Finds NIC context by NDIS filter handle. This is the fast-path lookup
+ * used in packet processing callbacks.
+ *
+ * Parameters:
+ *   FilterHandle - NDIS filter handle to search for
+ *
+ * Returns: PNIC_CONTEXT - Pointer to NIC context or NULL if not found
+ * IRQL: <= DISPATCH_LEVEL
+ */
+PNIC_CONTEXT
+NicFindByFilterHandle(_In_ NDIS_HANDLE FilterHandle) {
+  KIRQL oldIrql;
+  PNIC_CONTEXT result = NULL;
 
-    DbgPrint("[NicManagement] Binding NDIS filters...\n");
-
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        status = BindSingleNic(&Context->nics[i]);
-        if (!NT_SUCCESS(status)) {
-            DbgPrint("[NicManagement] Failed to bind NIC %u: 0x%08X\n", 
-                     Context->nics[i].nic_id, status);
-            // Continue with other NICs
-        }
-    }
-
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
-BindSingleNic(_Inout_ PNIC_INFO Nic)
-{
-    LARGE_INTEGER time;
-
-    // Simplified binding - real implementation would use NDIS APIs
-    DbgPrint("[NicManagement] Binding to NIC %u (%ws)\n", 
-             Nic->nic_id, Nic->friendly_name);
-
-    // Simulate binding
-    Nic->bound = TRUE;
-    KeQuerySystemTime(&time);
-    Nic->bind_time = time.QuadPart;
-
-    // Query properties
-    QueryNicProperties(Nic);
-
-    return STATUS_SUCCESS;
-}
-
-VOID
-UnbindSingleNic(_Inout_ PNIC_INFO Nic)
-{
-    if (!Nic->bound) return;
-
-    DbgPrint("[NicManagement] Unbinding from NIC %u (%ws)\n",
-             Nic->nic_id, Nic->friendly_name);
-
-    Nic->bound = FALSE;
-    Nic->filter_module_context = NULL;
-}
-
-//=============================================================================
-// END OF PHASE 1
-// Next: Phase 2 will add Properties, Statistics, Hotplug, Link Monitoring
-//=============================================================================
-//=============================================================================
-// PHASE 2: PROPERTIES, STATISTICS, HOTPLUG, LINK MONITORING
-//=============================================================================
-
-//=============================================================================
-// SECTION 5: NIC PROPERTIES
-//=============================================================================
-
-NTSTATUS
-QueryNicProperties(_Inout_ PNIC_INFO Nic)
-{
-    // In real implementation, use NDIS OID requests
-    DbgPrint("[NicManagement] Querying properties for NIC %u\n", Nic->nic_id);
-
-    // Simulate property queries
-    Nic->capabilities.rss_supported = TRUE;
-    Nic->capabilities.checksum_offload_supported = TRUE;
-    Nic->capabilities.tso_supported = TRUE;
-    Nic->capabilities.lso_supported = TRUE;
-    Nic->capabilities.vlan_supported = TRUE;
-    Nic->capabilities.jumbo_frames_supported = TRUE;
-    Nic->capabilities.wake_on_lan_supported = TRUE;
-    Nic->capabilities.max_rss_queues = 4;
-    Nic->capabilities.max_mtu = 9000;
-
-    Nic->full_duplex = TRUE;
-
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
-QueryMacAddress(_In_ NDIS_HANDLE Handle, _Out_ PUCHAR MacAddress)
-{
-    UNREFERENCED_PARAMETER(Handle);
-    
-    // Real implementation would use OID_802_3_CURRENT_ADDRESS
-    MacAddress[0] = 0x00;
-    MacAddress[1] = 0x11;
-    MacAddress[2] = 0x22;
-    MacAddress[3] = 0x33;
-    MacAddress[4] = 0x44;
-    MacAddress[5] = 0x55;
-    
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
-QueryLinkSpeed(_In_ NDIS_HANDLE Handle, _Out_ PUINT32 SpeedMbps)
-{
-    UNREFERENCED_PARAMETER(Handle);
-    
-    // Real implementation would use OID_GEN_LINK_SPEED
-    *SpeedMbps = 1000;  // 1 Gbps
-    
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
-QueryLinkState(_In_ NDIS_HANDLE Handle, _Out_ PNIC_LINK_STATE State)
-{
-    UNREFERENCED_PARAMETER(Handle);
-    
-    // Real implementation would use OID_GEN_MEDIA_CONNECT_STATUS
-    *State = NIC_LINK_UP;
-    
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
-QueryHardwareCapabilities(_In_ NDIS_HANDLE Handle, _Out_ PNIC_CAPABILITIES Caps)
-{
-    UNREFERENCED_PARAMETER(Handle);
-    
-    // Real implementation would query various OIDs
-    RtlZeroMemory(Caps, sizeof(NIC_CAPABILITIES));
-    Caps->rss_supported = TRUE;
-    Caps->checksum_offload_supported = TRUE;
-    Caps->max_rss_queues = 4;
-    Caps->max_mtu = 9000;
-    
-    return STATUS_SUCCESS;
-}
-
-//=============================================================================
-// SECTION 6: NIC STATISTICS
-//=============================================================================
-
-VOID
-UpdateNicStatistics(_Inout_ PNIC_INFO Nic, _In_ BOOLEAN IsSend, _In_ UINT32 Bytes, _In_ BOOLEAN IsError)
-{
-    if (IsSend) {
-        if (IsError) {
-            InterlockedIncrement64((LONGLONG*)&Nic->stats.errors_tx);
-        } else {
-            InterlockedIncrement64((LONGLONG*)&Nic->stats.packets_sent);
-            InterlockedAdd64((LONGLONG*)&Nic->stats.bytes_sent, Bytes);
-        }
-    } else {
-        if (IsError) {
-            InterlockedIncrement64((LONGLONG*)&Nic->stats.errors_rx);
-        } else {
-            InterlockedIncrement64((LONGLONG*)&Nic->stats.packets_received);
-            InterlockedAdd64((LONGLONG*)&Nic->stats.bytes_received, Bytes);
-        }
-    }
-}
-
-NTSTATUS
-GetNicStatistics(_In_ PNIC_MANAGEMENT_CONTEXT Context, _In_ UINT8 NicId, _Out_ PNIC_STATISTICS Stats)
-{
-    PNIC_INFO nic = GetNicById(Context, NicId);
-    
-    if (!nic) {
-        return STATUS_NOT_FOUND;
-    }
-    
-    RtlCopyMemory(Stats, &nic->stats, sizeof(NIC_STATISTICS));
-    return STATUS_SUCCESS;
-}
-
-VOID
-ResetNicStatistics(_Inout_ PNIC_INFO Nic)
-{
-    RtlZeroMemory(&Nic->stats, sizeof(NIC_STATISTICS));
-    DbgPrint("[NicManagement] Statistics reset for NIC %u\n", Nic->nic_id);
-}
-
-//=============================================================================
-// SECTION 7: HOTPLUG EVENT HANDLING
-//=============================================================================
-
-NTSTATUS
-RegisterHotplugNotification(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    // Real implementation would use IoRegisterPlugPlayNotification
-    DbgPrint("[NicManagement] Hotplug notification registered\n");
-    
-    Context->pnp_notification_handle = (PVOID)0x12345678;  // Simulate handle
-    
-    return STATUS_SUCCESS;
-}
-
-VOID
-UnregisterHotplugNotification(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    if (Context->pnp_notification_handle) {
-        // Real implementation would use IoUnregisterPlugPlayNotification
-        DbgPrint("[NicManagement] Hotplug notification unregistered\n");
-        Context->pnp_notification_handle = NULL;
-    }
-}
-
-NTSTATUS NTAPI
-HotplugCallback(
-    _In_ PVOID NotificationStructure,
-    _Inout_opt_ PVOID Context
-)
-{
-    PNIC_MANAGEMENT_CONTEXT ctx = (PNIC_MANAGEMENT_CONTEXT)Context;
-    
-    UNREFERENCED_PARAMETER(NotificationStructure);
-    
-    if (!ctx) return STATUS_SUCCESS;
-    
-    DbgPrint("[NicManagement] Hotplug event detected\n");
-    
-    // Signal event
-    KeSetEvent(&ctx->hotplug_event, IO_NO_INCREMENT, FALSE);
-    
-    // Re-enumerate adapters
-    EnumerateNetworkAdapters(ctx);
-    
-    // Re-assign roles
-    AssignNicRoles(ctx);
-    
-    return STATUS_SUCCESS;
-}
-
-//=============================================================================
-// SECTION 8: LINK STATE MONITORING
-//=============================================================================
-
-VOID
-MonitorLinkState(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        PNIC_INFO nic = &Context->nics[i];
-        NIC_LINK_STATE newState;
-        
-        // Query current link state
-        if (NT_SUCCESS(QueryLinkState(nic->filter_module_context, &newState))) {
-            if (newState != nic->link_state) {
-                HandleLinkStateChange(nic, newState);
-            }
-        }
-    }
-}
-
-VOID
-HandleLinkStateChange(_Inout_ PNIC_INFO Nic, _In_ NIC_LINK_STATE NewState)
-{
-    const WCHAR* oldStateStr = (Nic->link_state == NIC_LINK_UP) ? L"UP" : L"DOWN";
-    const WCHAR* newStateStr = (NewState == NIC_LINK_UP) ? L"UP" : L"DOWN";
-    
-    DbgPrint("[NicManagement] NIC %u link state changed: %ws -> %ws\n",
-             Nic->nic_id, oldStateStr, newStateStr);
-    
-    Nic->link_state = NewState;
-    
-    // Pause/resume capture based on link state
-    if (NewState == NIC_LINK_DOWN) {
-        DbgPrint("[NicManagement] Pausing capture on NIC %u\n", Nic->nic_id);
-        Nic->enabled = FALSE;
-    } else {
-        DbgPrint("[NicManagement] Resuming capture on NIC %u\n", Nic->nic_id);
-        Nic->enabled = TRUE;
-    }
-}
-
-//=============================================================================
-// SECTION 9: IP ADDRESS TRACKING
-//=============================================================================
-
-NTSTATUS
-QueryNicIpAddresses(_Inout_ PNIC_INFO Nic)
-{
-    // Real implementation would query IP Helper API or NDIS
-    // This is simulated based on NIC type
-    
-    if (wcsstr(Nic->description, L"Intel I225") != NULL) {
-        // WAN-like NIC
-        Nic->ipv4_address = 0xC0A80101;  // 192.168.1.1
-        Nic->subnet_mask = 0xFFFFFF00;    // 255.255.255.0
-        Nic->gateway = 0xC0A80101;        // 192.168.1.1 (router)
-        Nic->is_dhcp = TRUE;
-    } 
-    else if (wcsstr(Nic->description, L"Realtek") != NULL) {
-        // LAN NIC
-        Nic->ipv4_address = 0xC0A80A01;  // 192.168.10.1
-        Nic->subnet_mask = 0xFFFFFF00;    // 255.255.255.0
-        Nic->gateway = 0x00000000;        // No gateway (local only)
-        Nic->is_dhcp = FALSE;
-    }
-    else {
-        // WiFi NIC
-        Nic->ipv4_address = 0xC0A82801;  // 192.168.40.1
-        Nic->subnet_mask = 0xFFFFFF00;    // 255.255.255.0
-        Nic->gateway = 0x00000000;        // No gateway (AP mode)
-        Nic->is_dhcp = FALSE;
-    }
-    
-    return STATUS_SUCCESS;
-}
-
-BOOLEAN
-IsPrivateIp(_In_ UINT32 IpAddress)
-{
-    UINT8 firstOctet = IpAddress & 0xFF;
-    UINT8 secondOctet = (IpAddress >> 8) & 0xFF;
-    
-    // 10.0.0.0/8
-    if (firstOctet == 10) return TRUE;
-    
-    // 172.16.0.0/12
-    if (firstOctet == 172 && secondOctet >= 16 && secondOctet <= 31) return TRUE;
-    
-    // 192.168.0.0/16
-    if (firstOctet == 192 && secondOctet == 168) return TRUE;
-    
-    return FALSE;
-}
-
-//=============================================================================
-// END OF PHASE 2
-// Next: Phase 3 will add Registry Config and Self-Check
-//=============================================================================
-//=============================================================================
-// PHASE 3: REGISTRY CONFIGURATION, LOOKUP FUNCTIONS, SELF-CHECK
-//=============================================================================
-
-//=============================================================================
-// SECTION 10: REGISTRY CONFIGURATION
-//=============================================================================
-
-NTSTATUS
-LoadNicConfigFromRegistry(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    NTSTATUS status;
-    OBJECT_ATTRIBUTES objAttr;
-    UNICODE_STRING keyPath;
-    UNICODE_STRING valueName;
-    HANDLE keyHandle = NULL;
-    UCHAR buffer[256];
-    PKEY_VALUE_PARTIAL_INFORMATION valueInfo = (PKEY_VALUE_PARTIAL_INFORMATION)buffer;
-    ULONG resultLength;
-
-    DbgPrint("[NicManagement] Loading configuration from registry...\n");
-
-    // Open registry key
-    RtlInitUnicodeString(&keyPath, L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\SafeOps\\Parameters\\NICs");
-    InitializeObjectAttributes(&objAttr, &keyPath, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
-
-    status = ZwOpenKey(&keyHandle, KEY_READ, &objAttr);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[NicManagement] Registry key not found: 0x%08X\n", status);
-        return status;
-    }
-
-    // Read WAN_NIC_GUID
-    RtlInitUnicodeString(&valueName, L"WAN_NIC_GUID");
-    status = ZwQueryValueKey(keyHandle, &valueName, KeyValuePartialInformation,
-                            valueInfo, sizeof(buffer), &resultLength);
-    if (NT_SUCCESS(status) && valueInfo->Type == REG_SZ) {
-        RtlCopyMemory(Context->wan_guid, valueInfo->Data, 
-                     min(valueInfo->DataLength, sizeof(Context->wan_guid)));
-        DbgPrint("[NicManagement] WAN GUID: %ws\n", Context->wan_guid);
-    }
-
-    // Read LAN_NIC_GUID
-    RtlInitUnicodeString(&valueName, L"LAN_NIC_GUID");
-    status = ZwQueryValueKey(keyHandle, &valueName, KeyValuePartialInformation,
-                            valueInfo, sizeof(buffer), &resultLength);
-    if (NT_SUCCESS(status) && valueInfo->Type == REG_SZ) {
-        RtlCopyMemory(Context->lan_guid, valueInfo->Data,
-                     min(valueInfo->DataLength, sizeof(Context->lan_guid)));
-        DbgPrint("[NicManagement] LAN GUID: %ws\n", Context->lan_guid);
-    }
-
-    // Read WIFI_NIC_GUID
-    RtlInitUnicodeString(&valueName, L"WIFI_NIC_GUID");
-    status = ZwQueryValueKey(keyHandle, &valueName, KeyValuePartialInformation,
-                            valueInfo, sizeof(buffer), &resultLength);
-    if (NT_SUCCESS(status) && valueInfo->Type == REG_SZ) {
-        RtlCopyMemory(Context->wifi_guid, valueInfo->Data,
-                     min(valueInfo->DataLength, sizeof(Context->wifi_guid)));
-        DbgPrint("[NicManagement] WiFi GUID: %ws\n", Context->wifi_guid);
-    }
-
-    ZwClose(keyHandle);
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
-SaveNicConfigToRegistry(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    NTSTATUS status;
-    OBJECT_ATTRIBUTES objAttr;
-    UNICODE_STRING keyPath;
-    UNICODE_STRING valueName;
-    HANDLE keyHandle = NULL;
-    ULONG disposition;
-
-    DbgPrint("[NicManagement] Saving configuration to registry...\n");
-
-    // Create or open registry key
-    RtlInitUnicodeString(&keyPath, L"\\Registry\\Machine\\System\\CurrentControlSet\\Services\\SafeOps\\Parameters\\NICs");
-    InitializeObjectAttributes(&objAttr, &keyPath, OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE, NULL, NULL);
-
-    status = ZwCreateKey(&keyHandle, KEY_WRITE, &objAttr, 0, NULL, REG_OPTION_NON_VOLATILE, &disposition);
-    if (!NT_SUCCESS(status)) {
-        DbgPrint("[NicManagement] Failed to create registry key: 0x%08X\n", status);
-        return status;
-    }
-
-    // Write WAN GUID
-    PNIC_INFO wanNic = GetNicByRole(Context, NIC_ROLE_WAN);
-    if (wanNic) {
-        RtlInitUnicodeString(&valueName, L"WAN_NIC_GUID");
-        ZwSetValueKey(keyHandle, &valueName, 0, REG_SZ, wanNic->guid,
-                     (ULONG)(wcslen(wanNic->guid) + 1) * sizeof(WCHAR));
-    }
-
-    // Write LAN GUID
-    PNIC_INFO lanNic = GetNicByRole(Context, NIC_ROLE_LAN);
-    if (lanNic) {
-        RtlInitUnicodeString(&valueName, L"LAN_NIC_GUID");
-        ZwSetValueKey(keyHandle, &valueName, 0, REG_SZ, lanNic->guid,
-                     (ULONG)(wcslen(lanNic->guid) + 1) * sizeof(WCHAR));
-    }
-
-    // Write WiFi GUID
-    PNIC_INFO wifiNic = GetNicByRole(Context, NIC_ROLE_WIFI);
-    if (wifiNic) {
-        RtlInitUnicodeString(&valueName, L"WIFI_NIC_GUID");
-        ZwSetValueKey(keyHandle, &valueName, 0, REG_SZ, wifiNic->guid,
-                     (ULONG)(wcslen(wifiNic->guid) + 1) * sizeof(WCHAR));
-    }
-
-    ZwClose(keyHandle);
-    DbgPrint("[NicManagement] Configuration saved to registry\n");
-    
-    return STATUS_SUCCESS;
-}
-
-//=============================================================================
-// SECTION 11: NIC LOOKUP FUNCTIONS
-//=============================================================================
-
-PNIC_INFO
-GetNicByRole(_In_ PNIC_MANAGEMENT_CONTEXT Context, _In_ NIC_ROLE Role)
-{
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        if (Context->nics[i].role == Role) {
-            return &Context->nics[i];
-        }
-    }
+  if (!g_NicTable.IsInitialized) {
     return NULL;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  // Linear search through table
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->Identifier.FilterHandle == FilterHandle &&
+        ctx->CurrentState != NIC_STATE_DETACHED) {
+      result = ctx;
+      break;
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return result;
 }
 
-PNIC_INFO
-GetNicById(_In_ PNIC_MANAGEMENT_CONTEXT Context, _In_ UINT8 NicId)
-{
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        if (Context->nics[i].nic_id == NicId) {
-            return &Context->nics[i];
-        }
-    }
+/**
+ * NicFindByInterfaceIndex
+ *
+ * Finds NIC context by Windows interface index (0-7 for our fixed array).
+ *
+ * Parameters:
+ *   InterfaceIndex - Interface index (0 to MAX_NIC_COUNT-1)
+ *
+ * Returns: PNIC_CONTEXT - Pointer to NIC context or NULL if invalid
+ * IRQL: <= DISPATCH_LEVEL
+ */
+PNIC_CONTEXT
+NicFindByInterfaceIndex(_In_ NET_IFINDEX InterfaceIndex) {
+  KIRQL oldIrql;
+  PNIC_CONTEXT result = NULL;
+
+  if (!g_NicTable.IsInitialized || InterfaceIndex >= MAX_NIC_COUNT) {
     return NULL;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  PNIC_CONTEXT ctx = &g_NicTable.NICs[InterfaceIndex];
+  if (ctx->CurrentState != NIC_STATE_DETACHED) {
+    result = ctx;
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return result;
 }
 
-PNIC_INFO
-GetNicByGuid(_In_ PNIC_MANAGEMENT_CONTEXT Context, _In_ PCWSTR Guid)
-{
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        if (wcscmp(Context->nics[i].guid, Guid) == 0) {
-            return &Context->nics[i];
-        }
-    }
+/**
+ * NicFindByType
+ *
+ * Finds NIC context by type tag (WAN, LAN, WiFi). Used by filter engine
+ * to determine which NIC handles specific traffic.
+ *
+ * Parameters:
+ *   NICType - Type to search for (NIC_TYPE_WAN, NIC_TYPE_LAN, etc.)
+ *
+ * Returns: PNIC_CONTEXT - Pointer to NIC context or NULL if not found
+ * IRQL: <= DISPATCH_LEVEL
+ */
+PNIC_CONTEXT
+NicFindByType(_In_ NIC_TYPE NICType) {
+  KIRQL oldIrql;
+  PNIC_CONTEXT result = NULL;
+
+  if (!g_NicTable.IsInitialized || NICType == NIC_TYPE_UNTAGGED) {
     return NULL;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->Configuration.NICType == NICType &&
+        ctx->CurrentState != NIC_STATE_DETACHED) {
+      result = ctx;
+      break;
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return result;
+}
+
+/**
+ * NicFindByMAC
+ *
+ * Finds NIC context by MAC address (6-byte hardware address).
+ *
+ * Parameters:
+ *   MACAddress - Pointer to 6-byte MAC address
+ *
+ * Returns: PNIC_CONTEXT - Pointer to NIC context or NULL if not found
+ * IRQL: <= DISPATCH_LEVEL
+ */
+PNIC_CONTEXT
+NicFindByMAC(_In_ PUCHAR MACAddress) {
+  KIRQL oldIrql;
+  PNIC_CONTEXT result = NULL;
+
+  if (!g_NicTable.IsInitialized || MACAddress == NULL) {
+    return NULL;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED &&
+        RtlCompareMemory(ctx->Identifier.MACAddress, MACAddress, 6) == 6) {
+      result = ctx;
+      break;
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return result;
+}
+
+/**
+ * NicFindByGUID
+ *
+ * Finds NIC context by adapter GUID (persistent identifier across reboots).
+ *
+ * Parameters:
+ *   InterfaceGuid - Pointer to adapter GUID
+ *
+ * Returns: PNIC_CONTEXT - Pointer to NIC context or NULL if not found
+ * IRQL: <= DISPATCH_LEVEL
+ */
+PNIC_CONTEXT
+NicFindByGUID(_In_ PGUID InterfaceGuid) {
+  KIRQL oldIrql;
+  PNIC_CONTEXT result = NULL;
+
+  if (!g_NicTable.IsInitialized || InterfaceGuid == NULL) {
+    return NULL;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED &&
+        RtlCompareMemory(&ctx->Identifier.InterfaceGuid, InterfaceGuid,
+                         sizeof(GUID)) == sizeof(GUID)) {
+      result = ctx;
+      break;
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return result;
 }
 
 //=============================================================================
-// SECTION 12: SELF-CHECK FUNCTIONS
+// SECTION 5: Configuration Functions
 //=============================================================================
 
+/**
+ * NicSetType
+ *
+ * Tags a NIC as WAN, LAN, or WiFi. Validates that the tag is unique
+ * (only one NIC can have each tag).
+ *
+ * Parameters:
+ *   Context - NIC context to configure
+ *   NICType - Type tag to assign
+ *
+ * Returns: NTSTATUS
+ * IRQL: PASSIVE_LEVEL
+ */
 NTSTATUS
-VerifyNicManagement(_In_ PNIC_MANAGEMENT_CONTEXT Context)
-{
-    BOOLEAN hasWan = FALSE, hasLan = FALSE, hasWifi = FALSE;
-    UINT32 boundCount = 0;
+NicSetType(_Inout_ PNIC_CONTEXT Context, _In_ NIC_TYPE NICType) {
+  KIRQL oldIrql;
 
-    DbgPrint("[NicManagement] === SELF-CHECK START ===\n");
+  if (Context == NULL || !g_NicTable.IsInitialized) {
+    return STATUS_INVALID_PARAMETER;
+  }
 
-    // 1. Verify NIC count
-    if (Context->nic_count != MAX_NICS) {
-        DbgPrint("[NicManagement] WARNING: Expected %u NICs, found %u\n",
-                 MAX_NICS, Context->nic_count);
-    } else {
-        DbgPrint("[NicManagement] PASS: %u NICs detected\n", Context->nic_count);
+  // Validate type
+  if (NICType != NIC_TYPE_WAN && NICType != NIC_TYPE_LAN &&
+      NICType != NIC_TYPE_WIFI && NICType != NIC_TYPE_UNTAGGED) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  // Check if another NIC already has this type
+  if (NICType != NIC_TYPE_UNTAGGED) {
+    for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+      PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+      if (ctx != Context && ctx->CurrentState != NIC_STATE_DETACHED &&
+          ctx->Configuration.NICType == NICType) {
+        KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+        DbgPrint(
+            "[NicManagement] ERROR: Type %u already assigned to another NIC\n",
+            NICType);
+        return STATUS_DUPLICATE_NAME;
+      }
     }
+  }
 
-    // 2. Verify all roles assigned
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        PNIC_INFO nic = &Context->nics[i];
-        
-        if (nic->role == NIC_ROLE_WAN) hasWan = TRUE;
-        if (nic->role == NIC_ROLE_LAN) hasLan = TRUE;
-        if (nic->role == NIC_ROLE_WIFI) hasWifi = TRUE;
-        
-        if (nic->bound) boundCount++;
-    }
+  // Set the type
+  Context->Configuration.NICType = NICType;
 
-    if (!hasWan || !hasLan || !hasWifi) {
-        DbgPrint("[NicManagement] FAIL: Missing roles (WAN:%d LAN:%d WiFi:%d)\n",
-                 hasWan, hasLan, hasWifi);
-        return STATUS_UNSUCCESSFUL;
-    }
-    DbgPrint("[NicManagement] PASS: All roles assigned\n");
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
 
-    // 3. Verify bindings
-    if (boundCount != Context->nic_count) {
-        DbgPrint("[NicManagement] FAIL: Only %u of %u NICs bound\n",
-                 boundCount, Context->nic_count);
-        return STATUS_UNSUCCESSFUL;
-    }
-    DbgPrint("[NicManagement] PASS: All NICs bound\n");
+  DbgPrint("[NicManagement] NIC type set to %u\n", NICType);
+  return STATUS_SUCCESS;
+}
 
-    // 4. Check for duplicate roles
-    UINT32 roleCount[4] = {0};
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        roleCount[Context->nics[i].role]++;
-    }
-    
-    if (roleCount[NIC_ROLE_WAN] > 1 || roleCount[NIC_ROLE_LAN] > 1 || roleCount[NIC_ROLE_WIFI] > 1) {
-        DbgPrint("[NicManagement] FAIL: Duplicate role assignments\n");
-        return STATUS_UNSUCCESSFUL;
-    }
-    DbgPrint("[NicManagement] PASS: No duplicate roles\n");
+/**
+ * NicSetEnabled
+ *
+ * Enables or disables packet capture on a NIC.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   IsEnabled - TRUE to enable, FALSE to disable
+ *
+ * Returns: NTSTATUS
+ * IRQL: PASSIVE_LEVEL
+ */
+NTSTATUS
+NicSetEnabled(_Inout_ PNIC_CONTEXT Context, _In_ BOOLEAN IsEnabled) {
+  KIRQL oldIrql;
 
-    // 5. Verify link states
-    UINT32 upCount = 0;
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        if (Context->nics[i].link_state == NIC_LINK_UP) upCount++;
-    }
-    DbgPrint("[NicManagement] INFO: %u of %u NICs link UP\n", upCount, Context->nic_count);
+  if (Context == NULL || !g_NicTable.IsInitialized) {
+    return STATUS_INVALID_PARAMETER;
+  }
 
-    // 6. Print detailed info
-    for (UINT32 i = 0; i < Context->nic_count; i++) {
-        PNIC_INFO nic = &Context->nics[i];
-        const WCHAR* roleStr = L"UNKNOWN";
-        if (nic->role == NIC_ROLE_WAN) roleStr = L"WAN";
-        else if (nic->role == NIC_ROLE_LAN) roleStr = L"LAN";
-        else if (nic->role == NIC_ROLE_WIFI) roleStr = L"WiFi";
-        
-        DbgPrint("[NicManagement] NIC %u:\n", nic->nic_id);
-        DbgPrint("[NicManagement]   Role: %ws\n", roleStr);
-        DbgPrint("[NicManagement]   Name: %ws\n", nic->friendly_name);
-        DbgPrint("[NicManagement]   MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                 nic->mac_address[0], nic->mac_address[1], nic->mac_address[2],
-                 nic->mac_address[3], nic->mac_address[4], nic->mac_address[5]);
-        DbgPrint("[NicManagement]   Speed: %u Mbps\n", nic->link_speed_mbps);
-        DbgPrint("[NicManagement]   Link: %ws\n", 
-                 nic->link_state == NIC_LINK_UP ? L"UP" : L"DOWN");
-        DbgPrint("[NicManagement]   IP: %u.%u.%u.%u\n",
-                 nic->ipv4_address & 0xFF,
-                 (nic->ipv4_address >> 8) & 0xFF,
-                 (nic->ipv4_address >> 16) & 0xFF,
-                 (nic->ipv4_address >> 24) & 0xFF);
-        DbgPrint("[NicManagement]   Stats: RX:%llu TX:%llu\n",
-                 nic->stats.packets_received, nic->stats.packets_sent);
-    }
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
 
-    DbgPrint("[NicManagement] === SELF-CHECK PASS ===\n");
-    return STATUS_SUCCESS;
+  BOOLEAN wasEnabled = Context->Configuration.IsEnabled;
+  Context->Configuration.IsEnabled = IsEnabled;
+
+  // Update enabled count
+  if (IsEnabled && !wasEnabled) {
+    g_NicTable.EnabledCount++;
+  } else if (!IsEnabled && wasEnabled) {
+    if (g_NicTable.EnabledCount > 0) {
+      g_NicTable.EnabledCount--;
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  DbgPrint("[NicManagement] NIC %s\n", IsEnabled ? "enabled" : "disabled");
+  return STATUS_SUCCESS;
+}
+
+/**
+ * NicSetPromiscuousMode
+ *
+ * Enables or disables promiscuous mode on a NIC.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   IsPromiscuous - TRUE for promiscuous, FALSE for normal
+ *
+ * Returns: NTSTATUS
+ * IRQL: PASSIVE_LEVEL
+ */
+NTSTATUS
+NicSetPromiscuousMode(_Inout_ PNIC_CONTEXT Context,
+                      _In_ BOOLEAN IsPromiscuous) {
+  KIRQL oldIrql;
+
+  if (Context == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+  Context->Configuration.IsPromiscuous = IsPromiscuous;
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return STATUS_SUCCESS;
+}
+
+/**
+ * NicSetCaptureFlags
+ *
+ * Configures packet type filter flags.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   Flags - Capture filter flags
+ *
+ * Returns: NTSTATUS
+ * IRQL: PASSIVE_LEVEL
+ */
+NTSTATUS
+NicSetCaptureFlags(_Inout_ PNIC_CONTEXT Context, _In_ ULONG Flags) {
+  KIRQL oldIrql;
+
+  if (Context == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+  Context->Configuration.CaptureFilterFlags = Flags;
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return STATUS_SUCCESS;
+}
+
+/**
+ * NicSetRateLimit
+ *
+ * Sets maximum packets per second rate limit (0 = unlimited).
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   MaxPPS - Maximum packets per second
+ *
+ * Returns: NTSTATUS
+ * IRQL: PASSIVE_LEVEL
+ */
+NTSTATUS
+NicSetRateLimit(_Inout_ PNIC_CONTEXT Context, _In_ ULONG MaxPPS) {
+  KIRQL oldIrql;
+
+  if (Context == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+  Context->Configuration.MaxPacketsPerSecond = MaxPPS;
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return STATUS_SUCCESS;
+}
+
+/**
+ * NicGetConfiguration
+ *
+ * Exports current NIC configuration to output buffer.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   OutConfig - Receives configuration copy
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicGetConfiguration(_In_ PNIC_CONTEXT Context,
+                    _Out_ PNIC_CONFIGURATION OutConfig) {
+  KIRQL oldIrql;
+
+  if (Context == NULL || OutConfig == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+  RtlCopyMemory(OutConfig, &Context->Configuration, sizeof(NIC_CONFIGURATION));
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return STATUS_SUCCESS;
 }
 
 //=============================================================================
-// END OF PHASE 3 - NIC MANAGEMENT COMPLETE
-// All 12 sections implemented
+// SECTION 6: Statistics Functions
+//=============================================================================
+
+/**
+ * NicIncrementPacketCount
+ *
+ * Atomically increments packet and byte counters. Called from packet
+ * processing fast path (per-packet). Uses atomic operations for lock-free
+ * concurrent updates.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   IsInbound - TRUE for RX, FALSE for TX
+ *   ByteCount - Number of bytes in packet
+ *
+ * Returns: None
+ * IRQL: <= DISPATCH_LEVEL
+ */
+VOID NicIncrementPacketCount(_Inout_ PNIC_CONTEXT Context,
+                             _In_ BOOLEAN IsInbound, _In_ ULONG64 ByteCount) {
+  if (Context == NULL) {
+    return;
+  }
+
+  LARGE_INTEGER timestamp;
+  KeQuerySystemTime(&timestamp);
+
+  if (IsInbound) {
+    InterlockedIncrement64((LONG64 *)&Context->Statistics.PacketsReceived);
+    InterlockedAdd64((LONG64 *)&Context->Statistics.BytesReceived, ByteCount);
+
+    // Update first/last packet times
+    if (Context->Statistics.FirstPacketTime.QuadPart == 0) {
+      Context->Statistics.FirstPacketTime = timestamp;
+    }
+    Context->Statistics.LastPacketTime = timestamp;
+  } else {
+    InterlockedIncrement64((LONG64 *)&Context->Statistics.PacketsTransmitted);
+    InterlockedAdd64((LONG64 *)&Context->Statistics.BytesTransmitted,
+                     ByteCount);
+
+    if (Context->Statistics.FirstPacketTime.QuadPart == 0) {
+      Context->Statistics.FirstPacketTime = timestamp;
+    }
+    Context->Statistics.LastPacketTime = timestamp;
+  }
+}
+
+/**
+ * NicIncrementDropCount
+ *
+ * Atomically increments packet drop counter.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   Count - Number of packets dropped
+ *
+ * Returns: None
+ * IRQL: <= DISPATCH_LEVEL
+ */
+VOID NicIncrementDropCount(_Inout_ PNIC_CONTEXT Context, _In_ ULONG64 Count) {
+  if (Context == NULL) {
+    return;
+  }
+
+  InterlockedAdd64((LONG64 *)&Context->Statistics.PacketsDropped, Count);
+}
+
+/**
+ * NicIncrementErrorCount
+ *
+ * Atomically increments error counter.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   IsReceiveError - TRUE for RX error, FALSE for TX error
+ *
+ * Returns: None
+ * IRQL: <= DISPATCH_LEVEL
+ */
+VOID NicIncrementErrorCount(_Inout_ PNIC_CONTEXT Context,
+                            _In_ BOOLEAN IsReceiveError) {
+  if (Context == NULL) {
+    return;
+  }
+
+  if (IsReceiveError) {
+    InterlockedIncrement64((LONG64 *)&Context->Statistics.ErrorsReceived);
+  } else {
+    InterlockedIncrement64((LONG64 *)&Context->Statistics.ErrorsTransmitted);
+  }
+
+  InterlockedIncrement64((LONG64 *)&Context->Statistics.PacketsWithErrors);
+}
+
+/**
+ * NicGetStatistics
+ *
+ * Exports NIC statistics snapshot to output buffer.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   OutStats - Receives statistics copy
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicGetStatistics(_In_ PNIC_CONTEXT Context, _Out_ PNIC_STATISTICS OutStats) {
+  KIRQL oldIrql;
+
+  if (Context == NULL || OutStats == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&Context->StatisticsLock, &oldIrql);
+  RtlCopyMemory(OutStats, &Context->Statistics, sizeof(NIC_STATISTICS));
+  KeReleaseSpinLock(&Context->StatisticsLock, oldIrql);
+
+  return STATUS_SUCCESS;
+}
+
+/**
+ * NicResetStatistics
+ *
+ * Zeros all statistics counters.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *
+ * Returns: None
+ * IRQL: <= DISPATCH_LEVEL
+ */
+VOID NicResetStatistics(_Inout_ PNIC_CONTEXT Context) {
+  KIRQL oldIrql;
+
+  if (Context == NULL) {
+    return;
+  }
+
+  KeAcquireSpinLock(&Context->StatisticsLock, &oldIrql);
+  RtlZeroMemory(&Context->Statistics, sizeof(NIC_STATISTICS));
+  KeReleaseSpinLock(&Context->StatisticsLock, oldIrql);
+
+  DbgPrint("[NicManagement] Statistics reset\n");
+}
+
+/**
+ * NicUpdateLinkSpeed
+ *
+ * Updates link speed metadata (in Mbps).
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   SpeedMbps - Link speed in Mbps
+ *
+ * Returns: None
+ * IRQL: <= DISPATCH_LEVEL
+ */
+VOID NicUpdateLinkSpeed(_Inout_ PNIC_CONTEXT Context, _In_ ULONG SpeedMbps) {
+  KIRQL oldIrql;
+
+  if (Context == NULL) {
+    return;
+  }
+
+  KeAcquireSpinLock(&Context->StatisticsLock, &oldIrql);
+  Context->Statistics.LinkSpeedMbps = SpeedMbps;
+  KeReleaseSpinLock(&Context->StatisticsLock, oldIrql);
+}
+
+//=============================================================================
+// SECTION 7: State Management Functions
+//=============================================================================
+
+/**
+ * NicSetState
+ *
+ * Changes NIC operational state.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *   NewState - New state to set
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicSetState(_Inout_ PNIC_CONTEXT Context, _In_ NIC_STATE NewState) {
+  KIRQL oldIrql;
+
+  if (Context == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+  Context->CurrentState = NewState;
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return STATUS_SUCCESS;
+}
+
+/**
+ * NicGetState
+ *
+ * Returns current NIC state.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *
+ * Returns: NIC_STATE - Current state
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NIC_STATE
+NicGetState(_In_ PNIC_CONTEXT Context) {
+  KIRQL oldIrql;
+  NIC_STATE state;
+
+  if (Context == NULL) {
+    return NIC_STATE_ERROR;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+  state = Context->CurrentState;
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return state;
+}
+
+/**
+ * NicIsRunning
+ *
+ * Checks if NIC is actively capturing packets.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *
+ * Returns: BOOLEAN - TRUE if running
+ * IRQL: <= DISPATCH_LEVEL
+ */
+BOOLEAN
+NicIsRunning(_In_ PNIC_CONTEXT Context) {
+  if (Context == NULL) {
+    return FALSE;
+  }
+
+  return (Context->CurrentState == NIC_STATE_RUNNING);
+}
+
+/**
+ * NicIsPaused
+ *
+ * Checks if NIC is paused.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *
+ * Returns: BOOLEAN - TRUE if paused
+ * IRQL: <= DISPATCH_LEVEL
+ */
+BOOLEAN
+NicIsPaused(_In_ PNIC_CONTEXT Context) {
+  if (Context == NULL) {
+    return FALSE;
+  }
+
+  return (Context->CurrentState == NIC_STATE_PAUSED);
+}
+
+/**
+ * NicPause
+ *
+ * Pauses packet capture on NIC.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicPause(_Inout_ PNIC_CONTEXT Context) {
+  if (Context == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  return NicSetState(Context, NIC_STATE_PAUSED);
+}
+
+/**
+ * NicResume
+ *
+ * Resumes packet capture on NIC.
+ *
+ * Parameters:
+ *   Context - NIC context
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicResume(_Inout_ PNIC_CONTEXT Context) {
+  if (Context == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  return NicSetState(Context, NIC_STATE_RUNNING);
+}
+
+//=============================================================================
+// SECTION 8: Enumeration Functions
+//=============================================================================
+
+/**
+ * NicEnumerate
+ *
+ * Fills array with all registered NICs (attached or running).
+ *
+ * Parameters:
+ *   OutArray - Array to fill with NIC context pointers
+ *   ArraySize - Maximum entries in array
+ *   OutCount - Receives actual count of NICs
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicEnumerate(_Out_ PNIC_CONTEXT *OutArray, _In_ ULONG ArraySize,
+             _Out_ PULONG OutCount) {
+  KIRQL oldIrql;
+  ULONG count = 0;
+
+  if (OutArray == NULL || OutCount == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  if (!g_NicTable.IsInitialized) {
+    *OutCount = 0;
+    return STATUS_SUCCESS;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT && count < ArraySize; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED) {
+      OutArray[count++] = ctx;
+    }
+  }
+
+  *OutCount = count;
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return (count < g_NicTable.AttachedCount) ? STATUS_BUFFER_OVERFLOW
+                                            : STATUS_SUCCESS;
+}
+
+/**
+ * NicEnumerateEnabled
+ *
+ * Fills array with only enabled NICs.
+ *
+ * Parameters:
+ *   OutArray - Array to fill with NIC context pointers
+ *   ArraySize - Maximum entries in array
+ *   OutCount - Receives actual count of enabled NICs
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicEnumerateEnabled(_Out_ PNIC_CONTEXT *OutArray, _In_ ULONG ArraySize,
+                    _Out_ PULONG OutCount) {
+  KIRQL oldIrql;
+  ULONG count = 0;
+
+  if (OutArray == NULL || OutCount == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  if (!g_NicTable.IsInitialized) {
+    *OutCount = 0;
+    return STATUS_SUCCESS;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT && count < ArraySize; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED &&
+        ctx->Configuration.IsEnabled) {
+      OutArray[count++] = ctx;
+    }
+  }
+
+  *OutCount = count;
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return (count < g_NicTable.EnabledCount) ? STATUS_BUFFER_OVERFLOW
+                                           : STATUS_SUCCESS;
+}
+
+/**
+ * NicForEach
+ *
+ * Iterates all NICs with callback function.
+ *
+ * Parameters:
+ *   Callback - Function to call for each NIC
+ *   CallbackContext - Optional context passed to callback
+ *
+ * Returns: NTSTATUS
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+NicForEach(_In_ VOID (*Callback)(PNIC_CONTEXT, PVOID),
+           _In_opt_ PVOID CallbackContext) {
+  KIRQL oldIrql;
+
+  if (Callback == NULL || !g_NicTable.IsInitialized) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED) {
+      Callback(ctx, CallbackContext);
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return STATUS_SUCCESS;
+}
+
+//=============================================================================
+// SECTION 9: Validation Functions
+//=============================================================================
+
+/**
+ * ValidateNICTagging
+ *
+ * Ensures exactly one WAN, one LAN, and one WiFi NIC are configured.
+ *
+ * Parameters: None
+ * Returns: NTSTATUS - STATUS_SUCCESS if valid, error otherwise
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+ValidateNICTagging(VOID) {
+  KIRQL oldIrql;
+  ULONG wanCount = 0, lanCount = 0, wifiCount = 0;
+
+  if (!g_NicTable.IsInitialized) {
+    return STATUS_DEVICE_NOT_READY;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED) {
+      switch (ctx->Configuration.NICType) {
+      case NIC_TYPE_WAN:
+        wanCount++;
+        break;
+      case NIC_TYPE_LAN:
+        lanCount++;
+        break;
+      case NIC_TYPE_WIFI:
+        wifiCount++;
+        break;
+      default:
+        break;
+      }
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  if (wanCount != 1 || lanCount != 1 || wifiCount != 1) {
+    DbgPrint("[NicManagement] Invalid tagging: WAN=%u LAN=%u WiFi=%u (expected "
+             "1,1,1)\n",
+             wanCount, lanCount, wifiCount);
+    return STATUS_INVALID_DEVICE_STATE;
+  }
+
+  return STATUS_SUCCESS;
+}
+
+/**
+ * IsValidNICType
+ *
+ * Checks if NIC type enum value is valid.
+ *
+ * Parameters:
+ *   Type - NIC type to validate
+ *
+ * Returns: BOOLEAN - TRUE if valid
+ * IRQL: Any
+ */
+BOOLEAN
+IsValidNICType(_In_ NIC_TYPE Type) {
+  return (Type >= NIC_TYPE_UNTAGGED && Type <= NIC_TYPE_WIFI);
+}
+
+/**
+ * ValidateNICConfiguration
+ *
+ * Validates NIC configuration structure fields.
+ *
+ * Parameters:
+ *   Config - Configuration to validate
+ *
+ * Returns: NTSTATUS
+ * IRQL: Any
+ */
+NTSTATUS
+ValidateNICConfiguration(_In_ PNIC_CONFIGURATION Config) {
+  if (Config == NULL) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  if (!IsValidNICType(Config->NICType)) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  if (Config->MTU == 0 || Config->MTU > 9000) {
+    return STATUS_INVALID_PARAMETER;
+  }
+
+  return STATUS_SUCCESS;
+}
+
+/**
+ * IsNICTagUnique
+ *
+ * Checks if a NIC type tag is already assigned to another NIC.
+ *
+ * Parameters:
+ *   Type - Type tag to check
+ *
+ * Returns: BOOLEAN - TRUE if unique (not assigned)
+ * IRQL: <= DISPATCH_LEVEL
+ */
+BOOLEAN
+IsNICTagUnique(_In_ NIC_TYPE Type) {
+  KIRQL oldIrql;
+  BOOLEAN isUnique = TRUE;
+
+  if (!g_NicTable.IsInitialized || Type == NIC_TYPE_UNTAGGED) {
+    return TRUE;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED &&
+        ctx->Configuration.NICType == Type) {
+      isUnique = FALSE;
+      break;
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  return isUnique;
+}
+
+//=============================================================================
+// SECTION 10: Debug Functions
+//=============================================================================
+
+#ifdef DBG
+
+/**
+ * DbgPrintNicContext
+ *
+ * Prints detailed information about a NIC context.
+ *
+ * Parameters:
+ *   Context - NIC context to print
+ *
+ * Returns: None
+ * IRQL: <= DISPATCH_LEVEL
+ */
+VOID DbgPrintNicContext(_In_ PNIC_CONTEXT Context) {
+  if (Context == NULL) {
+    DbgPrint("[NicManagement] NULL context\n");
+    return;
+  }
+
+  DbgPrint("[NicManagement] === NIC Context ===\n");
+  DbgPrint("  Interface Index: %u\n", Context->Identifier.InterfaceIndex);
+  DbgPrint("  Filter Handle: %p\n", Context->Identifier.FilterHandle);
+  DbgPrint("  Friendly Name: %ws\n", Context->Identifier.FriendlyName);
+  DbgPrint("  MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+           Context->Identifier.MACAddress[0], Context->Identifier.MACAddress[1],
+           Context->Identifier.MACAddress[2], Context->Identifier.MACAddress[3],
+           Context->Identifier.MACAddress[4],
+           Context->Identifier.MACAddress[5]);
+  DbgPrint("  Type: %u\n", Context->Configuration.NICType);
+  DbgPrint("  State: %u\n", Context->CurrentState);
+  DbgPrint("  Enabled: %u\n", Context->Configuration.IsEnabled);
+  DbgPrint("  Link State: %u\n", Context->LinkState);
+  DbgPrint("  Link Speed: %u Mbps\n", Context->Statistics.LinkSpeedMbps);
+  DbgPrint("  Packets RX: %llu\n", Context->Statistics.PacketsReceived);
+  DbgPrint("  Packets TX: %llu\n", Context->Statistics.PacketsTransmitted);
+  DbgPrint("  Bytes RX: %llu\n", Context->Statistics.BytesReceived);
+  DbgPrint("  Bytes TX: %llu\n", Context->Statistics.BytesTransmitted);
+  DbgPrint("  Drops: %llu\n", Context->Statistics.PacketsDropped);
+  DbgPrint("  Errors: %llu\n", Context->Statistics.PacketsWithErrors);
+}
+
+/**
+ * DbgPrintNicTable
+ *
+ * Prints the entire NIC table.
+ *
+ * Parameters: None
+ * Returns: None
+ * IRQL: <= DISPATCH_LEVEL
+ */
+VOID DbgPrintNicTable(VOID) {
+  KIRQL oldIrql;
+
+  if (!g_NicTable.IsInitialized) {
+    DbgPrint("[NicManagement] Table not initialized\n");
+    return;
+  }
+
+  DbgPrint("[NicManagement] === NIC TABLE ===\n");
+  DbgPrint("  Attached: %u\n", g_NicTable.AttachedCount);
+  DbgPrint("  Enabled: %u\n", g_NicTable.EnabledCount);
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+    if (ctx->CurrentState != NIC_STATE_DETACHED) {
+      DbgPrint("\n  [Slot %u]\n", i);
+      DbgPrintNicContext(ctx);
+    }
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  DbgPrint("[NicManagement] === END TABLE ===\n");
+}
+
+/**
+ * DbgVerifyNicManagement
+ *
+ * Performs comprehensive self-check of NIC management state.
+ *
+ * Parameters: None
+ * Returns: NTSTATUS - STATUS_SUCCESS if all checks pass
+ * IRQL: <= DISPATCH_LEVEL
+ */
+NTSTATUS
+DbgVerifyNicManagement(VOID) {
+  KIRQL oldIrql;
+  ULONG attachedCount = 0;
+  ULONG enabledCount = 0;
+  BOOLEAN hasErrors = FALSE;
+
+  DbgPrint("[NicManagement] === SELF-CHECK START ===\n");
+
+  if (!g_NicTable.IsInitialized) {
+    DbgPrint("[NicManagement] FAIL: Table not initialized\n");
+    return STATUS_UNSUCCESSFUL;
+  }
+
+  KeAcquireSpinLock(&g_NicTable.TableLock, &oldIrql);
+
+  // Count NICs and verify consistency
+  for (ULONG i = 0; i < MAX_NIC_COUNT; i++) {
+    PNIC_CONTEXT ctx = &g_NicTable.NICs[i];
+
+    if (ctx->CurrentState != NIC_STATE_DETACHED) {
+      attachedCount++;
+
+      if (ctx->Configuration.IsEnabled) {
+        enabledCount++;
+      }
+
+      // Verify interface index matches slot
+      if (ctx->Identifier.InterfaceIndex != i) {
+        DbgPrint("[NicManagement] WARNING: Slot %u has interface index %u\n", i,
+                 ctx->Identifier.InterfaceIndex);
+      }
+    }
+  }
+
+  // Verify counts
+  if (attachedCount != g_NicTable.AttachedCount) {
+    DbgPrint("[NicManagement] FAIL: Attached count mismatch (actual=%u, "
+             "stored=%u)\n",
+             attachedCount, g_NicTable.AttachedCount);
+    hasErrors = TRUE;
+  }
+
+  if (enabledCount != g_NicTable.EnabledCount) {
+    DbgPrint(
+        "[NicManagement] FAIL: Enabled count mismatch (actual=%u, stored=%u)\n",
+        enabledCount, g_NicTable.EnabledCount);
+    hasErrors = TRUE;
+  }
+
+  KeReleaseSpinLock(&g_NicTable.TableLock, oldIrql);
+
+  if (!hasErrors) {
+    DbgPrint("[NicManagement] PASS: Attached=%u, Enabled=%u\n", attachedCount,
+             enabledCount);
+  }
+
+  DbgPrint("[NicManagement] === SELF-CHECK %s ===\n",
+           hasErrors ? "FAILED" : "PASSED");
+
+  return hasErrors ? STATUS_UNSUCCESSFUL : STATUS_SUCCESS;
+}
+
+#endif // DBG
+
+//=============================================================================
+// END OF NIC MANAGEMENT IMPLEMENTATION
 //=============================================================================

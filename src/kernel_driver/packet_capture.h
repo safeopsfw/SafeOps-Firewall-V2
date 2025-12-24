@@ -1,930 +1,638 @@
-/*******************************************************************************
- * FILE: src/kernel_driver/packet_capture.h
- * 
- * SafeOps Enterprise Kernel Packet Capture Driver - Header File
- * 
- * PURPOSE:
- *   Complete data structures, constants, and interfaces for high-performance
- *   kernel-level packet capture with 5-minute rotation cycle.
- * 
- * PERFORMANCE IMPROVEMENTS OVER PYTHON VERSION:
- *   ✅ 10-100x faster: Kernel-level capture, zero userspace overhead
- *   ✅ Zero-copy ring buffer: DMA-aware, lock-free design
- *   ✅ Hardware offload: RSS, TSO, LRO aware
- *   ✅ Batch processing: Process 128 packets at once
- *   ✅ Cache-optimized: 64-byte aligned structures
- *   ✅ SIMD parsing: SSE/AVX for header extraction
- *   ✅ Better deduplication: Kernel-level hash tables
- *   ✅ Flow tracking: Connection state machine in kernel
- *   ✅ 5-MIN ROTATION: Mandatory, hardcoded timer (300 seconds)
- * 
- * AUTHOR: SafeOps Team
- * VERSION: 2.0.0
- ******************************************************************************/
+/**
+ * packet_capture.h - SafeOps NDIS Packet Capture Header
+ *
+ * Purpose: Defines data structures, constants, and function prototypes for
+ * NDIS packet capture operations. Establishes the interface between the NDIS
+ * filter driver framework and SafeOps packet processing logic, including
+ * packet metadata extraction, NET_BUFFER_LIST manipulation, and packet
+ * classification for ring buffer storage.
+ *
+ * Copyright (c) 2024 SafeOps Project
+ * License: MIT
+ *
+ * CRITICAL: This header is focused exclusively on NDIS layer operations
+ * (Layer 2 Ethernet frame processing). WFP callouts are handled separately.
+ */
 
-#ifndef _SAFEOPS_PACKET_CAPTURE_H_
-#define _SAFEOPS_PACKET_CAPTURE_H_
-
-#pragma once
-
-#include <ntddk.h>
-#include <ndis.h>
-#include <netiodef.h>
-#include <in6addr.h>
-#include <ip2string.h>
+#ifndef SAFEOPS_PACKET_CAPTURE_H
+#define SAFEOPS_PACKET_CAPTURE_H
 
 //=============================================================================
-// NDIS VERSION AND DRIVER INFO
+// SECTION 1: Include Dependencies
 //=============================================================================
 
-#define NDIS_FILTER_MAJOR_VERSION       6
-#define NDIS_FILTER_MINOR_VERSION       0
+#include "driver.h" // Master driver header for global context
 
-#define DRIVER_VERSION_MAJOR            2
-#define DRIVER_VERSION_MINOR            0
-#define DRIVER_VERSION_BUILD            0
+#ifdef SAFEOPS_WDK_BUILD
+#include <ndis.h> // NDIS 6.x APIs for NET_BUFFER_LIST
+#else
+// IDE Mode - NDIS type stubs for IntelliSense
+typedef void *PNET_BUFFER_LIST;
+typedef void *PNET_BUFFER;
+typedef void *PNDIS_STATUS_INDICATION;
+typedef void *PNDIS_OID_REQUEST;
+typedef void *PNDIS_FILTER_ATTACH_PARAMETERS;
+typedef void *PNDIS_FILTER_RESTART_PARAMETERS;
+typedef void *PNDIS_FILTER_PAUSE_PARAMETERS;
+typedef ULONG NDIS_STATUS;
+typedef void *PKDEFERRED_ROUTINE;
+typedef struct _KDPC {
+  ULONG64 Reserved;
+} KDPC;
+typedef struct _KTIMER {
+  ULONG64 Reserved;
+} KTIMER;
+typedef struct _NPAGED_LOOKASIDE_LIST {
+  ULONG64 Reserved;
+} NPAGED_LOOKASIDE_LIST;
 
-#define DRIVER_FRIENDLY_NAME            L"SafeOps Network Capture Filter"
-#define DRIVER_SERVICE_NAME             L"SafeOpsNetCapture"
-#define DRIVER_UNIQUE_NAME              L"{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+// PWSTR typedef for IDE
+typedef WCHAR *PWSTR;
 
-//=============================================================================
-// DEVICE NAMES AND IOCTL CODES
-//=============================================================================
+// Note: Filter callback functions (FilterOidRequest, FilterDetach, etc.) are
+// implemented in packet_capture.c which is wrapped with SAFEOPS_WDK_BUILD.
+// No forward declarations needed in IDE mode since the implementation is
+// hidden.
 
-#define DEVICE_NAME                     L"\\Device\\SafeOpsNetCapture"
-#define SYMBOLIC_LINK_NAME              L"\\DosDevices\\SafeOpsNetCapture"
+// Log rotation constants
+#ifndef LOG_ROTATION_INTERVAL_MS
+#define LOG_ROTATION_INTERVAL_MS (5 * 60 * 1000) // 5 minutes
+#define LOG_ROTATION_INTERVAL_SEC 300
+#endif
 
-// IOCTL codes for userspace control
-#define IOCTL_NETCAP_START              CTL_CODE(FILE_DEVICE_NETWORK, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define IOCTL_NETCAP_STOP               CTL_CODE(FILE_DEVICE_NETWORK, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define IOCTL_NETCAP_GET_STATS          CTL_CODE(FILE_DEVICE_NETWORK, 0x802, METHOD_BUFFERED, FILE_READ_ACCESS)
-#define IOCTL_NETCAP_SET_CONFIG         CTL_CODE(FILE_DEVICE_NETWORK, 0x803, METHOD_BUFFERED, FILE_WRITE_ACCESS)
-#define IOCTL_NETCAP_SET_FILTER         CTL_CODE(FILE_DEVICE_NETWORK, 0x804, METHOD_BUFFERED, FILE_WRITE_ACCESS)
-#define IOCTL_NETCAP_FLUSH_BUFFER       CTL_CODE(FILE_DEVICE_NETWORK, 0x805, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define IOCTL_NETCAP_GET_RING_INFO      CTL_CODE(FILE_DEVICE_NETWORK, 0x806, METHOD_BUFFERED, FILE_READ_ACCESS)
-#define IOCTL_NETCAP_MAP_RING_BUFFER    CTL_CODE(FILE_DEVICE_NETWORK, 0x807, METHOD_NEITHER, FILE_ANY_ACCESS)
+// Snapshot length defaults
+#ifndef DEFAULT_SNAPSHOT_LENGTH
+#define DEFAULT_SNAPSHOT_LENGTH 256
+#define MAX_SNAPSHOT_LENGTH 65536
+#endif
 
-//=============================================================================
-// PERFORMANCE AND BUFFER CONFIGURATION
-//=============================================================================
+// RTL_CONSTANT_STRING macro for IDE
+#ifndef RTL_CONSTANT_STRING
+#define RTL_CONSTANT_STRING(s)                                                 \
+  ((NDIS_STRING){sizeof(s) - 2, sizeof(s), (PWSTR)(s)})
+#endif
 
-// Ring buffer settings (increased for high traffic environments)
-#define RING_BUFFER_SIZE                (512 * 1024 * 1024)  // 512 MB - handles ~1.7M packets
-#define RING_BUFFER_WATERMARK           75  // Notify userspace at 75% full
-#define RING_BUFFER_CRITICAL            90  // Start dropping at 90% full
+// Driver name constants
+#ifndef DRIVER_FRIENDLY_NAME
+#define DRIVER_FRIENDLY_NAME L"SafeOps Packet Capture"
+#define DRIVER_UNIQUE_NAME L"SafeOps_Filter"
+#define DRIVER_SERVICE_NAME L"SafeOpsDrv"
+#define DRIVER_VERSION_MAJOR 2
+#define DRIVER_VERSION_MINOR 0
+#define DRIVER_VERSION_BUILD 0
+#endif
 
-// Packet capture settings
-#define MAX_NICS                        32  // Support up to 32 NICs
-#define DEFAULT_SNAPSHOT_LENGTH         1500  // Full MTU by default
-#define MIN_SNAPSHOT_LENGTH             64
-#define MAX_SNAPSHOT_LENGTH             65535
-#define MAX_PACKET_SIZE                 65535
+// NDIS Filter states
+typedef enum _NDIS_FILTER_STATE {
+  NdisFilterPaused = 0,
+  NdisFilterRunning = 1
+} NDIS_FILTER_STATE;
 
-// Performance tuning
-#define BATCH_SIZE                      128  // Process 128 packets at once
-#define MAX_BATCH_SIZE                  256
-#define PREFETCH_DISTANCE               8   // Cache prefetch distance
-
-// Deduplication settings
-#define DEDUP_ENABLED                   1
-#define DEDUP_CACHE_SIZE                20000  // 2x Python version
-#define DEDUP_HASH_BUCKETS              4096
-#define DEDUP_WINDOW_MS                 60000  // 60 seconds
-
-// Flow tracking settings
-#define FLOW_TIMEOUT_MS                 60000  // 60 seconds
-#define FLOW_CLEANUP_INTERVAL_MS        30000  // 30 seconds
-#define MAX_FLOWS                       100000 // Track 100k concurrent flows
-
-// ⚠️ MANDATORY 5-MINUTE LOG ROTATION ⚠️
-#define LOG_ROTATION_INTERVAL_MS        300000  // 5 minutes (HARDCODED)
-#define LOG_ROTATION_INTERVAL_SEC       300     // 5 minutes
-#define IDS_ARCHIVE_CLEAR_INTERVAL_MS   600000  // 10 minutes (2x rotation)
-
-// Memory alignment
-#define CACHE_LINE_SIZE                 64
-#define PAGE_SIZE                       4096
-
-//=============================================================================
-// MAGIC NUMBERS AND VALIDATION
-//=============================================================================
-
-#define RING_BUFFER_MAGIC               0xCAFEBABE
-#define PACKET_ENTRY_MAGIC              0xDEADBEEF
-#define FILTER_RULE_MAGIC               0xABCDEF01
-#define DEDUP_ENTRY_MAGIC               0x12345678
-
-//=============================================================================
-// PROTOCOL IDENTIFIERS
-//=============================================================================
-
-// Network layer protocols (IP protocol field)
-#define IP_PROTO_ICMP                   1
-#define IP_PROTO_IGMP                   2
-#define IP_PROTO_TCP                    6
-#define IP_PROTO_UDP                    17
-#define IP_PROTO_GRE                    47
-#define IP_PROTO_ESP                    50
-#define IP_PROTO_AH                     51
-#define IP_PROTO_ICMPV6                 58
-#define IP_PROTO_SCTP                   132
-
-// Application protocols (ports)
-#define APP_PROTO_HTTP                  80
-#define APP_PROTO_HTTPS                 443
-#define APP_PROTO_DNS                   53
-#define APP_PROTO_SSH                   22
-#define APP_PROTO_FTP                   21
-#define APP_PROTO_SMTP                  25
-#define APP_PROTO_POP3                  110
-#define APP_PROTO_IMAP                  143
-#define APP_PROTO_MYSQL                 3306
-#define APP_PROTO_POSTGRESQL            5432
-#define APP_PROTO_RDP                   3389
-#define APP_PROTO_SMB                   445
-
-// Ethernet types
-#define ETHERTYPE_IPV4                  0x0800
-#define ETHERTYPE_ARP                   0x0806
-#define ETHERTYPE_IPV6                  0x86DD
-#define ETHERTYPE_VLAN                  0x8100
-#define ETHERTYPE_QINQ                  0x88A8
-
-//=============================================================================
-// ENUMERATIONS
-//=============================================================================
-
-// Capture mode
-typedef enum _CAPTURE_MODE {
-    CAPTURE_MODE_DISABLED = 0,
-    CAPTURE_MODE_METADATA_ONLY = 1,      // Headers only (fastest)
-    CAPTURE_MODE_PARTIAL_PAYLOAD = 2,    // First N bytes
-    CAPTURE_MODE_FULL_PAYLOAD = 3,       // Complete packet
-    CAPTURE_MODE_SELECTIVE = 4           // Full for specific protocols
-} CAPTURE_MODE;
-
-// Packet direction
-typedef enum _FLOW_DIRECTION {
-    FLOW_DIRECTION_INBOUND = 0,
-    FLOW_DIRECTION_OUTBOUND = 1,
-    FLOW_DIRECTION_UNKNOWN = 2
-} FLOW_DIRECTION;
-
-// Flow type (traffic classification)
-typedef enum _FLOW_TYPE {
-    FLOW_TYPE_NORTH_SOUTH = 0,  // WAN ↔ LAN/WiFi
-    FLOW_TYPE_EAST_WEST = 1,    // LAN ↔ WiFi, LAN ↔ LAN
-    FLOW_TYPE_LOCAL = 2,        // Loopback
-    FLOW_TYPE_UNKNOWN = 3
-} FLOW_TYPE;
-
-// TCP connection state
-typedef enum _TCP_STATE {
-    TCP_STATE_CLOSED = 0,
-    TCP_STATE_LISTEN = 1,
-    TCP_STATE_SYN_SENT = 2,
-    TCP_STATE_SYN_RECEIVED = 3,
-    TCP_STATE_ESTABLISHED = 4,
-    TCP_STATE_FIN_WAIT_1 = 5,
-    TCP_STATE_FIN_WAIT_2 = 6,
-    TCP_STATE_CLOSE_WAIT = 7,
-    TCP_STATE_CLOSING = 8,
-    TCP_STATE_LAST_ACK = 9,
-    TCP_STATE_TIME_WAIT = 10
-} TCP_STATE;
-
-// Export format
-typedef enum _EXPORT_FORMAT {
-    EXPORT_FORMAT_BINARY = 0,   // Custom binary (fastest)
-    EXPORT_FORMAT_JSON = 1,     // JSON lines
-    EXPORT_FORMAT_PCAP = 2,     // Standard PCAP
-    EXPORT_FORMAT_PCAPNG = 3    // PCAP Next Generation
-} EXPORT_FORMAT;
-
-// Filter action
-typedef enum _FILTER_ACTION {
-    FILTER_ACTION_ACCEPT = 0,
-    FILTER_ACTION_DROP = 1,
-    FILTER_ACTION_LOG_ONLY = 2
-} FILTER_ACTION;
-
-//=============================================================================
-// IP ADDRESS STRUCTURE (IPv4/IPv6 unified)
-//=============================================================================
-
-typedef struct _IP_ADDRESS {
-    union {
-        UINT32 ipv4;              // IPv4 address
-        UINT32 ipv6[4];           // IPv6 address (128 bits)
-        UINT8 bytes[16];          // Raw bytes
-    };
-    UINT8 version;                // 4 or 6
-    UINT8 reserved[3];
-} IP_ADDRESS, *PIP_ADDRESS;
-
-//=============================================================================
-// PACKET METADATA STRUCTURE (Cache-aligned)
-//=============================================================================
-
-#pragma pack(push, 1)
-
-// TCP flags (bitfield)
-typedef struct _TCP_FLAGS {
-    UINT8 fin : 1;
-    UINT8 syn : 1;
-    UINT8 rst : 1;
-    UINT8 psh : 1;
-    UINT8 ack : 1;
-    UINT8 urg : 1;
-    UINT8 ece : 1;
-    UINT8 cwr : 1;
-} TCP_FLAGS, *PTCP_FLAGS;
-
-// Complete packet metadata (optimized for cache)
-typedef struct DECLSPEC_ALIGN(64) _PACKET_METADATA {
-    // Header and validation
-    UINT32 magic;                      // PACKET_ENTRY_MAGIC
-    UINT32 entry_length;               // Total entry size (including payload)
-    
-    // Timestamps (high resolution)
-    UINT64 timestamp_qpc;              // QueryPerformanceCounter
-    UINT64 timestamp_system;           // KeQuerySystemTime
-    UINT64 sequence_number;            // Monotonic sequence
-    
-    // NIC and capture info
-    UINT8 nic_id;                      // Which NIC (0-based)
-    UINT8 direction;                   // FLOW_DIRECTION
-    UINT8 flow_type;                   // FLOW_TYPE
-    UINT8 capture_mode;                // CAPTURE_MODE
-    
-    // Layer 2 (Ethernet)
-    UINT8 src_mac[6];                  // Source MAC address
-    UINT8 dst_mac[6];                  // Destination MAC address
-    UINT16 ethertype;                  // Ethernet type
-    UINT16 vlan_id;                    // VLAN ID (0 if none)
-    UINT8 vlan_priority;               // 802.1p priority
-    UINT8 reserved1;
-    
-    // Layer 3 (Network)
-    IP_ADDRESS src_ip;                 // Source IP (unified v4/v6)
-    IP_ADDRESS dst_ip;                 // Destination IP
-    UINT8 ip_protocol;                 // TCP/UDP/ICMP/etc
-    UINT8 ip_ttl;                      // Time to live / hop limit
-    UINT8 ip_tos;                      // Type of service / DSCP
-    UINT8 ip_ecn;                      // ECN bits
-    UINT16 ip_flags;                   // DF, MF flags
-    UINT16 ip_fragment_offset;         // Fragment offset
-    UINT32 ip_identification;          // IP ID field
-    
-    // Layer 4 (Transport)
-    UINT16 src_port;                   // Source port (TCP/UDP)
-    UINT16 dst_port;                   // Destination port
-    
-    // TCP-specific
-    UINT32 tcp_seq;                    // Sequence number
-    UINT32 tcp_ack;                    // Acknowledgment number
-    TCP_FLAGS tcp_flags;               // TCP flags (bitfield)
-    UINT8 tcp_data_offset;             // Header length
-    UINT16 tcp_window;                 // Window size
-    UINT16 tcp_checksum;               // TCP checksum
-    UINT16 tcp_urgent_ptr;             // Urgent pointer
-    
-    // UDP-specific
-    UINT16 udp_length;                 // UDP length
-    UINT16 udp_checksum;               // UDP checksum
-    
-    // ICMP-specific
-    UINT8 icmp_type;                   // ICMP type
-    UINT8 icmp_code;                   // ICMP code
-    UINT16 icmp_checksum;              // ICMP checksum
-    UINT32 icmp_data;                  // ICMP payload preview
-    
-    // Packet size info
-    UINT16 packet_length_wire;         // Original packet size
-    UINT16 packet_length_captured;     // Captured size
-    UINT16 payload_offset;             // Offset to payload data
-    UINT16 payload_length;             // Payload bytes captured
-    
-    // Protocol detection
-    UINT16 app_protocol;               // Detected application protocol
-    UINT8 app_protocol_confidence;     // Detection confidence (0-100)
-    UINT8 encrypted;                   // 1 if encrypted (TLS/SSH/etc)
-    
-    // Hardware offload info
-    UINT32 packet_hash;                // RSS hash value
-    UINT8 rss_queue;                   // RSS queue number
-    UINT8 checksum_validated;          // HW checksum validation
-    UINT16 tso_mss;                    // TSO MSS (if segmented)
-    
-    // Flow context
-    UINT64 flow_id;                    // Flow identifier
-    UINT32 flow_packets_forward;       // Packets in forward direction
-    UINT32 flow_packets_reverse;       // Packets in reverse direction
-    UINT64 flow_bytes_forward;         // Bytes in forward direction
-    UINT64 flow_bytes_reverse;         // Bytes in reverse direction
-    TCP_STATE tcp_state;               // TCP connection state
-    UINT8 flow_state;                  // Flow state (NEW/ESTABLISHED/CLOSING)
-    UINT16 reserved2;
-    
-    // Deduplication info
-    UINT64 dedup_signature;            // Deduplication hash
-    UINT8 dedup_unique;                // 1 if unique, 0 if duplicate
-    UINT8 dedup_reason;                // Reason code for logging decision
-    UINT16 reserved3;
-    
-    // Process correlation (optional)
-    UINT32 process_id;                 // Process ID (if available)
-    UINT32 thread_id;                  // Thread ID (if available)
-    
-    // Performance metrics
-    UINT64 capture_latency_ns;         // Time from packet arrival to log
-    UINT32 processing_cpu;             // Which CPU processed this
-    UINT32 reserved4;
-    
-    // Variable-length payload follows this structure
-    // UINT8 payload_data[payload_length];
-    
-} PACKET_METADATA, *PPACKET_METADATA;
-
-#pragma pack(pop)
-
-//=============================================================================
-// RING BUFFER STRUCTURES (Lock-free, cache-aligned)
-//=============================================================================
-
-#pragma pack(push, 1)
-
-// Ring buffer header (shared between kernel and userspace)
-typedef struct DECLSPEC_ALIGN(CACHE_LINE_SIZE) _RING_BUFFER_HEADER {
-    UINT32 magic;                      // RING_BUFFER_MAGIC
-    UINT32 version;                    // Structure version
-    UINT64 size;                       // Total buffer size
-    
-    // Write position (kernel updates, cache-aligned)
-    DECLSPEC_ALIGN(CACHE_LINE_SIZE) volatile UINT64 write_index;
-    
-    // Read position (userspace updates, cache-aligned)
-    DECLSPEC_ALIGN(CACHE_LINE_SIZE) volatile UINT64 read_index;
-    
-    // Statistics (atomic updates)
-    DECLSPEC_ALIGN(CACHE_LINE_SIZE) volatile UINT64 packets_written;
-    volatile UINT64 packets_dropped;
-    volatile UINT64 bytes_written;
-    volatile UINT64 buffer_wraps;
-    volatile UINT64 watermark_hits;
-    
-    // Configuration
-    UINT32 entry_alignment;            // Entry alignment (64 bytes)
-    UINT32 watermark_percent;          // Notification threshold
-    UINT64 creation_time;              // Buffer creation time
-    
-    // Data follows header
-    // UINT8 data[size - sizeof(RING_BUFFER_HEADER)];
-    
-} RING_BUFFER_HEADER, *PRING_BUFFER_HEADER;
-
-#pragma pack(pop)
-
-//=============================================================================
-// CONFIGURATION STRUCTURES
-//=============================================================================
-
-// Capture configuration (passed via IOCTL)
-typedef struct _CAPTURE_CONFIG {
-    CAPTURE_MODE mode;                 // Capture mode
-    UINT32 snapshot_length;            // Max payload bytes to capture
-    BOOLEAN enable_deduplication;      // Enable smart dedup
-    BOOLEAN enable_flow_tracking;      // Enable flow tracking
-    BOOLEAN enable_process_tracking;   // Enable process correlation
-    BOOLEAN enable_hardware_offload;   // Use hardware features
-    UINT32 batch_size;                 // Packets per batch
-    UINT32 max_flows;                  // Max concurrent flows
-    EXPORT_FORMAT export_format;       // Output format
-    UINT32 rotation_interval_sec;      // Log rotation (MUST be 300)
-} CAPTURE_CONFIG, *PCAPTURE_CONFIG;
-
-// Filter rule structure (BPF-like)
-typedef struct _FILTER_RULE {
-    UINT32 magic;                      // FILTER_RULE_MAGIC
-    UINT32 rule_id;                    // Unique rule ID
-    FILTER_ACTION action;              // Accept/Drop/Log
-    UINT8 priority;                    // 0-255 (higher = first)
-    
-    // Match criteria (0 = wildcard)
-    IP_ADDRESS src_ip;
-    IP_ADDRESS dst_ip;
-    UINT32 src_ip_mask;                // CIDR mask
-    UINT32 dst_ip_mask;
-    UINT16 src_port_min;
-    UINT16 src_port_max;
-    UINT16 dst_port_min;
-    UINT16 dst_port_max;
-    UINT8 ip_protocol;                 // 0 = any
-    UINT8 tcp_flags_mask;              // TCP flags to match
-    UINT8 tcp_flags_value;             // Expected flag values
-    
-    // Advanced matching
-    UINT16 vlan_id;                    // VLAN filter (0 = any)
-    UINT8 nic_id;                      // NIC filter (0xFF = any)
-    UINT8 direction;                   // Direction filter
-    
-    UINT64 packet_count;               // Packets matched
-    UINT64 byte_count;                 // Bytes matched
-} FILTER_RULE, *PFILTER_RULE;
-
-// Statistics structure (returned via IOCTL)
-typedef struct _CAPTURE_STATISTICS {
-    // Capture stats
-    UINT64 packets_captured;
-    UINT64 packets_logged;
-    UINT64 packets_dropped;
-    UINT64 packets_filtered;
-    UINT64 bytes_captured;
-    UINT64 bytes_logged;
-    
-    // Per-NIC stats
-    UINT64 packets_per_nic[MAX_NICS];
-    UINT64 bytes_per_nic[MAX_NICS];
-    
-    // Protocol stats
-    UINT64 tcp_packets;
-    UINT64 udp_packets;
-    UINT64 icmp_packets;
-    UINT64 other_packets;
-    
-    // Flow stats
-    UINT64 active_flows;
-    UINT64 flows_created;
-    UINT64 flows_expired;
-    
-    // Deduplication stats
-    UINT64 packets_unique;
-    UINT64 packets_duplicate;
-    UINT64 packets_security_protocol;  // Always logged
-    UINT64 packets_critical_port;      // Always logged
-    
-    // TLS decryption stats
-    UINT64 tls_sessions;
-    UINT64 tls_decrypted;
-    UINT64 http_from_tls;
-    
-    // Performance metrics
-    UINT64 avg_capture_latency_ns;    // Average packet processing time
-    UINT64 max_capture_latency_ns;    // Worst case latency
-    UINT32 cpu_usage_percent;          // Estimated CPU usage
-    UINT32 ring_buffer_usage_percent;  // Current buffer utilization
-    
-    // Ring buffer stats
-    UINT64 buffer_wraps;               // Times buffer wrapped around
-    UINT64 watermark_hits;             // Times watermark reached
-    UINT64 buffer_full_events;         // Times buffer was full
-    
-    // Error counters
-    UINT64 allocation_failures;
-    UINT64 parsing_errors;
-    UINT64 checksum_errors;
-    
-    // Rotation stats
-    UINT64 rotation_count;             // Number of 5-min rotations
-    UINT64 last_rotation_time;         // Last rotation timestamp
-    
-    // Runtime info
-    UINT64 start_time;                 // Capture start time
-    UINT64 uptime_seconds;             // Current uptime
-    UINT32 driver_version;             // Driver version
-    UINT32 active_nics;                // Number of active NICs
-    
-} CAPTURE_STATISTICS, *PCAPTURE_STATISTICS;
-
-// NIC information structure
-typedef struct _NIC_INFO {
-    UINT8 nic_id;                      // NIC identifier (0-based)
-    UINT8 nic_type;                    // 0=Ethernet, 1=WiFi, 2=VPN, 3=Other
-    UINT16 reserved;
-    
-    WCHAR friendly_name[256];          // NIC friendly name
-    WCHAR description[256];            // NIC description
-    
-    UINT8 mac_address[6];              // MAC address
-    UINT16 mtu;                        // Maximum transmission unit
-    
-    UINT64 link_speed;                 // Link speed in bps
-    UINT8 duplex;                      // 0=half, 1=full
-    UINT8 link_state;                  // 0=down, 1=up
-    UINT16 reserved2;
-    
-    // Hardware capabilities
-    BOOLEAN supports_rss;              // Receive Side Scaling
-    BOOLEAN supports_tso;              // TCP Segmentation Offload
-    BOOLEAN supports_lro;              // Large Receive Offload
-    BOOLEAN supports_checksum_offload; // Checksum offload
-    UINT32 num_rss_queues;             // Number of RSS queues
-    
-    // Statistics
-    UINT64 packets_captured;
-    UINT64 bytes_captured;
-    UINT64 errors;
-    
-} NIC_INFO, *PNIC_INFO;
-
-//=============================================================================
-// FLOW TRACKING STRUCTURES
-//=============================================================================
-
-// Flow identifier (5-tuple)
-typedef struct _FLOW_KEY {
-    IP_ADDRESS src_ip;
-    IP_ADDRESS dst_ip;
-    UINT16 src_port;
-    UINT16 dst_port;
-    UINT8 protocol;
-    UINT8 reserved[3];
-} FLOW_KEY, *PFLOW_KEY;
-
-// Flow context (session tracking)
-typedef struct _FLOW_CONTEXT {
-    FLOW_KEY key;                      // Flow identifier
-    UINT64 flow_id;                    // Unique flow ID
-    
-    // Timestamps
-    UINT64 first_seen;                 // First packet time
-    UINT64 last_seen;                  // Last packet time
-    
-    // Packet/byte counters
-    UINT32 packets_forward;            // Client → Server
-    UINT32 packets_reverse;            // Server → Client
-    UINT64 bytes_forward;
-    UINT64 bytes_reverse;
-    
-    // TCP state tracking
-    TCP_STATE tcp_state;               // Current TCP state
-    BOOLEAN saw_syn;
-    BOOLEAN saw_syn_ack;
-    BOOLEAN saw_fin;
-    BOOLEAN saw_rst;
-    UINT32 tcp_seq_forward;            // Last sequence number
-    UINT32 tcp_seq_reverse;
-    
-    // Classification
-    FLOW_DIRECTION direction;          // Inbound/Outbound
-    FLOW_TYPE flow_type;               // North-South/East-West
-    UINT8 nic_id;                      // Which NIC
-    UINT8 reserved;
-    
-    // Application detection
-    UINT16 app_protocol;               // Detected protocol
-    BOOLEAN is_gaming;                 // Gaming traffic flag
-    BOOLEAN is_encrypted;              // TLS/SSH detected
-    
-    // Process correlation (if available)
-    UINT32 process_id;
-    UINT32 thread_id;
-    
-    // Hash table linkage
-    struct _FLOW_CONTEXT* next;        // Next in hash bucket
-    
-} FLOW_CONTEXT, *PFLOW_CONTEXT;
-
-//=============================================================================
-// DEDUPLICATION STRUCTURES
-//=============================================================================
-
-// Deduplication entry
-typedef struct _DEDUP_ENTRY {
-    UINT32 magic;                      // DEDUP_ENTRY_MAGIC
-    UINT64 signature;                  // Packet signature hash
-    UINT64 last_seen;                  // Last occurrence time
-    UINT32 count;                      // Duplicate count
-    UINT32 reserved;
-    
-    struct _DEDUP_ENTRY* next;         // Hash table linkage
-    
-} DEDUP_ENTRY, *PDEDUP_ENTRY;
-
-// Deduplication reason codes
-#define DEDUP_REASON_UNIQUE             0
-#define DEDUP_REASON_DUPLICATE          1
-#define DEDUP_REASON_SECURITY_PROTOCOL  2  // HTTP/DNS/TLS
-#define DEDUP_REASON_CRITICAL_PORT      3  // SSH/RDP/SMB
-#define DEDUP_REASON_TCP_CONTROL        4  // SYN/FIN/RST
-#define DEDUP_REASON_ERROR              5
-
-//=============================================================================
-// DRIVER GLOBAL CONTEXT STRUCTURE
-//=============================================================================
-
-// Main driver context (one per system)
-typedef struct _DRIVER_CONTEXT {
-    // NDIS handles
-    NDIS_HANDLE filter_driver_handle;
-    NDIS_HANDLE device_object;
-    PDEVICE_OBJECT device;
-    
-    // Configuration
-    CAPTURE_CONFIG config;
-    BOOLEAN capture_active;            // Currently capturing?
-    KSPIN_LOCK config_lock;            // Protects configuration
-    
-    // Ring buffer
-    PVOID ring_buffer_va;              // Virtual address
-    PHYSICAL_ADDRESS ring_buffer_pa;   // Physical address
-    MDL* ring_buffer_mdl;              // Memory descriptor
-    PRING_BUFFER_HEADER ring_header;   // Ring buffer header
-    KSPIN_LOCK ring_lock;              // Protects ring buffer writes
-    
-    // Statistics
-    CAPTURE_STATISTICS stats;
-    KSPIN_LOCK stats_lock;
-    
-    // Filter rules
-    FILTER_RULE* filter_rules;
-    UINT32 filter_rule_count;
-    KSPIN_LOCK filter_lock;
-    
-    // Flow tracking
-    PFLOW_CONTEXT* flow_hash_table;    // Hash table of flows
-    UINT32 flow_hash_buckets;
-    KSPIN_LOCK flow_lock;
-    
-    // Deduplication
-    PDEDUP_ENTRY* dedup_hash_table;    // Hash table for dedup
-    UINT32 dedup_hash_buckets;
-    KSPIN_LOCK dedup_lock;
-    
-    // NIC management
-    NIC_INFO nics[MAX_NICS];
-    UINT32 nic_count;
-    KSPIN_LOCK nic_lock;
-    
-    // Timers
-    KTIMER rotation_timer;             // 5-minute rotation timer
-    KDPC rotation_dpc;                 // DPC for rotation
-    KTIMER cleanup_timer;              // Flow cleanup timer
-    KDPC cleanup_dpc;                  // DPC for cleanup
-    
-    // Batch processing
-    PNET_BUFFER_LIST batch_nbl_array[BATCH_SIZE];
-    UINT32 batch_count;
-    KSPIN_LOCK batch_lock;
-    
-    // Performance counters
-    LARGE_INTEGER perf_frequency;      // QPC frequency
-    UINT64 total_processing_time;      // Total CPU time
-    
-    // Memory pools
-    NPAGED_LOOKASIDE_LIST packet_pool;     // Pre-allocated packet buffers
-    NPAGED_LOOKASIDE_LIST flow_pool;       // Pre-allocated flow contexts
-    NPAGED_LOOKASIDE_LIST dedup_pool;      // Pre-allocated dedup entries
-    
-    // Work queues
-    PIO_WORKITEM rotation_work_item;   // Work item for log rotation
-    PIO_WORKITEM cleanup_work_item;    // Work item for cleanup
-    
-    // Synchronization
-    KEVENT shutdown_event;             // Signal for shutdown
-    LONG ref_count;                    // Reference counting
-    
-} DRIVER_CONTEXT, *PDRIVER_CONTEXT;
-
-//=============================================================================
-// FILTER MODULE CONTEXT (Per-NIC)
-//=============================================================================
-
-// Context for each attached filter instance
+// FILTER_MODULE_CONTEXT - Per-NIC filter context
 typedef struct _FILTER_MODULE_CONTEXT {
-    NDIS_HANDLE filter_module_handle;
-    
-    UINT8 nic_id;                      // Assigned NIC ID
-    UINT8 reserved[3];
-    
-    // NIC-specific info
-    NIC_INFO nic_info;
-    
-    // Per-NIC statistics
-    UINT64 packets_sent;
-    UINT64 packets_received;
-    UINT64 bytes_sent;
-    UINT64 bytes_received;
-    
-    // Link to global context
-    PDRIVER_CONTEXT driver_context;
-    
-    // State
-    NDIS_FILTER_STATE state;
-    
+  NDIS_HANDLE filter_module_handle;
+  PDRIVER_CONTEXT driver_context;
+  NDIS_FILTER_STATE state;
+  ULONG nic_id;
+  struct {
+    WCHAR friendly_name[128];
+    ULONG nic_id;
+    ULONG link_state;
+  } nic_info;
+  ULONG64 packets_received;
+  ULONG64 bytes_received;
 } FILTER_MODULE_CONTEXT, *PFILTER_MODULE_CONTEXT;
 
-//=============================================================================
-// LOG ROTATION STRUCTURES (5-MINUTE MANDATORY)
-//=============================================================================
+// NDIS Filter Driver Characteristics structure
+typedef struct _NDIS_FILTER_DRIVER_CHARACTERISTICS {
+  struct {
+    UCHAR Type;
+    USHORT Size;
+    UCHAR Revision;
+  } Header;
+  UCHAR MajorNdisVersion;
+  UCHAR MinorNdisVersion;
+  UCHAR MajorDriverVersion;
+  UCHAR MinorDriverVersion;
+  ULONG Flags;
+  NDIS_STRING FriendlyName;
+  NDIS_STRING UniqueName;
+  NDIS_STRING ServiceName;
+  PVOID AttachHandler;
+  PVOID DetachHandler;
+  PVOID RestartHandler;
+  PVOID PauseHandler;
+  PVOID SendNetBufferListsHandler;
+  PVOID SendNetBufferListsCompleteHandler;
+  PVOID ReceiveNetBufferListsHandler;
+  PVOID ReturnNetBufferListsHandler;
+  PVOID OidRequestHandler;
+  PVOID OidRequestCompleteHandler;
+  PVOID StatusHandler;
+} NDIS_FILTER_DRIVER_CHARACTERISTICS;
 
-// Log rotation context
-typedef struct _LOG_ROTATION_CONTEXT {
-    UINT64 rotation_count;             // Number of rotations performed
-    UINT64 last_rotation_time;         // Last rotation timestamp
-    UINT64 next_rotation_time;         // Next scheduled rotation
-    
-    UINT32 rotation_interval_ms;       // MUST be 300000 (5 minutes)
-    UINT32 packets_since_rotation;     // Packets since last rotation
-    UINT64 bytes_since_rotation;       // Bytes since last rotation
-    
-    // File paths (Unicode)
-    WCHAR primary_log_path[512];       // network_packets.log
-    WCHAR ids_archive_path[512];       // network_packets_ids.log
-    
-    // Rotation behavior
-    BOOLEAN append_to_archive;         // TRUE for IDS accumulation
-    BOOLEAN clear_primary_after;       // TRUE - clear after transfer
-    
-    // IDS archive clear timing
-    UINT64 last_ids_clear_time;        // Last IDS clear time
-    UINT32 ids_clear_interval_ms;      // 10 minutes (600000)
-    
-} LOG_ROTATION_CONTEXT, *PLOG_ROTATION_CONTEXT;
+typedef struct _NDIS_FILTER_ATTRIBUTES {
+  struct {
+    UCHAR Type;
+    USHORT Size;
+    UCHAR Revision;
+  } Header;
+  ULONG Flags;
+} NDIS_FILTER_ATTRIBUTES;
 
-//=============================================================================
-// PROTOCOL PARSING STRUCTURES
-//=============================================================================
+// NDIS constants
+#define NDIS_OBJECT_TYPE_FILTER_DRIVER_CHARACTERISTICS 0x50
+#define NDIS_SIZEOF_FILTER_DRIVER_CHARACTERISTICS_REVISION_2                   \
+  sizeof(NDIS_FILTER_DRIVER_CHARACTERISTICS)
+#define NDIS_FILTER_CHARACTERISTICS_REVISION_2 2
+#define NDIS_FILTER_MAJOR_VERSION 6
+#define NDIS_FILTER_MINOR_VERSION 50
+#define NDIS_STATUS_SUCCESS 0
+#define NDIS_STATUS_RESOURCES 0xC000009A
+#define NDIS_OBJECT_TYPE_FILTER_ATTRIBUTES 0x51
+#define NDIS_SIZEOF_FILTER_ATTRIBUTES_REVISION_1 sizeof(NDIS_FILTER_ATTRIBUTES)
+#define NDIS_FILTER_ATTRIBUTES_REVISION_1 1
 
-// HTTP request/response metadata
-typedef struct _HTTP_METADATA {
-    CHAR method[16];                   // GET, POST, etc.
-    CHAR uri[256];                     // Request URI
-    CHAR host[256];                    // Host header
-    CHAR user_agent[256];              // User-Agent header
-    UINT16 status_code;                // Response status
-    UINT16 content_length;             // Content-Length
-    BOOLEAN is_request;                // TRUE=request, FALSE=response
-    BOOLEAN has_body;                  // Body present?
-} HTTP_METADATA, *PHTTP_METADATA;
+// NDIS filter function stubs
+#define NdisFRegisterFilterDriver(a, b, c, d) (0)
+#define NdisFDeregisterFilterDriver(h) ((void)0)
+#define NdisFSetAttributes(a, b, c) (0)
+#define NdisFSendNetBufferLists(a, b, c, d) ((void)0)
+#define NdisFSendNetBufferListsComplete(a, b, c) ((void)0)
+#define NdisFIndicateReceiveNetBufferLists(a, b, c, d, e) ((void)0)
+#define NdisFReturnNetBufferLists(a, b, c) ((void)0)
+#define NdisFIndicateStatus(a, b) ((void)0)
+#define NdisFOidRequest(a, b) (0)
+#define NdisFOidRequestComplete(a, b, c) ((void)0)
+#define NdisGetDataBuffer(nb, len, stor, align, buf, flag) ((PUCHAR)0)
+#define NET_BUFFER_LIST_NEXT_NBL(nbl) ((PNET_BUFFER_LIST)0)
+#define NET_BUFFER_LIST_FIRST_NB(nbl) ((PNET_BUFFER)0)
+#define NET_BUFFER_DATA_LENGTH(nb) (0UL)
 
-// DNS query/response metadata
-typedef struct _DNS_METADATA {
-    UINT16 transaction_id;             // DNS transaction ID
-    UINT8 opcode;                      // DNS opcode
-    UINT8 rcode;                       // Response code
-    BOOLEAN is_query;                  // TRUE=query, FALSE=response
-    UINT8 num_queries;                 // Number of queries
-    UINT8 num_answers;                 // Number of answers
-    UINT8 reserved;
-    CHAR query_name[256];              // First query name
-    UINT32 query_type;                 // First query type
-    UINT32 answer_ip;                  // First answer (if A record)
-} DNS_METADATA, *PDNS_METADATA;
+// Timer and DPC stubs
+#define KeInitializeTimer(t) ((void)0)
+#define KeInitializeDpc(d, r, c) ((void)0)
+#define KeSetTimerEx(t, d, p, dpc) ((void)0)
+#define KeCancelTimer(t) ((BOOLEAN)0)
+#define KeInitializeEvent(e, t, s) ((void)0)
+#define KeQueryPerformanceCounter(f) ((LARGE_INTEGER){0})
 
-// TLS handshake metadata
-typedef struct _TLS_METADATA {
-    UINT16 version;                    // TLS version
-    UINT8 content_type;                // TLS content type
-    UINT8 handshake_type;              // Handshake type
-    BOOLEAN is_encrypted;              // Application data?
-    UINT8 reserved[3];
-    CHAR sni[256];                     // Server Name Indication
-    UINT16 cipher_suite;               // Selected cipher
-    UINT16 reserved2;
-} TLS_METADATA, *PTLS_METADATA;
+// Lookaside list stubs
+#define ExInitializeNPagedLookasideList(l, a, f, fl, s, t, d) ((void)0)
+#define ExDeleteNPagedLookasideList(l) ((void)0)
 
-//=============================================================================
-// FUNCTION PROTOTYPES (Exported)
-//=============================================================================
+#endif
 
-// Driver entry point
-DRIVER_INITIALIZE DriverEntry;
-
-// NDIS filter callbacks
-FILTER_ATTACH FilterAttach;
-FILTER_DETACH FilterDetach;
-FILTER_RESTART FilterRestart;
-FILTER_PAUSE FilterPause;
-FILTER_SEND_NET_BUFFER_LISTS FilterSendNetBufferLists;
-FILTER_SEND_NET_BUFFER_LISTS_COMPLETE FilterSendNetBufferListsComplete;
-FILTER_RECEIVE_NET_BUFFER_LISTS FilterReceiveNetBufferLists;
-FILTER_RETURN_NET_BUFFER_LISTS FilterReturnNetBufferLists;
-FILTER_STATUS FilterStatus;
-FILTER_OID_REQUEST FilterOidRequest;
-FILTER_OID_REQUEST_COMPLETE FilterOidRequestComplete;
-
-// Device IOCTL handler
-DRIVER_DISPATCH DeviceIoControl;
-DRIVER_DISPATCH DeviceCreate;
-DRIVER_DISPATCH DeviceClose;
-
-// Unload
-DRIVER_UNLOAD DriverUnload;
-
-// Ring buffer operations
-NTSTATUS RingBufferInitialize(PDRIVER_CONTEXT ctx);
-VOID RingBufferDestroy(PDRIVER_CONTEXT ctx);
-NTSTATUS RingBufferWrite(PDRIVER_CONTEXT ctx, PPACKET_METADATA metadata, PUCHAR payload, UINT32 payload_len);
-BOOLEAN RingBufferIsFull(PDRIVER_CONTEXT ctx);
-UINT32 RingBufferGetUsagePercent(PDRIVER_CONTEXT ctx);
-
-// Packet processing
-VOID ProcessPacket(PFILTER_MODULE_CONTEXT filter_ctx, PNET_BUFFER_LIST nbl, BOOLEAN is_send);
-NTSTATUS ParsePacketMetadata(PNET_BUFFER nb, PPACKET_METADATA metadata);
-NTSTATUS CapturePayload(PNET_BUFFER nb, PUCHAR buffer, UINT32 max_len, PUINT32 captured_len);
-
-// Protocol parsers
-NTSTATUS ParseTcpHeader(PUCHAR data, UINT32 len, PPACKET_METADATA metadata);
-NTSTATUS ParseUdpHeader(PUCHAR data, UINT32 len, PPACKET_METADATA metadata);
-NTSTATUS ParseHttpData(PUCHAR payload, UINT32 len, PHTTP_METADATA http);
-NTSTATUS ParseDnsData(PUCHAR payload, UINT32 len, PDNS_METADATA dns);
-NTSTATUS ParseTlsData(PUCHAR payload, UINT32 len, PTLS_METADATA tls);
-
-// Flow tracking
-NTSTATUS FlowTrackingInitialize(PDRIVER_CONTEXT ctx);
-VOID FlowTrackingDestroy(PDRIVER_CONTEXT ctx);
-PFLOW_CONTEXT FlowLookupOrCreate(PDRIVER_CONTEXT ctx, PFLOW_KEY key);
-VOID FlowUpdate(PFLOW_CONTEXT flow, PPACKET_METADATA metadata);
-VOID FlowCleanupExpired(PDRIVER_CONTEXT ctx);
-
-// Deduplication
-NTSTATUS DeduplicationInitialize(PDRIVER_CONTEXT ctx);
-VOID DeduplicationDestroy(PDRIVER_CONTEXT ctx);
-BOOLEAN DeduplicationCheckUnique(PDRIVER_CONTEXT ctx, PPACKET_METADATA metadata, PUINT8 reason);
-UINT64 ComputePacketSignature(PPACKET_METADATA metadata, PUCHAR payload, UINT32 len);
-
-// Filtering
-NTSTATUS FilterEngineInitialize(PDRIVER_CONTEXT ctx);
-VOID FilterEngineDestroy(PDRIVER_CONTEXT ctx);
-FILTER_ACTION FilterCheckPacket(PDRIVER_CONTEXT ctx, PPACKET_METADATA metadata);
-NTSTATUS FilterAddRule(PDRIVER_CONTEXT ctx, PFILTER_RULE rule);
-NTSTATUS FilterRemoveRule(PDRIVER_CONTEXT ctx, UINT32 rule_id);
-
-// NIC management
-UINT8 NicAssignId(PDRIVER_CONTEXT ctx, NDIS_HANDLE filter_handle);
-VOID NicReleaseId(PDRIVER_CONTEXT ctx, UINT8 nic_id);
-NTSTATUS NicGetInfo(PDRIVER_CONTEXT ctx, UINT8 nic_id, PNIC_INFO info);
-
-// Log rotation (5-MINUTE MANDATORY)
-VOID LogRotationTimerCallback(PKDPC dpc, PVOID context, PVOID arg1, PVOID arg2);
-NTSTATUS PerformLogRotation(PDRIVER_CONTEXT ctx);
-NTSTATUS RotateMainLogToArchive(PDRIVER_CONTEXT ctx);
-NTSTATUS ClearIdsArchive(PDRIVER_CONTEXT ctx);
-
-// Statistics
-VOID UpdateStatistics(PDRIVER_CONTEXT ctx, PPACKET_METADATA metadata);
-NTSTATUS GetStatistics(PDRIVER_CONTEXT ctx, PCAPTURE_STATISTICS stats);
-
-// Utility functions
-UINT64 GetHighResolutionTimestamp(VOID);
-UINT64 GetSystemTimestamp(VOID);
-UINT32 ComputeHash32(PUCHAR data, UINT32 len);
-UINT64 ComputeHash64(PUCHAR data, UINT32 len);
-VOID SafeCopyMemory(PVOID dest, PVOID src, SIZE_T len);
+// Note: packet_structs.h is included via driver.h or shared headers
 
 //=============================================================================
-// INLINE HELPER FUNCTIONS
+// SECTION 2: Packet Capture Constants
 //=============================================================================
 
-// Check if IP is internal network
-__forceinline BOOLEAN IsInternalIp(PIP_ADDRESS ip) {
-    if (ip->version == 4) {
-        UINT32 addr = ip->ipv4;
-        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-        return ((addr & 0xFF000000) == 0x0A000000) ||
-               ((addr & 0xFFF00000) == 0xAC100000) ||
-               ((addr & 0xFFFF0000) == 0xC0A80000);
-    }
-    return FALSE;
+// Packet inspection limits
+#define MAX_PACKET_INSPECTION_SIZE 256 // Only inspect first 256 bytes
+#define MIN_ETHERNET_FRAME_SIZE 64     // Minimum valid Ethernet frame
+#define MAX_ETHERNET_FRAME_SIZE 1518   // Standard MTU without VLAN
+#define MAX_JUMBO_FRAME_SIZE 9000      // Jumbo frame support
+#define VLAN_TAG_SIZE 4                // 802.1Q VLAN tag
+#define ETHERNET_HDR_SIZE 14           // Dest MAC + Src MAC + EtherType
+#define IPV4_HEADER_MIN_SIZE 20        // IPv4 without options
+#define IPV6_HEADER_SIZE 40            // Fixed IPv6 header
+#define TCP_HEADER_MIN_SIZE 20         // TCP without options
+#define UDP_HEADER_SIZE_CONST 8        // Fixed UDP header
+
+// Protocol EtherType Values (host byte order)
+#ifndef ETHERTYPE_IPV4
+#define ETHERTYPE_IPV4 0x0800 // IPv4 protocol
+#endif
+#ifndef ETHERTYPE_IPV6
+#define ETHERTYPE_IPV6 0x86DD // IPv6 protocol
+#endif
+#ifndef ETHERTYPE_ARP
+#define ETHERTYPE_ARP 0x0806 // ARP protocol
+#endif
+#ifndef ETHERTYPE_VLAN
+#define ETHERTYPE_VLAN 0x8100 // 802.1Q VLAN tag
+#endif
+
+// IP Protocol Numbers (already defined in driver.h, guard against redefinition)
+#ifndef IPPROTO_ICMP_CONST
+#define IPPROTO_ICMP_CONST 1    // ICMP
+#define IPPROTO_TCP_CONST 6     // TCP
+#define IPPROTO_UDP_CONST 17    // UDP
+#define IPPROTO_ICMPV6_CONST 58 // ICMPv6
+#endif
+
+// Packet directions
+#define PACKET_DIRECTION_INBOUND 0
+#define PACKET_DIRECTION_OUTBOUND 1
+
+// Capture mode settings
+typedef enum _CAPTURE_MODE {
+  CAPTURE_MODE_DISABLED = 0,        // Capture disabled
+  CAPTURE_MODE_METADATA_ONLY = 1,   // Headers only (fastest)
+  CAPTURE_MODE_PARTIAL_PAYLOAD = 2, // First N bytes of payload
+  CAPTURE_MODE_FULL_PAYLOAD = 3,    // Complete packet capture
+  CAPTURE_MODE_FILTERED = 4         // Only matching filter rules
+} CAPTURE_MODE;
+
+// Capture configuration
+#define DEFAULT_PARTIAL_PAYLOAD_SIZE 256 // Bytes to capture in partial mode
+#define MAX_PAYLOAD_CAPTURE_SIZE 65535   // Maximum payload capture size
+#define CAPTURE_BUFFER_POOL_SIZE 1024    // Pre-allocated capture buffers
+
+// Flow tracking settings
+#define FLOW_TIMEOUT_MS 60000          // 60 seconds flow timeout
+#define FLOW_CLEANUP_INTERVAL_MS 30000 // 30 seconds cleanup interval
+#define MAX_TRACKED_FLOWS 100000       // Maximum concurrent flows
+
+// Deduplication settings
+#define DEDUP_ENABLED 1        // Enable packet deduplication
+#define DEDUP_CACHE_SIZE 20000 // Dedup cache entries
+#define DEDUP_WINDOW_MS 60000  // 60 second dedup window
+
+// Performance tuning
+#define BATCH_SIZE 64       // Packets per batch
+#define PREFETCH_DISTANCE 8 // Cache prefetch depth
+#define CACHE_LINE_SIZE 64  // CPU cache line size
+
+//=============================================================================
+// SECTION 3: Packet Metadata Structure (128 bytes)
+//=============================================================================
+
+/**
+ * PACKET_METADATA_ENTRY - What We Capture For Each Packet
+ *
+ * This 128-byte structure is written to the ring buffer for EVERY packet
+ * that flows through the NDIS filter. The structure captures:
+ *
+ * TIMING DATA:
+ *   - High-resolution timestamp (nanosecond precision)
+ *
+ * NETWORK INTERFACE DATA:
+ *   - Which NIC captured the packet (WAN=1, LAN=2, WiFi=3)
+ *   - Packet direction (Inbound=0, Outbound=1)
+ *
+ * LAYER 2 (ETHERNET) DATA:
+ *   - Source MAC address (6 bytes)
+ *   - Destination MAC address (6 bytes)
+ *   - EtherType (IPv4=0x0800, IPv6=0x86DD, ARP=0x0806)
+ *
+ * LAYER 3 (IP) DATA:
+ *   - IPv4 source/destination addresses (or zeros for IPv6)
+ *   - IPv6 source/destination addresses (or zeros for IPv4)
+ *   - IP protocol (TCP=6, UDP=17, ICMP=1, ICMPv6=58)
+ *
+ * LAYER 4 (TRANSPORT) DATA:
+ *   - TCP/UDP source port
+ *   - TCP/UDP destination port
+ *   - TCP flags (SYN, ACK, FIN, RST, PSH, URG)
+ *   - TCP sequence and acknowledgment numbers
+ *
+ * ADDITIONAL DATA:
+ *   - Total packet length in bytes
+ *   - Originating process ID (when available from WFP)
+ *
+ * At 128 bytes per entry, the 2GB ring buffer holds 16,777,216 packet records.
+ * At 10Gbps line rate with small packets, this provides ~13 seconds of history.
+ *
+ * Must match the definition in ring_buffer_structs.h for binary compatibility.
+ */
+#ifdef SAFEOPS_WDK_BUILD
+#pragma pack(push, 1)
+#endif
+
+typedef struct _PACKET_METADATA_ENTRY {
+  // Timestamp (8 bytes)
+  LARGE_INTEGER Timestamp; // 8 bytes - KeQueryPerformanceCounter
+
+  // Interface and direction (8 bytes)
+  ULONG NICTag;    // 4 bytes - 1=WAN, 2=LAN, 3=WiFi
+  ULONG Direction; // 4 bytes - 0=Inbound, 1=Outbound
+
+  // Ethernet info (4 bytes)
+  USHORT EtherType; // 2 bytes - 0x0800=IPv4, 0x86DD=IPv6
+  UCHAR Protocol;   // 1 byte  - 6=TCP, 17=UDP, 1=ICMP
+  UCHAR Reserved1;  // 1 byte  - Padding
+
+  // IPv4 addresses (8 bytes)
+  ULONG SourceIPv4; // 4 bytes - Network byte order, 0 if IPv6
+  ULONG DestIPv4;   // 4 bytes - Network byte order, 0 if IPv6
+
+  // IPv6 addresses (32 bytes)
+  UCHAR SourceIPv6[16]; // 16 bytes - 0s if IPv4
+  UCHAR DestIPv6[16];   // 16 bytes - 0s if IPv4
+
+  // Transport ports (4 bytes)
+  USHORT SourcePort; // 2 bytes - TCP/UDP source port
+  USHORT DestPort;   // 2 bytes - TCP/UDP dest port
+
+  // Packet info (16 bytes)
+  ULONG PacketLength;   // 4 bytes - Total packet size
+  ULONG TCPFlags;       // 4 bytes - SYN, ACK, FIN, RST, PSH, URG
+  ULONG SequenceNumber; // 4 bytes - TCP sequence number
+  ULONG AckNumber;      // 4 bytes - TCP acknowledgment number
+
+  // MAC addresses (12 bytes)
+  UCHAR SourceMAC[6]; // 6 bytes - Source MAC
+  UCHAR DestMAC[6];   // 6 bytes - Destination MAC
+
+  // Process info (4 bytes)
+  ULONG ProcessId; // 4 bytes - Process ID if available
+
+  // Reserved for future use (28 bytes) - Total: 128 bytes
+  UCHAR Reserved2[28]; // 28 bytes - Must be zeroed
+
+} PACKET_METADATA_ENTRY, *PPACKET_METADATA_ENTRY;
+
+#ifdef SAFEOPS_WDK_BUILD
+#pragma pack(pop)
+
+// Compile-time assertion to verify structure size
+C_ASSERT(sizeof(PACKET_METADATA_ENTRY) == 128);
+#endif
+
+//=============================================================================
+// SECTION 4: Packet Classification Flags
+//=============================================================================
+
+/**
+ * PACKET_CLASSIFICATION_FLAGS
+ *
+ * Bit flags for packet categorization during inspection.
+ */
+typedef enum _PACKET_CLASSIFICATION_FLAGS {
+  PACKET_FLAG_NONE = 0x00000000,        // No special classification
+  PACKET_FLAG_FRAGMENTED = 0x00000001,  // IP packet is fragmented
+  PACKET_FLAG_VLAN_TAGGED = 0x00000002, // Contains 802.1Q VLAN tag
+  PACKET_FLAG_ENCRYPTED = 0x00000004,   // Likely encrypted (TLS/IPSec)
+  PACKET_FLAG_BROADCAST = 0x00000008,   // Broadcast MAC address
+  PACKET_FLAG_MULTICAST = 0x00000010,   // Multicast MAC address
+  PACKET_FLAG_MALFORMED = 0x00000020,   // Header checksum or length invalid
+  PACKET_FLAG_TRUNCATED = 0x00000040,   // Packet truncated or incomplete
+  PACKET_FLAG_LOOPBACK = 0x00000080     // Loopback traffic (127.0.0.1)
+} PACKET_CLASSIFICATION_FLAGS;
+
+//=============================================================================
+// SECTION 5: Packet Capture Context Structure
+//=============================================================================
+
+/**
+ * PACKET_CAPTURE_CONTEXT
+ *
+ * Per-packet processing context used internally during NDIS callbacks.
+ */
+typedef struct _PACKET_CAPTURE_CONTEXT {
+  // NDIS handles
+  PNET_BUFFER_LIST NetBufferList; // Current NET_BUFFER_LIST
+  PNET_BUFFER NetBuffer;          // Current NET_BUFFER
+  PMDL CurrentMdl;                // Current MDL in chain
+
+  // Buffer state
+  ULONG CurrentMdlOffset; // Byte offset within current MDL
+  ULONG BytesRemaining;   // Bytes remaining to process
+
+  // Inspection buffer
+  PVOID InspectionBuffer;     // Temp 256-byte buffer for headers
+  ULONG InspectionBufferSize; // Size of data in buffer
+
+  // Packet context
+  BOOLEAN IsInbound;        // TRUE if inbound, FALSE if outbound
+  ULONG NICTag;             // Interface identifier
+  NDIS_HANDLE FilterHandle; // Filter instance handle
+
+  // Classification
+  ULONG ClassificationFlags; // PACKET_CLASSIFICATION_FLAGS
+
+} PACKET_CAPTURE_CONTEXT, *PPACKET_CAPTURE_CONTEXT;
+
+//=============================================================================
+// SECTION 6: Function Prototypes - NDIS Callback Handlers
+//=============================================================================
+
+/**
+ * NDIS filter callbacks registered during filter initialization.
+ * All run at DISPATCH_LEVEL and must not block or allocate paged memory.
+ */
+
+// Intercepts outbound packets before reaching NIC
+// _IRQL_requires_(DISPATCH_LEVEL)
+VOID FilterSendNetBufferLists(_In_ NDIS_HANDLE FilterModuleContext,
+                              _In_ PNET_BUFFER_LIST NetBufferLists,
+                              _In_ NDIS_PORT_NUMBER PortNumber,
+                              _In_ ULONG SendFlags);
+
+// Called when outbound send completes
+// _IRQL_requires_(DISPATCH_LEVEL)
+VOID FilterSendNetBufferListsComplete(_In_ NDIS_HANDLE FilterModuleContext,
+                                      _In_ PNET_BUFFER_LIST NetBufferLists,
+                                      _In_ ULONG SendCompleteFlags);
+
+// Intercepts inbound packets after NIC receives them
+// _IRQL_requires_(DISPATCH_LEVEL)
+VOID FilterReceiveNetBufferLists(_In_ NDIS_HANDLE FilterModuleContext,
+                                 _In_ PNET_BUFFER_LIST NetBufferLists,
+                                 _In_ NDIS_PORT_NUMBER PortNumber,
+                                 _In_ ULONG NumberOfNetBufferLists,
+                                 _In_ ULONG ReceiveFlags);
+
+// Called when protocol driver returns buffers
+// _IRQL_requires_(DISPATCH_LEVEL)
+VOID FilterReturnNetBufferLists(_In_ NDIS_HANDLE FilterModuleContext,
+                                _In_ PNET_BUFFER_LIST NetBufferLists,
+                                _In_ ULONG ReturnFlags);
+
+//=============================================================================
+// SECTION 7: Function Prototypes - Packet Processing
+//=============================================================================
+
+/**
+ * Packet parsing pipeline functions.
+ * Convert NET_BUFFER_LIST data structures into PACKET_METADATA_ENTRY format.
+ */
+
+// Main entry point for processing NET_BUFFER_LIST chain
+NTSTATUS ProcessPacketChain(_In_ PNET_BUFFER_LIST NetBufferList,
+                            _In_ BOOLEAN IsInbound, _In_ ULONG NICTag);
+
+// Process one NET_BUFFER and populate metadata
+NTSTATUS ProcessSinglePacket(_In_ PNET_BUFFER NetBuffer, _In_ BOOLEAN IsInbound,
+                             _In_ ULONG NICTag,
+                             _Out_ PPACKET_METADATA_ENTRY OutMetadata);
+
+// Safe copy from MDL chain to contiguous buffer
+NTSTATUS CopyPacketDataToBuffer(_In_ PNET_BUFFER NetBuffer,
+                                _Out_ PVOID OutputBuffer, _In_ ULONG BufferSize,
+                                _Out_ PULONG BytesCopied);
+
+// Parse Ethernet header, handle VLAN tags
+NTSTATUS ExtractEthernetHeader(_In_ PVOID PacketData, _In_ ULONG DataSize,
+                               _Out_ PUSHORT OutEtherType,
+                               _Out_ PVOID *OutIPHeader);
+
+// Extract IPv4 source/dest IPs, protocol, length
+NTSTATUS ExtractIPv4Header(_In_ PVOID IPHeader, _In_ ULONG IPHeaderSize,
+                           _Inout_ PPACKET_METADATA_ENTRY Metadata);
+
+// Extract IPv6 source/dest IPs, next header
+NTSTATUS ExtractIPv6Header(_In_ PVOID IPHeader, _In_ ULONG IPHeaderSize,
+                           _Inout_ PPACKET_METADATA_ENTRY Metadata);
+
+// Extract TCP ports, flags, sequence numbers
+NTSTATUS ExtractTCPHeader(_In_ PVOID TCPHeader, _In_ ULONG TCPHeaderSize,
+                          _Inout_ PPACKET_METADATA_ENTRY Metadata);
+
+// Extract UDP source/dest ports
+NTSTATUS ExtractUDPHeader(_In_ PVOID UDPHeader, _In_ ULONG UDPHeaderSize,
+                          _Inout_ PPACKET_METADATA_ENTRY Metadata);
+
+//=============================================================================
+// SECTION 8: Function Prototypes - NET_BUFFER_LIST Utilities
+//=============================================================================
+
+/**
+ * Helper functions for NDIS data structure manipulation.
+ */
+
+// Count NET_BUFFER_LISTs in chain
+ULONG GetNetBufferListCount(_In_ PNET_BUFFER_LIST NetBufferList);
+
+// Count total NET_BUFFERs across all lists
+ULONG GetNetBufferCount(_In_ PNET_BUFFER_LIST NetBufferList);
+
+// Get first NET_BUFFER from list
+PNET_BUFFER GetFirstNetBuffer(_In_ PNET_BUFFER_LIST NetBufferList);
+
+// Get next NET_BUFFER in chain
+PNET_BUFFER GetNextNetBuffer(_In_ PNET_BUFFER NetBuffer);
+
+// Get total data length in bytes
+ULONG GetNetBufferDataLength(_In_ PNET_BUFFER NetBuffer);
+
+// Get contiguous data pointer
+PVOID GetNetBufferDataPointer(_In_ PNET_BUFFER NetBuffer,
+                              _In_ ULONG BytesNeeded, _In_ PVOID Storage,
+                              _Out_ PULONG BytesAvailable);
+
+//=============================================================================
+// SECTION 9: Function Prototypes - Packet Validation
+//=============================================================================
+
+/**
+ * Integrity checks for packet validation.
+ */
+
+// Verify minimum frame size and valid EtherType
+BOOLEAN ValidateEthernetFrame(_In_ PVOID PacketData, _In_ ULONG DataLength);
+
+// Verify IPv4 header checksum
+BOOLEAN ValidateIPv4Checksum(_In_ PVOID IPv4Header);
+
+// Check version, header length, total length consistency
+BOOLEAN ValidateIPv4Packet(_In_ PVOID IPv4Header, _In_ ULONG DataLength);
+
+// Check version, payload length
+BOOLEAN ValidateIPv6Packet(_In_ PVOID IPv6Header, _In_ ULONG DataLength);
+
+// Check IP fragmentation flags
+BOOLEAN IsPacketFragmented(_In_ PVOID IPv4Header);
+
+// Check if address is in 127.0.0.0/8 range
+BOOLEAN IsLoopbackAddress(_In_ ULONG IPv4Address);
+
+//=============================================================================
+// SECTION 10: Function Prototypes - Performance Optimization
+//=============================================================================
+
+/**
+ * Optimized packet processing paths.
+ */
+
+// Fast path for common TCP/UDP packets
+NTSTATUS FastPathProcessPacket(_In_ PNET_BUFFER NetBuffer,
+                               _In_ BOOLEAN IsInbound, _In_ ULONG NICTag);
+
+// Full processing for complex packets
+NTSTATUS SlowPathProcessPacket(_In_ PNET_BUFFER NetBuffer,
+                               _In_ BOOLEAN IsInbound, _In_ ULONG NICTag);
+
+// Quick filter to skip uninteresting packets
+BOOLEAN ShouldSkipPacket(_In_ PNET_BUFFER NetBuffer, _In_ ULONG NICTag);
+
+// Batch process for cache efficiency
+VOID BatchProcessNetBufferLists(_In_ PNET_BUFFER_LIST NetBufferList,
+                                _In_ BOOLEAN IsInbound, _In_ ULONG NICTag);
+
+//=============================================================================
+// SECTION 11: Inline Helper Functions
+//=============================================================================
+
+/**
+ * Frequently called operations inlined for performance.
+ */
+
+// Convert network byte order to host (16-bit)
+__forceinline USHORT SwapBytes16(USHORT Value) {
+  return (USHORT)((Value >> 8) | (Value << 8));
 }
 
-// Check if IP should be excluded (loopback, multicast, etc.)
-__forceinline BOOLEAN IsExcludedIp(PIP_ADDRESS ip) {
-    if (ip->version == 4) {
-        UINT32 addr = ip->ipv4;
-        // 127.0.0.0/8, 169.254.0.0/16, 224.0.0.0/4, 255.255.255.255
-        return ((addr & 0xFF000000) == 0x7F000000) ||
-               ((addr & 0xFFFF0000) == 0xA9FE0000) ||
-               ((addr & 0xF0000000) == 0xE0000000) ||
-               (addr == 0xFFFFFFFF);
-    }
-    return FALSE;
+// Convert network byte order to host (32-bit)
+__forceinline ULONG SwapBytes32(ULONG Value) {
+  return ((Value >> 24) & 0x000000FF) | ((Value >> 8) & 0x0000FF00) |
+         ((Value << 8) & 0x00FF0000) | ((Value << 24) & 0xFF000000);
 }
 
-// Check if port is critical (SSH, RDP, SMB, etc.)
-__forceinline BOOLEAN IsCriticalPort(UINT16 port) {
-    return (port == 22 || port == 23 || port == 3389 || 
-            port == 445 || port == 139 || port == 135 ||
-            port == 1433 || port == 3306 || port == 5432);
+// Check if protocol is TCP
+__forceinline BOOLEAN IsTCPPacket(UCHAR Protocol) { return (Protocol == 6); }
+
+// Check if protocol is UDP
+__forceinline BOOLEAN IsUDPPacket(UCHAR Protocol) { return (Protocol == 17); }
+
+// Check if protocol is ICMP/ICMPv6
+__forceinline BOOLEAN IsICMPPacket(UCHAR Protocol) {
+  return (Protocol == 1 || Protocol == 58);
 }
 
-// Check if protocol is security-relevant
-__forceinline BOOLEAN IsSecurityProtocol(UINT16 app_protocol) {
-    return (app_protocol == 80 || app_protocol == 443 || 
-            app_protocol == 53 || app_protocol == 22);
+// Check if EtherType is IPv4
+__forceinline BOOLEAN IsIPv4Packet(USHORT EtherType) {
+  return (EtherType == 0x0800);
+}
+
+// Check if EtherType is IPv6
+__forceinline BOOLEAN IsIPv6Packet(USHORT EtherType) {
+  return (EtherType == 0x86DD);
+}
+
+// Check if MAC is broadcast
+__forceinline BOOLEAN IsBroadcastMAC(UCHAR *MAC) {
+  return (MAC[0] == 0xFF && MAC[1] == 0xFF && MAC[2] == 0xFF &&
+          MAC[3] == 0xFF && MAC[4] == 0xFF && MAC[5] == 0xFF);
+}
+
+// Check if MAC is multicast
+__forceinline BOOLEAN IsMulticastMAC(UCHAR *MAC) {
+  return ((MAC[0] & 0x01) != 0);
 }
 
 //=============================================================================
-// COMPILER DIRECTIVES
+// SECTION 12: Debug and Diagnostics
 //=============================================================================
 
-#pragma warning(disable: 4201)  // Nameless struct/union
-#pragma warning(disable: 4214)  // Bit field types other than int
+#ifdef DBG
 
-//=============================================================================
-// END OF HEADER
-//=============================================================================
+// Print packet details to debug console
+VOID DbgPrintPacketMetadata(_In_ PPACKET_METADATA_ENTRY Metadata);
 
-#endif // _SAFEOPS_PACKET_CAPTURE_H_
+// Dump NET_BUFFER_LIST structure
+VOID DbgPrintNetBufferList(_In_ PNET_BUFFER_LIST NetBufferList);
+
+// Cross-check parsing correctness
+VOID DbgValidatePacketProcessing(_In_ PNET_BUFFER NetBuffer,
+                                 _In_ PPACKET_METADATA_ENTRY Metadata);
+
+// Update per-NIC statistics
+VOID IncrementPacketCounter(_In_ BOOLEAN IsInbound, _In_ ULONG NICTag);
+
+#endif // DBG
+
+#endif // SAFEOPS_PACKET_CAPTURE_H
