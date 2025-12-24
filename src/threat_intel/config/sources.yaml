@@ -60,14 +60,14 @@ feeds:
     update_frequency: 3600
     description: "Malicious SSL IPs"
 
-  # Talos might require a browser check or be blocked for bots, keeping enabled for now
+  # Talos requires browser check - DISABLED (returns 404 for automated requests)
   - name: "Talos IP Blacklist"
     category: "ip_blacklist"
     url: "https://www.talosintelligence.com/documents/ip-blacklist"
     format: "txt"
-    enabled: true
+    enabled: false
     update_frequency: 86400
-    description: "Cisco Talos IP Blacklist"
+    description: "Cisco Talos IP Blacklist - DISABLED"
 
   # ==========================================================================
   # CATEGORY 3: FIREWALL / BROAD BLOCKLISTS
@@ -225,9 +225,9 @@ feeds:
     category: "hash"
     url: "https://sslbl.abuse.ch/blacklist/sslblacklist.csv"
     format: "csv"
-    enabled: true
+    enabled: false
     update_frequency: 300
-    description: "Malicious SSL certificate fingerprints"
+    description: "Malicious SSL certificate fingerprints - DISABLED"
 
   # ==========================================================================
   # CATEGORY 9: COMBINED IOC FEEDS
@@ -264,29 +264,32 @@ feeds:
 
   # Keeping IPtoASN as valid default. Users can manually download IP2Location.
 
+  # DISABLED - Repository path changed, returns 404
   - name: "IP-Location-DB Country"
     category: "ip_geo"
     url: "https://raw.githubusercontent.com/sapics/ip-location-db/main/country/ip2location-country.csv"
     format: "csv"
-    enabled: true
+    enabled: false
     update_frequency: 86400
-    description: "IP to Country mapping (GitHub/sapics)"
+    description: "IP to Country mapping - DISABLED (404)"
 
+  # DISABLED - Repository path changed, returns 404
   - name: "IP-Location-DB ASN"
     category: "asn"
     url: "https://raw.githubusercontent.com/sapics/ip-location-db/main/asn/ip2location-asn.csv"
     format: "csv"
-    enabled: true
+    enabled: false
     update_frequency: 86400
-    description: "IP to ASN mapping (GitHub/sapics)"
+    description: "IP to ASN mapping - DISABLED (404)"
 
+  # DISABLED - URL changed, returns 404
   - name: "IPLocate.io ASN"
     category: "asn"
     url: "https://iplocate.io/downloads/ip-to-asn.csv"
     format: "csv"
-    enabled: true
+    enabled: false
     update_frequency: 86400
-    description: "IP to ASN mapping (Daily)"
+    description: "IP to ASN mapping - DISABLED (404)"
 
 # ==========================================================================
 # Parser Configuration
