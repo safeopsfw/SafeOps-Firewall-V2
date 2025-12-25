@@ -18,7 +18,10 @@ import {
   MapPin,
   Eye,
   EyeOff,
-  ChevronDown
+  ChevronDown,
+  Download,
+  Play,
+  Loader2
 } from 'lucide-react';
 import {
   getDatabaseStats,
@@ -53,6 +56,8 @@ export default function ThreatIntelDashboard() {
   const [showAddSource, setShowAddSource] = useState(false);
   const [showAddApiKey, setShowAddApiKey] = useState(false);
   const [showApiList, setShowApiList] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [pipelineStatus, setPipelineStatus] = useState({ running: false, logs: [] });
   const [newSource, setNewSource] = useState({ name: '', category: 'domains', type: 'url_csv', url: '' });
   const [newApiKeyName, setNewApiKeyName] = useState('');
   const [copiedKey, setCopiedKey] = useState(null);
@@ -122,6 +127,42 @@ export default function ThreatIntelDashboard() {
     setTimeout(() => setCopiedKey(null), 2000);
   }
 
+  // Trigger database update
+  async function triggerUpdate() {
+    setPipelineStatus({ running: true, logs: ['Starting pipeline...'] });
+    setShowUpdateModal(true);
+    
+    try {
+      const response = await fetch('http://localhost:8080/api/update', {
+        method: 'POST'
+      });
+      
+      if (!response.ok) throw new Error('Failed to start pipeline');
+      
+      // Poll for status
+      const pollStatus = async () => {
+        const statusRes = await fetch('http://localhost:8080/api/pipeline/status');
+        const status = await statusRes.json();
+        setPipelineStatus(status);
+        
+        if (status.running) {
+          setTimeout(pollStatus, 1000);
+        } else {
+          // Refresh stats after completion
+          loadData();
+        }
+      };
+      
+      setTimeout(pollStatus, 1000);
+    } catch (error) {
+      setPipelineStatus({ 
+        running: false, 
+        logs: [`Error: ${error.message}`],
+        lastResult: { success: false, error: error.message }
+      });
+    }
+  }
+
   // Get sources for current category
   const categorySources = sources.filter(s => s.category === activeTab);
 
@@ -154,6 +195,29 @@ export default function ThreatIntelDashboard() {
               API: {apiHealth?.status === 'ok' ? 'Connected' : 'Offline'}
             </span>
           </div>
+          
+          {/* Update Database Button */}
+          <button
+            onClick={triggerUpdate}
+            disabled={pipelineStatus.running}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              pipelineStatus.running
+                ? 'bg-yellow-500/20 text-yellow-400 cursor-wait'
+                : 'bg-green-500 hover:bg-green-600 text-white'
+            }`}
+          >
+            {pipelineStatus.running ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Update Database
+              </>
+            )}
+          </button>
           
           <button
             onClick={loadData}
@@ -708,6 +772,90 @@ export default function ThreatIntelDashboard() {
                 Generate Key
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pipeline Progress Modal */}
+      {showUpdateModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6 w-full max-w-2xl mx-4 animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                {pipelineStatus.running ? (
+                  <>
+                    <Loader2 className="w-6 h-6 text-yellow-400 animate-spin" />
+                    Updating Database...
+                  </>
+                ) : pipelineStatus.lastResult?.success ? (
+                  <>
+                    <Check className="w-6 h-6 text-green-400" />
+                    Update Complete
+                  </>
+                ) : (
+                  <>
+                    <X className="w-6 h-6 text-red-400" />
+                    Update Failed
+                  </>
+                )}
+              </h3>
+              {!pipelineStatus.running && (
+                <button 
+                  onClick={() => setShowUpdateModal(false)}
+                  className="p-1 text-dark-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            
+            {/* Log Output */}
+            <div className="bg-dark-900 rounded-lg p-4 h-80 overflow-y-auto font-mono text-sm">
+              {pipelineStatus.logs?.map((log, i) => (
+                <div 
+                  key={i} 
+                  className={`py-1 ${
+                    log.includes('[ERROR]') ? 'text-red-400' :
+                    log.includes('[COMPLETE]') ? 'text-green-400' :
+                    log.includes('[FETCH]') ? 'text-blue-400' :
+                    log.includes('[PROCESS]') ? 'text-purple-400' :
+                    log.includes('[CLEANUP]') ? 'text-yellow-400' :
+                    'text-dark-300'
+                  }`}
+                >
+                  {log}
+                </div>
+              ))}
+              {pipelineStatus.running && (
+                <div className="py-1 text-dark-500 animate-pulse">▌</div>
+              )}
+            </div>
+            
+            {/* Result Summary */}
+            {pipelineStatus.lastResult && !pipelineStatus.running && (
+              <div className={`mt-4 p-3 rounded-lg ${
+                pipelineStatus.lastResult.success 
+                  ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                  : 'bg-red-500/10 border border-red-500/20 text-red-400'
+              }`}>
+                {pipelineStatus.lastResult.success ? (
+                  <p>✓ Database updated successfully in {pipelineStatus.lastResult.duration}</p>
+                ) : (
+                  <p>✗ {pipelineStatus.lastResult.error}</p>
+                )}
+              </div>
+            )}
+            
+            {!pipelineStatus.running && (
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={() => setShowUpdateModal(false)}
+                  className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg"
+                >
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
