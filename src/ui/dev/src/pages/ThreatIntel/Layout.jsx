@@ -10,7 +10,6 @@ import {
 
 const subNavigation = [
   { name: 'Dashboard', path: '/threat-intel', icon: LayoutDashboard },
-  { name: 'IOC Workspace', path: '/threat-intel/ioc', icon: Shield },
   { name: 'Feeds', path: '/threat-intel/feeds', icon: Database },
   { name: 'Indicators', path: '/threat-intel/indicators', icon: Search },
   { name: 'Analytics', path: '/threat-intel/analytics', icon: BarChart3 },

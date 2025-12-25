@@ -11,7 +11,6 @@ import Header from './components/layout/Header';
 // Threat Intel Module
 import ThreatIntelLayout from './pages/ThreatIntel/Layout';
 import ThreatIntelDashboard from './pages/ThreatIntel/Dashboard';
-import IOCWorkspace from './pages/ThreatIntel/IOCWorkspace';
 import Feeds from './pages/ThreatIntel/Feeds';
 import Indicators from './pages/ThreatIntel/Indicators';
 import Analytics from './pages/ThreatIntel/Analytics';
@@ -85,7 +84,6 @@ function App() {
               {/* Threat Intelligence Module */}
               <Route path="/threat-intel" element={<ThreatIntelLayout />}>
                 <Route index element={<ThreatIntelDashboard />} />
-                <Route path="ioc" element={<IOCWorkspace />} />
                 <Route path="feeds" element={<Feeds />} />
                 <Route path="indicators" element={<Indicators />} />
                 <Route path="analytics" element={<Analytics />} />

@@ -20,22 +20,42 @@ import (
 //   GET /api/lookup/domain/{domain} - Domain lookup
 //   GET /api/lookup/hash/{hash}  - Hash lookup
 //   GET /api/headers             - Table headers
+//   GET /api/health              - Health check
 // =============================================================================
+
+// CORS middleware wrapper
+func cors(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+
+		// Handle preflight
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next(w, r)
+	}
+}
 
 func main() {
 	log.Println("===========================================")
 	log.Println("SafeOps Threat Intel API Server")
 	log.Println("===========================================")
 
-	// Routes
-	http.HandleFunc("/api/status", handleStatus)
-	http.HandleFunc("/api/lookup/ip/", handleIPLookup)
-	http.HandleFunc("/api/lookup/domain/", handleDomainLookup)
-	http.HandleFunc("/api/lookup/hash/", handleHashLookup)
-	http.HandleFunc("/api/headers", handleHeaders)
-	http.HandleFunc("/api/health", handleHealth)
+	// Routes with CORS
+	http.HandleFunc("/api/status", cors(handleStatus))
+	http.HandleFunc("/api/lookup/ip/", cors(handleIPLookup))
+	http.HandleFunc("/api/lookup/domain/", cors(handleDomainLookup))
+	http.HandleFunc("/api/lookup/hash/", cors(handleHashLookup))
+	http.HandleFunc("/api/headers", cors(handleHeaders))
+	http.HandleFunc("/api/health", cors(handleHealth))
 
 	log.Println("Starting server on :8080...")
+	log.Println("CORS enabled for all origins")
 	log.Println("Endpoints:")
 	log.Println("  GET /api/status")
 	log.Println("  GET /api/lookup/ip/{ip}")

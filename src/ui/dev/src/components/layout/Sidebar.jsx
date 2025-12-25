@@ -22,7 +22,6 @@ import { useAuth } from '../../context/AuthContext';
 const operationsNav = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Threat Intel', path: '/threat-intel', icon: Shield },
-  { name: 'IOC Workspace', path: '/threat-intel/ioc', icon: Activity },
 ];
 
 // Module navigation
