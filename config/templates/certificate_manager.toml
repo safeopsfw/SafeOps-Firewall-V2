@@ -1,479 +1,194 @@
-# SafeOps Certificate Manager Configuration
-# Certificate Authority (CA) service for PKI management
-#
-# This service handles certificate generation, signing, renewal, revocation,
-# and storage for TLS interception, service-to-service communication, and
-# user authentication.
+# ============================================================================
+# Certificate Manager Configuration
+# SafeOps v2.0 - SSL/TLS Certificate Lifecycle Management
+# ============================================================================
 
 # ============================================================================
-# Service Configuration
+# Section 1: Service Identity & Runtime
 # ============================================================================
 [service]
-# Service identifier for orchestrator registration
-service_name = "certificate_manager"
-
-# gRPC certificate API address
-grpc_listen_address = "127.0.0.1:50061"
-
-# Maximum concurrent certificate requests
-grpc_max_connections = 100
-
-# HTTP server for OCSP and CRL endpoints
-http_listen_address = "0.0.0.0"
-http_port = 8090
-
-# Self-health check frequency (seconds)
-health_check_interval = 30
-
-# Enable Prometheus metrics export
-metrics_enabled = true
-metrics_port = 9101
+name = "certificate_manager"
+version = "2.0.0"
+environment = "${ENVIRONMENT:-production}"  # development, staging, production
+log_level = "${LOG_LEVEL:-info}"            # debug, info, warn, error
+log_format = "json"                          # json, text
+log_file = "logs/certificate_manager.log"
+pid_file = "/var/run/safeops/certificate_manager.pid"
+working_directory = "/opt/safeops"
 
 # ============================================================================
-# Root CA Configuration
+# Section 2: gRPC Server Configuration
 # ============================================================================
-[root_ca]
-# Enable root CA functionality
-root_ca_enabled = true
-
-# Path to root CA certificate
-root_ca_certificate_path = "D:\\SafeOpsFV2\\certs\\ca\\root-ca.crt"
-
-# Path to root CA private key
-root_ca_private_key_path = "D:\\SafeOpsFV2\\certs\\ca\\root-ca.key"
-
-# Root CA private key passphrase
-# Can be overridden with ${ROOT_CA_PASSWORD}
-# root_ca_key_password = "${ROOT_CA_PASSWORD}"
-
-# Root CA subject Distinguished Name
-[root_ca.subject]
-common_name = "SafeOps Root CA"
-organization = "SafeOps"
-organizational_unit = "Security Operations"
-country = "US"
-state = "California"
-locality = "San Francisco"
-
-# Root CA key configuration
-root_ca_key_algorithm = "RSA"  # RSA or ECDSA
-root_ca_key_size = 4096        # RSA: 2048/4096, ECDSA: 256/384/521
-
-# Root CA certificate validity (years)
-root_ca_validity_years = 20
+[grpc]
+enabled = true
+host = "0.0.0.0"                    # 0.0.0.0 for all interfaces, 127.0.0.1 for localhost
+port = "${GRPC_PORT:-50053}"
+max_concurrent_streams = 100
+max_connection_idle = "5m"          # Idle connection timeout
+max_connection_age = "30m"          # Maximum connection lifetime
+keepalive_time = "30s"              # Keepalive ping interval
+keepalive_timeout = "10s"           # Keepalive ping timeout
+reflection_enabled = true           # Enable gRPC reflection for debugging
 
 # ============================================================================
-# Intermediate CA Configuration
+# Section 3: ACME Protocol (Let's Encrypt) Configuration
 # ============================================================================
-[intermediate_ca]
-# Use intermediate CA for operational signing (recommended)
-# Protects root CA private key
-intermediate_ca_enabled = true
-
-# Path to intermediate CA certificate
-intermediate_ca_certificate_path = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.crt"
-
-# Path to intermediate CA private key
-intermediate_ca_private_key_path = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.key"
-
-# Intermediate CA private key passphrase
-# Can be overridden with ${INTERMEDIATE_CA_PASSWORD}
-# intermediate_ca_key_password = "${INTERMEDIATE_CA_PASSWORD}"
-
-# Intermediate CA subject
-[intermediate_ca.subject]
-common_name = "SafeOps Intermediate CA"
-organization = "SafeOps"
-organizational_unit = "Certificate Services"
-country = "US"
-state = "California"
-locality = "San Francisco"
-
-# Full certificate chain file (root + intermediate)
-intermediate_ca_chain_path = "D:\\SafeOpsFV2\\certs\\ca\\ca-chain.pem"
-
-# Intermediate CA certificate validity (years)
-intermediate_ca_validity_years = 10
-
-# Auto-renew intermediate CA before expiry
-auto_renew_intermediate = true
-
-# Renew when remaining validity < N days
-intermediate_renewal_threshold = 365
+[acme]
+# Production: https://acme-v02.api.letsencrypt.org/directory
+# Staging:    https://acme-staging-v02.api.letsencrypt.org/directory
+directory_url = "${ACME_DIRECTORY_URL:-https://acme-v02.api.letsencrypt.org/directory}"
+email = "${ACME_EMAIL:-admin@safeops.local}"
+terms_agreed = true                 # Required: Accept Let's Encrypt ToS
+preferred_challenge = "http-01"     # http-01, dns-01, tls-alpn-01
+key_type = "ECDSA-P256"             # RSA-2048, RSA-4096, ECDSA-P256, ECDSA-P384
+timeout = "60s"                     # ACME operation timeout
+retry_attempts = 3                  # Retries for failed ACME operations
+retry_delay = "10s"                 # Delay between retries
+rate_limit_buffer = 5               # Safety margin for LE rate limits
 
 # ============================================================================
-# Certificate Generation
+# Section 4: Managed Domains Configuration
 # ============================================================================
-[certificate_generation]
-# Default certificate validity (days)
-default_validity_days = 365
+# Example domain configurations - add your actual domains here
 
-# Default key algorithm
-# Valid values: "RSA", "ECDSA"
-default_key_algorithm = "RSA"
+[[domains]]
+common_name = "safeops.local"
+subject_alt_names = ["www.safeops.local", "api.safeops.local"]
+wildcard = false
+challenge_type = "http-01"
+enabled = true
+auto_renew = true
+renew_before_days = 30
+http_challenge_port = 80
 
-# Default key size
-# RSA: 2048 or 4096, ECDSA: 256, 384, or 521
-default_key_size = 2048
-
-# Allowed algorithms clients can request
-allowed_key_algorithms = ["RSA", "ECDSA"]
-
-# Allowed key sizes clients can request
-allowed_key_sizes = [2048, 4096, 256, 384]
-
-# Maximum certificate validity allowed (days)
-max_validity_days = 825  # ~2 years (CA/Browser Forum limit)
-
-# Require Subject Alternative Name (SAN)
-san_required = true
-
-# Allow wildcard certificate generation
-wildcard_certificates_allowed = true
-
-# Allow self-signed certificate generation (development only)
-self_signed_allowed = false
+[[domains]]
+common_name = "*.safeops.local"
+subject_alt_names = []
+wildcard = true
+challenge_type = "dns-01"           # Wildcard requires DNS-01
+enabled = false                     # Enable when DNS provider is configured
+auto_renew = true
+renew_before_days = 30
+dns_provider = "cloudflare"
 
 # ============================================================================
-# Certificate Storage
+# Section 5: Certificate Storage Configuration
 # ============================================================================
 [storage]
-# Storage backend
-# Valid values: "DATABASE", "FILESYSTEM", "BOTH"
-# DATABASE: PostgreSQL (recommended)
-# FILESYSTEM: Files on disk
-# BOTH: PostgreSQL + filesystem backup
-storage_backend = "BOTH"
-
-# PostgreSQL database configuration
-database_host = "localhost"
-database_port = 5432
-database_name = "safeops"
-database_user = "safeops"
-database_password = "${POSTGRES_PASSWORD}"
-
-# Connection pool size
-database_connection_pool = 10
-
-# Filesystem storage path
-filesystem_path = "D:\\SafeOpsFV2\\data\\certificates"
-
-# Certificate storage format
-# Valid values: "PEM", "DER", "PKCS12"
-certificate_format = "PEM"
-
-# Store private keys (requires encryption)
-include_private_keys = true
+type = "both"                       # filesystem, database, both
+cert_path = "${CERT_STORAGE_PATH:-/opt/safeops/certs}"
+key_path = "${KEY_STORAGE_PATH:-/opt/safeops/private}"
+chain_path = "/opt/safeops/chains"
+backup_path = "/opt/safeops/backup/certs"
+file_permissions = "0600"           # Restrictive permissions for keys
+directory_permissions = "0700"
+encrypt_keys = true                 # Encrypt private keys at rest
+encryption_key_file = "/opt/safeops/secrets/cert_encryption.key"
 
 # ============================================================================
-# Automatic Renewal
+# Section 6: PostgreSQL Database Configuration
 # ============================================================================
-[auto_renewal]
-# Enable automatic certificate renewal
-auto_renewal_enabled = true
-
-# How often to check for expiring certificates (hours)
-renewal_check_interval = 24
-
-# Renew certificates when remaining validity < N days
-renewal_threshold_days = 30
-
-# Start renewal attempts N days before expiry
-# Provides buffer for failed renewals
-renewal_window_days = 45
-
-# Maximum retry attempts for failed renewals
-renewal_retry_attempts = 5
-
-# Retry interval (hours)
-renewal_retry_interval = 6
-
-# Notify before/after renewals
-renewal_notification_enabled = true
-
-# Notify N days before expiry
-renewal_notification_threshold = 14
-
-# Notification methods (email, webhook)
-renewal_notification_methods = ["EMAIL", "WEBHOOK"]
+[database]
+enabled = true
+host = "${DB_HOST:-localhost}"
+port = "${DB_PORT:-5432}"
+name = "safeops_db"
+user = "postgres"
+password = "${DB_PASSWORD:-postgres}"
+sslmode = "disable"                 # disable, require, verify-ca, verify-full
+max_connections = 10
+idle_connections = 2
+connection_lifetime = "30m"
+connection_timeout = "10s"
 
 # ============================================================================
-# Certificate Revocation
+# Section 7: Automatic Renewal Scheduler
 # ============================================================================
-[revocation]
-# Enable certificate revocation
-revocation_enabled = true
-
-# Generate Certificate Revocation Lists (CRL)
-crl_enabled = true
-
-# CRL distribution point URL (included in certificates)
-crl_distribution_point = "http://crl.safeops.local/root-ca.crl"
-
-# CRL regeneration frequency (hours)
-crl_update_interval = 24
-
-# CRL validity duration (hours)
-crl_validity_hours = 168  # 7 days
-
-# Filesystem path for CRL files
-crl_path = "D:\\SafeOpsFV2\\data\\crl"
-
-# Enable OCSP responder
-ocsp_enabled = true
-
-# OCSP responder URL (included in certificates)
-ocsp_responder_url = "http://ocsp.safeops.local:8090"
-
-# Dedicated OCSP signing certificate
-# If not specified, uses intermediate CA
-# ocsp_signing_certificate = "D:\\SafeOpsFV2\\certs\\ocsp-signer.crt"
-# ocsp_signing_key = "D:\\SafeOpsFV2\\certs\\ocsp-signer.key"
-
-# Cache OCSP responses
-ocsp_cache_enabled = true
-
-# OCSP response cache duration (seconds)
-ocsp_cache_ttl = 3600
+[renewal]
+enabled = true
+check_interval = "24h"              # How often to check for renewals
+renew_before_days = 30              # Default: renew 30 days before expiry
+max_concurrent_renewals = 2         # Maximum simultaneous renewals
+retry_failed_renewals = true
+retry_interval = "6h"               # Time between retry attempts
+max_retry_attempts = 5              # Max retries before alerting
+notification_enabled = true
+notification_channels = ["email"]   # email, slack, webhook
 
 # ============================================================================
-# Certificate Templates
+# Section 8: Certificate Distribution to Services
 # ============================================================================
-# Predefined certificate profiles
-
-[[certificate_templates]]
-template_name = "tls_server"
-template_type = "SERVER"
-validity_days = 365
-key_algorithm = "RSA"
-key_size = 2048
-key_usage = ["digitalSignature", "keyEncipherment"]
-extended_key_usage = ["serverAuth"]
-san_types = ["DNS", "IP"]
-description = "Standard TLS server certificate"
-
-[[certificate_templates]]
-template_name = "tls_client"
-template_type = "CLIENT"
-validity_days = 365
-key_algorithm = "RSA"
-key_size = 2048
-key_usage = ["digitalSignature", "keyEncipherment"]
-extended_key_usage = ["clientAuth"]
-san_types = ["EMAIL", "DNS"]
-description = "TLS client authentication certificate"
-
-[[certificate_templates]]
-template_name = "code_signing"
-template_type = "CODE_SIGNING"
-validity_days = 730  # 2 years
-key_algorithm = "RSA"
-key_size = 4096
-key_usage = ["digitalSignature"]
-extended_key_usage = ["codeSigning"]
-san_types = ["EMAIL"]
-description = "Code signing certificate"
-
-[[certificate_templates]]
-template_name = "email"
-template_type = "EMAIL"
-validity_days = 365
-key_algorithm = "RSA"
-key_size = 2048
-key_usage = ["digitalSignature", "keyEncipherment"]
-extended_key_usage = ["emailProtection"]
-san_types = ["EMAIL"]
-description = "S/MIME email certificate"
+[distribution]
+enabled = true
+method = "grpc_push"                # grpc_push, file_copy, both
+target_services = ["tls_proxy", "web_ui", "vpn_server"]
+retry_failed = true
+retry_interval = "5m"
+max_retry_attempts = 3
+notification_on_failure = true
 
 # ============================================================================
-# TLS Interception Support
+# Section 9: HTTP-01 Challenge Server
 # ============================================================================
-[tls_interception]
-# Enable on-demand certificate generation for TLS proxy
-tls_interception_enabled = true
-
-# CA certificate for TLS interception
-# Usually same as intermediate CA
-interception_ca_certificate = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.crt"
-interception_ca_private_key = "D:\\SafeOpsFV2\\certs\\ca\\intermediate-ca.key"
-
-# Cache generated interception certificates
-interception_cert_cache = true
-
-# Maximum cached interception certificates
-interception_cache_size = 10000
-
-# Cache entry lifetime (hours)
-interception_cache_ttl = 24
-
-# Validity for intercepted certificates (days)
-interception_cert_validity_days = 365
-
-# Generate wildcard certificates for domains
-wildcard_generation_enabled = true
-
-# Copy server certificate properties (issuer, validity dates)
-# Makes interception less detectable
-copy_server_properties = true
+[http_challenge]
+enabled = true
+port = 80                           # Must be 80 for Let's Encrypt
+bind_address = "0.0.0.0"
+timeout = "30s"
+well_known_path = "/.well-known/acme-challenge"
+allow_external = true               # Required for ACME validation
 
 # ============================================================================
-# Security and Compliance
+# Section 10: DNS-01 Challenge Configuration (for Wildcards)
 # ============================================================================
-[security]
-# Encrypt stored private keys
-private_key_encryption = true
-
-# Encryption algorithm
-# Valid values: "AES256", "CHACHA20"
-encryption_algorithm = "AES256"
-
-# Encryption key source
-# Valid values: "FILE", "ENV_VAR", "KMS", "VAULT"
-encryption_key_source = "ENV_VAR"
-
-# Encryption key environment variable
-encryption_key_env_var = "ENCRYPTION_KEY"
-
-# Path to encryption key file (if source = FILE)
-# encryption_key_path = "D:\\SafeOpsFV2\\secrets\\encryption.key"
-
-# Use Hardware Security Module for CA keys
-hsm_enabled = false
-
-# HSM type
-# Valid values: "PKCS11", "AWS_CLOUDHSM", "AZURE_KEYVAULT"
-# hsm_type = "PKCS11"
-
-# HSM configuration
-# hsm_library_path = "C:\\Program Files\\HSM\\pkcs11.dll"
-# hsm_pin = "${HSM_PIN}"
-# hsm_slot = 0
-
-# Audit logging for all certificate operations
-audit_logging_enabled = true
-
-# Audit log file path
-audit_log_path = "D:\\SafeOpsFV2\\logs\\certificate_audit.log"
-
-# Compliance mode
-# Valid values: "NONE", "NIST", "FIPS", "CA_BROWSER_FORUM"
-compliance_mode = "CA_BROWSER_FORUM"
+[dns_challenge]
+enabled = false                     # Enable when using DNS-01
+provider = "cloudflare"             # cloudflare, route53, digitalocean, manual
+api_token = "${DNS_API_TOKEN:-}"
+api_key = "${DNS_API_KEY:-}"
+api_secret = "${DNS_API_SECRET:-}"
+propagation_timeout = "120s"        # Wait time for DNS propagation
+polling_interval = "10s"            # How often to check propagation
+ttl = 120                           # TTL for challenge TXT records
 
 # ============================================================================
-# API and Integration
+# Section 11: Prometheus Metrics
 # ============================================================================
-[api]
-# Require authentication for certificate requests
-api_authentication_enabled = true
-
-# Authentication method
-# Valid values: "MTLS", "JWT", "API_KEY"
-api_auth_method = "JWT"
-
-# JWT signing key
-# api_jwt_secret = "${API_SECRET}"
-
-# API key for service-to-service communication
-# api_key = "${API_SECRET}"
-
-# Rate limit certificate requests
-api_rate_limiting_enabled = true
-
-# Maximum requests per minute per client
-api_rate_limit = 100
-
-# Call webhooks on certificate events
-webhook_enabled = false
-
-# Webhook endpoint URL
-# webhook_url = "https://webhook.example.com/certificates"
-
-# Webhook authentication secret
-# webhook_secret = "${WEBHOOK_SECRET}"
-
-# Events to notify
-webhook_events = ["ISSUED", "RENEWED", "REVOKED", "EXPIRED"]
+[metrics]
+enabled = true
+port = 9093
+path = "/metrics"
+include_system_metrics = true       # Include Go runtime metrics
 
 # ============================================================================
-# Performance Tuning
+# Section 12: Health Check Endpoint
 # ============================================================================
-[performance]
-# Number of certificate processing worker threads
-# 0 = auto-detect (CPU cores)
-worker_threads = 0
-
-# Certificate request queue size
-request_queue_size = 1000
-
-# Cache signing operations
-signing_cache_enabled = true
-
-# Sign multiple certificates in batch
-batch_signing_enabled = false
-
-# Certificates per batch
-batch_size = 10
+[health]
+enabled = true
+port = 8093
+path = "/health"
+check_database = true               # Include database connectivity check
+check_acme_connectivity = true      # Verify Let's Encrypt reachability
 
 # ============================================================================
-# Advanced Settings
+# Notification Channels Configuration
 # ============================================================================
-[advanced]
-# Certificate serial number format
-# Valid values: "RANDOM", "SEQUENTIAL"
-serial_number_format = "RANDOM"
+[notifications.email]
+enabled = false
+smtp_host = "smtp.example.com"
+smtp_port = 587
+username = ""
+password = ""
+from_address = "certs@safeops.local"
+to_addresses = ["admin@safeops.local"]
 
-# Random serial number bit length
-serial_number_bits = 128
+[notifications.slack]
+enabled = false
+webhook_url = "${SLACK_WEBHOOK_URL:-}"
+channel = "#certificates"
 
-# Include certificate policies extension
-include_certificate_policies = true
-
-# Certificate policy OID
-certificate_policy_oid = "1.3.6.1.4.1.99999.1.1.1"
-
-# Certificate policy URL
-certificate_policy_url = "https://pki.safeops.local/cps"
-
-# Enable certificate transparency logging
-ct_logging_enabled = false
-
-# CT log servers
-# ct_log_servers = ["https://ct.googleapis.com/logs/argon2021/"]
-
-# ============================================================================
-# Environment Variable Overrides
-# ============================================================================
-# These settings can be overridden by environment variables:
-#
-# ROOT_CA_PASSWORD - Root CA private key passphrase
-# INTERMEDIATE_CA_PASSWORD - Intermediate CA private key passphrase
-# POSTGRES_PASSWORD - Database password for certificate storage
-# ENCRYPTION_KEY - Key for encrypting stored private keys
-# HSM_PIN - HSM PIN or authentication credential
-# API_SECRET - API authentication secret (JWT signing key or API key)
-# WEBHOOK_SECRET - Webhook authentication secret
-#
-# ============================================================================
-
-# ============================================================================
-# Configuration Validation
-# ============================================================================
-# The certificate_manager service validates this configuration at startup
-# and will fail to start if validation fails. Common checks:
-#
-# 1. Root CA certificate and private key must exist
-# 2. Root CA private key must match certificate
-# 3. Intermediate CA certificate must be signed by root CA
-# 4. Certificate chain must be valid
-# 5. storage_backend paths must be writable
-# 6. database credentials must have PostgreSQL access
-# 7. OCSP responder URL must be accessible
-# 8. CRL distribution point must be accessible
-# 9. HSM configuration must be valid if enabled
-# 10. Template configurations must be valid
-#
-# CRITICAL: Root CA certificate must be installed in all client trust
-# stores for certificates to be trusted.
-#
-# Use the validator: safeops-cli config validate certificate_manager.toml
-# ============================================================================
+[notifications.webhook]
+enabled = false
+url = "${WEBHOOK_URL:-}"
+method = "POST"
+headers = { "Content-Type" = "application/json" }
