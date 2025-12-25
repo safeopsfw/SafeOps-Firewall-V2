@@ -38,43 +38,11 @@
 // Section 8: Global State Management
 //=============================================================================
 
-// Driver global state
-typedef enum _DRIVER_STATE {
-  DRIVER_STATE_UNINITIALIZED = 0,
-  DRIVER_STATE_INITIALIZING = 1,
-  DRIVER_STATE_RUNNING = 2,
-  DRIVER_STATE_PAUSED = 3,
-  DRIVER_STATE_SHUTTING_DOWN = 4,
-  DRIVER_STATE_UNLOADED = 5
-} DRIVER_STATE;
+// Global state and configuration (definitions)
+// Note: Types are declared in driver.h
+GLOBAL_DRIVER_STATE g_DriverState = {0};
 
-typedef struct _GLOBAL_DRIVER_STATE {
-  volatile DRIVER_STATE State;
-  KSPIN_LOCK StateLock;
-  KEVENT ShutdownEvent;
-  LONG ReferenceCount;
-  BOOLEAN PowerCallbacksRegistered;
-  PVOID PowerCallbackHandle;
-  LARGE_INTEGER StartTime;
-  LARGE_INTEGER LastStatsResetTime;
-} GLOBAL_DRIVER_STATE, *PGLOBAL_DRIVER_STATE;
-
-static GLOBAL_DRIVER_STATE g_DriverState = {0};
-
-// Configuration parameters
-typedef struct _DRIVER_CONFIG {
-  ULONG MaxFilterRules;
-  ULONG MaxConnections;
-  ULONG SharedBufferSizeMB;
-  ULONG DmaBufferSizeMB;
-  BOOLEAN EnableLogging;
-  BOOLEAN EnableDeepInspection;
-  BOOLEAN EnableRss;
-  ULONG RssCpuCount;
-  ULONG LogLevel;
-} DRIVER_CONFIG, *PDRIVER_CONFIG;
-
-static DRIVER_CONFIG g_DriverConfig = {
+DRIVER_CONFIG g_DriverConfig = {
     .MaxFilterRules = MAX_FILTER_RULES,
     .MaxConnections = MAX_CONNECTIONS,
     .SharedBufferSizeMB = SHARED_BUFFER_SIZE / (1024 * 1024),
@@ -90,48 +58,8 @@ static DRIVER_CONFIG g_DriverConfig = {
 // Section 9: Diagnostic and Debug
 //=============================================================================
 
-// Debug print levels
-#define LOG_LEVEL_ERROR 1
-#define LOG_LEVEL_WARNING 2
-#define LOG_LEVEL_INFO 3
-#define LOG_LEVEL_DEBUG 4
-#define LOG_LEVEL_VERBOSE 5
-
-// Enhanced logging macros
-#define SAFEOPS_LOG(level, format, ...)                                        \
-  do {                                                                         \
-    if ((level) <= g_DriverConfig.LogLevel) {                                  \
-      DbgPrintEx(DPFLTR_IHVNETWORK_ID, DPFLTR_ERROR_LEVEL,                     \
-                 "[SafeOps:%s:%d] " format "\n", __FUNCTION__, __LINE__,       \
-                 __VA_ARGS__);                                                 \
-    }                                                                          \
-  } while (0)
-
-#define SAFEOPS_LOG_ERROR(format, ...)                                         \
-  SAFEOPS_LOG(LOG_LEVEL_ERROR, "ERROR: " format, __VA_ARGS__)
-#define SAFEOPS_LOG_WARNING(format, ...)                                       \
-  SAFEOPS_LOG(LOG_LEVEL_WARNING, "WARNING: " format, __VA_ARGS__)
-#define SAFEOPS_LOG_INFO(format, ...)                                          \
-  SAFEOPS_LOG(LOG_LEVEL_INFO, "INFO: " format, __VA_ARGS__)
-#define SAFEOPS_LOG_DEBUG(format, ...)                                         \
-  SAFEOPS_LOG(LOG_LEVEL_DEBUG, "DEBUG: " format, __VA_ARGS__)
-#define SAFEOPS_LOG_VERBOSE(format, ...)                                       \
-  SAFEOPS_LOG(LOG_LEVEL_VERBOSE, "VERBOSE: " format, __VA_ARGS__)
-
-// Assertion macro
-#ifdef DBG
-#define SAFEOPS_ASSERT(condition)                                              \
-  do {                                                                         \
-    if (!(condition)) {                                                        \
-      DbgPrintEx(DPFLTR_IHVNETWORK_ID, DPFLTR_ERROR_LEVEL,                     \
-                 "[SafeOps] ASSERTION FAILED: %s at %s:%d\n", #condition,      \
-                 __FILE__, __LINE__);                                          \
-      DbgBreakPoint();                                                         \
-    }                                                                          \
-  } while (0)
-#else
-#define SAFEOPS_ASSERT(condition) ((void)0)
-#endif
+// Note: LOG_LEVEL_* constants and SAFEOPS_LOG_* macros are defined in driver.h
+// Note: SAFEOPS_ASSERT macro is defined in driver.h
 
 //=============================================================================
 // Forward Declarations
@@ -205,18 +133,19 @@ DriverEntry(_In_ PDRIVER_OBJECT DriverObject,
   // Log startup banner
   SafeOpsLogStartupBanner();
 
+  // Determine platform string at compile time
+#ifdef _AMD64_
+  const char* platformString = "x64";
+#elif defined(_ARM64_)
+  const char* platformString = "ARM64";
+#else
+  const char* platformString = "Unknown";
+#endif
+
   SAFEOPS_LOG_INFO("=== SafeOps Driver v%s Starting ===",
                    SAFEOPS_VERSION_STRING);
   SAFEOPS_LOG_INFO("Build: %s", SAFEOPS_BUILD_TIMESTAMP);
-  SAFEOPS_LOG_INFO("Platform: %s",
-#ifdef _AMD64_
-                   "x64"
-#elif defined(_ARM64_)
-                   "ARM64"
-#else
-                   "Unknown"
-#endif
-  );
+  SAFEOPS_LOG_INFO("Platform: %s", platformString);
 
   // Read configuration from registry
   status = SafeOpsReadRegistryConfig();

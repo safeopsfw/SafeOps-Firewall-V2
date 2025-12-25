@@ -33,8 +33,35 @@ typedef unsigned char UCHAR;
 #define WINAPI
 #endif
 
-#include "userspace_service.h"
 #include <windows.h>
+#include <stdint.h>
+// Note: userspace_service.h is NOT included here to avoid struct conflicts
+// Each .c file includes the headers it needs
+
+//=============================================================================
+// TYPE DEFINITIONS
+//=============================================================================
+
+// NTSTATUS type for userspace (compatible with kernel)
+#ifndef _NTDEF_
+typedef LONG NTSTATUS;
+#endif
+
+// Basic types
+typedef unsigned char UCHAR;
+typedef unsigned int UINT;
+typedef uint32_t UINT32;
+typedef uint64_t UINT64;
+
+// Forward declaration - defined in userspace_service.h
+typedef struct _PACKET_METADATA {
+  UINT32 magic;
+  UINT32 entry_length;
+  UINT64 timestamp_qpc;
+  UINT64 timestamp_system;
+  UINT64 sequence_number;
+  // ... other fields omitted for brevity in forward decl
+} PACKET_METADATA, *PPACKET_METADATA;
 
 //=============================================================================
 // IOCTL CODES (Must match kernel driver ioctl_handler.h)
@@ -50,35 +77,10 @@ typedef unsigned char UCHAR;
 // CONTEXT STRUCTURES
 //=============================================================================
 
-// Ring reader context
-typedef struct _RING_READER_CONTEXT {
-  HANDLE driver_handle;
-  PVOID mapped_buffer;
-  SIZE_T buffer_size;
-  UINT64 read_index;
-  UINT64 packets_read;
-  BOOL initialized;
-} RING_READER_CONTEXT, *PRING_READER_CONTEXT;
-
-// Log writer context
-typedef struct _LOG_WRITER_CONTEXT {
-  HANDLE log_file;
-  char log_directory[MAX_PATH];
-  char current_file[MAX_PATH];
-  UINT64 bytes_written;
-  UINT64 packets_written;
-  BOOL json_format;
-  BOOL initialized;
-} LOG_WRITER_CONTEXT, *PLOG_WRITER_CONTEXT;
-
-// Rotation manager context
-typedef struct _ROTATION_CONTEXT {
-  PLOG_WRITER_CONTEXT log_writer;
-  DWORD interval_ms;
-  UINT64 last_rotation_time;
-  UINT64 rotation_count;
-  BOOL initialized;
-} ROTATION_CONTEXT, *PROTATION_CONTEXT;
+// Forward declarations - actual definitions in respective .c files
+typedef struct _RING_READER_CONTEXT RING_READER_CONTEXT, *PRING_READER_CONTEXT;
+typedef struct _LOG_WRITER_CONTEXT LOG_WRITER_CONTEXT, *PLOG_WRITER_CONTEXT;
+typedef struct _ROTATION_CONTEXT ROTATION_CONTEXT, *PROTATION_CONTEXT;
 
 // Statistics collector context
 typedef struct _STATS_CONTEXT {

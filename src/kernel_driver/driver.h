@@ -28,19 +28,24 @@
 // Conditional compilation for WDK vs IDE compatibility
 // WDK Build: Define SAFEOPS_WDK_BUILD in project properties to use real headers
 // IDE Mode: Uses stub definitions for IntelliSense (default when not building)
+// During nmake compilation, we always use WDK headers
 //-----------------------------------------------------------------------------
+
+// For kernel mode compilation with WDK, always use real headers
+#define SAFEOPS_WDK_BUILD 1
 
 #ifdef SAFEOPS_WDK_BUILD
 // ============================================================================
 // WDK BUILD MODE - Use real Windows kernel headers
 // ============================================================================
-#include <fwpmk.h>
-#include <fwpsk.h>
+#include <ntddk.h>
 #include <guiddef.h>
+#include <wdmsec.h>
+#include <ntstrsafe.h>
 #include <intrin.h>
 #include <ndis.h>
-#include <ntddk.h>
-#include <ntstrsafe.h>
+#include <fwpmk.h>
+#include <fwpsk.h>
 #include <wdf.h>
 
 #else
@@ -297,8 +302,34 @@ typedef KIRQL *PKIRQL;
 #ifndef STATUS_INVALID_DEVICE_STATE
 #define STATUS_INVALID_DEVICE_STATE ((NTSTATUS)0xC0000184L)
 #endif
+#ifndef STATUS_PENDING
+#define STATUS_PENDING ((NTSTATUS)0x00000103L)
+#endif
+#ifndef STATUS_TIMEOUT
+#define STATUS_TIMEOUT ((NTSTATUS)0x00000102L)
+#endif
+#ifndef STATUS_CANCELLED
+#define STATUS_CANCELLED ((NTSTATUS)0xC0000120L)
+#endif
+#ifndef STATUS_NO_MEMORY
+#define STATUS_NO_MEMORY ((NTSTATUS)0xC0009A00L)
+#endif
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+#endif
+
+// NDIS status codes for IDE mode
+#ifndef NDIS_STATUS_SUCCESS
+#define NDIS_STATUS_SUCCESS ((NDIS_STATUS)0x00000000L)
+#endif
+#ifndef NDIS_STATUS_FAILURE
+#define NDIS_STATUS_FAILURE ((NDIS_STATUS)0xC0000001L)
+#endif
+#ifndef NDIS_STATUS_RESOURCES
+#define NDIS_STATUS_RESOURCES ((NDIS_STATUS)0xC000009AL)
+#endif
+#ifndef NDIS_STATUS_NOT_SUPPORTED
+#define NDIS_STATUS_NOT_SUPPORTED ((NDIS_STATUS)0xC00000BBL)
 #endif
 
 // Kernel function stubs for IDE mode (do-nothing implementations)
@@ -374,9 +405,20 @@ typedef KIRQL *PKIRQL;
 typedef void *WDFOBJECT;
 typedef void *PWDFDEVICE_INIT;
 typedef void *WDF_OBJECT_ATTRIBUTES;
-typedef ULONG WDF_POWER_DEVICE_STATE;
 typedef void *PCALLBACK_OBJECT;
 typedef ULONG DEVICE_TYPE;
+
+// WDF power device state enumeration for IDE mode
+typedef enum _WDF_POWER_DEVICE_STATE {
+  WdfPowerDeviceInvalid = 0,
+  WdfPowerDeviceD0,
+  WdfPowerDeviceD1,
+  WdfPowerDeviceD2,
+  WdfPowerDeviceD3,
+  WdfPowerDeviceD3Final,
+  WdfPowerDevicePrepareForHibernation,
+  WdfPowerDeviceMaximum
+} WDF_POWER_DEVICE_STATE, *PWDF_POWER_DEVICE_STATE;
 
 // WDF structures for driver.c
 typedef struct _WDF_DRIVER_CONFIG {
@@ -474,6 +516,24 @@ static const UNICODE_STRING SDDL_DEVOBJ_SYS_ALL_ADM_ALL = {0, 0, 0};
 #ifndef RtlInitUnicodeString
 #define RtlInitUnicodeString(DestStr, SrcStr) ((void)0)
 #endif
+#ifndef IoGetCurrentIrpStackLocation
+#define IoGetCurrentIrpStackLocation(Irp) ((PIO_STACK_LOCATION)NULL)
+#endif
+#ifndef MmGetSystemAddressForMdlSafe
+#define MmGetSystemAddressForMdlSafe(Mdl, Priority) ((PVOID)NULL)
+#endif
+#ifndef MmGetSystemAddressForMdl
+#define MmGetSystemAddressForMdl(Mdl) ((PVOID)NULL)
+#endif
+#ifndef IoAllocateMdl
+#define IoAllocateMdl(VirtualAddress, Length, SecondaryBuffer, ChargeQuota, Irp) ((PMDL)NULL)
+#endif
+#ifndef IoFreeMdl
+#define IoFreeMdl(Mdl) ((void)0)
+#endif
+#ifndef MmBuildMdlForNonPagedPool
+#define MmBuildMdlForNonPagedPool(Mdl) ((void)0)
+#endif
 
 // Callback function class annotation
 #ifndef _Function_class_
@@ -485,10 +545,13 @@ static const UNICODE_STRING SDDL_DEVOBJ_SYS_ALL_ADM_ALL = {0, 0, 0};
 
 // Event log types
 #ifndef EVENTLOG_ERROR_TYPE
-#define EVENTLOG_ERROR_TYPE 1
+#define EVENTLOG_ERROR_TYPE 0x0001
+#endif
+#ifndef EVENTLOG_WARNING_TYPE
+#define EVENTLOG_WARNING_TYPE 0x0002
 #endif
 #ifndef EVENTLOG_INFORMATION_TYPE
-#define EVENTLOG_INFORMATION_TYPE 4
+#define EVENTLOG_INFORMATION_TYPE 0x0004
 #endif
 
 // Interlocked operations stubs
@@ -518,9 +581,9 @@ static const UNICODE_STRING SDDL_DEVOBJ_SYS_ALL_ADM_ALL = {0, 0, 0};
 #define UNREFERENCED_PARAMETER(P) ((void)(P))
 #endif
 
-// Include standard headers for IDE stubs
-#include <stdlib.h>
-#include <string.h>
+// Include standard headers for IDE stubs (not for kernel mode)
+// #include <stdlib.h>
+// #include <string.h>
 
 #endif // SAFEOPS_WDK_BUILD
 
@@ -605,6 +668,8 @@ DEFINE_GUID(SAFEOPS_WFP_CALLOUT_GUID_V6_OUTBOUND, 0xf6789012, 0xcdef, 0x1234,
 #define CONN_POOL_TAG 'nnCK'        // Connections (KCnn reversed)
 #define SHARED_MEM_TAG 'mhSK'       // Shared memory (KShm reversed)
 #define NIC_POOL_TAG 'ciNK'         // NIC management (KNic reversed)
+#define SAFEOPS_STRING_TAG 'rtSK'   // String allocations (KStr reversed)
+#define SAFEOPS_CAPTURE_TAG 'tpCK'  // Capture buffers (KCpt reversed)
 
 //=============================================================================
 // SECTION 4: Direction, Protocol, and Action Enumerations
@@ -1002,7 +1067,54 @@ typedef struct _PACKET_LOG_ENTRY {
 } PACKET_LOG_ENTRY, *PPACKET_LOG_ENTRY;
 
 //=============================================================================
-// SECTION 14: Global Driver State Structure (Top-Level)
+// SECTION 14: Driver State and Configuration Types
+//=============================================================================
+
+// Driver state enumeration
+typedef enum _DRIVER_STATE {
+  DRIVER_STATE_UNINITIALIZED = 0,
+  DRIVER_STATE_INITIALIZING = 1,
+  DRIVER_STATE_RUNNING = 2,
+  DRIVER_STATE_PAUSING = 3,
+  DRIVER_STATE_PAUSED = 4,
+  DRIVER_STATE_SHUTTING_DOWN = 5,
+  DRIVER_STATE_UNLOADING = 6,
+  DRIVER_STATE_UNLOADED = 7
+} DRIVER_STATE;
+
+// Global driver state structure
+typedef struct _GLOBAL_DRIVER_STATE {
+  volatile DRIVER_STATE State;
+  volatile LONG ReferenceCount;           // Reference counting
+  KSPIN_LOCK StateLock;
+  KEVENT ShutdownEvent;
+  BOOLEAN IsSystemShuttingDown;
+  BOOLEAN IsPowerTransition;
+  BOOLEAN PowerCallbacksRegistered;       // Power callback state
+  PVOID PowerCallbackHandle;
+  LARGE_INTEGER StartTime;
+  LARGE_INTEGER LastStatsResetTime;
+} GLOBAL_DRIVER_STATE, *PGLOBAL_DRIVER_STATE;
+
+// Driver configuration structure
+typedef struct _DRIVER_CONFIG {
+  ULONG MaxFilterRules;
+  ULONG MaxConnections;
+  ULONG SharedBufferSizeMB;
+  ULONG DmaBufferSizeMB;                  // DMA buffer size in MB
+  BOOLEAN EnableLogging;
+  BOOLEAN EnableDeepInspection;
+  BOOLEAN EnableRss;
+  ULONG RssCpuCount;
+  ULONG LogLevel;
+} DRIVER_CONFIG, *PDRIVER_CONFIG;
+
+// External declarations for global variables
+extern GLOBAL_DRIVER_STATE g_DriverState;
+extern DRIVER_CONFIG g_DriverConfig;
+
+//=============================================================================
+// SECTION 15: Global Driver State Structure (Top-Level)
 //=============================================================================
 
 /**
@@ -1147,6 +1259,15 @@ typedef struct _DRIVER_CONTEXT {
   BOOLEAN DeepInspectionEnabled;
   ULONG MaxPacketSize;
 
+  // Missing fields for driver operation
+  KSPIN_LOCK Lock;
+  BOOLEAN IsRunning;
+  PVOID SharedBuffer;
+  SIZE_T SharedBufferSize;
+  volatile ULONGLONG TotalPacketsProcessed;
+  volatile ULONGLONG PacketsBlocked;
+  volatile ULONGLONG PacketsDropped;      // Dropped packets counter
+
 } DRIVER_CONTEXT, *PDRIVER_CONTEXT;
 
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(DRIVER_CONTEXT, GetDriverContext)
@@ -1269,6 +1390,9 @@ NTSTATUS IoctlDeviceControlHandler(_In_ PDEVICE_OBJECT DeviceObject,
                                    _Inout_ PIRP Irp);
 NTSTATUS ProcessIoctlCommand(_Inout_ PIRP Irp, _In_ PIO_STACK_LOCATION IrpStack,
                              _In_ ULONG IoControlCode);
+NTSTATUS DispatchIoControl(_In_ PDRIVER_CONTEXT Context, _In_ WDFREQUEST Request,
+                          _In_ ULONG IoControlCode, _In_ SIZE_T InputBufferLength,
+                          _In_ SIZE_T OutputBufferLength);
 
 // Specific IOCTL handlers (see ioctl_handler.h for authoritative declarations)
 //=============================================================================
@@ -1318,6 +1442,7 @@ NTSTATUS RingBufferWrite(_In_ PVOID PacketData, _In_ ULONG DataSize,
                          _In_ NIC_TAG NicTag);
 BOOLEAN RingBufferIsFull(VOID);
 BOOLEAN RingBufferIsEmpty(VOID);
+ULONG RingBufferAvailable(_In_ PRING_BUFFER_HEADER RingBufferHeader);
 
 //=============================================================================
 // SECTION 22: Function Prototypes - NIC Management

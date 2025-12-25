@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "rotation_manager.h"
+#include "service_main.h"
 
 //==============================================================================
 // Section 1: Constants and Definitions
@@ -786,8 +788,59 @@ BOOL ResumeRotation(ROTATION_MANAGER_CONTEXT* ctx)
     if (ctx == NULL || !ctx->initialized) {
         return FALSE;
     }
-    
+
     return StartRotationTimer(ctx);
+}
+
+//==============================================================================
+// Section 12: Public API Wrappers (Match service_main.h interface)
+//==============================================================================
+
+// Global rotation context for API wrappers
+static ROTATION_MANAGER_CONTEXT g_rotation_mgr_ctx = {0};
+
+BOOL RotationManager_Initialize(PROTATION_CONTEXT ctx,
+                                PLOG_WRITER_CONTEXT log_writer,
+                                DWORD interval_ms)
+{
+    UNREFERENCED_PARAMETER(log_writer);
+    UNREFERENCED_PARAMETER(interval_ms);
+
+    if (ctx == NULL) {
+        return FALSE;
+    }
+
+    // Initialize internal context
+    if (!RotationManagerInitialize(&g_rotation_mgr_ctx)) {
+        return FALSE;
+    }
+
+    // Store reference
+    ctx->log_writer = log_writer;
+    ctx->interval_ms = interval_ms;
+    ctx->initialized = TRUE;
+
+    return TRUE;
+}
+
+BOOL RotationManager_Rotate(PROTATION_CONTEXT ctx)
+{
+    if (ctx == NULL || !ctx->initialized) {
+        return FALSE;
+    }
+
+    return PerformLogRotation(&g_rotation_mgr_ctx);
+}
+
+VOID RotationManager_Cleanup(PROTATION_CONTEXT ctx)
+{
+    if (ctx == NULL) {
+        return;
+    }
+
+    RotationManagerShutdown(&g_rotation_mgr_ctx);
+
+    ctx->initialized = FALSE;
 }
 
 //==============================================================================

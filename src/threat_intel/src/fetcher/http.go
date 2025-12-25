@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"archive/zip"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -395,4 +397,130 @@ func (r *progressReader) Read(p []byte) (int, error) {
 	}
 
 	return n, err
+}
+
+// ==========================================================================
+// ZIP Extraction
+// ==========================================================================
+
+// ExtractZIP extracts a ZIP file and returns the path to extracted data file
+// Only extracts CSV, TSV, JSON, TXT data files (ignores LICENSE, README, etc.)
+// Uses clean filename from the source name
+func ExtractZIP(zipPath string) (string, error) {
+	// Open the zip file
+	reader, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open zip: %w", err)
+	}
+	defer reader.Close()
+
+	if len(reader.File) == 0 {
+		return "", fmt.Errorf("zip file is empty")
+	}
+
+	// Get output directory (same as zip file location)
+	outputDir := filepath.Dir(zipPath)
+
+	// Get base name from zip file for clean output naming
+	zipBaseName := filepath.Base(zipPath)
+	cleanName := strings.TrimSuffix(zipBaseName, filepath.Ext(zipBaseName))
+
+	// Find the main data file (CSV, TSV, JSON, DAT) - ignore LICENSE, README, etc.
+	var dataFile *zip.File
+	dataExtensions := []string{".csv", ".tsv", ".json", ".dat", ".txt"}
+	ignoreFiles := []string{"license", "readme", "notice", "copying"}
+
+	for _, f := range reader.File {
+		if f.FileInfo().IsDir() {
+			continue
+		}
+
+		fileName := strings.ToLower(f.Name)
+		ext := strings.ToLower(filepath.Ext(fileName))
+		baseName := strings.ToLower(filepath.Base(fileName))
+
+		// Skip LICENSE, README, etc.
+		skip := false
+		for _, ignore := range ignoreFiles {
+			if strings.Contains(baseName, ignore) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+
+		// Check if it's a data file
+		for _, dataExt := range dataExtensions {
+			if ext == dataExt {
+				dataFile = f
+				break
+			}
+		}
+		if dataFile != nil {
+			break
+		}
+	}
+
+	if dataFile == nil {
+		// Fallback: use first non-directory file
+		for _, f := range reader.File {
+			if !f.FileInfo().IsDir() {
+				dataFile = f
+				break
+			}
+		}
+	}
+
+	if dataFile == nil {
+		return "", fmt.Errorf("no data file found in zip")
+	}
+
+	// Determine output extension from the data file
+	ext := filepath.Ext(dataFile.Name)
+	if !strings.HasSuffix(cleanName, ext) {
+		cleanName += ext
+	}
+
+	outputPath := filepath.Join(outputDir, cleanName)
+
+	if err := extractZipFile(dataFile, outputPath); err != nil {
+		return "", err
+	}
+
+	// Delete the original zip file
+	os.Remove(zipPath)
+
+	return outputPath, nil
+}
+
+// extractZipFile extracts a single file from a zip archive
+func extractZipFile(zipFile *zip.File, outputPath string) error {
+	// Open the file in the zip
+	src, err := zipFile.Open()
+	if err != nil {
+		return fmt.Errorf("failed to open file in zip: %w", err)
+	}
+	defer src.Close()
+
+	// Create output file
+	dst, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer dst.Close()
+
+	// Copy contents
+	if _, err := io.Copy(dst, src); err != nil {
+		return fmt.Errorf("failed to extract file: %w", err)
+	}
+
+	return nil
+}
+
+// IsZIPFile checks if a file is a ZIP file based on URL or content
+func IsZIPFile(url string) bool {
+	lowerURL := strings.ToLower(url)
+	return strings.HasSuffix(lowerURL, ".zip") || strings.Contains(lowerURL, ".zip?")
 }

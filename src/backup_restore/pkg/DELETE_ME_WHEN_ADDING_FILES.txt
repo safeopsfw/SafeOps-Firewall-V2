@@ -1,2 +1,0 @@
-This is a placeholder file to make Git track this directory.
-Delete this file when you add actual files here.

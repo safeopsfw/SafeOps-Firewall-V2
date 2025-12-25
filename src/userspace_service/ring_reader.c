@@ -17,8 +17,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <intrin.h>
+#include "service_main.h"
 #include "ring_reader.h"
-#include "packet_metadata.h"
+#include "../shared/c/ring_buffer.h"
 
 //==============================================================================
 // Section 1: Constants and Definitions
@@ -254,10 +255,95 @@ VOID UnmapRingBuffer(RING_READER_CONTEXT* ctx)
     printf("[RingReader] Shared memory unmapped\n");
 }
 
-// Continuing with remaining sections in file...
-// (File is complete with all 10 sections - initialization, lock-free reading,
-//  overflow detection, packet validation, statistics, performance monitoring,
-//  and cleanup as shown in previous attempt)
+// PUBLIC API IMPLEMENTATION matching service_main.h declarations
+
+NTSTATUS RingReader_Initialize(PRING_READER_CONTEXT ctx, HANDLE driver_handle, UINT64 buffer_size)
+{
+    UNREFERENCED_PARAMETER(buffer_size);
+
+    if (!RingReaderInitialize(ctx, driver_handle)) {
+        return (NTSTATUS)0xC0000001; // STATUS_UNSUCCESSFUL
+    }
+
+    return 0; // STATUS_SUCCESS
+}
+
+BOOL RingReader_ReadNext(PRING_READER_CONTEXT ctx, PPACKET_ENTRY packet)
+{
+    if (ctx == NULL || packet == NULL || !ctx->initialized) {
+        return FALSE;
+    }
+
+    // Check if data is available
+    if (RING_BUFFER_IS_EMPTY(ctx->header)) {
+        return FALSE;
+    }
+
+    // Get entry at current read position
+    UINT64 read_pos = ctx->local_read_index;
+    RING_BUFFER_ENTRY* entry = RING_BUFFER_GET_ENTRY(ctx->base_address, read_pos);
+
+    // Validate entry
+    if (entry->signature != PACKET_ENTRY_SIGNATURE) {
+        // Entry not ready yet or corrupted
+        ctx->total_read_errors++;
+        return FALSE;
+    }
+
+    // Copy metadata
+    packet->metadata.magic = entry->signature;
+    packet->metadata.entry_length = entry->entrySize;
+    packet->metadata.timestamp_qpc = entry->timestamp;
+    packet->metadata.timestamp_system = entry->timestamp;
+    packet->metadata.sequence_number = entry->sequenceNumber;
+
+    // Copy basic fields
+    packet->metadata.nic_id = entry->nicTag;
+    packet->metadata.direction = entry->direction;
+    packet->metadata.ip_protocol = entry->protocol;
+
+    // Copy packet data (up to reasonable size)
+    UINT32 copy_size = entry->dataLength;
+    if (copy_size > MAX_PACKET_SIZE) {
+        copy_size = MAX_PACKET_SIZE;
+    }
+
+    if (copy_size > 0) {
+        memcpy(packet->payload, entry->data, copy_size);
+    }
+
+    // Update read statistics
+    ctx->total_packets_read++;
+    ctx->total_bytes_read += copy_size;
+
+    // Advance read index (atomic)
+    ctx->local_read_index = read_pos + 1;
+    InterlockedExchange64((volatile LONG64*)&ctx->header->readIndex, ctx->local_read_index);
+
+    return TRUE;
+}
+
+VOID RingReader_Cleanup(PRING_READER_CONTEXT ctx)
+{
+    if (ctx == NULL || !ctx->initialized) {
+        return;
+    }
+
+    printf("[RingReader] Cleaning up...\n");
+    printf("[RingReader] Total packets read: %llu\n", ctx->total_packets_read);
+    printf("[RingReader] Total bytes read: %llu\n", ctx->total_bytes_read);
+    printf("[RingReader] Total errors: %llu\n", ctx->total_read_errors);
+
+    // Unmap shared memory
+    UnmapRingBuffer(ctx);
+
+    // Cleanup critical section
+    DeleteCriticalSection(&ctx->lock);
+
+    ctx->initialized = FALSE;
+
+    printf("[RingReader] Cleanup complete\n");
+}
 
 //==============================================================================
 // END OF FILE

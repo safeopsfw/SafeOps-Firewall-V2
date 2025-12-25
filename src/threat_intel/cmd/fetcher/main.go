@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"threat_intel/src/fetcher"
@@ -14,6 +14,19 @@ func main() {
 	log.Println("===========================================")
 	log.Println("SafeOps Threat Intel Fetcher v2.0")
 	log.Println("===========================================")
+
+	// Check for category argument
+	// Usage: go run ./cmd/fetcher [category1,category2,...]
+	// Example: go run ./cmd/fetcher ip_geo
+	// Example: go run ./cmd/fetcher ip_geo,asn
+	var filterCategories []string
+	if len(os.Args) > 1 {
+		arg := os.Args[1]
+		if arg != "" && arg != "all" {
+			filterCategories = strings.Split(arg, ",")
+			log.Printf("Filtering by categories: %v\n", filterCategories)
+		}
+	}
 
 	// Get base path (threat_intel directory)
 	execPath, err := os.Executable()
@@ -81,10 +94,16 @@ func main() {
 	}
 
 	// Run fetch
-	log.Println("Starting download of all enabled feeds...")
 	startTime := time.Now()
+	var stats *fetcher.FetchStats
 
-	stats, err := f.FetchAll()
+	if len(filterCategories) > 0 {
+		log.Printf("Starting download for categories: %v\n", filterCategories)
+		stats, err = f.FetchByCategory(filterCategories...)
+	} else {
+		log.Println("Starting download of all enabled feeds...")
+		stats, err = f.FetchAll()
+	}
 
 	duration := time.Since(startTime)
 
@@ -104,9 +123,8 @@ func main() {
 		stats.TotalBytesDownloaded,
 		float64(stats.TotalBytesDownloaded)/(1024*1024))
 
-	// Save report
-	reportPath := filepath.Join(storagePath, fmt.Sprintf("fetch_report_%s.json",
-		time.Now().Format("20060102_150405")))
+	// Save single report (overwrites previous)
+	reportPath := filepath.Join(storagePath, "fetch_report.json")
 	if err := f.SaveReport(reportPath); err != nil {
 		log.Printf("Failed to save report: %v\n", err)
 	}

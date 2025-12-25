@@ -262,6 +262,24 @@ feeds:
     update_frequency: 86400
     description: "IP to ASN and Country Mapping"
 
+  # GeoLite2 Country - GitLab Mirror (free, no registration)
+  - name: "GeoLite2-Country"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-country/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "GeoLite2 IP to Country mapping"
+
+  # IPInfo Country - GitLab Mirror (free, no registration)
+  - name: "IPInfo-Country"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/ipinfo-country/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "IPInfo IP to Country mapping"
+
   # Keeping IPtoASN as valid default. Users can manually download IP2Location.
 
   # DISABLED - Repository path changed, returns 404
@@ -290,6 +308,37 @@ feeds:
     enabled: false
     update_frequency: 86400
     description: "IP to ASN mapping - DISABLED (404)"
+
+  # IP2Location LITE - DB1 (Country level) - Official Download
+  - name: "IP2Location-LITE-DB1"
+    category: "ip_geo"
+    url: "https://download.ip2location.com/lite/IP2LOCATION-LITE-DB1.CSV.ZIP"
+    format: "csv"
+    enabled: true
+    update_frequency: 604800 # Weekly
+    description: "IP2Location LITE DB1 - IP to Country mapping (ZIP)"
+    parser_config:
+      has_header: false
+      columns: ["ip_from", "ip_to", "country_code", "country_name"]
+
+  # IP2Location LITE - ASN - DISABLED (requires registration at lite.ip2location.com)
+  # Use IPtoASN instead which is freely available
+  - name: "IP2Location-LITE-ASN"
+    category: "ip_geo"
+    url: "https://download.ip2location.com/lite/IP2LOCATION-LITE-ASN.CSV.ZIP"
+    format: "csv"
+    enabled: false
+    update_frequency: 604800
+    description: "DISABLED - Requires registration"
+
+  # IP2Proxy LITE - PX1 - DISABLED (requires registration at lite.ip2location.com)
+  - name: "IP2Proxy-LITE-PX1"
+    category: "ip_anonymization"
+    url: "https://download.ip2location.com/lite/IP2PROXY-LITE-PX1.CSV.ZIP"
+    format: "csv"
+    enabled: false
+    update_frequency: 604800
+    description: "DISABLED - Requires registration"
 
 # ==========================================================================
 # Parser Configuration

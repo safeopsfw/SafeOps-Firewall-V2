@@ -205,6 +205,60 @@ func (f *Fetcher) FetchAll() (*FetchStats, error) {
 	}
 }
 
+// FetchByCategory performs fetch for sources matching specific categories
+func (f *Fetcher) FetchByCategory(categories ...string) (*FetchStats, error) {
+	f.startTime = time.Now()
+
+	// Build category set for quick lookup
+	categorySet := make(map[string]bool)
+	for _, cat := range categories {
+		categorySet[cat] = true
+	}
+
+	// Filter sources by category
+	var matchingSources []Source
+	for _, source := range f.sources {
+		if source.Enabled && categorySet[source.Category] {
+			matchingSources = append(matchingSources, source)
+		}
+	}
+
+	if len(matchingSources) == 0 {
+		f.logger.Printf("No enabled sources found for categories: %v\n", categories)
+		return f.GetStats(), nil
+	}
+
+	f.logger.Printf("Starting fetch for %d sources in categories: %v\n", len(matchingSources), categories)
+
+	// Queue matching sources
+	for _, source := range matchingSources {
+		job := &FetchJob{
+			Source:      source,
+			ScheduledAt: time.Now(),
+			Status:      "queued",
+			Attempt:     1,
+		}
+		f.jobQueue <- job
+		f.logger.Printf("Queued fetch job for: %s\n", source.Name)
+	}
+
+	// Wait for jobs to complete
+	timeout := time.After(time.Duration(f.config.JobTimeout) * time.Second * time.Duration(len(matchingSources)+1))
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			return f.GetStats(), fmt.Errorf("fetch timeout exceeded")
+		case <-ticker.C:
+			if f.allJobsComplete() {
+				return f.GetStats(), nil
+			}
+		}
+	}
+}
+
 // FetchSource fetches a single source
 func (f *Fetcher) FetchSource(source *Source) error {
 	// Validate source
@@ -255,6 +309,17 @@ func (f *Fetcher) FetchSource(source *Source) error {
 
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
+	}
+
+	// Extract ZIP files if applicable
+	if IsZIPFile(source.URL) {
+		f.logger.Printf("Extracting ZIP file: %s\n", outputPath)
+		extractedPath, err := ExtractZIP(outputPath)
+		if err != nil {
+			return fmt.Errorf("ZIP extraction failed: %w", err)
+		}
+		outputPath = extractedPath
+		f.logger.Printf("Extracted to: %s\n", outputPath)
 	}
 
 	// Validate downloaded file
@@ -381,11 +446,10 @@ func (f *Fetcher) getOutputPath(source *Source) string {
 	}
 	folderPath := filepath.Join(basePath, outputFolder)
 
-	// Generate filename: {source_name}_{timestamp}.{extension}
-	timestamp := time.Now().Format("20060102_150405")
+	// Generate clean filename: {source_name}.{extension}
+	// Clean snake_case name, no timestamps - file gets overwritten on update
 	extension := getFileExtension(source.Format)
-	filename := fmt.Sprintf("%s_%s.%s",
-		sanitizeFilename(source.Name), timestamp, extension)
+	filename := fmt.Sprintf("%s.%s", sanitizeFilename(source.Name), extension)
 
 	return filepath.Join(folderPath, filename)
 }
@@ -615,19 +679,29 @@ func getFileExtension(format string) string {
 	}
 }
 
-// sanitizeFilename removes unsafe characters from filename
+// sanitizeFilename creates clean snake_case filename from source name
+// Examples: "IP2Location LITE DB1" -> "ip2location_lite_db1"
+//
+//	"Feodo Tracker" -> "feodo_tracker"
 func sanitizeFilename(name string) string {
-	// Replace spaces and special characters
-	safe := ""
-	for _, r := range name {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || r == '-' || r == '_' {
-			safe += string(r)
-		} else if r == ' ' {
-			safe += "_"
+	// Convert to lowercase and replace spaces/special chars with underscores
+	result := strings.Builder{}
+	prevUnderscore := false
+
+	for _, r := range strings.ToLower(name) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			result.WriteRune(r)
+			prevUnderscore = false
+		} else if !prevUnderscore {
+			// Replace spaces, hyphens, dots with single underscore
+			result.WriteRune('_')
+			prevUnderscore = true
 		}
 	}
-	return safe
+
+	// Trim trailing underscore
+	s := result.String()
+	return strings.TrimSuffix(s, "_")
 }
 
 // isGitHubURL checks if URL is a GitHub URL
