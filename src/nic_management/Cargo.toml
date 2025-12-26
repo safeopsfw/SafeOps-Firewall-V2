@@ -1,0 +1,23 @@
+[package]
+name = "nic_management_rust"
+version = "0.1.0"
+edition = "2021"
+authors = ["SafeOps Team"]
+description = "High-performance packet processing components for NIC management"
+
+[lib]
+name = "nic_rust"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+libc = "0.2"
+log = "0.4"
+crossbeam = "0.8"
+parking_lot = "0.12"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "packet_bench"
+harness = false

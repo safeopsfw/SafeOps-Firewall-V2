@@ -1,0 +1,3 @@
+// NIC Management gRPC Service Definition
+syntax = "proto3";
+package nic_management;
