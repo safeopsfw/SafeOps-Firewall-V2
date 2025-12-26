@@ -1,0 +1,11 @@
+# SIEM Configuration
+elasticsearch:
+  username: elastic
+  password: changeme123
+kibana:
+  username: kibana_system
+  password: kibana123
+correlation_engine:
+  enabled: true
+user_management:
+  default_admin_password: admin123

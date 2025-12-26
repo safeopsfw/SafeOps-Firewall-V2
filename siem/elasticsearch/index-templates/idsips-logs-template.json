@@ -1,0 +1,6 @@
+{
+  "index_patterns": ["idsips-logs-*"],
+  "template": {
+    "mappings": {}
+  }
+}

@@ -1,0 +1,3 @@
+# Elasticsearch Configuration
+cluster.name: safeops-siem
+node.name: node-1

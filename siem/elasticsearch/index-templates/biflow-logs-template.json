@@ -1,0 +1,6 @@
+{
+  "index_patterns": ["biflow-logs-*"],
+  "template": {
+    "mappings": {}
+  }
+}

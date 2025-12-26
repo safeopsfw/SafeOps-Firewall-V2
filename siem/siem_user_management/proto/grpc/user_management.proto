@@ -1,0 +1,3 @@
+// User Management gRPC Service Definition
+syntax = "proto3";
+package user_management;
