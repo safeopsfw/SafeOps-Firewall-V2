@@ -20,6 +20,9 @@ import IDSRuleManager from './pages/Management/IDSRuleManager';
 import UserManagement from './pages/Management/UserManagement';
 import FirewallManager from './pages/Management/FirewallManager';
 
+// Network Management Module
+import NICManagement from './pages/NICManagement';
+
 // Protected Route wrapper
 function ProtectedRoute() {
   const { isAuthenticated, loading } = useAuth();
@@ -99,7 +102,7 @@ function App() {
               <Route path="/dns" element={<ComingSoon title="DNS Server" />} />
               <Route path="/firewall" element={<FirewallManager />} />
               <Route path="/ids" element={<IDSRuleManager />} />
-              <Route path="/network" element={<ComingSoon title="Network Monitor" />} />
+              <Route path="/network" element={<NICManagement />} />
               <Route path="/cognitive" element={<Cognitive />} />
               
               {/* Settings */}
