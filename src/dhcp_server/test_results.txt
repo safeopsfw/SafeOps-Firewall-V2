@@ -1,0 +1,455 @@
+=== RUN   TestCAServiceConnection
+=== RUN   TestCAServiceConnection/SuccessfulConnection
+--- PASS: TestCAServiceConnection (0.00s)
+    --- PASS: TestCAServiceConnection/SuccessfulConnection (0.00s)
+=== RUN   TestCAServiceUnavailable
+=== RUN   TestCAServiceUnavailable/ServiceUnavailable
+--- PASS: TestCAServiceUnavailable (0.00s)
+    --- PASS: TestCAServiceUnavailable/ServiceUnavailable (0.00s)
+=== RUN   TestCAServiceReconnect
+=== RUN   TestCAServiceReconnect/ReconnectsWhenAvailable
+--- PASS: TestCAServiceReconnect (0.00s)
+    --- PASS: TestCAServiceReconnect/ReconnectsWhenAvailable (0.00s)
+=== RUN   TestGetCACertificateInfo
+=== RUN   TestGetCACertificateInfo/RetrievesAllURLs
+--- PASS: TestGetCACertificateInfo (0.00s)
+    --- PASS: TestGetCACertificateInfo/RetrievesAllURLs (0.00s)
+=== RUN   TestGetCACertificateInfoError
+=== RUN   TestGetCACertificateInfoError/HandlesError
+--- PASS: TestGetCACertificateInfoError (0.00s)
+    --- PASS: TestGetCACertificateInfoError/HandlesError (0.00s)
+=== RUN   TestGetCACertificateInfoTimeout
+=== RUN   TestGetCACertificateInfoTimeout/TimesOut
+--- PASS: TestGetCACertificateInfoTimeout (0.10s)
+    --- PASS: TestGetCACertificateInfoTimeout/TimesOut (0.10s)
+=== RUN   TestCACacheHit
+=== RUN   TestCACacheHit/CacheHit
+--- PASS: TestCACacheHit (0.00s)
+    --- PASS: TestCACacheHit/CacheHit (0.00s)
+=== RUN   TestCACacheMiss
+=== RUN   TestCACacheMiss/CacheMiss
+--- PASS: TestCACacheMiss (0.01s)
+    --- PASS: TestCACacheMiss/CacheMiss (0.01s)
+=== RUN   TestCACacheInvalidation
+=== RUN   TestCACacheInvalidation/CacheCleared
+--- PASS: TestCACacheInvalidation (0.00s)
+    --- PASS: TestCACacheInvalidation/CacheCleared (0.00s)
+=== RUN   TestOption224InACK
+=== RUN   TestOption224InACK/CACertURLIncluded
+--- PASS: TestOption224InACK (0.00s)
+    --- PASS: TestOption224InACK/CACertURLIncluded (0.00s)
+=== RUN   TestOption225InACK
+=== RUN   TestOption225InACK/InstallScriptsIncluded
+--- PASS: TestOption225InACK (0.00s)
+    --- PASS: TestOption225InACK/InstallScriptsIncluded (0.00s)
+=== RUN   TestOption252InACK
+=== RUN   TestOption252InACK/WPADURLIncluded
+--- PASS: TestOption252InACK (0.00s)
+    --- PASS: TestOption252InACK/WPADURLIncluded (0.00s)
+=== RUN   TestCAOptionsNotInOFFER
+=== RUN   TestCAOptionsNotInOFFER/CAOptionsExcluded
+--- PASS: TestCAOptionsNotInOFFER (0.00s)
+    --- PASS: TestCAOptionsNotInOFFER/CAOptionsExcluded (0.00s)
+=== RUN   TestCAOptionsWithStandardOptions
+=== RUN   TestCAOptionsWithStandardOptions/AllOptionsPresent
+--- PASS: TestCAOptionsWithStandardOptions (0.00s)
+    --- PASS: TestCAOptionsWithStandardOptions/AllOptionsPresent (0.00s)
+=== RUN   TestE2E_DHCPWithCADistribution
+=== RUN   TestE2E_DHCPWithCADistribution/CompleteFlow
+--- PASS: TestE2E_DHCPWithCADistribution (0.00s)
+    --- PASS: TestE2E_DHCPWithCADistribution/CompleteFlow (0.00s)
+=== RUN   TestE2E_CA_MultipleClients
+=== RUN   TestE2E_CA_MultipleClients/AllClientsReceiveCA
+--- PASS: TestE2E_CA_MultipleClients (0.00s)
+    --- PASS: TestE2E_CA_MultipleClients/AllClientsReceiveCA (0.00s)
+=== RUN   TestE2E_CAServiceFailover
+=== RUN   TestE2E_CAServiceFailover/GracefulDegradation
+--- PASS: TestE2E_CAServiceFailover (0.00s)
+    --- PASS: TestE2E_CAServiceFailover/GracefulDegradation (0.00s)
+=== RUN   TestCAMetrics_SuccessfulRequest
+=== RUN   TestCAMetrics_SuccessfulRequest/MetricsRecorded
+--- PASS: TestCAMetrics_SuccessfulRequest (0.00s)
+    --- PASS: TestCAMetrics_SuccessfulRequest/MetricsRecorded (0.00s)
+=== RUN   TestCAMetrics_FailedRequest
+=== RUN   TestCAMetrics_FailedRequest/FailureRecorded
+--- PASS: TestCAMetrics_FailedRequest (0.00s)
+    --- PASS: TestCAMetrics_FailedRequest/FailureRecorded (0.00s)
+=== RUN   TestCAIntegrationDisabled
+=== RUN   TestCAIntegrationDisabled/DisabledConfig
+--- PASS: TestCAIntegrationDisabled (0.00s)
+    --- PASS: TestCAIntegrationDisabled/DisabledConfig (0.00s)
+=== RUN   TestCAIntegrationConfigValidation
+=== RUN   TestCAIntegrationConfigValidation/ValidConfig
+=== RUN   TestCAIntegrationConfigValidation/InvalidGRPCAddress
+=== RUN   TestCAIntegrationConfigValidation/InvalidCacheTTL
+=== RUN   TestCAIntegrationConfigValidation/InvalidTimeout
+--- PASS: TestCAIntegrationConfigValidation (0.00s)
+    --- PASS: TestCAIntegrationConfigValidation/ValidConfig (0.00s)
+    --- PASS: TestCAIntegrationConfigValidation/InvalidGRPCAddress (0.00s)
+    --- PASS: TestCAIntegrationConfigValidation/InvalidCacheTTL (0.00s)
+    --- PASS: TestCAIntegrationConfigValidation/InvalidTimeout (0.00s)
+=== RUN   TestE2E_BasicDHCPFlow
+=== RUN   TestE2E_BasicDHCPFlow/DiscoverOfferRequestAck
+--- PASS: TestE2E_BasicDHCPFlow (0.00s)
+    --- PASS: TestE2E_BasicDHCPFlow/DiscoverOfferRequestAck (0.00s)
+=== RUN   TestE2E_LeaseRenewal
+=== RUN   TestE2E_LeaseRenewal/T1Renewal
+--- PASS: TestE2E_LeaseRenewal (0.01s)
+    --- PASS: TestE2E_LeaseRenewal/T1Renewal (0.01s)
+=== RUN   TestE2E_LeaseRelease
+=== RUN   TestE2E_LeaseRelease/VoluntaryRelease
+--- PASS: TestE2E_LeaseRelease (0.00s)
+    --- PASS: TestE2E_LeaseRelease/VoluntaryRelease (0.00s)
+=== RUN   TestE2E_MultipleClients
+=== RUN   TestE2E_MultipleClients/ConcurrentClients
+--- PASS: TestE2E_MultipleClients (0.00s)
+    --- PASS: TestE2E_MultipleClients/ConcurrentClients (0.00s)
+=== RUN   TestE2E_DNSUpdateOnLeaseCreate
+=== RUN   TestE2E_DNSUpdateOnLeaseCreate/AandPTRRecordsCreated
+--- PASS: TestE2E_DNSUpdateOnLeaseCreate (0.00s)
+    --- PASS: TestE2E_DNSUpdateOnLeaseCreate/AandPTRRecordsCreated (0.00s)
+=== RUN   TestE2E_DNSUpdateOnLeaseRelease
+=== RUN   TestE2E_DNSUpdateOnLeaseRelease/RecordsDeleted
+--- PASS: TestE2E_DNSUpdateOnLeaseRelease (0.00s)
+    --- PASS: TestE2E_DNSUpdateOnLeaseRelease/RecordsDeleted (0.00s)
+=== RUN   TestE2E_DNSUpdateFailureRecovery
+=== RUN   TestE2E_DNSUpdateFailureRecovery/DHCPContinuesWhenDNSDown
+--- PASS: TestE2E_DNSUpdateFailureRecovery (0.00s)
+    --- PASS: TestE2E_DNSUpdateFailureRecovery/DHCPContinuesWhenDNSDown (0.00s)
+=== RUN   TestE2E_CADistribution
+=== RUN   TestE2E_CADistribution/CAOptionsInACK
+--- PASS: TestE2E_CADistribution (0.00s)
+    --- PASS: TestE2E_CADistribution/CAOptionsInACK (0.00s)
+=== RUN   TestE2E_CADistribution_WithDNS
+=== RUN   TestE2E_CADistribution_WithDNS/BothIntegrationsWork
+--- PASS: TestE2E_CADistribution_WithDNS (0.00s)
+    --- PASS: TestE2E_CADistribution_WithDNS/BothIntegrationsWork (0.00s)
+=== RUN   TestE2E_DatabasePersistence
+=== RUN   TestE2E_DatabasePersistence/LeasesPersistedToDatabase
+--- PASS: TestE2E_DatabasePersistence (0.00s)
+    --- PASS: TestE2E_DatabasePersistence/LeasesPersistedToDatabase (0.00s)
+=== RUN   TestE2E_DatabaseFailure
+=== RUN   TestE2E_DatabaseFailure/DHCPContinuesWhenDBDown
+--- PASS: TestE2E_DatabaseFailure (0.00s)
+    --- PASS: TestE2E_DatabaseFailure/DHCPContinuesWhenDBDown (0.00s)
+=== RUN   TestE2E_MultiPool_Allocation
+=== RUN   TestE2E_MultiPool_Allocation/CorrectPoolSelected
+--- PASS: TestE2E_MultiPool_Allocation (0.00s)
+    --- PASS: TestE2E_MultiPool_Allocation/CorrectPoolSelected (0.00s)
+=== RUN   TestE2E_MultiPool_Utilization
+=== RUN   TestE2E_MultiPool_Utilization/IndependentTracking
+--- PASS: TestE2E_MultiPool_Utilization (0.00s)
+    --- PASS: TestE2E_MultiPool_Utilization/IndependentTracking (0.00s)
+=== RUN   TestE2E_MetricsTracking
+=== RUN   TestE2E_MetricsTracking/RequestCountTracked
+--- PASS: TestE2E_MetricsTracking (0.00s)
+    --- PASS: TestE2E_MetricsTracking/RequestCountTracked (0.00s)
+=== RUN   TestE2E_APIGetLease
+=== RUN   TestE2E_APIGetLease/QueryLeaseInfo
+--- PASS: TestE2E_APIGetLease (0.00s)
+    --- PASS: TestE2E_APIGetLease/QueryLeaseInfo (0.00s)
+=== RUN   TestE2E_APIReleaseLease
+=== RUN   TestE2E_APIReleaseLease/AdminRelease
+--- PASS: TestE2E_APIReleaseLease (0.00s)
+    --- PASS: TestE2E_APIReleaseLease/AdminRelease (0.00s)
+=== RUN   TestE2E_APIGetPoolStats
+=== RUN   TestE2E_APIGetPoolStats/PoolStatistics
+--- PASS: TestE2E_APIGetPoolStats (0.00s)
+    --- PASS: TestE2E_APIGetPoolStats/PoolStatistics (0.00s)
+=== RUN   TestE2E_GracefulShutdown
+=== RUN   TestE2E_GracefulShutdown/CleanShutdown
+--- PASS: TestE2E_GracefulShutdown (0.00s)
+    --- PASS: TestE2E_GracefulShutdown/CleanShutdown (0.00s)
+=== RUN   TestE2E_ConcurrentFailures
+=== RUN   TestE2E_ConcurrentFailures/MultipleServicesDown
+--- PASS: TestE2E_ConcurrentFailures (0.00s)
+    --- PASS: TestE2E_ConcurrentFailures/MultipleServicesDown (0.00s)
+=== RUN   TestE2E_ResponseTimePerformance
+=== RUN   TestE2E_ResponseTimePerformance/MeasureLatency
+    integration_test.go:878: Average response time: 0s
+--- PASS: TestE2E_ResponseTimePerformance (0.00s)
+    --- PASS: TestE2E_ResponseTimePerformance/MeasureLatency (0.00s)
+=== RUN   TestAllocateFirstLease
+=== RUN   TestAllocateFirstLease/FirstIPAllocated
+--- PASS: TestAllocateFirstLease (0.00s)
+    --- PASS: TestAllocateFirstLease/FirstIPAllocated (0.00s)
+=== RUN   TestAllocateSequentialLeases
+=== RUN   TestAllocateSequentialLeases/SequentialAllocation
+--- PASS: TestAllocateSequentialLeases (0.00s)
+    --- PASS: TestAllocateSequentialLeases/SequentialAllocation (0.00s)
+=== RUN   TestAllocateExhaustedPool
+=== RUN   TestAllocateExhaustedPool/PoolExhausted
+--- PASS: TestAllocateExhaustedPool (0.00s)
+    --- PASS: TestAllocateExhaustedPool/PoolExhausted (0.00s)
+=== RUN   TestAllocateReservedIP
+=== RUN   TestAllocateReservedIP/ReservedIPForMatchingMAC
+--- PASS: TestAllocateReservedIP (0.00s)
+    --- PASS: TestAllocateReservedIP/ReservedIPForMatchingMAC (0.00s)
+=== RUN   TestReservedIPNotAllocatedToOthers
+=== RUN   TestReservedIPNotAllocatedToOthers/SkipsReservedIP
+--- PASS: TestReservedIPNotAllocatedToOthers (0.00s)
+    --- PASS: TestReservedIPNotAllocatedToOthers/SkipsReservedIP (0.00s)
+=== RUN   TestRenewActiveLease
+=== RUN   TestRenewActiveLease/RenewalExtendsExpiration
+--- PASS: TestRenewActiveLease (0.01s)
+    --- PASS: TestRenewActiveLease/RenewalExtendsExpiration (0.01s)
+=== RUN   TestRenewExpiredLease
+=== RUN   TestRenewExpiredLease/CannotRenewExpired
+--- PASS: TestRenewExpiredLease (0.01s)
+    --- PASS: TestRenewExpiredLease/CannotRenewExpired (0.01s)
+=== RUN   TestReleaseActiveLease
+=== RUN   TestReleaseActiveLease/ReleaseFreesIP
+--- PASS: TestReleaseActiveLease (0.00s)
+    --- PASS: TestReleaseActiveLease/ReleaseFreesIP (0.00s)
+=== RUN   TestReleaseNonexistentLease
+=== RUN   TestReleaseNonexistentLease/ReleaseIdempotent
+--- PASS: TestReleaseNonexistentLease (0.00s)
+    --- PASS: TestReleaseNonexistentLease/ReleaseIdempotent (0.00s)
+=== RUN   TestExpireLease
+=== RUN   TestExpireLease/ExpiredLeaseCleanedUp
+--- PASS: TestExpireLease (0.01s)
+    --- PASS: TestExpireLease/ExpiredLeaseCleanedUp (0.01s)
+=== RUN   TestExpirationCleanupBatch
+=== RUN   TestExpirationCleanupBatch/BatchCleanup
+--- PASS: TestExpirationCleanupBatch (0.01s)
+    --- PASS: TestExpirationCleanupBatch/BatchCleanup (0.01s)
+=== RUN   TestDeclineMarksConflict
+=== RUN   TestDeclineMarksConflict/ConflictQuarantine
+--- PASS: TestDeclineMarksConflict (0.00s)
+    --- PASS: TestDeclineMarksConflict/ConflictQuarantine (0.00s)
+=== RUN   TestPoolUtilizationCalculation
+=== RUN   TestPoolUtilizationCalculation/CorrectUtilization
+--- PASS: TestPoolUtilizationCalculation (0.00s)
+    --- PASS: TestPoolUtilizationCalculation/CorrectUtilization (0.00s)
+=== RUN   TestPoolUtilizationAfterRelease
+=== RUN   TestPoolUtilizationAfterRelease/UtilizationDecreases
+--- PASS: TestPoolUtilizationAfterRelease (0.00s)
+    --- PASS: TestPoolUtilizationAfterRelease/UtilizationDecreases (0.00s)
+=== RUN   TestConcurrentAllocations
+=== RUN   TestConcurrentAllocations/ThreadSafeAllocation
+--- PASS: TestConcurrentAllocations (0.00s)
+    --- PASS: TestConcurrentAllocations/ThreadSafeAllocation (0.00s)
+=== RUN   TestOption1_SubnetMask
+=== RUN   TestOption1_SubnetMask/EncodeSubnetMask
+=== RUN   TestOption1_SubnetMask/DecodeSubnetMask
+--- PASS: TestOption1_SubnetMask (0.00s)
+    --- PASS: TestOption1_SubnetMask/EncodeSubnetMask (0.00s)
+    --- PASS: TestOption1_SubnetMask/DecodeSubnetMask (0.00s)
+=== RUN   TestOption3_Router
+=== RUN   TestOption3_Router/EncodeRouter
+--- PASS: TestOption3_Router (0.00s)
+    --- PASS: TestOption3_Router/EncodeRouter (0.00s)
+=== RUN   TestOption6_DNSServers
+=== RUN   TestOption6_DNSServers/MultipleServers
+--- PASS: TestOption6_DNSServers (0.00s)
+    --- PASS: TestOption6_DNSServers/MultipleServers (0.00s)
+=== RUN   TestOption15_DomainName
+=== RUN   TestOption15_DomainName/EncodeDomainName
+--- PASS: TestOption15_DomainName (0.00s)
+    --- PASS: TestOption15_DomainName/EncodeDomainName (0.00s)
+=== RUN   TestOption51_LeaseTime
+=== RUN   TestOption51_LeaseTime/EncodeLeaseTime
+--- PASS: TestOption51_LeaseTime (0.00s)
+    --- PASS: TestOption51_LeaseTime/EncodeLeaseTime (0.00s)
+=== RUN   TestOption53_MessageType
+=== RUN   TestOption53_MessageType/DISCOVER
+=== RUN   TestOption53_MessageType/OFFER
+=== RUN   TestOption53_MessageType/REQUEST
+=== RUN   TestOption53_MessageType/ACK
+=== RUN   TestOption53_MessageType/NAK
+=== RUN   TestOption53_MessageType/RELEASE
+=== RUN   TestOption53_MessageType/INFORM
+--- PASS: TestOption53_MessageType (0.00s)
+    --- PASS: TestOption53_MessageType/DISCOVER (0.00s)
+    --- PASS: TestOption53_MessageType/OFFER (0.00s)
+    --- PASS: TestOption53_MessageType/REQUEST (0.00s)
+    --- PASS: TestOption53_MessageType/ACK (0.00s)
+    --- PASS: TestOption53_MessageType/NAK (0.00s)
+    --- PASS: TestOption53_MessageType/RELEASE (0.00s)
+    --- PASS: TestOption53_MessageType/INFORM (0.00s)
+=== RUN   TestOption54_ServerIdentifier
+=== RUN   TestOption54_ServerIdentifier/EncodeServerID
+--- PASS: TestOption54_ServerIdentifier (0.00s)
+    --- PASS: TestOption54_ServerIdentifier/EncodeServerID (0.00s)
+=== RUN   TestOption58_RenewalTime
+=== RUN   TestOption58_RenewalTime/T1Timer
+--- PASS: TestOption58_RenewalTime (0.00s)
+    --- PASS: TestOption58_RenewalTime/T1Timer (0.00s)
+=== RUN   TestOption59_RebindingTime
+=== RUN   TestOption59_RebindingTime/T2Timer
+--- PASS: TestOption59_RebindingTime (0.00s)
+    --- PASS: TestOption59_RebindingTime/T2Timer (0.00s)
+=== RUN   TestOption224_CACertURL
+=== RUN   TestOption224_CACertURL/EncodeCAURL
+--- PASS: TestOption224_CACertURL (0.00s)
+    --- PASS: TestOption224_CACertURL/EncodeCAURL (0.00s)
+=== RUN   TestOption225_InstallScriptURLs
+=== RUN   TestOption225_InstallScriptURLs/MultipleScripts
+--- PASS: TestOption225_InstallScriptURLs (0.00s)
+    --- PASS: TestOption225_InstallScriptURLs/MultipleScripts (0.00s)
+=== RUN   TestOption252_WPADURL
+=== RUN   TestOption252_WPADURL/EncodeWPAD
+--- PASS: TestOption252_WPADURL (0.00s)
+    --- PASS: TestOption252_WPADURL/EncodeWPAD (0.00s)
+=== RUN   TestCustomOptionsInACK
+=== RUN   TestCustomOptionsInACK/CAOptionsPresent
+--- PASS: TestCustomOptionsInACK (0.00s)
+    --- PASS: TestCustomOptionsInACK/CAOptionsPresent (0.00s)
+=== RUN   TestCustomOptionsNotInOFFER
+=== RUN   TestCustomOptionsNotInOFFER/CAOptionsAbsent
+--- PASS: TestCustomOptionsNotInOFFER (0.00s)
+    --- PASS: TestCustomOptionsNotInOFFER/CAOptionsAbsent (0.00s)
+=== RUN   TestParseOptions
+=== RUN   TestParseOptions/ParseMultipleOptions
+--- PASS: TestParseOptions (0.00s)
+    --- PASS: TestParseOptions/ParseMultipleOptions (0.00s)
+=== RUN   TestParseOptionsEndMarker
+=== RUN   TestParseOptionsEndMarker/StopsAtEnd
+--- PASS: TestParseOptionsEndMarker (0.00s)
+    --- PASS: TestParseOptionsEndMarker/StopsAtEnd (0.00s)
+=== RUN   TestParseOptionsUnknownCode
+=== RUN   TestParseOptionsUnknownCode/SkipsUnknown
+--- PASS: TestParseOptionsUnknownCode (0.00s)
+    --- PASS: TestParseOptionsUnknownCode/SkipsUnknown (0.00s)
+=== RUN   TestBuildOptionsOrder
+=== RUN   TestBuildOptionsOrder/MessageTypeFirst
+--- PASS: TestBuildOptionsOrder (0.00s)
+    --- PASS: TestBuildOptionsOrder/MessageTypeFirst (0.00s)
+=== RUN   TestBuildOptionsEndMarker
+=== RUN   TestBuildOptionsEndMarker/EndsWithEnd
+--- PASS: TestBuildOptionsEndMarker (0.00s)
+    --- PASS: TestBuildOptionsEndMarker/EndsWithEnd (0.00s)
+=== RUN   TestSerializeOption
+=== RUN   TestSerializeOption/RouterOption
+--- PASS: TestSerializeOption (0.00s)
+    --- PASS: TestSerializeOption/RouterOption (0.00s)
+=== RUN   TestSerializeEndOption
+=== RUN   TestSerializeEndOption/EndNoLength
+--- PASS: TestSerializeEndOption (0.00s)
+    --- PASS: TestSerializeEndOption/EndNoLength (0.00s)
+=== RUN   TestSerializeNetworkByteOrder
+=== RUN   TestSerializeNetworkByteOrder/BigEndian
+--- PASS: TestSerializeNetworkByteOrder (0.00s)
+    --- PASS: TestSerializeNetworkByteOrder/BigEndian (0.00s)
+=== RUN   TestValidateLeaseTime
+=== RUN   TestValidateLeaseTime/Zero
+=== RUN   TestValidateLeaseTime/TooShort
+=== RUN   TestValidateLeaseTime/Minimum
+=== RUN   TestValidateLeaseTime/OneDay
+=== RUN   TestValidateLeaseTime/OneWeek
+--- PASS: TestValidateLeaseTime (0.00s)
+    --- PASS: TestValidateLeaseTime/Zero (0.00s)
+    --- PASS: TestValidateLeaseTime/TooShort (0.00s)
+    --- PASS: TestValidateLeaseTime/Minimum (0.00s)
+    --- PASS: TestValidateLeaseTime/OneDay (0.00s)
+    --- PASS: TestValidateLeaseTime/OneWeek (0.00s)
+=== RUN   TestValidateURLFormat
+=== RUN   TestValidateURLFormat/ValidHTTP
+=== RUN   TestValidateURLFormat/ValidHTTPS
+=== RUN   TestValidateURLFormat/NoScheme
+=== RUN   TestValidateURLFormat/Invalid
+=== RUN   TestValidateURLFormat/Empty
+--- PASS: TestValidateURLFormat (0.00s)
+    --- PASS: TestValidateURLFormat/ValidHTTP (0.00s)
+    --- PASS: TestValidateURLFormat/ValidHTTPS (0.00s)
+    --- PASS: TestValidateURLFormat/NoScheme (0.00s)
+    --- PASS: TestValidateURLFormat/Invalid (0.00s)
+    --- PASS: TestValidateURLFormat/Empty (0.00s)
+=== RUN   TestListenerConfig
+=== RUN   TestListenerConfig/DefaultConfig
+--- PASS: TestListenerConfig (0.00s)
+    --- PASS: TestListenerConfig/DefaultConfig (0.00s)
+=== RUN   TestListenerReceivePacket
+=== RUN   TestListenerReceivePacket/ValidPacketReceived
+--- PASS: TestListenerReceivePacket (0.00s)
+    --- PASS: TestListenerReceivePacket/ValidPacketReceived (0.00s)
+=== RUN   TestListenerConcurrentPackets
+=== RUN   TestListenerConcurrentPackets/HandleMultiplePackets
+--- PASS: TestListenerConcurrentPackets (0.00s)
+    --- PASS: TestListenerConcurrentPackets/HandleMultiplePackets (0.00s)
+=== RUN   TestListenerGracefulShutdown
+=== RUN   TestListenerGracefulShutdown/ShutdownWithContext
+--- PASS: TestListenerGracefulShutdown (0.01s)
+    --- PASS: TestListenerGracefulShutdown/ShutdownWithContext (0.01s)
+=== RUN   TestParseValidDHCPPacket
+=== RUN   TestParseValidDHCPPacket/ValidDiscover
+--- PASS: TestParseValidDHCPPacket (0.00s)
+    --- PASS: TestParseValidDHCPPacket/ValidDiscover (0.00s)
+=== RUN   TestParseMalformedPacket
+=== RUN   TestParseMalformedPacket/PacketTooSmall
+=== RUN   TestParseMalformedPacket/MissingMagicCookie
+--- PASS: TestParseMalformedPacket (0.00s)
+    --- PASS: TestParseMalformedPacket/PacketTooSmall (0.00s)
+    --- PASS: TestParseMalformedPacket/MissingMagicCookie (0.00s)
+=== RUN   TestExtractMessageType
+=== RUN   TestExtractMessageType/DISCOVER
+=== RUN   TestExtractMessageType/OFFER
+=== RUN   TestExtractMessageType/REQUEST
+=== RUN   TestExtractMessageType/DECLINE
+=== RUN   TestExtractMessageType/ACK
+=== RUN   TestExtractMessageType/NAK
+=== RUN   TestExtractMessageType/RELEASE
+=== RUN   TestExtractMessageType/INFORM
+--- PASS: TestExtractMessageType (0.00s)
+    --- PASS: TestExtractMessageType/DISCOVER (0.00s)
+    --- PASS: TestExtractMessageType/OFFER (0.00s)
+    --- PASS: TestExtractMessageType/REQUEST (0.00s)
+    --- PASS: TestExtractMessageType/DECLINE (0.00s)
+    --- PASS: TestExtractMessageType/ACK (0.00s)
+    --- PASS: TestExtractMessageType/NAK (0.00s)
+    --- PASS: TestExtractMessageType/RELEASE (0.00s)
+    --- PASS: TestExtractMessageType/INFORM (0.00s)
+=== RUN   TestExtractClientMAC
+=== RUN   TestExtractClientMAC/ValidMAC
+--- PASS: TestExtractClientMAC (0.00s)
+    --- PASS: TestExtractClientMAC/ValidMAC (0.00s)
+=== RUN   TestRouteDiscoverPacket
+=== RUN   TestRouteDiscoverPacket/RoutesToDiscoverHandler
+--- PASS: TestRouteDiscoverPacket (0.00s)
+    --- PASS: TestRouteDiscoverPacket/RoutesToDiscoverHandler (0.00s)
+=== RUN   TestRouteRequestPacket
+=== RUN   TestRouteRequestPacket/RoutesToRequestHandler
+--- PASS: TestRouteRequestPacket (0.00s)
+    --- PASS: TestRouteRequestPacket/RoutesToRequestHandler (0.00s)
+=== RUN   TestRouteReleasePacket
+=== RUN   TestRouteReleasePacket/RoutesToReleaseHandler
+--- PASS: TestRouteReleasePacket (0.00s)
+    --- PASS: TestRouteReleasePacket/RoutesToReleaseHandler (0.00s)
+=== RUN   TestBuildOfferPacket
+=== RUN   TestBuildOfferPacket/ValidOffer
+--- PASS: TestBuildOfferPacket (0.00s)
+    --- PASS: TestBuildOfferPacket/ValidOffer (0.00s)
+=== RUN   TestBuildAckPacket
+=== RUN   TestBuildAckPacket/ValidAck
+--- PASS: TestBuildAckPacket (0.00s)
+    --- PASS: TestBuildAckPacket/ValidAck (0.00s)
+=== RUN   TestBuildNakPacket
+=== RUN   TestBuildNakPacket/ValidNak
+--- PASS: TestBuildNakPacket (0.00s)
+    --- PASS: TestBuildNakPacket/ValidNak (0.00s)
+=== RUN   TestSendBroadcastResponse
+=== RUN   TestSendBroadcastResponse/BroadcastWhenNoCiaddr
+--- PASS: TestSendBroadcastResponse (0.00s)
+    --- PASS: TestSendBroadcastResponse/BroadcastWhenNoCiaddr (0.00s)
+=== RUN   TestSendUnicastResponse
+=== RUN   TestSendUnicastResponse/UnicastWhenHasCiaddr
+--- PASS: TestSendUnicastResponse (0.00s)
+    --- PASS: TestSendUnicastResponse/UnicastWhenHasCiaddr (0.00s)
+=== RUN   TestSendViaRelayAgent
+=== RUN   TestSendViaRelayAgent/SendToGiaddr
+--- PASS: TestSendViaRelayAgent (0.00s)
+    --- PASS: TestSendViaRelayAgent/SendToGiaddr (0.00s)
+=== RUN   TestTransactionIDPreserved
+=== RUN   TestTransactionIDPreserved/XidMatchesInResponse
+--- PASS: TestTransactionIDPreserved (0.00s)
+    --- PASS: TestTransactionIDPreserved/XidMatchesInResponse (0.00s)
+=== RUN   TestConcurrentRequests
+=== RUN   TestConcurrentRequests/HandleConcurrentRequests
+--- PASS: TestConcurrentRequests (0.00s)
+    --- PASS: TestConcurrentRequests/HandleConcurrentRequests (0.00s)
+=== RUN   TestResponseTime
+=== RUN   TestResponseTime/FastResponse
+--- PASS: TestResponseTime (0.00s)
+    --- PASS: TestResponseTime/FastResponse (0.00s)
+PASS
+ok  	github.com/safeops/dhcp_server/tests	1.618s

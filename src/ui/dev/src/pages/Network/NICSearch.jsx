@@ -34,11 +34,10 @@ function NICSearch() {
     }
   }
 
-  const getMockNICs = () => [
-    { index: 16, name: 'Wi-Fi', alias: 'Primary Internet', type: 'WAN', status: 'UP', ipv4: ['192.168.1.3/24'], gateway: '192.168.1.1', mac: 'f4:26:79:73:6f:7c' },
-    { index: 12, name: 'Ethernet 2', alias: 'VirtualBox Network', type: 'LAN', status: 'UP', ipv4: ['192.168.56.1/24'], mac: '0a:00:27:00:00:0c' },
-    { index: 24, name: 'Ethernet', alias: 'Backup WAN', type: 'LAN', status: 'DOWN', ipv4: ['192.168.1.2/24'], mac: '58:11:22:86:fd:c4' },
-  ]
+  const getMockNICs = () => {
+    // No mock data - return empty if API fails
+    return []
+  }
 
   const searchIP = () => {
     if (!query.trim()) return
@@ -117,17 +116,9 @@ function NICSearch() {
   }
 
   const getConnectedDevices = (nic) => {
-    // Mock connected devices based on NIC
-    if (nic.type === 'WAN') {
-      return [
-        { name: 'iPhone-12', ip: '192.168.1.100', mac: 'aa:bb:cc:dd:ee:01', icon: '📱' },
-        { name: 'MacBook-Pro', ip: '192.168.1.101', mac: 'aa:bb:cc:dd:ee:02', icon: '💻' },
-        { name: 'Smart-TV', ip: '192.168.1.150', mac: 'aa:bb:cc:dd:ee:03', icon: '📺' },
-      ]
-    }
-    return [
-      { name: 'VM-Ubuntu', ip: '192.168.56.101', mac: '08:00:27:00:00:01', icon: '🖥️' },
-    ]
+    // TODO: Fetch real connected devices from ARP table or DHCP leases
+    // No fake demo data
+    return []
   }
 
   const addToRecentSearches = (search) => {

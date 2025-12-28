@@ -29,7 +29,7 @@ const moduleNav = [
   { name: 'IDS/IPS Rules', path: '/ids', icon: FileCode },
   { name: 'DNS Server', path: '/dns', icon: Globe, badge: 'Soon' },
   { name: 'Firewall', path: '/firewall', icon: Lock, badge: 'Soon' },
-  { name: 'Network', path: '/network', icon: Network, badge: 'Soon' },
+  { name: 'Network', path: '/network', icon: Network },
   { name: 'Cognitive', path: '/cognitive', icon: Database },
 ];
 

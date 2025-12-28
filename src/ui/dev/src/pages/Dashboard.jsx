@@ -1,88 +1,88 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Shield, 
-  Globe, 
-  Server, 
-  Database, 
-  Settings, 
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  Shield,
+  Globe,
+  Server,
+  Database,
+  Settings,
   Activity,
   AlertTriangle,
   Zap,
   Network,
   Lock,
   RefreshCw,
-  FlaskConical
-} from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { dataService, isDbMode, getDataSource } from '../services/api';
+  FlaskConical,
+} from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { dataService, isDbMode, getDataSource } from "../services/api";
 
 const modules = [
   {
-    id: 'threat-intel',
-    name: 'Threat Intelligence',
-    description: 'IOC analysis, threat feeds, and intelligence data',
+    id: "threat-intel",
+    name: "Threat Intelligence",
+    description: "IOC analysis, threat feeds, and intelligence data",
     icon: Shield,
-    color: 'from-blue-500 to-blue-600',
-    path: '/threat-intel',
-    statsKey: 'activeIOCs',
-    statsLabel: 'Active IOCs',
-    status: 'active',
+    color: "from-blue-500 to-blue-600",
+    path: "/threat-intel",
+    statsKey: "activeIOCs",
+    statsLabel: "Active IOCs",
+    status: "active",
   },
   {
-    id: 'dns-server',
-    name: 'DNS Server',
-    description: 'DNS filtering and monitoring',
+    id: "dns-server",
+    name: "DNS Server",
+    description: "DNS filtering and monitoring",
     icon: Globe,
-    color: 'from-emerald-500 to-emerald-600',
-    path: '/dns',
-    statsKey: 'dnsQueries',
-    statsLabel: 'Queries Today',
-    status: 'coming-soon',
+    color: "from-emerald-500 to-emerald-600",
+    path: "/dns",
+    statsKey: "dnsQueries",
+    statsLabel: "Queries Today",
+    status: "coming-soon",
   },
   {
-    id: 'firewall',
-    name: 'Firewall',
-    description: 'Network firewall rules and policies',
+    id: "firewall",
+    name: "Firewall",
+    description: "Network firewall rules and policies",
     icon: Lock,
-    color: 'from-orange-500 to-orange-600',
-    path: '/firewall',
-    statsKey: 'firewallRules',
-    statsLabel: 'Active Rules',
-    status: 'active',
+    color: "from-orange-500 to-orange-600",
+    path: "/firewall",
+    statsKey: "firewallRules",
+    statsLabel: "Active Rules",
+    status: "active",
   },
   {
-    id: 'ids',
-    name: 'IDS/IPS',
-    description: 'Intrusion detection and prevention',
+    id: "ids",
+    name: "IDS/IPS",
+    description: "Intrusion detection and prevention",
     icon: AlertTriangle,
-    color: 'from-red-500 to-red-600',
-    path: '/ids',
-    statsKey: 'idsAlerts',
-    statsLabel: 'Alerts Today',
-    status: 'active',
+    color: "from-red-500 to-red-600",
+    path: "/ids",
+    statsKey: "idsAlerts",
+    statsLabel: "Alerts Today",
+    status: "active",
   },
   {
-    id: 'network',
-    name: 'Network Monitor',
-    description: 'Network traffic analysis and monitoring',
+    id: "network",
+    name: "Network Monitor",
+    description: "Network traffic analysis and monitoring",
     icon: Network,
-    color: 'from-purple-500 to-purple-600',
-    path: '/network',
-    statsKey: 'connections',
-    statsLabel: 'Connections',
-    status: 'coming-soon',
+    color: "from-purple-500 to-purple-600",
+    path: "/network",
+    statsKey: "connections",
+    statsLabel: "Connections",
+    status: "active",
   },
   {
-    id: 'cognitive',
-    name: 'Cognitive Library',
-    description: 'Entity management and data models',
+    id: "cognitive",
+    name: "Cognitive Library",
+    description: "Entity management and data models",
     icon: Database,
-    color: 'from-indigo-500 to-indigo-600',
-    path: '/cognitive',
-    statsKey: 'entities',
-    statsLabel: 'Entities',
-    status: 'active',
+    color: "from-indigo-500 to-indigo-600",
+    path: "/cognitive",
+    statsKey: "entities",
+    statsLabel: "Entities",
+    status: "active",
   },
 ];
 
@@ -99,9 +99,9 @@ export default function Dashboard() {
     firewallRules: 0,
     idsAlerts: 0,
     connections: 0,
-    entities: 0
+    entities: 0,
   });
-  
+
   const dbMode = isDbMode();
 
   useEffect(() => {
@@ -118,30 +118,54 @@ export default function Dashboard() {
         systemHealth: dashboardStats.systemHealth || 99.9,
         openAlerts: dashboardStats.openAlerts || 7,
         activeIOCs: 260759,
-        dnsQueries: '1.2M',
+        dnsQueries: "1.2M",
         firewallRules: 847,
         idsAlerts: 156,
         connections: 2341,
-        entities: 89
+        entities: 89,
       });
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      console.error("Failed to load dashboard data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const quickStats = [
-    { label: 'Total Threats Blocked', value: stats.totalThreatsBlocked.toLocaleString(), change: '+12.5%', positive: true },
-    { label: 'Active Feeds', value: stats.activeFeeds.toString(), change: '+2', positive: true },
-    { label: 'System Health', value: `${stats.systemHealth}%`, change: '0%', positive: true },
-    { label: 'Open Alerts', value: stats.openAlerts.toString(), change: '-3', positive: true },
+    {
+      label: "Total Threats Blocked",
+      value: stats.totalThreatsBlocked.toLocaleString(),
+      change: "+12.5%",
+      positive: true,
+    },
+    {
+      label: "Active Feeds",
+      value: stats.activeFeeds.toString(),
+      change: "+2",
+      positive: true,
+    },
+    {
+      label: "System Health",
+      value: `${stats.systemHealth}%`,
+      change: "0%",
+      positive: true,
+    },
+    {
+      label: "Open Alerts",
+      value: stats.openAlerts.toString(),
+      change: "-3",
+      positive: true,
+    },
   ];
 
   return (
     <div className="animate-fade-in">
       {/* Data Source Indicator */}
-      <div className={`mb-4 flex items-center gap-2 text-sm ${dbMode ? 'text-green-400' : 'text-blue-400'}`}>
+      <div
+        className={`mb-4 flex items-center gap-2 text-sm ${
+          dbMode ? "text-green-400" : "text-blue-400"
+        }`}
+      >
         {dbMode ? (
           <>
             <Database className="w-4 h-4" />
@@ -159,7 +183,7 @@ export default function Dashboard() {
       {/* Welcome Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">
-          Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
+          Welcome back, {user?.name?.split(" ")[0] || "Admin"}
         </h1>
         <p className="text-dark-400">
           Here's what's happening with your security infrastructure
@@ -175,9 +199,13 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-dark-400 text-sm">{stat.label}</span>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                stat.positive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-              }`}>
+              <span
+                className={`text-xs px-2 py-1 rounded-full ${
+                  stat.positive
+                    ? "bg-green-500/20 text-green-400"
+                    : "bg-red-500/20 text-red-400"
+                }`}
+              >
                 {stat.change}
               </span>
             </div>
@@ -187,21 +215,23 @@ export default function Dashboard() {
       </div>
 
       {/* Modules Grid */}
-      <h2 className="text-xl font-semibold text-white mb-4">Security Modules</h2>
+      <h2 className="text-xl font-semibold text-white mb-4">
+        Security Modules
+      </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {modules.map((module) => {
           const Icon = module.icon;
-          const isActive = module.status === 'active';
+          const isActive = module.status === "active";
           const statValue = stats[module.statsKey] || 0;
-          
+
           return (
             <Link
               key={module.id}
-              to={isActive ? module.path : '#'}
+              to={isActive ? module.path : "#"}
               className={`group relative bg-dark-800 border border-dark-700 rounded-xl p-6 transition-all duration-300 ${
-                isActive 
-                  ? 'hover:bg-dark-700 hover:border-dark-600 cursor-pointer' 
-                  : 'opacity-60 cursor-not-allowed'
+                isActive
+                  ? "hover:bg-dark-700 hover:border-dark-600 cursor-pointer"
+                  : "opacity-60 cursor-not-allowed"
               }`}
             >
               {/* Status Badge */}
@@ -210,24 +240,32 @@ export default function Dashboard() {
                   Coming Soon
                 </div>
               )}
-              
+
               {/* Icon */}
-              <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${module.color} mb-4`}>
+              <div
+                className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${module.color} mb-4`}
+              >
                 <Icon className="w-6 h-6 text-white" />
               </div>
-              
+
               {/* Content */}
-              <h3 className="text-lg font-semibold text-white mb-2">{module.name}</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                {module.name}
+              </h3>
               <p className="text-dark-400 text-sm mb-4">{module.description}</p>
-              
+
               {/* Stats */}
               <div className="flex items-center justify-between pt-4 border-t border-dark-700">
-                <span className="text-dark-500 text-sm">{module.statsLabel}</span>
+                <span className="text-dark-500 text-sm">
+                  {module.statsLabel}
+                </span>
                 <span className="text-white font-semibold">
-                  {typeof statValue === 'number' ? statValue.toLocaleString() : statValue}
+                  {typeof statValue === "number"
+                    ? statValue.toLocaleString()
+                    : statValue}
                 </span>
               </div>
-              
+
               {/* Hover Arrow */}
               {isActive && (
                 <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -244,12 +282,20 @@ export default function Dashboard() {
         <div className="flex items-center gap-3 mb-4">
           <Activity className="w-5 h-5 text-green-400" />
           <h3 className="text-lg font-semibold text-white">System Status</h3>
-          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">All Systems Operational</span>
+          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+            All Systems Operational
+          </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${dbMode ? 'bg-green-400' : 'bg-yellow-400'}`} />
-            <span className="text-dark-300 text-sm">Database {dbMode ? '' : '(Demo)'}</span>
+            <div
+              className={`w-2 h-2 rounded-full ${
+                dbMode ? "bg-green-400" : "bg-yellow-400"
+              }`}
+            />
+            <span className="text-dark-300 text-sm">
+              Database {dbMode ? "" : "(Demo)"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full" />

@@ -31,8 +31,11 @@ type NICInfo struct {
 	Speed       uint64   `json:"speed"`
 	MTU         int      `json:"mtu"`
 	IsPhysical  bool     `json:"isPhysical"`
+	IsPrimary   bool     `json:"isPrimary"`
 	RxBytes     uint64   `json:"rxBytes"`
 	TxBytes     uint64   `json:"txBytes"`
+	RxBps       uint64   `json:"rxBps"`
+	TxBps       uint64   `json:"txBps"`
 	LastUpdated string   `json:"lastUpdated"`
 }
 
@@ -57,6 +60,7 @@ type NICAPIServer struct {
 	types      map[int]string // index -> type mapping
 	mu         sync.RWMutex
 	server     *http.Server
+	monitor    *NICMonitor
 }
 
 // NewNICAPIServer creates a new NIC API server
@@ -71,22 +75,47 @@ func NewNICAPIServer(port int, configPath string) *NICAPIServer {
 
 // Start starts the HTTP server
 func (s *NICAPIServer) Start() error {
+	// Initialize monitor
+	s.monitor = NewNICMonitor(s)
+	s.monitor.Start()
+
 	mux := http.NewServeMux()
 
 	// API routes
 	mux.HandleFunc("/api/nics", s.corsMiddleware(s.handleNICs))
 	mux.HandleFunc("/api/nics/", s.corsMiddleware(s.handleNIC))
 	mux.HandleFunc("/api/nics/refresh", s.corsMiddleware(s.handleRefresh))
+	mux.HandleFunc("/api/nics/events", s.corsMiddleware(s.HandleSSE)) // SSE real-time updates
+
+	// NIC Control endpoints
+	mux.HandleFunc("/api/nics/control/", s.corsMiddleware(s.HandleNICControl))
+
+	// Hotspot endpoints
+	mux.HandleFunc("/api/hotspot/status", s.corsMiddleware(s.HandleHotspotStatus))
+	mux.HandleFunc("/api/hotspot/start", s.corsMiddleware(s.HandleHotspotStart))
+	mux.HandleFunc("/api/hotspot/stop", s.corsMiddleware(s.HandleHotspotStop))
+
+	// Topology and System Stats
+	mux.HandleFunc("/api/topology", s.corsMiddleware(s.HandleTopology))
+	mux.HandleFunc("/api/system/stats", s.corsMiddleware(s.HandleSystemStats))
+
+	// DHCP Management
+	mux.HandleFunc("/api/dhcp/leases", s.corsMiddleware(s.HandleDHCPLeases))
+	mux.HandleFunc("/api/dhcp/leases/search", s.corsMiddleware(s.HandleDHCPSearch))
+	mux.HandleFunc("/api/dhcp/leases/", s.corsMiddleware(s.HandleDHCPRelease))
+	mux.HandleFunc("/api/dhcp/stats", s.corsMiddleware(s.HandleDHCPStats))
+	mux.HandleFunc("/api/dhcp/pools", s.corsMiddleware(s.HandleDHCPPools))
+
 	mux.HandleFunc("/api/health", s.corsMiddleware(s.handleHealth))
 
 	s.server = &http.Server{
 		Addr:         fmt.Sprintf(":%d", s.port),
 		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  0, // No timeout for SSE
+		WriteTimeout: 0, // No timeout for SSE
 	}
 
-	log.Printf("NIC API server starting on port %d", s.port)
+	log.Printf("NIC API server starting on port %d (with real-time SSE)", s.port)
 	return s.server.ListenAndServe()
 }
 

@@ -1,11 +1,12 @@
 // NIC Management Page - Premium Network Interface Management
-// Features: Interface detection, rename, status monitoring, type classification
+// Features: Real-time detection, rename, status monitoring, type classification
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./NICManagement.css";
 
 const NIC_API_BASE = "http://localhost:8081/api";
+const NIC_SSE_URL = "http://localhost:8081/api/nics/events";
 
 // Interface type icons
 const TYPE_ICONS = {
@@ -34,28 +35,100 @@ function NICManagement() {
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [isLive, setIsLive] = useState(false);
+  const eventSourceRef = useRef(null);
 
-  // Fetch NICs on mount and periodically
+  // Connect to SSE for real-time updates
   useEffect(() => {
-    fetchNICs();
-    const interval = setInterval(fetchNICs, 10000); // Refresh every 10s
-    return () => clearInterval(interval);
+    const connectSSE = () => {
+      eventSourceRef.current = new EventSource(NIC_SSE_URL);
+      
+      eventSourceRef.current.onopen = () => {
+        setIsLive(true);
+        setError(null);
+        console.log("SSE connected - real-time updates enabled");
+      };
+
+      eventSourceRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleSSEMessage(data);
+        } catch (e) {
+          console.error("SSE parse error:", e);
+        }
+      };
+
+      eventSourceRef.current.onerror = () => {
+        setIsLive(false);
+        eventSourceRef.current?.close();
+        // Reconnect after 3 seconds
+        setTimeout(connectSSE, 3000);
+      };
+    };
+
+    connectSSE();
+
+    return () => {
+      eventSourceRef.current?.close();
+    };
   }, []);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "r" && !editingNic) {
-        fetchNICs();
-      }
-      if (e.key === "Escape" && editingNic) {
-        setEditingNic(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editingNic]);
+  // Handle SSE messages
+  const handleSSEMessage = useCallback((data) => {
+    setLastRefresh(new Date());
+    setLoading(false);
 
+    switch (data.type) {
+      case "full_update":
+        setNics(data.interfaces || []);
+        break;
+      
+      case "nic_added":
+        setNics(prev => [...prev, data.interface]);
+        showNotification(`🔌 ${data.interface.alias || data.interface.name} connected`);
+        break;
+      
+      case "nic_removed":
+        setNics(prev => prev.filter(n => n.index !== data.interface.index));
+        showNotification(`⚡ ${data.interface.alias || data.interface.name} disconnected`, "warning");
+        break;
+      
+      case "nic_status_changed":
+        setNics(prev => prev.map(n => 
+          n.index === data.interface.index ? { ...n, status: data.newValue } : n
+        ));
+        showNotification(`${data.interface.alias || data.interface.name} is now ${data.newValue}`);
+        break;
+      
+      case "nic_ip_changed":
+        setNics(prev => prev.map(n => 
+          n.index === data.interface.index ? { ...n, ipv4: data.interface.ipv4 } : n
+        ));
+        break;
+      
+      case "nic_primary_changed":
+        setNics(prev => prev.map(n => ({
+          ...n,
+          isPrimary: n.index === data.interface.index
+        })));
+        break;
+      
+      case "speed_update":
+        setNics(prev => prev.map(n => {
+          const speed = data.interfaces?.find(s => s.index === n.index);
+          if (speed) {
+            return { ...n, rxBps: speed.rxBps, txBps: speed.txBps };
+          }
+          return n;
+        }));
+        break;
+      
+      default:
+        break;
+    }
+  }, []);
+
+  // Fallback fetch (used for manual refresh only)
   const fetchNICs = async () => {
     try {
       const res = await fetch(`${NIC_API_BASE}/nics`);
@@ -149,6 +222,15 @@ function NICManagement() {
     return `${(bps / 1000).toFixed(0)} Kbps`;
   };
 
+  // Format bandwidth speed (bytes per second)
+  const formatBps = (bps) => {
+    if (!bps || bps === 0) return "0 B/s";
+    if (bps >= 1073741824) return `${(bps / 1073741824).toFixed(1)} GB/s`;
+    if (bps >= 1048576) return `${(bps / 1048576).toFixed(1)} MB/s`;
+    if (bps >= 1024) return `${(bps / 1024).toFixed(1)} KB/s`;
+    return `${bps} B/s`;
+  };
+
   const formatIP = (ipList) => {
     if (!ipList || ipList.length === 0) return "-";
     return ipList[0].split("/")[0];
@@ -185,11 +267,12 @@ function NICManagement() {
           <h1>🌐 Network Interfaces</h1>
           <p className="nic-subtitle">
             Manage your network adapters • {nics.length} detected
+            {isLive && <span className="nic-live-badge">● LIVE</span>}
           </p>
         </div>
         <div className="nic-header-right">
           <span className="nic-last-refresh">
-            Last updated: {lastRefresh?.toLocaleTimeString() || "-"}
+            {isLive ? "Real-time" : `Last updated: ${lastRefresh?.toLocaleTimeString() || "-"}`}
           </span>
           <button className="nic-refresh-btn" onClick={fetchNICs}>
             🔄 Refresh
@@ -217,6 +300,7 @@ function NICManagement() {
                 onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
+                formatBps={formatBps}
               />
             ))}
           </div>
@@ -240,6 +324,7 @@ function NICManagement() {
                 onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
+                formatBps={formatBps}
               />
             ))}
           </div>
@@ -263,6 +348,7 @@ function NICManagement() {
                 onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
+                formatBps={formatBps}
               />
             ))}
           </div>
@@ -342,6 +428,7 @@ function NICCard({
   onCardClick,
   formatSpeed,
   formatIP,
+  formatBps,
 }) {
   const isOnline = nic.status === "UP";
   const typeIcon = TYPE_ICONS[nic.type] || TYPE_ICONS.UNKNOWN;
@@ -350,14 +437,17 @@ function NICCard({
     <div
       className={`nic-card ${
         isOnline ? "online" : "offline"
-      } ${nic.type.toLowerCase()}`}
+      } ${nic.type.toLowerCase()} ${nic.isPrimary ? "primary" : ""}`}
       onClick={() => onCardClick(nic)}
       style={{ cursor: 'pointer' }}
     >
-      {/* Priority Badge for WAN */}
-      {nic.type === "WAN" && priority && (
+      {/* Primary/Priority Badge */}
+      {nic.isPrimary && (
+        <div className="nic-priority-badge primary">⭐ Primary Internet</div>
+      )}
+      {nic.type === "WAN" && !nic.isPrimary && priority && (
         <div className="nic-priority-badge">
-          {priority === 1 ? "⭐ Primary" : `#${priority} Backup`}
+          #{priority} Backup
         </div>
       )}
 
@@ -404,6 +494,7 @@ function NICCard({
           className="nic-type-select"
           value={nic.type}
           onChange={(e) => onTypeChange(nic, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
         >
           <option value="WAN">🌍 WAN</option>
           <option value="LAN">💻 LAN</option>
@@ -414,11 +505,11 @@ function NICCard({
         </button>
       </div>
 
-      {/* Traffic Indicator */}
+      {/* Live Speed Indicator */}
       {isOnline && (
         <div className="nic-traffic-indicator">
-          <span className="nic-traffic-rx">↓</span>
-          <span className="nic-traffic-tx">↑</span>
+          <span className="nic-traffic-rx">↓ {formatBps ? formatBps(nic.rxBps) : "0 B/s"}</span>
+          <span className="nic-traffic-tx">↑ {formatBps ? formatBps(nic.txBps) : "0 B/s"}</span>
         </div>
       )}
     </div>

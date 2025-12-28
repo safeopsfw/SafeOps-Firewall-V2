@@ -367,38 +367,100 @@
   border-color: var(--nic-primary);
 }
 
-/* Traffic Indicator */
+/* Traffic Indicator - Now shows live speed */
 .nic-traffic-indicator {
   position: absolute;
   bottom: 1rem;
   right: 1rem;
   display: flex;
-  gap: 0.5rem;
-  opacity: 0.6;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: "Fira Code", monospace;
 }
 
 .nic-traffic-rx,
 .nic-traffic-tx {
-  font-size: 0.9rem;
-  animation: trafficBlink 1s infinite alternate;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .nic-traffic-rx {
   color: #22c55e;
-  animation-delay: 0s;
 }
 .nic-traffic-tx {
   color: #3b82f6;
-  animation-delay: 0.5s;
 }
 
-@keyframes trafficBlink {
+/* Live Badge */
+.nic-live-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #10b981;
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Primary Card Glow */
+.nic-card.primary {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.2);
+}
+
+.nic-card.primary::before {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  height: 5px;
+}
+
+/* Primary Badge Enhancement */
+.nic-priority-badge.primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  animation: primaryGlow 2s ease-in-out infinite;
+}
+
+@keyframes primaryGlow {
+  0%,
+  100% {
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(16, 185, 129, 0.6);
+  }
+}
+
+/* NIC Added Animation */
+@keyframes nicAdded {
   from {
-    opacity: 0.3;
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
   }
   to {
     opacity: 1;
+    transform: translateY(0) scale(1);
   }
+}
+
+.nic-card {
+  animation: nicAdded 0.4s ease-out;
 }
 
 /* ============================================

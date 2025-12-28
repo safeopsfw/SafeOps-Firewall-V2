@@ -69,29 +69,13 @@ function NICDetail() {
   }
 
   const getMockNIC = (id) => {
-    const nics = {
-      16: { index: 16, name: 'Wi-Fi', alias: 'Primary Internet', type: 'WAN', status: 'UP', ipv4: ['192.168.1.3/24'], gateway: '192.168.1.1', mac: 'f4:26:79:73:6f:7c', speed: 144000000, mtu: 1500 },
-      12: { index: 12, name: 'Ethernet 2', alias: 'VirtualBox Network', type: 'LAN', status: 'UP', ipv4: ['192.168.56.1/24'], mac: '0a:00:27:00:00:0c', speed: 1000000000, mtu: 1500 },
-      24: { index: 24, name: 'Ethernet', alias: 'Backup WAN', type: 'LAN', status: 'DOWN', ipv4: ['192.168.1.2/24'], mac: '58:11:22:86:fd:c4', speed: 1000000000, mtu: 1500 },
-      43: { index: 43, name: 'vEthernet', alias: 'Hyper-V Switch', type: 'VIRTUAL', status: 'UP', ipv4: ['172.19.192.1/20'], mac: '00:15:5d:b5:eb:f2', speed: 10000000000, mtu: 1500 },
-    }
-    return nics[id] || { index: id, name: `NIC ${id}`, status: 'UNKNOWN' }
+    // No mock data - return null if API fails
+    return null
   }
 
   const getConnectedDevices = (nic) => {
-    if (!nic) return []
-    if (nic.type === 'WAN') {
-      return [
-        { name: 'iPhone-12', ip: '192.168.1.100', mac: 'aa:bb:cc:dd:ee:01', icon: '📱', lastSeen: '2s ago' },
-        { name: 'MacBook-Pro', ip: '192.168.1.101', mac: 'aa:bb:cc:dd:ee:02', icon: '💻', lastSeen: '5s ago' },
-        { name: 'Smart-TV', ip: '192.168.1.150', mac: 'aa:bb:cc:dd:ee:03', icon: '📺', lastSeen: '1m ago' },
-      ]
-    }
-    if (nic.name.includes('VirtualBox')) {
-      return [
-        { name: 'Ubuntu-VM', ip: '192.168.56.101', mac: '08:00:27:00:00:01', icon: '🐧', lastSeen: 'now' },
-      ]
-    }
+    // TODO: Fetch real connected devices from ARP table or DHCP leases
+    // For now, return empty - no fake demo data
     return []
   }
 
