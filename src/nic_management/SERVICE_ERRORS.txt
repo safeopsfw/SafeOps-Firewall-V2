@@ -1,0 +1,5 @@
+2025/12/28 14:10:24.078298 main.go:96: Starting NIC Management Service v1.0.0 (commit: unknown, built: unknown)
+2025/12/28 14:10:24.082712 main.go:97: Platform: windows/amd64, Go version: go1.25.5
+2025/12/28 14:10:24.087009 main.go:104: Configuration loaded from config.yaml
+2025/12/28 14:10:24.090637 main.go:115: All components initialized successfully
+2025/12/28 14:10:24.443115 main.go:131: NIC Management service ready on port 50054

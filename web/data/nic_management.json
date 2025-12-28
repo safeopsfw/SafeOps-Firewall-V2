@@ -1,1 +1,548 @@
-{}
+{
+  "metadata": {
+    "timestamp": "2025-12-27T06:56:03Z",
+    "version": "1.0",
+    "schema_version": "1.0.0",
+    "service_name": "nic_management",
+    "service_status": "running",
+    "uptime_seconds": 86423,
+    "update_interval_seconds": 5,
+    "next_update": "2025-12-27T06:56:08Z"
+  },
+
+  "nics": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "eth0",
+      "alias": "Primary Internet",
+      "description": "Main fiber connection from ISP",
+      "type": "WAN",
+      "role": "PRIMARY",
+      "mac_address": "00:1A:2B:3C:4D:5E",
+      "ip_address": "203.0.113.5",
+      "netmask": "255.255.255.0",
+      "gateway": "203.0.113.1",
+      "dns_servers": ["8.8.8.8", "8.8.4.4"],
+      "status": "UP",
+      "health": "HEALTHY",
+      "speed": "1000Mbps",
+      "duplex": "FULL",
+      "mtu": 1500,
+      "is_enabled": true,
+      "is_virtual": false,
+      "is_dhcp": false,
+      "driver": {
+        "name": "r8169",
+        "version": "2.3LK-NAPI",
+        "firmware": "rtl8168h-2_0.0.2"
+      },
+      "statistics": {
+        "rx_bytes": 15728640000,
+        "tx_bytes": 3221225472,
+        "rx_packets": 12582912,
+        "tx_packets": 4194304,
+        "rx_errors": 0,
+        "tx_errors": 0,
+        "rx_dropped": 5,
+        "tx_dropped": 0,
+        "multicast": 1024,
+        "collisions": 0,
+        "throughput_rx_bps": 524288000,
+        "throughput_tx_bps": 104857600,
+        "throughput_rx_mbps": 500.0,
+        "throughput_tx_mbps": 100.0,
+        "packet_rate_rx_pps": 52428,
+        "packet_rate_tx_pps": 13107,
+        "utilization_percent": 52.4,
+        "error_rate_percent": 0.0
+      },
+      "wan_metrics": {
+        "priority": 1,
+        "weight": 70,
+        "latency_ms": 12.5,
+        "jitter_ms": 2.1,
+        "packet_loss_percent": 0.0,
+        "uptime_percent": 99.98,
+        "consecutive_failures": 0,
+        "consecutive_successes": 1728,
+        "last_health_check": "2025-12-27T06:56:00Z",
+        "health_check_target": "8.8.8.8",
+        "is_active": true
+      }
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "name": "eth1",
+      "alias": "Backup DSL",
+      "description": "Backup DSL connection for failover",
+      "type": "WAN",
+      "role": "BACKUP",
+      "mac_address": "00:1A:2B:3C:4D:5F",
+      "ip_address": "198.51.100.10",
+      "netmask": "255.255.255.0",
+      "gateway": "198.51.100.1",
+      "dns_servers": ["1.1.1.1", "1.0.0.1"],
+      "status": "UP",
+      "health": "HEALTHY",
+      "speed": "100Mbps",
+      "duplex": "FULL",
+      "mtu": 1500,
+      "is_enabled": true,
+      "is_virtual": false,
+      "is_dhcp": true,
+      "driver": {
+        "name": "e1000e",
+        "version": "3.8.4-NAPI",
+        "firmware": "N/A"
+      },
+      "statistics": {
+        "rx_bytes": 1073741824,
+        "tx_bytes": 268435456,
+        "rx_packets": 1048576,
+        "tx_packets": 262144,
+        "rx_errors": 2,
+        "tx_errors": 0,
+        "rx_dropped": 0,
+        "tx_dropped": 0,
+        "multicast": 256,
+        "collisions": 0,
+        "throughput_rx_bps": 52428800,
+        "throughput_tx_bps": 10485760,
+        "throughput_rx_mbps": 50.0,
+        "throughput_tx_mbps": 10.0,
+        "packet_rate_rx_pps": 5242,
+        "packet_rate_tx_pps": 1310,
+        "utilization_percent": 50.0,
+        "error_rate_percent": 0.0002
+      },
+      "wan_metrics": {
+        "priority": 2,
+        "weight": 30,
+        "latency_ms": 35.2,
+        "jitter_ms": 8.5,
+        "packet_loss_percent": 0.1,
+        "uptime_percent": 99.85,
+        "consecutive_failures": 0,
+        "consecutive_successes": 864,
+        "last_health_check": "2025-12-27T06:56:00Z",
+        "health_check_target": "1.1.1.1",
+        "is_active": true
+      }
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "name": "eth2",
+      "alias": "Office Network",
+      "description": "Main office LAN for employee devices",
+      "type": "LAN",
+      "role": "PRIMARY",
+      "mac_address": "00:1A:2B:3C:4D:60",
+      "ip_address": "192.168.1.1",
+      "netmask": "255.255.255.0",
+      "gateway": null,
+      "dns_servers": [],
+      "status": "UP",
+      "health": "HEALTHY",
+      "speed": "1000Mbps",
+      "duplex": "FULL",
+      "mtu": 1500,
+      "is_enabled": true,
+      "is_virtual": false,
+      "is_dhcp": false,
+      "driver": {
+        "name": "igb",
+        "version": "5.13.0-k",
+        "firmware": "3.25"
+      },
+      "statistics": {
+        "rx_bytes": 8589934592,
+        "tx_bytes": 17179869184,
+        "rx_packets": 8388608,
+        "tx_packets": 16777216,
+        "rx_errors": 0,
+        "tx_errors": 0,
+        "rx_dropped": 12,
+        "tx_dropped": 0,
+        "multicast": 2048,
+        "collisions": 0,
+        "throughput_rx_bps": 209715200,
+        "throughput_tx_bps": 524288000,
+        "throughput_rx_mbps": 200.0,
+        "throughput_tx_mbps": 500.0,
+        "packet_rate_rx_pps": 26214,
+        "packet_rate_tx_pps": 65536,
+        "utilization_percent": 35.0,
+        "error_rate_percent": 0.0
+      },
+      "lan_config": {
+        "subnet": "192.168.1.0/24",
+        "dhcp_enabled": true,
+        "dhcp_range_start": "192.168.1.100",
+        "dhcp_range_end": "192.168.1.200",
+        "active_leases": 47,
+        "vlan_id": null,
+        "vlan_name": null
+      }
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440004",
+      "name": "eth3",
+      "alias": "Guest WiFi",
+      "description": "Isolated guest network with internet-only access",
+      "type": "LAN",
+      "role": "ISOLATED",
+      "mac_address": "00:1A:2B:3C:4D:61",
+      "ip_address": "192.168.10.1",
+      "netmask": "255.255.255.0",
+      "gateway": null,
+      "dns_servers": [],
+      "status": "UP",
+      "health": "HEALTHY",
+      "speed": "1000Mbps",
+      "duplex": "FULL",
+      "mtu": 1500,
+      "is_enabled": true,
+      "is_virtual": false,
+      "is_dhcp": false,
+      "driver": {
+        "name": "igb",
+        "version": "5.13.0-k",
+        "firmware": "3.25"
+      },
+      "statistics": {
+        "rx_bytes": 536870912,
+        "tx_bytes": 1073741824,
+        "rx_packets": 524288,
+        "tx_packets": 1048576,
+        "rx_errors": 0,
+        "tx_errors": 0,
+        "rx_dropped": 0,
+        "tx_dropped": 0,
+        "multicast": 128,
+        "collisions": 0,
+        "throughput_rx_bps": 20971520,
+        "throughput_tx_bps": 41943040,
+        "throughput_rx_mbps": 20.0,
+        "throughput_tx_mbps": 40.0,
+        "packet_rate_rx_pps": 2621,
+        "packet_rate_tx_pps": 5242,
+        "utilization_percent": 4.0,
+        "error_rate_percent": 0.0
+      },
+      "lan_config": {
+        "subnet": "192.168.10.0/24",
+        "dhcp_enabled": true,
+        "dhcp_range_start": "192.168.10.50",
+        "dhcp_range_end": "192.168.10.150",
+        "active_leases": 12,
+        "vlan_id": 20,
+        "vlan_name": "VLAN_GUEST",
+        "isolation": {
+          "block_lan_access": true,
+          "block_management": true,
+          "bandwidth_limit_mbps": 50
+        }
+      }
+    }
+  ],
+
+  "wan_status": {
+    "active_primary": "eth0",
+    "active_primary_alias": "Primary Internet",
+    "failover_state": "PRIMARY_ACTIVE",
+    "failover_active": false,
+    "load_balancing_mode": "WEIGHTED",
+    "load_balancing_enabled": true,
+    "total_wan_count": 2,
+    "healthy_wan_count": 2,
+    "degraded_wan_count": 0,
+    "down_wan_count": 0,
+    "last_failover_time": "2025-12-20T14:23:45Z",
+    "last_failover_reason": "SCHEDULED_MAINTENANCE",
+    "time_since_last_failover_hours": 160.5
+  },
+
+  "wan_health": [
+    {
+      "interface_id": "550e8400-e29b-41d4-a716-446655440001",
+      "interface_name": "eth0",
+      "interface_alias": "Primary Internet",
+      "state": "HEALTHY",
+      "latency_ms": 12.5,
+      "latency_avg_ms": 14.2,
+      "latency_min_ms": 8.1,
+      "latency_max_ms": 45.3,
+      "jitter_ms": 2.1,
+      "packet_loss_percent": 0.0,
+      "uptime_percent": 99.98,
+      "uptime_duration": "23d 22h 15m",
+      "consecutive_failures": 0,
+      "consecutive_successes": 1728,
+      "last_check_time": "2025-12-27T06:56:00Z",
+      "health_check_target": "8.8.8.8",
+      "is_active": true,
+      "is_primary": true,
+      "bandwidth_up_mbps": 100.0,
+      "bandwidth_down_mbps": 500.0,
+      "trend": "STABLE"
+    },
+    {
+      "interface_id": "550e8400-e29b-41d4-a716-446655440002",
+      "interface_name": "eth1",
+      "interface_alias": "Backup DSL",
+      "state": "HEALTHY",
+      "latency_ms": 35.2,
+      "latency_avg_ms": 38.5,
+      "latency_min_ms": 25.0,
+      "latency_max_ms": 120.8,
+      "jitter_ms": 8.5,
+      "packet_loss_percent": 0.1,
+      "uptime_percent": 99.85,
+      "uptime_duration": "23d 18h 42m",
+      "consecutive_failures": 0,
+      "consecutive_successes": 864,
+      "last_check_time": "2025-12-27T06:56:00Z",
+      "health_check_target": "1.1.1.1",
+      "is_active": true,
+      "is_primary": false,
+      "bandwidth_up_mbps": 10.0,
+      "bandwidth_down_mbps": 50.0,
+      "trend": "STABLE"
+    }
+  ],
+
+  "routing": {
+    "total_sessions": 1547,
+    "established_sessions": 1423,
+    "new_sessions": 89,
+    "closing_sessions": 35,
+    "nat_mappings": 1512,
+    "nat_mappings_static": 2,
+    "nat_mappings_dynamic": 1510,
+    "nat_port_pool_used": 1510,
+    "nat_port_pool_available": 53490,
+    "nat_port_pool_percent_used": 2.75,
+    "new_sessions_per_second": 45,
+    "closed_sessions_per_second": 42,
+    "packets_forwarded": 892345678,
+    "packets_dropped": 1234,
+    "packets_rejected": 567,
+    "forwarding_rate_pps": 125000,
+    "bytes_forwarded": 1234567890123,
+    "drop_rate_percent": 0.0001,
+    "session_creation_latency_us": 15
+  },
+
+  "load_balancer": {
+    "enabled": true,
+    "mode": "WEIGHTED",
+    "session_affinity_enabled": true,
+    "session_affinity_mode": "src_ip",
+    "total_connections": 1547,
+    "total_bytes_transferred": 18949274624,
+    "rebalance_interval_seconds": 300,
+    "last_rebalance_time": "2025-12-27T06:50:00Z",
+    "wan_distribution": [
+      {
+        "interface_name": "eth0",
+        "interface_alias": "Primary Internet",
+        "configured_weight": 70,
+        "actual_traffic_percentage": 71.2,
+        "target_traffic_percentage": 70.0,
+        "active_connections": 1101,
+        "total_bytes_sent": 3489660928,
+        "total_bytes_received": 13255827456,
+        "current_throughput_mbps": 450.5,
+        "max_throughput_mbps": 1000.0,
+        "saturation_percent": 45.05
+      },
+      {
+        "interface_name": "eth1",
+        "interface_alias": "Backup DSL",
+        "configured_weight": 30,
+        "actual_traffic_percentage": 28.8,
+        "target_traffic_percentage": 30.0,
+        "active_connections": 446,
+        "total_bytes_sent": 536870912,
+        "total_bytes_received": 1667915328,
+        "current_throughput_mbps": 38.2,
+        "max_throughput_mbps": 100.0,
+        "saturation_percent": 38.2
+      }
+    ]
+  },
+
+  "connection_tracking": {
+    "enabled": true,
+    "max_entries": 1000000,
+    "current_entries": 1547,
+    "peak_entries_24h": 2341,
+    "utilization_percent": 0.15,
+    "entries_by_state": {
+      "NEW": 89,
+      "ESTABLISHED": 1423,
+      "RELATED": 12,
+      "FIN_WAIT": 18,
+      "CLOSE_WAIT": 5,
+      "TIME_WAIT": 0,
+      "CLOSING": 0
+    },
+    "entries_by_protocol": {
+      "TCP": 1245,
+      "UDP": 298,
+      "ICMP": 4,
+      "OTHER": 0
+    },
+    "cleanup_last_run": "2025-12-27T06:55:00Z",
+    "cleanup_entries_removed": 42,
+    "persist_enabled": true,
+    "last_persist_time": "2025-12-27T06:55:30Z"
+  },
+
+  "nat_port_forwards": [
+    {
+      "name": "Web Server",
+      "alias": "Company Website",
+      "external_port": 443,
+      "internal_ip": "192.168.1.10",
+      "internal_port": 443,
+      "protocol": "TCP",
+      "wan_interface": "eth0",
+      "wan_alias": "Primary Internet",
+      "enabled": true,
+      "active_connections": 23,
+      "bytes_transferred": 156789456,
+      "last_connection_time": "2025-12-27T06:55:45Z"
+    },
+    {
+      "name": "SSH Access",
+      "alias": "Remote Admin SSH",
+      "external_port": 2222,
+      "internal_ip": "192.168.1.5",
+      "internal_port": 22,
+      "protocol": "TCP",
+      "wan_interface": "eth0",
+      "wan_alias": "Primary Internet",
+      "enabled": false,
+      "active_connections": 0,
+      "bytes_transferred": 0,
+      "last_connection_time": null
+    }
+  ],
+
+  "recent_failover_events": [
+    {
+      "event_id": "evt-20251220-001",
+      "from_wan": "eth0",
+      "from_wan_alias": "Primary Internet",
+      "to_wan": "eth1",
+      "to_wan_alias": "Backup DSL",
+      "reason": "SCHEDULED_MAINTENANCE",
+      "triggered_by": "manual",
+      "timestamp": "2025-12-20T14:23:45Z",
+      "completed_at": "2025-12-20T14:23:47Z",
+      "duration_seconds": 2,
+      "affected_connections": 1234,
+      "migrated_connections": 1230,
+      "dropped_connections": 4,
+      "success": true,
+      "notes": "Planned maintenance for ISP upgrade"
+    },
+    {
+      "event_id": "evt-20251215-001",
+      "from_wan": "eth1",
+      "from_wan_alias": "Backup DSL",
+      "to_wan": "eth0",
+      "to_wan_alias": "Primary Internet",
+      "reason": "RECOVERY",
+      "triggered_by": "automatic",
+      "timestamp": "2025-12-15T08:45:12Z",
+      "completed_at": "2025-12-15T08:45:14Z",
+      "duration_seconds": 2,
+      "affected_connections": 567,
+      "migrated_connections": 565,
+      "dropped_connections": 2,
+      "success": true,
+      "notes": null
+    },
+    {
+      "event_id": "evt-20251215-000",
+      "from_wan": "eth0",
+      "from_wan_alias": "Primary Internet",
+      "to_wan": "eth1",
+      "to_wan_alias": "Backup DSL",
+      "reason": "GATEWAY_UNREACHABLE",
+      "triggered_by": "automatic",
+      "timestamp": "2025-12-15T06:12:33Z",
+      "completed_at": "2025-12-15T06:12:35Z",
+      "duration_seconds": 2,
+      "affected_connections": 892,
+      "migrated_connections": 890,
+      "dropped_connections": 2,
+      "success": true,
+      "notes": "ISP outage detected"
+    }
+  ],
+
+  "alerts": [
+    {
+      "id": "alert-001",
+      "severity": "INFO",
+      "category": "PERFORMANCE",
+      "message": "Primary WAN utilization reached 52% - consider upgrading bandwidth",
+      "interface": "eth0",
+      "interface_alias": "Primary Internet",
+      "timestamp": "2025-12-27T06:30:00Z",
+      "acknowledged": false
+    }
+  ],
+
+  "system_resources": {
+    "packet_engine": {
+      "status": "RUNNING",
+      "workers_active": 8,
+      "workers_total": 8,
+      "queue_depth_current": 128,
+      "queue_depth_max": 4096,
+      "queue_utilization_percent": 3.1,
+      "batch_processing_rate": 64,
+      "cpu_usage_percent": 12.5,
+      "memory_usage_mb": 256
+    },
+    "rust_library": {
+      "loaded": true,
+      "version": "1.0.0",
+      "path": "/usr/lib/safeops/libnic_rust.so"
+    },
+    "database": {
+      "connected": true,
+      "pool_size": 25,
+      "active_connections": 3,
+      "idle_connections": 22,
+      "last_query_time_ms": 2
+    }
+  },
+
+  "lan_summary": {
+    "total_lan_interfaces": 2,
+    "total_active_devices": 59,
+    "dhcp_leases_active": 59,
+    "dhcp_leases_available": 201,
+    "networks": [
+      {
+        "interface": "eth2",
+        "alias": "Office Network",
+        "subnet": "192.168.1.0/24",
+        "active_devices": 47,
+        "dhcp_usage_percent": 46.5
+      },
+      {
+        "interface": "eth3",
+        "alias": "Guest WiFi",
+        "subnet": "192.168.10.0/24",
+        "active_devices": 12,
+        "dhcp_usage_percent": 12.0
+      }
+    ]
+  }
+}

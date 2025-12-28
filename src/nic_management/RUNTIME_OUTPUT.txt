@@ -1,0 +1,199 @@
+================================================================================
+           NIC MANAGEMENT SERVICE - RUNTIME OUTPUT
+================================================================================
+Date: 2025-12-28
+Platform: Windows amd64
+Go Version: go1.25.5
+
+================================================================================
+                          SERVICE STARTUP LOG
+================================================================================
+
+2025/12/28 13:51:09.604897 main.go:96: Starting NIC Management Service v1.0.0 (commit: unknown, built: unknown)
+2025/12/28 13:51:09.608979 main.go:97: Platform: windows/amd64, Go version: go1.25.5
+2025/12/28 13:51:09.613262 main.go:104: Configuration loaded from config.yaml
+2025/12/28 13:51:09.616640 main.go:115: All components initialized successfully
+2025/12/28 13:51:09.983812 main.go:131: NIC Management service ready on port 50055
+
+================================================================================
+                          WHAT THE SERVICE DOES
+================================================================================
+
+When the NIC Management service starts, the following happens:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      STARTUP SEQUENCE                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. Parse command-line flags (-config, -version, -install)                   │
+│ 2. Load YAML configuration from config.yaml                                 │
+│ 3. Validate all configuration parameters                                    │
+│ 4. Initialize components:                                                   │
+│    ├── Discovery Monitor    → Detects WAN/LAN interfaces                   │
+│    ├── NAT Engine          → Port allocator, mapping table                 │
+│    ├── Connection Tracker  → TCP/UDP/ICMP state machine                    │
+│    ├── Load Balancer       → WAN selection algorithms                      │
+│    ├── Failover Handler    → Health monitoring, automatic failover         │
+│    └── Integration Hooks   → Firewall, IDS, QoS                            │
+│ 5. Start gRPC server on configured port (50055)                            │
+│ 6. Begin background workers:                                                │
+│    ├── Health check loop   → Ping WAN gateways every 5s                    │
+│    ├── Session cleanup     → Expire old NAT mappings                       │
+│    └── Metrics collector   → Export to Prometheus                          │
+│ 7. Wait for shutdown signal (SIGTERM/SIGINT)                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                          RUNTIME BEHAVIOR
+================================================================================
+
+OUTBOUND PACKET FLOW (LAN → Internet):
+────────────────────────────────────────────────────────────────────────────────
+1. Packet arrives on LAN interface (e.g., 192.168.1.100:54321 → 8.8.8.8:443)
+2. Discovery module identifies source as LAN device
+3. Load balancer selects WAN interface (round-robin/weighted/hash)
+4. NAT engine allocates external port (e.g., 10001)
+5. Packet rewritten: 203.0.113.5:10001 → 8.8.8.8:443
+6. Connection tracker records session (5-tuple → NAT mapping)
+7. Integration hooks called:
+   - Firewall: Check allow/deny rules
+   - QoS: Classify traffic (VOIP, STREAMING, STANDARD, etc.)
+8. Packet forwarded to WAN interface
+9. Checksum recalculated and sent
+
+INBOUND PACKET FLOW (Internet → LAN):
+────────────────────────────────────────────────────────────────────────────────
+1. Packet arrives on WAN interface (e.g., 8.8.8.8:443 → 203.0.113.5:10001)
+2. NAT engine looks up mapping: 203.0.113.5:10001 → 192.168.1.100:54321
+3. Packet rewritten: 8.8.8.8:443 → 192.168.1.100:54321
+4. Integration hooks called:
+   - IDS: Inspect for threats
+   - Firewall: Check inbound rules
+5. Packet forwarded to LAN interface
+
+FAILOVER BEHAVIOR:
+────────────────────────────────────────────────────────────────────────────────
+1. Health checker pings WAN gateway every 5 seconds
+2. If 3 consecutive pings fail → Mark WAN as DOWN
+3. Failover state machine transitions:
+   PRIMARY_ACTIVE → FAILOVER → BACKUP_ACTIVE
+4. All traffic rerouted to backup WAN
+5. NAT mappings preserved (sessions continue)
+6. When primary recovers (5 successful pings):
+   BACKUP_ACTIVE → RECOVERING → PRIMARY_ACTIVE
+7. Traffic gradually shifted back to primary
+
+================================================================================
+                          gRPC API ENDPOINTS
+================================================================================
+
+Available on port 50055:
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ RPC Method                  │ Description                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ ListNetworkInterfaces()     │ List all WAN/LAN interfaces with status       │
+│ GetInterfaceStats()         │ Get traffic stats for specific interface      │
+│ ConfigureInterface()        │ Update IP/gateway/DNS settings                │
+│ GetRoutingTable()           │ View current routing decisions                │
+│ GetNATMappings()            │ List active NAT translations                  │
+│ TriggerFailover()           │ Manually switch WAN                           │
+│ GetWANHealth()              │ Get health status of all WANs                 │
+│ StreamMetrics()             │ Real-time metrics stream                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Example gRPC calls (using grpcurl):
+
+# List network interfaces
+grpcurl -plaintext localhost:50055 safeops.nic_management.v1.NICManagement/ListNetworkInterfaces
+
+# Get WAN health
+grpcurl -plaintext localhost:50055 safeops.nic_management.v1.NICManagement/GetWANHealth
+
+# Trigger manual failover
+grpcurl -plaintext -d '{"from_wan":"Ethernet","to_wan":"Ethernet 2"}' \
+  localhost:50055 safeops.nic_management.v1.NICManagement/TriggerFailover
+
+================================================================================
+                          PROMETHEUS METRICS
+================================================================================
+
+Available on port 9154 (if enabled):
+
+# WAN interface status (1=UP, 0=DOWN)
+nic_wan_status{interface="Ethernet"} 1
+
+# WAN latency in milliseconds
+nic_wan_latency_ms{interface="Ethernet"} 12
+
+# Active NAT sessions
+nic_nat_sessions_total 1523
+
+# Packets per second by interface
+nic_interface_rx_pps{interface="Ethernet"} 125000
+nic_interface_tx_pps{interface="Ethernet"} 98000
+
+# Bytes per second by interface
+nic_interface_rx_bps{interface="Ethernet"} 987654321
+nic_interface_tx_bps{interface="Ethernet"} 543210987
+
+# Connection tracking stats
+nic_conntrack_entries 50000
+nic_conntrack_max 262144
+
+# Failover events
+nic_failover_events_total 3
+nic_failover_current_wan{interface="Ethernet"} 1
+
+================================================================================
+                          GRACEFUL SHUTDOWN
+================================================================================
+
+When service receives SIGTERM or SIGINT:
+
+1. Log: "Received signal interrupt, initiating graceful shutdown..."
+2. Stop accepting new connections
+3. Wait for in-flight requests to complete (timeout: 30s)
+4. Flush NAT mappings to database (if persistence enabled)
+5. Close gRPC server
+6. Stop all background workers
+7. Log: "NIC Management service stopped"
+
+================================================================================
+                          COMMAND REFERENCE
+================================================================================
+
+# Build the service
+go build -o nic_management.exe ./cmd/...
+
+# Run with config file
+.\nic_management.exe -config config.yaml
+
+# Show version
+.\nic_management.exe -version
+
+# Install as Windows service (requires admin)
+.\nic_management.exe -install
+
+# Uninstall Windows service (requires admin)
+.\nic_management.exe -uninstall
+
+# Run tests
+go test -v ./tests/...
+
+# Run benchmarks
+go test -bench=. ./tests/...
+
+================================================================================
+                          CONFIGURATION FILE
+================================================================================
+
+config.yaml loaded with:
+- WAN Interface: Ethernet (Primary, weight=100)
+- LAN Interface: Ethernet 2 (DHCP server enabled)
+- gRPC Port: 50055
+- NAT Port Range: 10000-65535
+- Max Connections: 262144
+- Health Check Targets: 8.8.8.8, 1.1.1.1
+- Failover: Enabled with 60s recovery delay
+
+================================================================================

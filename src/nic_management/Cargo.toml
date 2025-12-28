@@ -1,23 +1,208 @@
 [package]
 name = "nic_management_rust"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-authors = ["SafeOps Team"]
-description = "High-performance packet processing components for NIC management"
+authors = ["SafeOps Team <team@safeops.io>"]
+description = "High-performance packet processing engine for NIC Management service"
+repository = "https://github.com/safeops/SafeOpsFV2"
+license = "Proprietary"
+readme = "README.md"
 
 [lib]
 name = "nic_rust"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "rlib"]
 
+# =============================================================================
+# CORE DEPENDENCIES
+# Essential Rust crates for packet processing functionality
+# =============================================================================
 [dependencies]
-libc = "0.2"
-log = "0.4"
+# Async runtime for concurrent packet processing and WAN health checking
+tokio = { version = "1.35", features = ["full"] }
+
+# Lock-free data structures for multi-threaded packet queues
 crossbeam = "0.8"
+
+# Packet manipulation and network interface access
+pnet = "0.34"
+
+# libpcap bindings for packet capture (Windows Npcap / Linux libpcap)
+pcap = "1.1"
+
+# C standard library bindings for FFI
+libc = "0.2"
+
+# Lazy static initialization for global state management
+once_cell = "1.19"
+
+# =============================================================================
+# PERFORMANCE DEPENDENCIES
+# Crates for SIMD operations and performance optimization
+# =============================================================================
+
+# SIMD-accelerated JSON parsing for configuration and metrics
+simd-json = "0.13"
+
+# Data parallelism for batch packet processing
+rayon = "1.8"
+
+# Fast mutex/rwlock implementations (faster than std::sync)
 parking_lot = "0.12"
 
-[dev-dependencies]
-criterion = "0.5"
+# Fast non-cryptographic hashing for NAT table lookups
+ahash = "0.8"
 
+# =============================================================================
+# NETWORK PROTOCOL DEPENDENCIES
+# Libraries for protocol parsing and manipulation
+# =============================================================================
+
+# Ethernet/IP/TCP/UDP packet parsing (zero-copy)
+etherparse = "0.14"
+
+# Lightweight TCP/IP stack for packet rewriting and NAT
+smoltcp = "0.11"
+
+# DNS protocol implementation (formerly trust-dns-proto)
+hickory-proto = "0.24"
+
+# =============================================================================
+# FFI AND INTEROP DEPENDENCIES
+# Crates for Go-Rust communication via C FFI
+# =============================================================================
+
+# C-compatible types for FFI boundaries
+cty = "0.2"
+
+# Safe FFI wrapper generation
+safer-ffi = "0.1"
+
+# Logging facade for diagnostic output
+log = "0.4"
+
+# Environment-based logger initialization
+env_logger = "0.11"
+
+# Serialization/deserialization framework
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling with context
+anyhow = "1.0"
+thiserror = "1.0"
+
+# =============================================================================
+# DEV DEPENDENCIES
+# Crates used only for testing and benchmarking
+# =============================================================================
+[dev-dependencies]
+# Benchmarking framework
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Property-based testing
+proptest = "1.4"
+
+# Async testing utilities
+tokio-test = "0.4"
+
+# =============================================================================
+# BUILD DEPENDENCIES
+# Crates needed at build time for native code integration
+# =============================================================================
+[build-dependencies]
+# C compiler integration for native code compilation
+cc = "1.0"
+
+# Auto-generate FFI bindings from C headers
+bindgen = "0.69"
+
+# =============================================================================
+# BENCHMARKS
+# Binary benchmark targets for performance testing
+# =============================================================================
 [[bench]]
 name = "packet_bench"
 harness = false
+
+[[bench]]
+name = "nat_bench"
+harness = false
+
+[[bench]]
+name = "queue_bench"
+harness = false
+
+# =============================================================================
+# RELEASE PROFILE
+# Optimization settings for production builds - maximum packet throughput
+# =============================================================================
+[profile.release]
+# Maximum optimization level (O3 equivalent)
+opt-level = 3
+
+# Link-time optimization across all crates for better inlining
+lto = "fat"
+
+# Single codegen unit for maximum optimization opportunities
+codegen-units = 1
+
+# Abort on panic - smaller binary, no unwinding overhead
+panic = "abort"
+
+# Strip debug symbols from release binary
+strip = true
+
+# Enable debug assertions in release for safety (set to false for max perf)
+debug-assertions = false
+
+# Overflow checks (set to false for max perf in trusted code paths)
+overflow-checks = false
+
+# =============================================================================
+# RELEASE WITH DEBUG PROFILE
+# For profiling and performance analysis
+# =============================================================================
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = false
+
+# =============================================================================
+# DEV PROFILE
+# Fast compilation for development iteration
+# =============================================================================
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+overflow-checks = true
+incremental = true
+
+# Optimize dependencies even in dev for faster runtime
+[profile.dev.package."*"]
+opt-level = 2
+
+# =============================================================================
+# FEATURES
+# Optional features for conditional compilation
+# =============================================================================
+[features]
+default = ["async-runtime"]
+
+# Enable async packet processing with Tokio
+async-runtime = ["tokio"]
+
+# Enable SIMD acceleration for packet parsing
+simd = ["simd-json"]
+
+# Enable detailed tracing for debugging
+tracing = []
+
+# Enable hardware timestamping support (Linux only)
+hw-timestamps = []
+
+# Windows-specific features (Npcap integration)
+windows-npcap = []
+
+# Linux-specific features (AF_PACKET, XDP)
+linux-raw = []
