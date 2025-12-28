@@ -21,7 +21,11 @@ import UserManagement from './pages/Management/UserManagement';
 import FirewallManager from './pages/Management/FirewallManager';
 
 // Network Management Module
+import NetworkLayout from './pages/Network/Layout';
 import NICManagement from './pages/NICManagement';
+import NICSearch from './pages/Network/NICSearch';
+import NetworkTopology from './pages/Network/NetworkTopology';
+import NICDetail from './pages/Network/NICDetail';
 
 // Protected Route wrapper
 function ProtectedRoute() {
@@ -102,7 +106,13 @@ function App() {
               <Route path="/dns" element={<ComingSoon title="DNS Server" />} />
               <Route path="/firewall" element={<FirewallManager />} />
               <Route path="/ids" element={<IDSRuleManager />} />
-              <Route path="/network" element={<NICManagement />} />
+              {/* Network Management Module */}
+              <Route path="/network" element={<NetworkLayout />}>
+                <Route index element={<NICManagement />} />
+                <Route path="search" element={<NICSearch />} />
+                <Route path="topology" element={<NetworkTopology />} />
+                <Route path=":nicId" element={<NICDetail />} />
+              </Route>
               <Route path="/cognitive" element={<Cognitive />} />
               
               {/* Settings */}

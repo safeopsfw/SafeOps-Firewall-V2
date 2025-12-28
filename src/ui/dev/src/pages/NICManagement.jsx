@@ -2,6 +2,7 @@
 // Features: Interface detection, rename, status monitoring, type classification
 
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import "./NICManagement.css";
 
 const NIC_API_BASE = "http://localhost:8081/api";
@@ -24,6 +25,7 @@ const STATUS_COLORS = {
 };
 
 function NICManagement() {
+  const navigate = useNavigate();
   const [nics, setNics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,82 +65,16 @@ function NICManagement() {
       setLastRefresh(new Date());
       setError(null);
     } catch (err) {
-      // Use mock data if API is not available
-      setNics(getMockNICs());
-      setError("Using detected interfaces (API offline)");
+      setError("Backend offline - please start NIC API server");
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock data from detected NICs
-  const getMockNICs = () => [
-    {
-      index: 16,
-      name: "Wi-Fi",
-      alias: "Primary Internet (Wi-Fi)",
-      type: "WAN",
-      status: "UP",
-      ipv4: ["192.168.1.3/24"],
-      gateway: "192.168.1.1",
-      mac: "f4:26:79:73:6f:7c",
-      speed: 144000000,
-      mtu: 1500,
-      isPhysical: true,
-    },
-    {
-      index: 12,
-      name: "Ethernet 2",
-      alias: "VirtualBox Network",
-      type: "LAN",
-      status: "UP",
-      ipv4: ["192.168.56.1/24"],
-      gateway: "",
-      mac: "0a:00:27:00:00:0c",
-      speed: 1000000000,
-      mtu: 1500,
-      isPhysical: true,
-    },
-    {
-      index: 24,
-      name: "Ethernet",
-      alias: "Backup WAN",
-      type: "LAN",
-      status: "DOWN",
-      ipv4: ["192.168.1.2/24"],
-      gateway: "192.168.1.1",
-      mac: "58:11:22:86:fd:c4",
-      speed: 1000000000,
-      mtu: 1500,
-      isPhysical: true,
-    },
-    {
-      index: 43,
-      name: "vEthernet (Default Switch)",
-      alias: "Hyper-V Virtual Switch",
-      type: "VIRTUAL",
-      status: "UP",
-      ipv4: ["172.19.192.1/20"],
-      gateway: "",
-      mac: "00:15:5d:b5:eb:f2",
-      speed: 10000000000,
-      mtu: 1500,
-      isPhysical: false,
-    },
-    {
-      index: 10,
-      name: "VMware Network Adapter VMnet8",
-      alias: "VMware NAT",
-      type: "VIRTUAL",
-      status: "UP",
-      ipv4: ["192.168.171.1/24"],
-      gateway: "",
-      mac: "00:50:56:c0:00:08",
-      speed: 100000000,
-      mtu: 1500,
-      isPhysical: false,
-    },
-  ];
+  // Navigate to NIC detail page
+  const handleCardClick = (nic) => {
+    navigate(`/network/${nic.index}`);
+  };
 
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
@@ -278,6 +214,7 @@ function NICManagement() {
                 priority={idx + 1}
                 onRename={handleRename}
                 onTypeChange={changeType}
+                onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
               />
@@ -300,6 +237,7 @@ function NICManagement() {
                 nic={nic}
                 onRename={handleRename}
                 onTypeChange={changeType}
+                onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
               />
@@ -322,6 +260,7 @@ function NICManagement() {
                 nic={nic}
                 onRename={handleRename}
                 onTypeChange={changeType}
+                onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
               />
@@ -395,12 +334,12 @@ function NICManagement() {
   );
 }
 
-// NIC Card Component
 function NICCard({
   nic,
   priority,
   onRename,
   onTypeChange,
+  onCardClick,
   formatSpeed,
   formatIP,
 }) {
@@ -412,6 +351,8 @@ function NICCard({
       className={`nic-card ${
         isOnline ? "online" : "offline"
       } ${nic.type.toLowerCase()}`}
+      onClick={() => onCardClick(nic)}
+      style={{ cursor: 'pointer' }}
     >
       {/* Priority Badge for WAN */}
       {nic.type === "WAN" && priority && (
@@ -468,7 +409,7 @@ function NICCard({
           <option value="LAN">💻 LAN</option>
           <option value="VIRTUAL">☁️ Virtual</option>
         </select>
-        <button className="nic-rename-btn" onClick={() => onRename(nic)}>
+        <button className="nic-rename-btn" onClick={(e) => { e.stopPropagation(); onRename(nic); }}>
           ✏️ Rename
         </button>
       </div>
