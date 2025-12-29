@@ -17,6 +17,7 @@ import (
 	"certificate_manager/internal/acme"
 	"certificate_manager/internal/ca"
 	"certificate_manager/internal/distribution"
+	"certificate_manager/internal/monitoring"
 	"certificate_manager/internal/storage"
 	"certificate_manager/pkg/types"
 )
@@ -26,11 +27,13 @@ import (
 // ============================================================================
 
 const (
-	ServiceName     = "certificate-manager"
-	ServiceVersion  = "1.0.0"
-	DefaultGRPCPort = 50053
-	DefaultHTTPPort = 8080
-	ShutdownTimeout = 30 * time.Second
+	ServiceName        = "certificate-manager"
+	ServiceVersion     = "1.0.0"
+	DefaultGRPCPort    = 50060 // Updated per documentation
+	DefaultHTTPPort    = 8082  // CA distribution (no admin required)
+	DefaultOCSPPort    = 8888  // OCSP responder
+	DefaultMetricsPort = 9160  // Prometheus metrics
+	ShutdownTimeout    = 30 * time.Second
 )
 
 // ============================================================================
@@ -49,6 +52,12 @@ type Application struct {
 	watcher          *distribution.CertificateWatcher
 	grpcServer       *distribution.CertificateManagerServer
 	httpServer       *http.Server
+	metricsServer    *http.Server
+
+	// Monitoring components
+	healthChecker    *monitoring.HealthChecker
+	statsCollector   *monitoring.StatsCollector
+	metricsCollector *monitoring.MetricsCollector
 
 	// Lifecycle
 	ctx        context.Context
@@ -154,6 +163,12 @@ func (app *Application) initialize() error {
 	logInfo("Initializing distribution services...")
 	if err := app.initDistribution(); err != nil {
 		return fmt.Errorf("failed to initialize distribution: %w", err)
+	}
+
+	// Initialize monitoring
+	logInfo("Initializing monitoring services...")
+	if err := app.initMonitoring(); err != nil {
+		logWarn("Monitoring initialization failed: %v (continuing without full monitoring)", err)
 	}
 
 	// Initialize servers
@@ -280,6 +295,24 @@ func (app *Application) initDistribution() error {
 	if err != nil {
 		return fmt.Errorf("watcher creation failed: %w", err)
 	}
+
+	return nil
+}
+
+// initMonitoring initializes monitoring components
+func (app *Application) initMonitoring() error {
+	// Create stats collector (can work without database)
+	app.statsCollector = monitoring.NewStatsCollector(nil)
+
+	// Create health checker
+	healthConfig := monitoring.DefaultHealthConfig()
+	app.healthChecker = monitoring.NewHealthChecker(healthConfig, nil)
+
+	// Create metrics collector
+	app.metricsCollector = monitoring.NewMetricsCollector(app.statsCollector)
+
+	// Set global metrics instance for use by other packages
+	monitoring.SetGlobalMetrics(app.metricsCollector)
 
 	return nil
 }

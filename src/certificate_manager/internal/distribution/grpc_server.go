@@ -18,7 +18,7 @@ import (
 // ============================================================================
 
 const (
-	DefaultGRPCPort         = 50053
+	DefaultGRPCPort         = 50060
 	DefaultShutdownTimeout  = 30 * time.Second
 	StreamKeepAliveInterval = 30 * time.Second
 )

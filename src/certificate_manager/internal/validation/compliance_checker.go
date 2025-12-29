@@ -3,7 +3,6 @@ package validation
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
@@ -30,11 +29,11 @@ type ComplianceViolation struct {
 
 // ComplianceReport contains the results of a compliance check
 type ComplianceReport struct {
-	Compliant   bool                   `json:"compliant"`
-	Violations  []ComplianceViolation  `json:"violations"`
-	Warnings    []ComplianceViolation  `json:"warnings"`
-	CheckedAt   time.Time              `json:"checked_at"`
-	PolicyLevel string                 `json:"policy_level"` // "ca_browser_forum", "nist", "custom"
+	Compliant   bool                  `json:"compliant"`
+	Violations  []ComplianceViolation `json:"violations"`
+	Warnings    []ComplianceViolation `json:"warnings"`
+	CheckedAt   time.Time             `json:"checked_at"`
+	PolicyLevel string                `json:"policy_level"` // "ca_browser_forum", "nist", "custom"
 }
 
 // CompliancePolicy defines certificate compliance requirements
@@ -56,11 +55,11 @@ type CompliancePolicy struct {
 	} `yaml:"validity"`
 
 	Extensions struct {
-		RequireSAN       bool `yaml:"require_san"`
-		RequireKeyUsage  bool `yaml:"require_key_usage"`
-		RequireEKU       bool `yaml:"require_eku"`
-		RequireAKI       bool `yaml:"require_aki"`
-		RequireSKI       bool `yaml:"require_ski"`
+		RequireSAN      bool `yaml:"require_san"`
+		RequireKeyUsage bool `yaml:"require_key_usage"`
+		RequireEKU      bool `yaml:"require_eku"`
+		RequireAKI      bool `yaml:"require_aki"`
+		RequireSKI      bool `yaml:"require_ski"`
 	} `yaml:"extensions"`
 
 	Standards struct {

@@ -76,6 +76,7 @@ type ClientConfig struct {
 	TLSCertPath   string
 	TLSKeyPath    string
 	TLSCAPath     string
+	APIKey        string // API key for authentication
 }
 
 // ClientOption is a function that configures the client
@@ -192,6 +193,13 @@ func WithTLS(certPath, keyPath, caPath string) ClientOption {
 		c.TLSCertPath = certPath
 		c.TLSKeyPath = keyPath
 		c.TLSCAPath = caPath
+	}
+}
+
+// WithAPIKey sets the API key for authentication
+func WithAPIKey(apiKey string) ClientOption {
+	return func(c *ClientConfig) {
+		c.APIKey = apiKey
 	}
 }
 
@@ -409,6 +417,238 @@ func (c *CertificateClient) StopWatching() {
 	if c.watchCancel != nil {
 		c.watchCancel()
 	}
+}
+
+// ============================================================================
+// Certificate Manager RPC Methods
+// ============================================================================
+
+// CertificateInfo contains CA distribution URLs and metadata.
+type CertificateInfo struct {
+	CAURL             string   `json:"ca_url"`
+	InstallScriptURLs []string `json:"install_script_urls"`
+	WPADURL           string   `json:"wpad_url"`
+	CRLURL            string   `json:"crl_url"`
+	OCSPURL           string   `json:"ocsp_url"`
+	CAFingerprint     string   `json:"ca_fingerprint_sha256"`
+}
+
+// DeviceStatus contains device CA installation status.
+type DeviceStatus struct {
+	DeviceIP           string    `json:"device_ip"`
+	MACAddress         string    `json:"mac_address"`
+	CAInstalled        bool      `json:"ca_installed"`
+	InstallationMethod string    `json:"installation_method"`
+	DetectedAt         time.Time `json:"detected_at"`
+}
+
+// RevocationStatus contains certificate revocation status.
+type RevocationStatus struct {
+	IsRevoked        bool      `json:"is_revoked"`
+	RevokedAt        time.Time `json:"revoked_at"`
+	RevocationReason string    `json:"revocation_reason"`
+}
+
+// RevokeResponse contains revocation operation result.
+type RevokeResponse struct {
+	Success      bool      `json:"success"`
+	Message      string    `json:"message"`
+	CRLUpdatedAt time.Time `json:"crl_updated_at"`
+}
+
+// ListFilter for filtering certificate queries.
+type ListFilter struct {
+	CommonName      string    `json:"common_name"`
+	IssuedAfter     time.Time `json:"issued_after"`
+	IssuedBefore    time.Time `json:"issued_before"`
+	CertificateType string    `json:"certificate_type"`
+	Limit           int       `json:"limit"`
+	Offset          int       `json:"offset"`
+}
+
+// CertificateList contains paginated certificate results.
+type CertificateList struct {
+	Certificates []CertificateSummary `json:"certificates"`
+	TotalCount   int                  `json:"total_count"`
+}
+
+// CertificateDetailsResult contains full certificate metadata.
+type CertificateDetailsResult struct {
+	SerialNumber     string    `json:"serial_number"`
+	CommonName       string    `json:"common_name"`
+	SubjectAltNames  []string  `json:"subject_alt_names"`
+	NotBefore        time.Time `json:"not_before"`
+	NotAfter         time.Time `json:"not_after"`
+	IssuedAt         time.Time `json:"issued_at"`
+	CertificatePEM   string    `json:"certificate_pem"`
+	CertificateType  string    `json:"certificate_type"`
+	Revoked          bool      `json:"revoked"`
+	RevokedAt        time.Time `json:"revoked_at,omitempty"`
+	RevocationReason string    `json:"revocation_reason,omitempty"`
+}
+
+// GetCertificateInfo retrieves CA distribution URLs for DHCP integration.
+// This is the primary integration point for DHCP server.
+func (c *CertificateClient) GetCertificateInfo(ctx context.Context) (*CertificateInfo, error) {
+	if c.closed.Load() {
+		return nil, ErrClientClosed
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout)
+	defer cancel()
+
+	// In production, this would use actual gRPC client:
+	// resp, err := c.grpcClient.GetCertificateInfo(ctx, &pb.GetCertificateInfoRequest{})
+	_ = ctx
+
+	return nil, errors.New("GetCertificateInfo not implemented - requires gRPC connection")
+}
+
+// GetDeviceStatus queries the CA installation status of a device.
+// At least one of ip or mac must be provided.
+func (c *CertificateClient) GetDeviceStatus(ctx context.Context, ip, mac string) (*DeviceStatus, error) {
+	if c.closed.Load() {
+		return nil, ErrClientClosed
+	}
+
+	if ip == "" && mac == "" {
+		return nil, errors.New("at least one of IP or MAC address is required")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout)
+	defer cancel()
+
+	// In production, this would use actual gRPC client:
+	// resp, err := c.grpcClient.GetDeviceStatus(ctx, &pb.DeviceStatusRequest{DeviceIp: ip, MacAddress: mac})
+	_ = ctx
+
+	return nil, errors.New("GetDeviceStatus not implemented - requires gRPC connection")
+}
+
+// SignCertificate requests a new certificate for the given domain and SANs.
+// Used by TLS proxy for on-the-fly certificate generation.
+func (c *CertificateClient) SignCertificate(ctx context.Context, domain string, sans []string) (*Certificate, error) {
+	if c.closed.Load() {
+		return nil, ErrClientClosed
+	}
+
+	if !ValidateDomainName(domain) {
+		return nil, ErrInvalidDomain
+	}
+
+	// Apply longer timeout for signing
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout*2)
+	defer cancel()
+
+	// In production, this would use actual gRPC client:
+	// resp, err := c.grpcClient.SignCertificate(ctx, &pb.SignCertificateRequest{
+	//     CommonName: domain,
+	//     SubjectAltNames: sans,
+	// })
+	_ = ctx
+	_ = sans
+
+	return nil, errors.New("SignCertificate not implemented - requires gRPC connection")
+}
+
+// RevokeCertificate revokes a certificate by serial number.
+// Requires admin role.
+func (c *CertificateClient) RevokeCertificate(ctx context.Context, serial, reason, revokedBy string) (*RevokeResponse, error) {
+	if c.closed.Load() {
+		return nil, ErrClientClosed
+	}
+
+	if serial == "" {
+		return nil, errors.New("serial number is required")
+	}
+
+	if revokedBy == "" {
+		return nil, errors.New("revokedBy (administrator identifier) is required")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout)
+	defer cancel()
+
+	// In production, this would use actual gRPC client:
+	// resp, err := c.grpcClient.RevokeCertificate(ctx, &pb.RevokeCertificateRequest{
+	//     SerialNumber: serial,
+	//     Reason: reason,
+	//     RevokedBy: revokedBy,
+	// })
+	_ = ctx
+	_ = reason
+
+	return nil, errors.New("RevokeCertificate not implemented - requires gRPC connection")
+}
+
+// CheckRevocationStatus checks if a certificate is revoked.
+// No authentication required (public method).
+func (c *CertificateClient) CheckRevocationStatus(ctx context.Context, serial string) (*RevocationStatus, error) {
+	if c.closed.Load() {
+		return nil, ErrClientClosed
+	}
+
+	if serial == "" {
+		return nil, errors.New("serial number is required")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout)
+	defer cancel()
+
+	// In production, this would use actual gRPC client:
+	// resp, err := c.grpcClient.CheckRevocationStatus(ctx, &pb.CheckRevocationStatusRequest{
+	//     SerialNumber: serial,
+	// })
+	_ = ctx
+
+	return nil, errors.New("CheckRevocationStatus not implemented - requires gRPC connection")
+}
+
+// ListIssuedCertificates queries the certificate inventory with filters.
+func (c *CertificateClient) ListIssuedCertificates(ctx context.Context, filter *ListFilter) (*CertificateList, error) {
+	if c.closed.Load() {
+		return nil, ErrClientClosed
+	}
+
+	// Apply default limit if not specified
+	if filter == nil {
+		filter = &ListFilter{}
+	}
+	if filter.Limit <= 0 {
+		filter.Limit = 100
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout)
+	defer cancel()
+
+	// In production, this would use actual gRPC client:
+	// resp, err := c.grpcClient.ListIssuedCertificates(ctx, &pb.ListIssuedCertificatesRequest{...})
+	_ = ctx
+	_ = filter
+
+	return nil, errors.New("ListIssuedCertificates not implemented - requires gRPC connection")
+}
+
+// GetCertificateDetailsBySerial retrieves full certificate details by serial number.
+func (c *CertificateClient) GetCertificateDetailsBySerial(ctx context.Context, serial string) (*CertificateDetailsResult, error) {
+	if c.closed.Load() {
+		return nil, ErrClientClosed
+	}
+
+	if serial == "" {
+		return nil, errors.New("serial number is required")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout)
+	defer cancel()
+
+	// In production, this would use actual gRPC client:
+	// resp, err := c.grpcClient.GetCertificateDetails(ctx, &pb.CertificateDetailsRequest{
+	//     SerialNumber: serial,
+	// })
+	_ = ctx
+
+	return nil, errors.New("GetCertificateDetailsBySerial not implemented - requires gRPC connection")
 }
 
 // ============================================================================

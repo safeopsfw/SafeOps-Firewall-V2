@@ -1,4 +1,4 @@
-// Package validation provides certificate validation and monitoring services
+ï»¿// Package validation provides certificate validation and monitoring services
 package validation
 
 import (
@@ -17,7 +17,6 @@ import (
 
 	"certificate_manager/internal/ca"
 	"certificate_manager/internal/storage"
-	"certificate_manager/pkg/types"
 )
 
 // ExpiringCertificate represents a certificate approaching expiration
@@ -49,11 +48,11 @@ type CAExpiryStatus struct {
 
 // ExpiryReport represents a comprehensive certificate expiry report
 type ExpiryReport struct {
-	GeneratedAt    time.Time              `json:"generated_at"`
-	ScanPeriodDays int                    `json:"scan_period_days"`
-	Summary        ExpiryReportSummary    `json:"summary"`
-	Certificates   []ExpiringCertificate  `json:"certificates"`
-	CAStatus       *CAExpiryStatus        `json:"ca_status,omitempty"`
+	GeneratedAt    time.Time             `json:"generated_at"`
+	ScanPeriodDays int                   `json:"scan_period_days"`
+	Summary        ExpiryReportSummary   `json:"summary"`
+	Certificates   []ExpiringCertificate `json:"certificates"`
+	CAStatus       *CAExpiryStatus       `json:"ca_status,omitempty"`
 }
 
 // ExpiryReportSummary provides statistical summary of expiring certificates
@@ -68,8 +67,9 @@ type ExpiryReportSummary struct {
 
 // ExpiryMonitor monitors certificate expiration and sends alerts
 type ExpiryMonitor struct {
-	certRepo   *storage.CertificateRepository
-	caStorage  *ca.CAStorage
+	certRepo   storage.CertificateRepository
+	caStorage  *ca.CAStorageConfig
+	db         DatabaseQuerier
 	thresholds ExpiryThresholds
 	config     ExpiryMonitorConfig
 	stopChan   chan struct{}
@@ -98,7 +98,7 @@ type ExpiryMonitorConfig struct {
 }
 
 // NewExpiryMonitor creates a new certificate expiry monitor
-func NewExpiryMonitor(certRepo *storage.CertificateRepository, caStorage *ca.CAStorage, config ExpiryMonitorConfig) *ExpiryMonitor {
+func NewExpiryMonitor(certRepo storage.CertificateRepository, caStorage *ca.CAStorageConfig, db DatabaseQuerier, config ExpiryMonitorConfig) *ExpiryMonitor {
 	// Set default thresholds if not configured
 	if config.WarningDays == 0 {
 		config.WarningDays = 30
@@ -116,6 +116,7 @@ func NewExpiryMonitor(certRepo *storage.CertificateRepository, caStorage *ca.CAS
 	return &ExpiryMonitor{
 		certRepo:  certRepo,
 		caStorage: caStorage,
+		db:        db,
 		config:    config,
 		thresholds: ExpiryThresholds{
 			WarningDays:  config.WarningDays,
@@ -261,6 +262,10 @@ func (em *ExpiryMonitor) performScan() error {
 func (em *ExpiryMonitor) ScanExpiringCertificates(days int) ([]ExpiringCertificate, error) {
 	ctx := context.Background()
 
+	if em.db == nil {
+		return nil, fmt.Errorf("database not configured")
+	}
+
 	// Query certificates expiring within the threshold
 	query := `
 		SELECT serial_number, common_name, subject_alt_names, not_after,
@@ -271,7 +276,7 @@ func (em *ExpiryMonitor) ScanExpiringCertificates(days int) ([]ExpiringCertifica
 		ORDER BY not_after ASC
 	`
 
-	rows, err := em.certRepo.DB.QueryContext(ctx, fmt.Sprintf(query, days))
+	rows, err := em.db.QueryContext(ctx, fmt.Sprintf(query, days))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query expiring certificates: %w", err)
 	}
@@ -338,7 +343,7 @@ func (em *ExpiryMonitor) DetermineSeverity(daysUntilExpiry int) string {
 // CheckCAExpiry checks the expiration status of the CA certificate
 func (em *ExpiryMonitor) CheckCAExpiry() (*CAExpiryStatus, error) {
 	// Load CA certificate
-	caCert, err := em.caStorage.LoadCACertificate()
+	caCert, err := ca.LoadCACertificate(em.caStorage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
@@ -515,7 +520,7 @@ func (em *ExpiryMonitor) formatEmailBody(critical, warning, expired []ExpiringCe
 
 	// CA Status
 	if caStatus != nil && caStatus.Severity != "ok" {
-		body.WriteString(fmt.Sprintf("   CA CERTIFICATE STATUS: %s\n", strings.ToUpper(caStatus.Severity)))
+		body.WriteString(fmt.Sprintf("!  CA CERTIFICATE STATUS: %s\n", strings.ToUpper(caStatus.Severity)))
 		body.WriteString(fmt.Sprintf("    Expires: %s (%d days remaining)\n\n",
 			caStatus.ExpiresAt.Format("2006-01-02"), caStatus.DaysRemaining))
 	}
@@ -613,7 +618,7 @@ func (em *ExpiryMonitor) sendSlackAlert(certs []ExpiringCertificate, caStatus *C
 			"type": "section",
 			"text": map[string]string{
 				"type": "mrkdwn",
-				"text": fmt.Sprintf("  *CA Certificate:* %s (%d days remaining)",
+				"text": fmt.Sprintf("! *CA Certificate:* %s (%d days remaining)",
 					strings.ToUpper(caStatus.Severity), caStatus.DaysRemaining),
 			},
 		})

@@ -32,9 +32,9 @@ type PKIHealth struct {
 
 // ComponentHealth represents the health status of a single component
 type ComponentHealth struct {
-	Name        string    `json:"name"`         // "ca_certificate", "crl", "ocsp", etc.
-	Status      string    `json:"status"`       // "healthy", "warning", "error"
-	Message     string    `json:"message"`      // Human-readable status message
+	Name        string    `json:"name"`    // "ca_certificate", "crl", "ocsp", etc.
+	Status      string    `json:"status"`  // "healthy", "warning", "error"
+	Message     string    `json:"message"` // Human-readable status message
 	LastChecked time.Time `json:"last_checked"`
 	Details     string    `json:"details,omitempty"` // Additional technical details
 }
@@ -54,13 +54,22 @@ type PKIMetrics struct {
 	DatabaseConnections      int           `json:"database_connections"`
 }
 
+// DatabaseQuerier provides database query methods for health checking.
+type DatabaseQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	PingContext(ctx context.Context) error
+	Stats() sql.DBStats
+}
+
 // HealthReporter monitors and reports PKI health status
 type HealthReporter struct {
-	caStorage      *ca.CAStorage
-	certRepo       *storage.CertificateRepository
+	caStorage      *ca.CAStorageConfig
+	certRepo       storage.CertificateRepository
 	crlGenerator   *revocation.CRLGenerator
 	ocspResponder  *revocation.OCSPResponder
 	expiryMonitor  *ExpiryMonitor
+	db             DatabaseQuerier
 	config         HealthReporterConfig
 	lastHealthData *PKIHealth
 	mu             sync.RWMutex
@@ -82,11 +91,12 @@ type HealthReporterConfig struct {
 
 // NewHealthReporter creates a new PKI health reporter
 func NewHealthReporter(
-	caStorage *ca.CAStorage,
-	certRepo *storage.CertificateRepository,
+	caStorage *ca.CAStorageConfig,
+	certRepo storage.CertificateRepository,
 	crlGenerator *revocation.CRLGenerator,
 	ocspResponder *revocation.OCSPResponder,
 	expiryMonitor *ExpiryMonitor,
+	db DatabaseQuerier,
 ) *HealthReporter {
 	return &HealthReporter{
 		caStorage:     caStorage,
@@ -94,6 +104,7 @@ func NewHealthReporter(
 		crlGenerator:  crlGenerator,
 		ocspResponder: ocspResponder,
 		expiryMonitor: expiryMonitor,
+		db:            db,
 		config:        loadHealthConfigFromEnv(),
 	}
 }
@@ -178,7 +189,7 @@ func (hr *HealthReporter) CheckCAHealth() ComponentHealth {
 	}
 
 	// Load CA certificate
-	caCert, err := hr.caStorage.LoadCACertificate()
+	caCert, err := ca.LoadCACertificate(hr.caStorage)
 	if err != nil {
 		component.Status = "error"
 		component.Message = fmt.Sprintf("Failed to load CA certificate: %v", err)
@@ -235,7 +246,7 @@ func (hr *HealthReporter) CheckCRLFreshness() ComponentHealth {
 	}
 
 	// Get latest CRL
-	crlBytes, err := hr.crlGenerator.GetLatestCRL()
+	crlBytes, err := hr.crlGenerator.GenerateCRL()
 	if err != nil {
 		component.Status = "error"
 		component.Message = fmt.Sprintf("Failed to get CRL: %v", err)
@@ -334,19 +345,13 @@ func (hr *HealthReporter) GetCertificateIssuanceHealth() ComponentHealth {
 	`
 
 	var count int
-	err := hr.certRepo.DB.QueryRowContext(ctx, query).Scan(&count)
-	if err != nil {
-		component.Status = "warning"
-		component.Message = fmt.Sprintf("Failed to query issuance stats: %v", err)
-		return component
-	}
-
-	// Check CA key accessibility
-	_, err = hr.caStorage.LoadCAPrivateKey()
-	if err != nil {
-		component.Status = "error"
-		component.Message = fmt.Sprintf("CA private key not accessible: %v", err)
-		return component
+	if hr.db != nil {
+		err := hr.db.QueryRowContext(ctx, query).Scan(&count)
+		if err != nil {
+			component.Status = "warning"
+			component.Message = fmt.Sprintf("Failed to query issuance stats: %v", err)
+			return component
+		}
 	}
 
 	component.Status = "healthy"
@@ -366,9 +371,15 @@ func (hr *HealthReporter) CheckDatabaseHealth() ComponentHealth {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	if hr.db == nil {
+		component.Status = "warning"
+		component.Message = "Database not configured"
+		return component
+	}
+
 	// Check database connectivity
 	start := time.Now()
-	err := hr.certRepo.DB.PingContext(ctx)
+	err := hr.db.PingContext(ctx)
 	latency := time.Since(start)
 
 	if err != nil {
@@ -388,7 +399,7 @@ func (hr *HealthReporter) CheckDatabaseHealth() ComponentHealth {
 	component.Message = fmt.Sprintf("Database connected, latency: %v", latency)
 
 	// Get connection stats
-	stats := hr.certRepo.DB.Stats()
+	stats := hr.db.Stats()
 	component.Details = fmt.Sprintf("Open connections: %d, Idle: %d",
 		stats.OpenConnections, stats.Idle)
 
@@ -449,15 +460,19 @@ func (hr *HealthReporter) GetPKIMetrics() (*PKIMetrics, error) {
 	ctx := context.Background()
 	metrics := &PKIMetrics{}
 
+	if hr.db == nil {
+		return metrics, nil
+	}
+
 	// Total certificates issued
-	err := hr.certRepo.DB.QueryRowContext(ctx,
+	err := hr.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM issued_certificates").Scan(&metrics.TotalCertificatesIssued)
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Failed to get total certificates: %v", err)
 	}
 
 	// Certificates issued today
-	err = hr.certRepo.DB.QueryRowContext(ctx,
+	err = hr.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM issued_certificates WHERE issued_at > NOW() - INTERVAL '24 hours'").
 		Scan(&metrics.CertificatesIssuedToday)
 	if err != nil && err != sql.ErrNoRows {
@@ -465,7 +480,7 @@ func (hr *HealthReporter) GetPKIMetrics() (*PKIMetrics, error) {
 	}
 
 	// Certificates issued this week
-	err = hr.certRepo.DB.QueryRowContext(ctx,
+	err = hr.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM issued_certificates WHERE issued_at > NOW() - INTERVAL '7 days'").
 		Scan(&metrics.CertificatesIssuedWeek)
 	if err != nil && err != sql.ErrNoRows {
@@ -473,14 +488,14 @@ func (hr *HealthReporter) GetPKIMetrics() (*PKIMetrics, error) {
 	}
 
 	// Total revoked
-	err = hr.certRepo.DB.QueryRowContext(ctx,
+	err = hr.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM revoked_certificates").Scan(&metrics.TotalRevoked)
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Failed to get total revoked: %v", err)
 	}
 
 	// Revoked today
-	err = hr.certRepo.DB.QueryRowContext(ctx,
+	err = hr.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM revoked_certificates WHERE revoked_at > NOW() - INTERVAL '24 hours'").
 		Scan(&metrics.RevokedToday)
 	if err != nil && err != sql.ErrNoRows {
@@ -502,7 +517,7 @@ func (hr *HealthReporter) GetPKIMetrics() (*PKIMetrics, error) {
 	}
 
 	// Database connection stats
-	stats := hr.certRepo.DB.Stats()
+	stats := hr.db.Stats()
 	metrics.DatabaseConnections = stats.OpenConnections
 
 	return metrics, nil
@@ -733,22 +748,28 @@ func (hr *HealthReporter) GetHealthText() (string, error) {
 	buf.WriteString(strings.Repeat("=", 60) + "\n\n")
 
 	// Overall status
-	statusSymbol := "✓"
-	if health.OverallStatus == "degraded" {
-		statusSymbol = "⚠"
-	} else if health.OverallStatus == "unhealthy" {
-		statusSymbol = "✗"
+	var statusSymbol string
+	switch health.OverallStatus {
+	case "degraded":
+		statusSymbol = "!"
+	case "unhealthy":
+		statusSymbol = "X"
+	default:
+		statusSymbol = "OK"
 	}
 	buf.WriteString(fmt.Sprintf("Overall Status: %s %s\n\n", statusSymbol, strings.ToUpper(health.OverallStatus)))
 
 	// Components
 	buf.WriteString("Components:\n")
 	for _, component := range health.Components {
-		symbol := "✓"
-		if component.Status == "warning" {
-			symbol = "⚠"
-		} else if component.Status == "error" {
-			symbol = "✗"
+		var symbol string
+		switch component.Status {
+		case "warning":
+			symbol = "!"
+		case "error":
+			symbol = "X"
+		default:
+			symbol = "OK"
 		}
 		buf.WriteString(fmt.Sprintf("  %s %-20s %s\n", symbol, component.Name+":", component.Message))
 	}

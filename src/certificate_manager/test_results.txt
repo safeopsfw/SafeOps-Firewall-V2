@@ -1,0 +1,450 @@
+=== RUN   TestHashChain_FirstEntry
+--- PASS: TestHashChain_FirstEntry (0.00s)
+=== RUN   TestHashChain_SequentialEntries
+--- PASS: TestHashChain_SequentialEntries (0.00s)
+=== RUN   TestHashChain_HashCalculation
+--- PASS: TestHashChain_HashCalculation (0.00s)
+=== RUN   TestHashChain_ChainIntegrity
+--- PASS: TestHashChain_ChainIntegrity (0.00s)
+=== RUN   TestTamperDetection_ModifiedOperation
+--- PASS: TestTamperDetection_ModifiedOperation (0.00s)
+=== RUN   TestTamperDetection_ModifiedTimestamp
+--- PASS: TestTamperDetection_ModifiedTimestamp (0.00s)
+=== RUN   TestTamperDetection_DeletedEntry
+--- PASS: TestTamperDetection_DeletedEntry (0.00s)
+=== RUN   TestTamperDetection_MultipleModifications
+--- PASS: TestTamperDetection_MultipleModifications (0.00s)
+=== RUN   TestLogOperation_Issue
+--- PASS: TestLogOperation_Issue (0.00s)
+=== RUN   TestLogOperation_Revoke
+--- PASS: TestLogOperation_Revoke (0.00s)
+=== RUN   TestLogOperation_Failed
+--- PASS: TestLogOperation_Failed (0.00s)
+=== RUN   TestQueryAuditLog_ByOperation
+--- PASS: TestQueryAuditLog_ByOperation (0.00s)
+=== RUN   TestQueryAuditLog_ByUser
+--- PASS: TestQueryAuditLog_ByUser (0.00s)
+=== RUN   TestQueryAuditLog_BySerial
+--- PASS: TestQueryAuditLog_BySerial (0.00s)
+=== RUN   TestExportAuditLog_JSON
+--- PASS: TestExportAuditLog_JSON (0.00s)
+=== RUN   TestConcurrentLogging
+--- PASS: TestConcurrentLogging (0.00s)
+=== RUN   TestConcurrentLogging_IDSequence
+--- PASS: TestConcurrentLogging_IDSequence (0.00s)
+=== RUN   TestAuditLogPerformance_Write
+    audit_log_test.go:695: Wrote 10000 entries in 18.9911ms (avg: 1.899┬╡s per entry)
+--- PASS: TestAuditLogPerformance_Write (0.02s)
+=== RUN   TestAuditLogPerformance_Validation
+    audit_log_test.go:724: Validated 10000 entries in 8.0411ms
+--- PASS: TestAuditLogPerformance_Validation (0.02s)
+=== RUN   TestAuditLogClear
+--- PASS: TestAuditLogClear (0.00s)
+=== RUN   TestAuditLogWithContext
+--- PASS: TestAuditLogWithContext (0.00s)
+=== RUN   TestCreateBackup_Success
+--- PASS: TestCreateBackup_Success (0.00s)
+=== RUN   TestCreateBackup_Encryption
+--- PASS: TestCreateBackup_Encryption (0.01s)
+=== RUN   TestCreateBackup_Compression
+--- PASS: TestCreateBackup_Compression (0.00s)
+=== RUN   TestCreateBackup_Contents
+--- PASS: TestCreateBackup_Contents (0.01s)
+=== RUN   TestCreateBackup_Checksum
+--- PASS: TestCreateBackup_Checksum (0.01s)
+=== RUN   TestCreateBackup_Concurrent
+--- PASS: TestCreateBackup_Concurrent (0.00s)
+=== RUN   TestVerifyBackup_Valid
+--- PASS: TestVerifyBackup_Valid (0.01s)
+=== RUN   TestVerifyBackup_CorruptedFile
+--- PASS: TestVerifyBackup_CorruptedFile (0.02s)
+=== RUN   TestVerifyBackup_MissingFile
+--- PASS: TestVerifyBackup_MissingFile (0.00s)
+=== RUN   TestRestoreBackup_Success
+--- PASS: TestRestoreBackup_Success (0.01s)
+=== RUN   TestRestoreBackup_CAValidation
+--- PASS: TestRestoreBackup_CAValidation (0.02s)
+=== RUN   TestApplyRetentionPolicy
+--- PASS: TestApplyRetentionPolicy (0.00s)
+=== RUN   TestBackupPerformance_Duration
+    backup_restore_test.go:806: Backup created in 1.6061ms
+--- PASS: TestBackupPerformance_Duration (0.00s)
+=== RUN   TestRestorePerformance_Duration
+    backup_restore_test.go:838: Backup restored in 11.86ms
+--- PASS: TestRestorePerformance_Duration (0.02s)
+=== RUN   TestBackupEncryption_KeyFingerprint
+--- PASS: TestBackupEncryption_KeyFingerprint (0.00s)
+=== RUN   TestBackup_EmptyData
+--- PASS: TestBackup_EmptyData (0.02s)
+=== RUN   TestBackup_LargeData
+    backup_restore_test.go:926: Large backup size: 1049411 bytes
+--- PASS: TestBackup_LargeData (0.03s)
+=== RUN   TestGenerateRootCA
+--- PASS: TestGenerateRootCA (0.07s)
+=== RUN   TestGenerateRootCA_KeySize
+=== RUN   TestGenerateRootCA_KeySize/KeySize_2048
+=== RUN   TestGenerateRootCA_KeySize/KeySize_3072
+=== RUN   TestGenerateRootCA_KeySize/KeySize_4096
+--- PASS: TestGenerateRootCA_KeySize (0.21s)
+    --- PASS: TestGenerateRootCA_KeySize/KeySize_2048 (0.02s)
+    --- PASS: TestGenerateRootCA_KeySize/KeySize_3072 (0.07s)
+    --- PASS: TestGenerateRootCA_KeySize/KeySize_4096 (0.12s)
+=== RUN   TestGenerateRootCA_Validity
+=== RUN   TestGenerateRootCA_Validity/Validity_1Years
+=== RUN   TestGenerateRootCA_Validity/Validity_5Years
+=== RUN   TestGenerateRootCA_Validity/Validity_10Years
+--- PASS: TestGenerateRootCA_Validity (0.04s)
+    --- PASS: TestGenerateRootCA_Validity/Validity_1Years (0.01s)
+    --- PASS: TestGenerateRootCA_Validity/Validity_5Years (0.02s)
+    --- PASS: TestGenerateRootCA_Validity/Validity_10Years (0.01s)
+=== RUN   TestGenerateRootCA_SerialUniqueness
+--- PASS: TestGenerateRootCA_SerialUniqueness (0.43s)
+=== RUN   TestGenerateRootCA_SelfSigned
+--- PASS: TestGenerateRootCA_SelfSigned (0.07s)
+=== RUN   TestEncryptPrivateKey
+--- PASS: TestEncryptPrivateKey (0.02s)
+=== RUN   TestEncryptDecryptPrivateKey
+--- PASS: TestEncryptDecryptPrivateKey (0.06s)
+=== RUN   TestEncryptPrivateKey_WrongPassphrase
+--- PASS: TestEncryptPrivateKey_WrongPassphrase (0.05s)
+=== RUN   TestEncryptPrivateKey_CorruptedCiphertext
+--- PASS: TestEncryptPrivateKey_CorruptedCiphertext (0.03s)
+=== RUN   TestPassphraseGeneration
+--- PASS: TestPassphraseGeneration (0.00s)
+=== RUN   TestPBKDF2Derivation
+--- PASS: TestPBKDF2Derivation (0.04s)
+=== RUN   TestSaveAndLoadCA
+--- PASS: TestSaveAndLoadCA (0.06s)
+=== RUN   TestSaveCA_FilePermissions
+    ca_generation_test.go:563: Skipping file permission test on Windows
+--- SKIP: TestSaveCA_FilePermissions (0.00s)
+=== RUN   TestSaveCA_DirectoryCreation
+--- PASS: TestSaveCA_DirectoryCreation (0.08s)
+=== RUN   TestValidateCA_Valid
+--- PASS: TestValidateCA_Valid (0.08s)
+=== RUN   TestValidateCA_NotCA
+--- PASS: TestValidateCA_NotCA (0.05s)
+=== RUN   TestValidateCA_Expired
+--- PASS: TestValidateCA_Expired (0.05s)
+=== RUN   TestValidateCA_NotYetValid
+--- PASS: TestValidateCA_NotYetValid (0.02s)
+=== RUN   TestCheckExpiry
+--- PASS: TestCheckExpiry (0.15s)
+=== RUN   TestLoadCA_FileNotFound
+--- PASS: TestLoadCA_FileNotFound (0.00s)
+=== RUN   TestLoadCA_CorruptedPEM
+--- PASS: TestLoadCA_CorruptedPEM (0.00s)
+=== RUN   TestValidateCA_Nil
+--- PASS: TestValidateCA_Nil (0.00s)
+=== RUN   TestCAFingerprint
+--- PASS: TestCAFingerprint (0.04s)
+=== RUN   TestRenewCA
+--- PASS: TestRenewCA (0.08s)
+=== RUN   TestDetectCAInstallation_DeviceUnreachable
+--- PASS: TestDetectCAInstallation_DeviceUnreachable (0.53s)
+=== RUN   TestDetectCAInstallation_WithTLSServer
+    device_tracking_test.go:390: CA installation detected: false
+--- PASS: TestDetectCAInstallation_WithTLSServer (0.05s)
+=== RUN   TestUpdateDeviceStatus_NewDevice
+--- PASS: TestUpdateDeviceStatus_NewDevice (0.01s)
+=== RUN   TestUpdateDeviceStatus_ExistingDevice
+--- PASS: TestUpdateDeviceStatus_ExistingDevice (0.02s)
+=== RUN   TestUpdateDeviceStatus_StatusChange
+--- PASS: TestUpdateDeviceStatus_StatusChange (0.06s)
+=== RUN   TestGetInstallationReport
+--- PASS: TestGetInstallationReport (0.05s)
+=== RUN   TestGetInstallationReport_Empty
+--- PASS: TestGetInstallationReport_Empty (0.06s)
+=== RUN   TestGetDeviceList
+--- PASS: TestGetDeviceList (0.02s)
+=== RUN   TestGetCoverage
+--- PASS: TestGetCoverage (0.05s)
+=== RUN   TestStartTracking
+--- PASS: TestStartTracking (0.04s)
+=== RUN   TestStopTracking
+--- PASS: TestStopTracking (0.02s)
+=== RUN   TestStartTrackingTwice
+--- PASS: TestStartTrackingTwice (0.07s)
+=== RUN   TestScanDevices
+--- PASS: TestScanDevices (0.04s)
+=== RUN   TestCorrelateDownloadToInstallation
+--- PASS: TestCorrelateDownloadToInstallation (0.02s)
+=== RUN   TestInstallationWithoutDownload
+--- PASS: TestInstallationWithoutDownload (0.03s)
+=== RUN   TestConcurrentDeviceUpdates
+--- PASS: TestConcurrentDeviceUpdates (0.03s)
+=== RUN   TestConcurrentReportGeneration
+--- PASS: TestConcurrentReportGeneration (0.03s)
+=== RUN   TestLargeDeviceSet
+    device_tracking_test.go:757: Added 1000 devices in 603.8┬╡s
+    device_tracking_test.go:758: Generated report in 0s
+    device_tracking_test.go:759: Report: 1000 total, 334 with CA, 33.4% adoption
+--- PASS: TestLargeDeviceSet (0.01s)
+=== RUN   TestSetInstallationMethod_DeviceNotFound
+--- PASS: TestSetInstallationMethod_DeviceNotFound (0.03s)
+=== RUN   TestStopTracking_NotRunning
+--- PASS: TestStopTracking_NotRunning (0.02s)
+=== RUN   TestClear
+--- PASS: TestClear (0.07s)
+=== RUN   TestDeviceStatusHTTPHandler
+--- PASS: TestDeviceStatusHTTPHandler (0.04s)
+=== RUN   TestGetCertificateInfo_Success
+--- PASS: TestGetCertificateInfo_Success (0.02s)
+=== RUN   TestGetCertificateInfo_InstallScripts
+--- PASS: TestGetCertificateInfo_InstallScripts (0.03s)
+=== RUN   TestGetDeviceStatus_ByIP
+--- PASS: TestGetDeviceStatus_ByIP (0.02s)
+=== RUN   TestGetDeviceStatus_NotFound
+--- PASS: TestGetDeviceStatus_NotFound (0.06s)
+=== RUN   TestGetDeviceStatus_InvalidRequest
+--- PASS: TestGetDeviceStatus_InvalidRequest (0.04s)
+=== RUN   TestSignCertificate_Success
+--- PASS: TestSignCertificate_Success (0.04s)
+=== RUN   TestSignCertificate_CacheHit
+--- PASS: TestSignCertificate_CacheHit (0.08s)
+=== RUN   TestSignCertificate_InvalidDomain
+--- PASS: TestSignCertificate_InvalidDomain (0.05s)
+=== RUN   TestRevokeCertificate_Success
+--- PASS: TestRevokeCertificate_Success (0.08s)
+=== RUN   TestRevokeCertificate_NotFound
+--- PASS: TestRevokeCertificate_NotFound (0.01s)
+=== RUN   TestRevokeCertificate_AlreadyRevoked
+--- PASS: TestRevokeCertificate_AlreadyRevoked (0.05s)
+=== RUN   TestRevokeCertificate_InvalidReason
+--- PASS: TestRevokeCertificate_InvalidReason (0.22s)
+=== RUN   TestRevokeCertificate_PermissionDenied
+--- PASS: TestRevokeCertificate_PermissionDenied (0.06s)
+=== RUN   TestCheckRevocationStatus_NotRevoked
+--- PASS: TestCheckRevocationStatus_NotRevoked (0.12s)
+=== RUN   TestCheckRevocationStatus_Revoked
+--- PASS: TestCheckRevocationStatus_Revoked (0.07s)
+=== RUN   TestListIssuedCertificates_All
+--- PASS: TestListIssuedCertificates_All (0.34s)
+=== RUN   TestListIssuedCertificates_Pagination
+--- PASS: TestListIssuedCertificates_Pagination (1.12s)
+=== RUN   TestGetCertificateDetails_Success
+--- PASS: TestGetCertificateDetails_Success (0.07s)
+=== RUN   TestGetCertificateDetails_NotFound
+--- PASS: TestGetCertificateDetails_NotFound (0.07s)
+=== RUN   TestAuthentication_ValidAPIKey
+--- PASS: TestAuthentication_ValidAPIKey (0.06s)
+=== RUN   TestAuthentication_InvalidAPIKey
+--- PASS: TestAuthentication_InvalidAPIKey (0.04s)
+=== RUN   TestAuthentication_MissingAPIKey
+--- PASS: TestAuthentication_MissingAPIKey (0.01s)
+=== RUN   TestRateLimit_SignCertificate
+--- PASS: TestRateLimit_SignCertificate (3.85s)
+=== RUN   TestConcurrentSignCertificate
+--- PASS: TestConcurrentSignCertificate (0.83s)
+=== RUN   TestDownloadCA_PEM
+--- PASS: TestDownloadCA_PEM (0.02s)
+=== RUN   TestDownloadCA_DER
+--- PASS: TestDownloadCA_DER (0.07s)
+=== RUN   TestDownloadCA_DownloadTracking
+--- PASS: TestDownloadCA_DownloadTracking (0.02s)
+=== RUN   TestDownloadInstallScript_Linux
+--- PASS: TestDownloadInstallScript_Linux (0.04s)
+=== RUN   TestDownloadInstallScript_Windows
+--- PASS: TestDownloadInstallScript_Windows (0.01s)
+=== RUN   TestDownloadInstallScript_iOS
+--- PASS: TestDownloadInstallScript_iOS (0.02s)
+=== RUN   TestDownloadCRL
+--- PASS: TestDownloadCRL (0.03s)
+=== RUN   TestDownloadTrustGuide
+--- PASS: TestDownloadTrustGuide (0.04s)
+=== RUN   TestDownloadQRCode
+--- PASS: TestDownloadQRCode (0.07s)
+=== RUN   TestDownloadWPAD
+--- PASS: TestDownloadWPAD (0.02s)
+=== RUN   TestHealthCheck
+--- PASS: TestHealthCheck (0.04s)
+=== RUN   TestHTTPNotFound
+--- PASS: TestHTTPNotFound (0.05s)
+=== RUN   TestMethodNotAllowed
+--- PASS: TestMethodNotAllowed (0.02s)
+=== RUN   TestSecurityHeaders
+--- PASS: TestSecurityHeaders (0.02s)
+=== RUN   TestCORS
+--- PASS: TestCORS (0.05s)
+=== RUN   TestConcurrentDownloads
+--- PASS: TestConcurrentDownloads (0.08s)
+=== RUN   TestFullCALifecycle
+    integration_test.go:437: Step 1: CA Generation - PASS
+    integration_test.go:448: Step 2: CA Distribution - PASS
+    integration_test.go:458: Step 3: Certificate Issuance - PASS
+    integration_test.go:466: Step 4: Certificate Validation - PASS
+    integration_test.go:473: Step 5: Certificate Revocation - PASS
+    integration_test.go:483: Step 6: Revocation Verification - PASS
+    integration_test.go:490: Audit Log - PASS
+--- PASS: TestFullCALifecycle (0.05s)
+=== RUN   TestDHCPIntegration
+    integration_test.go:511: Step 1: GetCertificateInfo - PASS
+    integration_test.go:522: Step 2: Device Downloads CA - PASS
+    integration_test.go:528: Step 3: Device Installs CA - PASS
+    integration_test.go:541: Step 4: Device Status Verification - PASS
+--- PASS: TestDHCPIntegration (0.05s)
+=== RUN   TestTLSProxyIntegration
+    integration_test.go:561: Step 1: Certificate issued, serial: 0f311b01c0a70551
+    integration_test.go:576: Step 2: Certificate Validation - PASS
+    integration_test.go:583: Step 3: Cache Hit - PASS
+    integration_test.go:597: Step 4: Revocation Enforcement - PASS
+--- PASS: TestTLSProxyIntegration (0.06s)
+=== RUN   TestDeviceTrackingWorkflow
+    integration_test.go:629: Step 1: 100 Devices Tracked
+    integration_test.go:642: Step 2: Stats - 100 total, 70 installed, 70.0%
+    integration_test.go:656: Step 3: Non-compliant Devices - 30
+--- PASS: TestDeviceTrackingWorkflow (0.10s)
+=== RUN   TestRevocationWorkflow
+    integration_test.go:673: Step 1: Certificate issued, serial: d4a55fbcc661695c
+    integration_test.go:680: Step 2: Certificate active - PASS
+    integration_test.go:686: Step 3: Revocation completed in 0s
+    integration_test.go:696: Step 4: Revocation verified - PASS
+    integration_test.go:711: Step 5: CRL contains revoked certificate - PASS
+    integration_test.go:727: Step 6: Audit log verified - PASS
+--- PASS: TestRevocationWorkflow (0.06s)
+=== RUN   TestPerformance
+    integration_test.go:758: Signed 100 certificates in 3.535924s (avg: 35.35924ms)
+    integration_test.go:779: Concurrent signing of 50 certs: 2.1680979s
+--- PASS: TestPerformance (5.74s)
+=== RUN   TestMultiServiceIntegration
+    integration_test.go:796: DHCP received CA info: http://127.0.0.1:59637/ca.crt
+    integration_test.go:836: Device adoption: 90/100 (90.0%)
+    integration_test.go:843: Certificates issued: 50
+    integration_test.go:844: Certificates revoked: 5
+    integration_test.go:845: Active certificates: 45
+--- PASS: TestMultiServiceIntegration (1.92s)
+=== RUN   TestTLSHandshake
+    integration_test.go:868: Skipping TLS handshake test on Windows due to socket issues
+--- SKIP: TestTLSHandshake (0.00s)
+=== RUN   TestHealthCheckIntegration
+    integration_test.go:966: Health: {"status":"healthy","uptime":"1.0009ms"}
+--- PASS: TestHealthCheckIntegration (0.06s)
+=== RUN   TestContextCancellation
+--- PASS: TestContextCancellation (0.02s)
+=== RUN   TestCleanup
+--- PASS: TestCleanup (0.45s)
+=== RUN   TestConcurrentOperations
+    integration_test.go:1077: Concurrent operations: 100 certs, 100 devices
+--- PASS: TestConcurrentOperations (4.29s)
+=== RUN   TestErrorRecovery
+    integration_test.go:1112: Error recovery tests passed
+--- PASS: TestErrorRecovery (0.13s)
+=== RUN   TestGenerateCRL_Empty
+--- PASS: TestGenerateCRL_Empty (0.05s)
+=== RUN   TestGenerateCRL_WithRevocations
+--- PASS: TestGenerateCRL_WithRevocations (0.03s)
+=== RUN   TestGenerateCRL_Signature
+--- PASS: TestGenerateCRL_Signature (0.05s)
+=== RUN   TestGenerateCRL_Validity
+--- PASS: TestGenerateCRL_Validity (0.02s)
+=== RUN   TestGenerateCRL_Update
+--- PASS: TestGenerateCRL_Update (0.01s)
+=== RUN   TestGenerateCRL_Concurrent
+--- PASS: TestGenerateCRL_Concurrent (0.04s)
+=== RUN   TestServeCRL
+--- PASS: TestServeCRL (0.06s)
+=== RUN   TestOCSPResponder_Good
+--- PASS: TestOCSPResponder_Good (0.02s)
+=== RUN   TestOCSPResponder_Revoked
+--- PASS: TestOCSPResponder_Revoked (0.03s)
+=== RUN   TestOCSPResponder_Unknown
+--- PASS: TestOCSPResponder_Unknown (0.10s)
+=== RUN   TestOCSPResponder_Performance
+    revocation_test.go:608: OCSP 1000 requests in 0s (avg: 0s)
+--- PASS: TestOCSPResponder_Performance (0.02s)
+=== RUN   TestOCSPResponder_Concurrent
+--- PASS: TestOCSPResponder_Concurrent (0.03s)
+=== RUN   TestRevocationStorage_Add
+--- PASS: TestRevocationStorage_Add (0.00s)
+=== RUN   TestRevocationStorage_Check
+--- PASS: TestRevocationStorage_Check (0.00s)
+=== RUN   TestRevocationStorage_LoadFromDB
+--- PASS: TestRevocationStorage_LoadFromDB (0.00s)
+=== RUN   TestRevocationStorage_Concurrent
+--- PASS: TestRevocationStorage_Concurrent (0.00s)
+=== RUN   TestIsRevoked
+--- PASS: TestIsRevoked (0.02s)
+=== RUN   TestGetRevocationInfo
+--- PASS: TestGetRevocationInfo (0.06s)
+=== RUN   TestCheckRevocation_Performance
+    revocation_test.go:793: Checked 10000 revocations in 0s (avg: 0s)
+--- PASS: TestCheckRevocation_Performance (0.02s)
+=== RUN   TestRevocationWorkflow_CRL
+    revocation_test.go:832: Looking for serial 9001 in CRL entries
+--- PASS: TestRevocationWorkflow_CRL (0.03s)
+=== RUN   TestRevocationWorkflow_OCSP
+--- PASS: TestRevocationWorkflow_OCSP (0.01s)
+=== RUN   TestRevocationWorkflow_Both
+--- PASS: TestRevocationWorkflow_Both (0.03s)
+=== RUN   TestRevocation_ImmediatePropagation
+    revocation_test.go:930: OCSP propagation: 0s, CRL propagation: 0s
+--- PASS: TestRevocation_ImmediatePropagation (0.07s)
+=== RUN   TestRevocationAudit_HashChain
+--- PASS: TestRevocationAudit_HashChain (0.02s)
+=== RUN   TestCRLGeneration_ErrorRecovery
+--- PASS: TestCRLGeneration_ErrorRecovery (0.03s)
+=== RUN   TestOCSP_InvalidSerial
+--- PASS: TestOCSP_InvalidSerial (0.04s)
+=== RUN   TestEncryptPrivateKey_AES256GCM
+--- PASS: TestEncryptPrivateKey_AES256GCM (0.09s)
+=== RUN   TestEncryptDecryptRoundTrip
+--- PASS: TestEncryptDecryptRoundTrip (0.05s)
+=== RUN   TestDecryptWithWrongPassphrase
+--- PASS: TestDecryptWithWrongPassphrase (0.03s)
+=== RUN   TestTamperedCiphertext
+--- PASS: TestTamperedCiphertext (0.03s)
+=== RUN   TestPBKDF2KeyDerivation
+--- PASS: TestPBKDF2KeyDerivation (0.04s)
+=== RUN   TestPassphraseStrength
+--- PASS: TestPassphraseStrength (0.00s)
+=== RUN   TestAuditLog_LogOperation
+--- PASS: TestAuditLog_LogOperation (0.00s)
+=== RUN   TestAuditLog_HashChain
+--- PASS: TestAuditLog_HashChain (0.00s)
+=== RUN   TestAuditLog_TamperDetection
+--- PASS: TestAuditLog_TamperDetection (0.00s)
+=== RUN   TestAuditLog_FirstEntry
+--- PASS: TestAuditLog_FirstEntry (0.00s)
+=== RUN   TestAuditLog_Concurrent
+    security_test.go:643: Logged 50 concurrent entries
+--- PASS: TestAuditLog_Concurrent (0.00s)
+=== RUN   TestAuditLog_Retrieval
+--- PASS: TestAuditLog_Retrieval (0.00s)
+=== RUN   TestSecurityRateLimit_SignCertificate
+--- PASS: TestSecurityRateLimit_SignCertificate (0.00s)
+=== RUN   TestRateLimit_RevokeCertificate
+--- PASS: TestRateLimit_RevokeCertificate (0.00s)
+=== RUN   TestRateLimit_TokenBucket
+--- PASS: TestRateLimit_TokenBucket (0.15s)
+=== RUN   TestRateLimit_PerClient
+--- PASS: TestRateLimit_PerClient (0.00s)
+=== RUN   TestRateLimit_ResetCounters
+--- PASS: TestRateLimit_ResetCounters (0.00s)
+=== RUN   TestAccessControl_AdminRole
+--- PASS: TestAccessControl_AdminRole (0.00s)
+=== RUN   TestAccessControl_OperatorRole
+--- PASS: TestAccessControl_OperatorRole (0.00s)
+=== RUN   TestAccessControl_ViewerRole
+--- PASS: TestAccessControl_ViewerRole (0.00s)
+=== RUN   TestAccessControl_UnauthorizedAccess
+--- PASS: TestAccessControl_UnauthorizedAccess (0.00s)
+=== RUN   TestAccessControl_RoleValidation
+--- PASS: TestAccessControl_RoleValidation (0.00s)
+=== RUN   TestKeyProtection_FilePermissions
+    security_test.go:875: Skipping file permission test on Windows
+--- SKIP: TestKeyProtection_FilePermissions (0.00s)
+=== RUN   TestKeyProtection_MemoryClearing
+--- PASS: TestKeyProtection_MemoryClearing (0.00s)
+=== RUN   TestKeyProtection_PassphraseRotation
+--- PASS: TestKeyProtection_PassphraseRotation (0.07s)
+=== RUN   TestSecureDelete_OverwriteFile
+--- PASS: TestSecureDelete_OverwriteFile (0.01s)
+=== RUN   TestPasswordPolicy_MinimumLength
+--- PASS: TestPasswordPolicy_MinimumLength (0.00s)
+=== RUN   TestPasswordPolicy_Randomness
+--- PASS: TestPasswordPolicy_Randomness (0.00s)
+=== RUN   TestSecurityIntegration
+    security_test.go:1076: Security integration test passed
+--- PASS: TestSecurityIntegration (0.03s)
+PASS
+ok  	certificate_manager/tests	26.959s

@@ -19,7 +19,7 @@ import (
 
 // Default Values
 const (
-	DefaultGRPCPort          = 50053
+	DefaultGRPCPort          = 50060
 	DefaultRenewBeforeDays   = 30
 	DefaultCheckInterval     = 24 * time.Hour
 	DefaultMaxRetries        = 3
