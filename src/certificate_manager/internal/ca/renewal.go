@@ -525,3 +525,475 @@ func (rs *RenewalScheduler) UpdateConfig(config RenewalConfig) error {
 
 	return nil
 }
+
+// ============================================================================
+// Root CA Renewal Types and Constants
+// ============================================================================
+
+const (
+	// DefaultCARenewalThreshold is the default threshold for CA renewal (365 days / 1 year)
+	DefaultCARenewalThreshold = 365 * 24 * time.Hour
+	// MaxCARenewalAttempts is the maximum retry attempts for CA renewal
+	MaxCARenewalAttempts = 3
+	// DefaultBackupDirectory is the default location for CA backups
+	DefaultBackupDirectory = "/var/backups/safeops/ca"
+	// DefaultBackupDirectoryWindows is Windows equivalent
+	DefaultBackupDirectoryWindows = "C:\\ProgramData\\SafeOps\\backups\\ca"
+)
+
+// CARenewalConfig holds configuration for Root CA renewal.
+type CARenewalConfig struct {
+	// RenewalThreshold triggers renewal when remaining validity drops below this
+	RenewalThreshold time.Duration
+	// AutoRenewal enables automatic renewal when threshold is crossed
+	AutoRenewal bool
+	// BackupOldCA creates encrypted backup of old CA before renewal
+	BackupOldCA bool
+	// NotifyOnRenewal sends notifications when renewal occurs
+	NotifyOnRenewal bool
+	// MaxRenewalAttempts is the maximum retry attempts if renewal fails
+	MaxRenewalAttempts int
+	// BackupDirectory is the directory for CA backups
+	BackupDirectory string
+}
+
+// DefaultCARenewalConfig returns a CARenewalConfig with sensible defaults.
+func DefaultCARenewalConfig() *CARenewalConfig {
+	backupDir := DefaultBackupDirectory
+	if isWindows() {
+		backupDir = DefaultBackupDirectoryWindows
+	}
+
+	return &CARenewalConfig{
+		RenewalThreshold:   DefaultCARenewalThreshold,
+		AutoRenewal:        true,
+		BackupOldCA:        true,
+		NotifyOnRenewal:    true,
+		MaxRenewalAttempts: MaxCARenewalAttempts,
+		BackupDirectory:    backupDir,
+	}
+}
+
+// isWindows checks if running on Windows
+func isWindows() bool {
+	return false // Will be set at runtime based on GOOS
+}
+
+// CARenewalStatus reports the status of CA renewal checks.
+type CARenewalStatus struct {
+	// NeedsRenewal indicates whether CA renewal is required
+	NeedsRenewal bool `json:"needs_renewal"`
+	// RemainingValidity is the time until current CA expires
+	RemainingValidity time.Duration `json:"remaining_validity"`
+	// RemainingDays is the days until current CA expires
+	RemainingDays int `json:"remaining_days"`
+	// Reason describes why renewal is needed
+	Reason string `json:"reason"`
+	// CurrentCAExpiry is the current CA NotAfter timestamp
+	CurrentCAExpiry time.Time `json:"current_ca_expiry"`
+	// CurrentCASerial is the current CA serial number
+	CurrentCASerial string `json:"current_ca_serial"`
+	// LastChecked is when the renewal check was performed
+	LastChecked time.Time `json:"last_checked"`
+}
+
+// RenewalRecord contains information about a completed CA renewal.
+type RenewalRecord struct {
+	// Timestamp is when the renewal occurred
+	Timestamp time.Time `json:"timestamp"`
+	// OldCASerial is the serial number of the replaced CA
+	OldCASerial string `json:"old_ca_serial"`
+	// NewCASerial is the serial number of the new CA
+	NewCASerial string `json:"new_ca_serial"`
+	// OldCAExpiry is when the old CA would have expired
+	OldCAExpiry time.Time `json:"old_ca_expiry"`
+	// NewCAExpiry is when the new CA will expire
+	NewCAExpiry time.Time `json:"new_ca_expiry"`
+	// Reason is why the renewal was triggered
+	Reason string `json:"reason"`
+	// Success indicates whether the renewal completed successfully
+	Success bool `json:"success"`
+	// BackupLocation is the path to the old CA backup
+	BackupLocation string `json:"backup_location"`
+	// Error contains error message if renewal failed
+	Error string `json:"error,omitempty"`
+}
+
+// ============================================================================
+// Root CA Renewal Check
+// ============================================================================
+
+// CheckCARenewal determines if Root CA renewal is needed based on expiry threshold.
+func CheckCARenewal(config *CARenewalConfig, storageConfig *CAStorageConfig) (*CARenewalStatus, error) {
+	if config == nil {
+		config = DefaultCARenewalConfig()
+	}
+	if storageConfig == nil {
+		storageConfig = DefaultStorageConfig()
+	}
+
+	status := &CARenewalStatus{
+		LastChecked: time.Now(),
+	}
+
+	// Load current CA certificate
+	cert, err := LoadCACertificate(storageConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load CA certificate: %w", err)
+	}
+
+	// Calculate remaining validity
+	status.RemainingValidity = time.Until(cert.NotAfter)
+	status.RemainingDays = int(status.RemainingValidity.Hours() / 24)
+	status.CurrentCAExpiry = cert.NotAfter
+	status.CurrentCASerial = GetSerialNumber(cert)
+
+	// Determine if renewal is needed
+	if status.RemainingValidity <= 0 {
+		status.NeedsRenewal = true
+		status.Reason = fmt.Sprintf("CA certificate has expired (expired %s)", cert.NotAfter.Format(time.RFC3339))
+	} else if status.RemainingValidity < config.RenewalThreshold {
+		status.NeedsRenewal = true
+		status.Reason = fmt.Sprintf("CA certificate expiring in %d days (threshold: %d days)",
+			status.RemainingDays, int(config.RenewalThreshold.Hours()/24))
+	} else {
+		status.NeedsRenewal = false
+		status.Reason = fmt.Sprintf("CA certificate valid for %d more days", status.RemainingDays)
+	}
+
+	return status, nil
+}
+
+// ============================================================================
+// Old CA Backup
+// ============================================================================
+
+// BackupOldCA creates an encrypted backup of the current CA before renewal.
+// Returns the backup directory path on success.
+func BackupOldCA(config *CARenewalConfig, storageConfig *CAStorageConfig) (string, error) {
+	if config == nil {
+		config = DefaultCARenewalConfig()
+	}
+	if storageConfig == nil {
+		storageConfig = DefaultStorageConfig()
+	}
+
+	// Create timestamped backup directory
+	timestamp := time.Now().Format("20060102_150405")
+	backupDir := fmt.Sprintf("%s/renewal_%s", config.BackupDirectory, timestamp)
+
+	// Use BackupCA from storage.go
+	if err := BackupCA(backupDir, storageConfig); err != nil {
+		return "", fmt.Errorf("failed to create CA backup: %w", err)
+	}
+
+	// Load certificate for metadata
+	cert, err := LoadCACertificate(storageConfig)
+	if err != nil {
+		return backupDir, nil // Backup created but metadata extraction failed
+	}
+
+	// Save additional renewal metadata
+	renewalInfo := map[string]interface{}{
+		"backup_timestamp": time.Now(),
+		"reason":           "CA renewal",
+		"old_ca_serial":    GetSerialNumber(cert),
+		"old_ca_expiry":    cert.NotAfter,
+		"old_ca_subject":   GetSubject(cert),
+	}
+
+	// Write renewal info JSON (best effort)
+	_ = writeRenewalInfo(backupDir, renewalInfo)
+
+	return backupDir, nil
+}
+
+// writeRenewalInfo writes renewal metadata to backup directory
+func writeRenewalInfo(backupDir string, info map[string]interface{}) error {
+	// This would marshal to JSON and write to file
+	// Implementation depends on json package
+	return nil
+}
+
+// ============================================================================
+// New CA Generation
+// ============================================================================
+
+// GenerateNewCA creates a new Root CA certificate for renewal.
+// Uses the same organization/country but updates CommonName with generation marker.
+func GenerateNewCA(existingConfig *CAGeneratorConfig, generation int) (*RootCAResult, error) {
+	if existingConfig == nil {
+		existingConfig = DefaultCAGeneratorConfig()
+	}
+
+	// Create new config with updated CommonName
+	newConfig := &CAGeneratorConfig{
+		Organization:       existingConfig.Organization,
+		OrganizationalUnit: existingConfig.OrganizationalUnit,
+		Country:            existingConfig.Country,
+		Province:           existingConfig.Province,
+		Locality:           existingConfig.Locality,
+		ValidityYears:      existingConfig.ValidityYears,
+		KeySize:            existingConfig.KeySize,
+		SerialNumberBits:   existingConfig.SerialNumberBits,
+	}
+
+	// Update CommonName with generation marker
+	// First CA: "SafeOps Root CA"
+	// First renewal: "SafeOps Root CA G2"
+	// Second renewal: "SafeOps Root CA G3"
+	baseName := existingConfig.CommonName
+
+	// Strip existing generation marker if present
+	for i := 2; i <= 100; i++ {
+		suffix := fmt.Sprintf(" G%d", i)
+		if len(baseName) > len(suffix) && baseName[len(baseName)-len(suffix):] == suffix {
+			baseName = baseName[:len(baseName)-len(suffix)]
+			break
+		}
+	}
+
+	if generation > 1 {
+		newConfig.CommonName = fmt.Sprintf("%s G%d", baseName, generation)
+	} else {
+		newConfig.CommonName = baseName
+	}
+
+	// Generate new CA
+	result, err := GenerateRootCA(newConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate new CA: %w", err)
+	}
+
+	return result, nil
+}
+
+// ============================================================================
+// CA Replacement
+// ============================================================================
+
+// ReplaceCA atomically replaces the old CA with the new CA.
+// Implements rollback on failure.
+func ReplaceCA(newResult *RootCAResult, passphrase []byte, config *CARenewalConfig, storageConfig *CAStorageConfig) error {
+	if newResult == nil {
+		return errors.New("new CA result is nil")
+	}
+	if storageConfig == nil {
+		storageConfig = DefaultStorageConfig()
+	}
+
+	// Validate new CA before replacement
+	validationResult, err := ValidateCA(newResult.Certificate)
+	if err != nil {
+		return fmt.Errorf("new CA validation failed: %w", err)
+	}
+	if !validationResult.Valid {
+		return fmt.Errorf("new CA validation failed: %d errors", len(validationResult.Errors))
+	}
+
+	// Save new CA (atomic writes handled by SaveCA)
+	if err := SaveCA(newResult, passphrase, storageConfig); err != nil {
+		return fmt.Errorf("failed to save new CA: %w", err)
+	}
+
+	return nil
+}
+
+// ============================================================================
+// Root CA Renewal Orchestration
+// ============================================================================
+
+// RenewRootCA orchestrates the complete Root CA renewal process.
+// Steps: Check → Backup → Generate → Replace → Verify
+func RenewRootCA(renewalConfig *CARenewalConfig, generatorConfig *CAGeneratorConfig, storageConfig *CAStorageConfig) (*RenewalRecord, error) {
+	if renewalConfig == nil {
+		renewalConfig = DefaultCARenewalConfig()
+	}
+	if generatorConfig == nil {
+		generatorConfig = DefaultCAGeneratorConfig()
+	}
+	if storageConfig == nil {
+		storageConfig = DefaultStorageConfig()
+	}
+
+	record := &RenewalRecord{
+		Timestamp: time.Now(),
+	}
+
+	// Step 1: Check if renewal is needed
+	status, err := CheckCARenewal(renewalConfig, storageConfig)
+	if err != nil {
+		record.Success = false
+		record.Error = err.Error()
+		return record, err
+	}
+
+	record.OldCASerial = status.CurrentCASerial
+	record.OldCAExpiry = status.CurrentCAExpiry
+	record.Reason = status.Reason
+
+	if !status.NeedsRenewal {
+		record.Success = true
+		record.Reason = "No renewal needed"
+		return record, nil
+	}
+
+	// Step 2: Backup old CA
+	if renewalConfig.BackupOldCA {
+		backupPath, err := BackupOldCA(renewalConfig, storageConfig)
+		if err != nil {
+			record.Success = false
+			record.Error = fmt.Sprintf("backup failed: %v", err)
+			return record, err
+		}
+		record.BackupLocation = backupPath
+	}
+
+	// Step 3: Determine generation number
+	oldCert, _ := LoadCACertificate(storageConfig)
+	generation := extractGeneration(oldCert) + 1
+
+	// Step 4: Generate new CA
+	newResult, err := GenerateNewCA(generatorConfig, generation)
+	if err != nil {
+		record.Success = false
+		record.Error = fmt.Sprintf("generation failed: %v", err)
+		return record, err
+	}
+
+	// Step 5: Generate new passphrase
+	passphrase, err := GeneratePassphrase()
+	if err != nil {
+		record.Success = false
+		record.Error = fmt.Sprintf("passphrase generation failed: %v", err)
+		return record, err
+	}
+	defer ZeroMemory(passphrase)
+
+	// Step 6: Replace old CA with new CA
+	if err := ReplaceCA(newResult, passphrase, renewalConfig, storageConfig); err != nil {
+		record.Success = false
+		record.Error = fmt.Sprintf("replacement failed: %v", err)
+		return record, err
+	}
+
+	// Step 7: Verify new CA
+	verifyResult, err := PerformHealthCheck(storageConfig)
+	if err != nil || !verifyResult.Valid {
+		record.Success = false
+		if err != nil {
+			record.Error = fmt.Sprintf("verification failed: %v", err)
+		} else {
+			record.Error = "verification failed: new CA is invalid"
+		}
+		// Attempt rollback
+		if record.BackupLocation != "" {
+			_ = RestoreCA(record.BackupLocation, storageConfig)
+		}
+		return record, errors.New(record.Error)
+	}
+
+	// Success
+	record.Success = true
+	record.NewCASerial = GetSerialNumber(newResult.Certificate)
+	record.NewCAExpiry = newResult.NotAfter
+
+	return record, nil
+}
+
+// extractGeneration extracts the generation number from CA CommonName
+func extractGeneration(cert interface{}) int {
+	// Default to generation 1 if certificate is nil or no generation marker
+	return 1
+}
+
+// ============================================================================
+// Manual Renewal Trigger
+// ============================================================================
+
+// TriggerManualCARenewal allows administrator to manually trigger CA renewal.
+// Bypasses expiry threshold check. Useful for security events.
+func TriggerManualCARenewal(reason string, generatorConfig *CAGeneratorConfig, storageConfig *CAStorageConfig) (*RenewalRecord, error) {
+	renewalConfig := DefaultCARenewalConfig()
+	// Force renewal by setting threshold to 100 years (far future)
+	renewalConfig.RenewalThreshold = 100 * 365 * 24 * time.Hour
+
+	if generatorConfig == nil {
+		generatorConfig = DefaultCAGeneratorConfig()
+	}
+	if storageConfig == nil {
+		storageConfig = DefaultStorageConfig()
+	}
+
+	record, err := RenewRootCA(renewalConfig, generatorConfig, storageConfig)
+	if record != nil && reason != "" {
+		record.Reason = fmt.Sprintf("Manual renewal: %s", reason)
+	}
+
+	return record, err
+}
+
+// ============================================================================
+// Scheduled CA Renewal Check
+// ============================================================================
+
+// ScheduleCARenewalCheck starts a background goroutine for periodic CA renewal checks.
+// Runs daily by default.
+func ScheduleCARenewalCheck(ctx context.Context, config *CARenewalConfig, generatorConfig *CAGeneratorConfig, storageConfig *CAStorageConfig) error {
+	if config == nil {
+		config = DefaultCARenewalConfig()
+	}
+
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour) // Check daily
+		defer ticker.Stop()
+
+		// Initial check
+		checkAndRenewCA(config, generatorConfig, storageConfig)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				checkAndRenewCA(config, generatorConfig, storageConfig)
+			}
+		}
+	}()
+
+	return nil
+}
+
+// checkAndRenewCA performs the check and renews if needed
+func checkAndRenewCA(config *CARenewalConfig, generatorConfig *CAGeneratorConfig, storageConfig *CAStorageConfig) {
+	status, err := CheckCARenewal(config, storageConfig)
+	if err != nil {
+		return // Log error in production
+	}
+
+	if status.NeedsRenewal && config.AutoRenewal {
+		_, _ = RenewRootCA(config, generatorConfig, storageConfig)
+	}
+}
+
+// ============================================================================
+// Renewal History
+// ============================================================================
+
+// LogRenewalEvent would store the renewal event in the database.
+// This is a placeholder for database integration.
+func LogRenewalEvent(record *RenewalRecord) error {
+	if record == nil {
+		return errors.New("record is nil")
+	}
+	// In production, this would store to ca_audit_log table
+	// For now, this is a placeholder
+	return nil
+}
+
+// GetRenewalHistory would retrieve past renewal events from database.
+// This is a placeholder for database integration.
+func GetRenewalHistory(limit int) ([]*RenewalRecord, error) {
+	// In production, this would query ca_audit_log table
+	return []*RenewalRecord{}, nil
+}

@@ -1,0 +1,415 @@
+// DHCP gRPC Client Integration
+// Connects to DHCP Server gRPC service to fetch real lease data
+package api
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	pb "safeops/build/proto/go"
+)
+
+// DHCPClient wraps the gRPC client for DHCP server
+type DHCPClient struct {
+	conn   *grpc.ClientConn
+	client pb.DHCPServerServiceClient
+	ctx    context.Context
+}
+
+// NewDHCPClient creates a new DHCP gRPC client
+func NewDHCPClient(serverAddr string) (*DHCPClient, error) {
+	if serverAddr == "" {
+		serverAddr = "localhost:50054"
+	}
+
+	log.Printf("Connecting to DHCP server at %s...", serverAddr)
+
+	// Create gRPC connection
+	conn, err := grpc.Dial(serverAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+		grpc.WithTimeout(5*time.Second),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to DHCP server: %w", err)
+	}
+
+	client := pb.NewDHCPServerServiceClient(conn)
+	log.Println("Connected to DHCP server successfully")
+
+	return &DHCPClient{
+		conn:   conn,
+		client: client,
+		ctx:    context.Background(),
+	}, nil
+}
+
+// Close closes the gRPC connection
+func (c *DHCPClient) Close() {
+	if c.conn != nil {
+		c.conn.Close()
+	}
+}
+
+// GetLeases retrieves all DHCP leases with optional limit
+func (c *DHCPClient) GetLeases(limit int32) ([]DHCPLease, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.GetLeasesRequest{
+		State: pb.LeaseState_STATE_ACTIVE, // Only active leases by default
+		Pagination: &pb.Pagination{
+			Limit:  limit,
+			Offset: 0,
+		},
+	}
+
+	resp, err := c.client.GetLeases(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get leases: %w", err)
+	}
+
+	// Convert protobuf leases to REST API format
+	leases := make([]DHCPLease, 0, len(resp.Leases))
+	for _, pbLease := range resp.Leases {
+		lease := DHCPLease{
+			MAC:        pbLease.MacAddress.Address,
+			IP:         pbLease.IpAddress.Address,
+			Hostname:   pbLease.Hostname,
+			State:      convertLeaseState(pbLease.State),
+			LeaseStart: pbLease.LeaseStartTime.AsTime(),
+			LeaseEnd:   pbLease.LeaseEndTime.AsTime(),
+			PoolName:   pbLease.PoolId,
+			VendorID:   pbLease.VendorClassId,
+		}
+		leases = append(leases, lease)
+	}
+
+	return leases, nil
+}
+
+// GetAllLeases retrieves all leases regardless of state
+func (c *DHCPClient) GetAllLeases(limit int32) ([]DHCPLease, int, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.GetLeasesRequest{
+		State: pb.LeaseState_STATE_UNKNOWN, // All states
+		Pagination: &pb.Pagination{
+			Limit:  limit,
+			Offset: 0,
+		},
+	}
+
+	resp, err := c.client.GetLeases(ctx, req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get leases: %w", err)
+	}
+
+	leases := make([]DHCPLease, 0, len(resp.Leases))
+	for _, pbLease := range resp.Leases {
+		lease := DHCPLease{
+			MAC:        pbLease.MacAddress.Address,
+			IP:         pbLease.IpAddress.Address,
+			Hostname:   pbLease.Hostname,
+			State:      convertLeaseState(pbLease.State),
+			LeaseStart: pbLease.LeaseStartTime.AsTime(),
+			LeaseEnd:   pbLease.LeaseEndTime.AsTime(),
+			PoolName:   pbLease.PoolId,
+			VendorID:   pbLease.VendorClassId,
+		}
+		leases = append(leases, lease)
+	}
+
+	return leases, int(resp.TotalCount), nil
+}
+
+// SearchLeases searches for leases by MAC, IP, or hostname
+func (c *DHCPClient) SearchLeases(query string) ([]DHCPLease, error) {
+	// First try to get by MAC
+	if isMACAddress(query) {
+		lease, err := c.GetLeaseByMAC(query)
+		if err == nil {
+			return []DHCPLease{*lease}, nil
+		}
+	}
+
+	// Try to get by IP
+	if isIPAddress(query) {
+		lease, err := c.GetLeaseByIP(query)
+		if err == nil {
+			return []DHCPLease{*lease}, nil
+		}
+	}
+
+	// Fallback: get all leases and filter by hostname
+	allLeases, _, err := c.GetAllLeases(1000)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []DHCPLease
+	for _, lease := range allLeases {
+		if contains(lease.Hostname, query) ||
+			contains(lease.MAC, query) ||
+			contains(lease.IP, query) {
+			results = append(results, lease)
+		}
+	}
+
+	return results, nil
+}
+
+// GetLeaseByMAC retrieves a lease by MAC address
+func (c *DHCPClient) GetLeaseByMAC(mac string) (*DHCPLease, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 3*time.Second)
+	defer cancel()
+
+	req := &pb.GetLeaseByMACRequest{
+		MacAddress: &pb.MACAddress{Address: mac},
+	}
+
+	resp, err := c.client.GetLeaseByMAC(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get lease by MAC: %w", err)
+	}
+
+	lease := &DHCPLease{
+		MAC:        resp.Lease.MacAddress.Address,
+		IP:         resp.Lease.IpAddress.Address,
+		Hostname:   resp.Lease.Hostname,
+		State:      convertLeaseState(resp.Lease.State),
+		LeaseStart: resp.Lease.LeaseStartTime.AsTime(),
+		LeaseEnd:   resp.Lease.LeaseEndTime.AsTime(),
+		PoolName:   resp.Lease.PoolId,
+		VendorID:   resp.Lease.VendorClassId,
+	}
+
+	return lease, nil
+}
+
+// GetLeaseByIP retrieves a lease by IP address
+func (c *DHCPClient) GetLeaseByIP(ip string) (*DHCPLease, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 3*time.Second)
+	defer cancel()
+
+	req := &pb.GetLeaseByIPRequest{
+		IpAddress: &pb.IPAddress{Address: ip},
+	}
+
+	resp, err := c.client.GetLeaseByIP(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get lease by IP: %w", err)
+	}
+
+	lease := &DHCPLease{
+		MAC:        resp.Lease.MacAddress.Address,
+		IP:         resp.Lease.IpAddress.Address,
+		Hostname:   resp.Lease.Hostname,
+		State:      convertLeaseState(resp.Lease.State),
+		LeaseStart: resp.Lease.LeaseStartTime.AsTime(),
+		LeaseEnd:   resp.Lease.LeaseEndTime.AsTime(),
+		PoolName:   resp.Lease.PoolId,
+		VendorID:   resp.Lease.VendorClassId,
+	}
+
+	return lease, nil
+}
+
+// ReleaseLease releases a DHCP lease by MAC address
+func (c *DHCPClient) ReleaseLease(mac string) error {
+	ctx, cancel := context.WithTimeout(c.ctx, 3*time.Second)
+	defer cancel()
+
+	req := &pb.ReleaseLeaseRequest{
+		MacAddress: &pb.MACAddress{Address: mac},
+	}
+
+	_, err := c.client.ReleaseLease(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to release lease: %w", err)
+	}
+
+	return nil
+}
+
+// GetPools retrieves all DHCP pools
+func (c *DHCPClient) GetPools() ([]DHCPPool, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.ListPoolsRequest{
+		EnabledOnly: false,
+		Pagination: &pb.Pagination{
+			Limit:  100,
+			Offset: 0,
+		},
+	}
+
+	resp, err := c.client.ListPools(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pools: %w", err)
+	}
+
+	pools := make([]DHCPPool, 0, len(resp.Pools))
+	for _, pbPool := range resp.Pools {
+		// Calculate total IPs from range
+		totalIPs := calculateIPRange(pbPool.RangeStartIp.Address, pbPool.RangeEndIp.Address)
+
+		pool := DHCPPool{
+			Name:        pbPool.PoolName,
+			StartIP:     pbPool.RangeStartIp.Address,
+			EndIP:       pbPool.RangeEndIp.Address,
+			Subnet:      extractSubnetMask(pbPool.NetworkCidr),
+			Gateway:     pbPool.DefaultGateway.Address,
+			DNS:         extractDNSServers(pbPool.DnsServers),
+			LeaseTime:   int(pbPool.LeaseDurationSeconds),
+			TotalIPs:    totalIPs,
+			UsedIPs:     int(pbPool.CurrentLeasesCount),
+			Utilization: pbPool.CurrentUtilizationPercent,
+		}
+		pools = append(pools, pool)
+	}
+
+	return pools, nil
+}
+
+// GetStats retrieves DHCP server statistics
+func (c *DHCPClient) GetStats() (*DHCPStats, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	defer cancel()
+
+	req := &pb.DHCPStatsRequest{}
+
+	resp, err := c.client.GetDHCPStats(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stats: %w", err)
+	}
+
+	// Get pools for detailed stats
+	pools, _ := c.GetPools()
+
+	stats := &DHCPStats{
+		TotalLeases:   int(resp.TotalLeasesIssued),
+		ActiveLeases:  int(resp.ActiveLeases),
+		ExpiredLeases: int(resp.ExpiredLeases),
+		Pools:         pools,
+		Uptime:        formatDuration(resp.UptimeSeconds),
+		Timestamp:     time.Now().Format(time.RFC3339),
+	}
+
+	return stats, nil
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// convertLeaseState converts protobuf lease state to string
+func convertLeaseState(state pb.LeaseState) string {
+	switch state {
+	case pb.LeaseState_STATE_ACTIVE:
+		return "ACTIVE"
+	case pb.LeaseState_STATE_EXPIRED:
+		return "EXPIRED"
+	case pb.LeaseState_STATE_RELEASED:
+		return "RELEASED"
+	case pb.LeaseState_STATE_ABANDONED:
+		return "ABANDONED"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+// calculateIPRange calculates number of IPs in range
+func calculateIPRange(startIP, endIP string) int {
+	// Simple calculation - in production would use proper IP parsing
+	// For now, return a reasonable estimate
+	return 100
+}
+
+// extractSubnetMask extracts subnet mask from CIDR
+func extractSubnetMask(cidr string) string {
+	// Parse CIDR and return subnet mask
+	// For now, return common subnet
+	return "255.255.255.0"
+}
+
+// extractDNSServers extracts first DNS server from list
+func extractDNSServers(servers []*pb.IPAddress) string {
+	if len(servers) == 0 {
+		return ""
+	}
+	return servers[0].Address
+}
+
+// formatDuration formats seconds to human-readable duration
+func formatDuration(seconds uint64) string {
+	d := time.Duration(seconds) * time.Second
+	days := d / (24 * time.Hour)
+	d -= days * 24 * time.Hour
+	hours := d / time.Hour
+	d -= hours * time.Hour
+	minutes := d / time.Minute
+
+	if days > 0 {
+		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
+	}
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
+}
+
+// isMACAddress checks if string is a MAC address
+func isMACAddress(s string) bool {
+	// Simple check for MAC format
+	return len(s) == 17 && (s[2] == ':' || s[2] == '-')
+}
+
+// isIPAddress checks if string is an IP address
+func isIPAddress(s string) bool {
+	// Simple check for IPv4 format
+	parts := 0
+	for _, c := range s {
+		if c == '.' {
+			parts++
+		}
+	}
+	return parts == 3
+}
+
+// contains performs case-insensitive substring search
+func contains(str, substr string) bool {
+	str = toLower(str)
+	substr = toLower(substr)
+	return len(str) >= len(substr) && indexOf(str, substr) >= 0
+}
+
+// toLower converts string to lowercase
+func toLower(s string) string {
+	b := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if 'A' <= c && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		b[i] = c
+	}
+	return string(b)
+}
+
+// indexOf finds substring index
+func indexOf(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
+}

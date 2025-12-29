@@ -192,3 +192,85 @@ enabled = false
 url = "${WEBHOOK_URL:-}"
 method = "POST"
 headers = { "Content-Type" = "application/json" }
+
+# ============================================================================
+# Section 14: SafeOps Internal CA Configuration
+# ============================================================================
+[ca]
+enabled = true                                     # Enable internal CA
+organization = "SafeOps Network"                   # CA organization name
+country = "US"                                     # CA country code
+state = ""                                         # CA state/province (optional)
+locality = ""                                      # CA city (optional)
+validity_years = 10                                # CA certificate validity
+key_algorithm = "RSA"                              # RSA or ECDSA
+key_size = 4096                                    # 2048, 4096, or 256/384 for ECDSA
+key_encryption_enabled = true                      # Encrypt CA private key at rest
+key_encryption_algorithm = "AES-256-GCM"           # Encryption algorithm
+key_passphrase_file = "${CA_PASSPHRASE_FILE:-/etc/safeops/secrets/ca_passphrase}"
+ca_cert_path = "/etc/safeops/ca/root-cert.pem"     # CA certificate path
+ca_key_path = "/etc/safeops/ca/root-key.pem.enc"   # Encrypted CA key path
+
+# ============================================================================
+# Section 15: HTTP CA Distribution Server (DHCP Integration)
+# ============================================================================
+[ca_distribution]
+enabled = true                                     # Enable HTTP CA distribution
+bind_address = "${CA_DIST_BIND:-0.0.0.0}"          # Bind address
+http_port = "${CA_DIST_PORT:-8080}"                # HTTP port (use reverse proxy for 80)
+base_url = "${CA_DIST_URL:-http://192.168.1.1}"    # Base URL for DHCP option 224
+generate_qr_codes = true                           # Generate QR codes for mobile install
+generate_trust_instructions = true                 # Generate platform-specific guides
+# Endpoints served:
+#   /ca.crt              - CA certificate (PEM)
+#   /ca.der              - CA certificate (DER)
+#   /ca.p7b              - CA certificate (PKCS#7)
+#   /install-ca.sh       - Linux/macOS install script
+#   /install-ca.ps1      - Windows PowerShell script
+#   /SafeOps-CA.mobileconfig - iOS/macOS profile
+
+# ============================================================================
+# Section 16: Certificate Revocation List (CRL) Configuration
+# ============================================================================
+[revocation.crl]
+enabled = true                                     # Enable CRL generation
+update_interval = "24h"                            # CRL regeneration interval
+crl_path = "/var/safeops/ca/crl.pem"               # CRL file path
+crl_url = "${CRL_URL:-http://192.168.1.1/crl.pem}" # CRL distribution point URL
+validity_days = 7                                  # CRL validity period
+signature_algorithm = "SHA256WithRSA"              # CRL signature algorithm
+
+# ============================================================================
+# Section 17: OCSP Responder Configuration
+# ============================================================================
+[revocation.ocsp]
+enabled = true                                     # Enable OCSP responder
+bind_address = "${OCSP_BIND:-0.0.0.0}"             # OCSP server bind address
+port = "${OCSP_PORT:-8888}"                        # OCSP server port
+ocsp_url = "${OCSP_URL:-http://192.168.1.1:8888}"  # OCSP responder URL
+signing_cert_validity = "365d"                     # OCSP responder cert validity
+cache_validity = "1h"                              # OCSP response cache duration
+max_requests_per_second = 100                      # Rate limiting
+
+# ============================================================================
+# Section 18: Security & Audit Configuration
+# ============================================================================
+[security]
+audit_logging_enabled = true                        # Enable audit logging
+audit_log_database = true                           # Log to database
+audit_log_file = "/var/log/safeops/ca_audit.log"   # Also log to file
+rate_limit_enabled = true                           # Enable rate limiting
+max_certs_per_hour = 100                            # Max certificates per hour
+hash_chain_enabled = true                           # Enable tamper-proof hash chaining
+
+# ============================================================================
+# Section 19: CA Backup Configuration
+# ============================================================================
+[backup]
+enabled = true                                      # Enable CA backups
+backup_interval = "24h"                             # Backup frequency
+backup_location = "/var/backups/safeops/ca/"        # Backup directory
+backup_retention_days = 90                          # Keep backups for 90 days
+encryption_enabled = true                           # Encrypt backups
+encryption_key_file = "${BACKUP_KEY_FILE:-/etc/safeops/secrets/backup_key}"
+

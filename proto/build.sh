@@ -357,15 +357,22 @@ compile_proto() {
     local proto_file=$1
     local file_name=$(basename "$proto_file")
     
+    # Extract service name for per-service subdirectory
+    local service_name=$(basename "$proto_file" .proto)
+    local service_out_dir="$OUTPUT_DIR/$service_name"
+    
+    # Create service-specific output directory
+    mkdir -p "$service_out_dir"
+    
     if [ "$VERBOSE" = true ]; then
-        print_info "Compiling: $file_name"
+        print_info "Compiling: $file_name -> $service_name/"
     fi
     
     local protoc_args=(
         "--proto_path=$PROTO_DIR"
-        "--go_out=$OUTPUT_DIR"
+        "--go_out=$service_out_dir"
         "--go_opt=paths=source_relative"
-        "--go-grpc_out=$OUTPUT_DIR"
+        "--go-grpc_out=$service_out_dir"
         "--go-grpc_opt=paths=source_relative"
         "$proto_file"
     )

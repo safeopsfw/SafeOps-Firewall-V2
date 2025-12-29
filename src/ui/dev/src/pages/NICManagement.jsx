@@ -37,16 +37,116 @@ function NICManagement() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [isLive, setIsLive] = useState(false);
   const eventSourceRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const hasDataRef = useRef(false);
+
+  // Hotspot state
+  const [hotspotStatus, setHotspotStatus] = useState(null);
+  const [hotspotLoading, setHotspotLoading] = useState(false);
+
+  // Show notification toast
+  const showNotification = useCallback((message, type = "success") => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  }, []);
+
+  // Fallback fetch (used when SSE fails or for manual refresh)
+  const fetchNICs = async () => {
+    try {
+      console.log("Fetching NICs from REST API...");
+      const res = await fetch(`${NIC_API_BASE}/nics`);
+      if (!res.ok) throw new Error("Failed to fetch NICs");
+      const data = await res.json();
+      setNics(data.interfaces || []);
+      setLastRefresh(new Date());
+      setError(null);
+      hasDataRef.current = true;
+      console.log(`✅ Loaded ${data.interfaces?.length || 0} network interfaces from REST API`);
+    } catch (err) {
+      console.error("❌ Failed to fetch NICs:", err);
+      setError("Unable to connect to NIC API server on port 8081. Please ensure the API is running.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle SSE messages
+  const handleSSEMessage = useCallback((data) => {
+    setLastRefresh(new Date());
+    setLoading(false);
+    hasDataRef.current = true;
+
+    switch (data.type) {
+      case "full_update":
+        setNics(data.interfaces || []);
+        break;
+
+      case "nic_added":
+        setNics(prev => [...prev, data.interface]);
+        showNotification(`🔌 ${data.interface.alias || data.interface.name} connected`);
+        break;
+
+      case "nic_removed":
+        setNics(prev => prev.filter(n => n.index !== data.interface.index));
+        showNotification(`⚡ ${data.interface.alias || data.interface.name} disconnected`, "warning");
+        break;
+
+      case "nic_status_changed":
+        setNics(prev => prev.map(n =>
+          n.index === data.interface.index ? { ...n, status: data.newValue } : n
+        ));
+        showNotification(`${data.interface.alias || data.interface.name} is now ${data.newValue}`);
+        break;
+
+      case "nic_ip_changed":
+        setNics(prev => prev.map(n =>
+          n.index === data.interface.index ? { ...n, ipv4: data.interface.ipv4 } : n
+        ));
+        break;
+
+      case "nic_primary_changed":
+        setNics(prev => prev.map(n => ({
+          ...n,
+          isPrimary: n.index === data.interface.index
+        })));
+        break;
+
+      case "speed_update":
+        setNics(prev => prev.map(n => {
+          const speed = data.interfaces?.find(s => s.index === n.index);
+          if (speed) {
+            return { ...n, rxBps: speed.rxBps, txBps: speed.txBps };
+          }
+          return n;
+        }));
+        break;
+
+      default:
+        break;
+    }
+  }, [showNotification]);
 
   // Connect to SSE for real-time updates
   useEffect(() => {
+    let sseTimeout = null;
+
     const connectSSE = () => {
+      console.log("🔌 Attempting SSE connection to", NIC_SSE_URL);
       eventSourceRef.current = new EventSource(NIC_SSE_URL);
-      
+
+      // Fallback: if SSE doesn't connect in 5 seconds, try REST API
+      sseTimeout = setTimeout(() => {
+        if (!hasDataRef.current) {
+          console.log("⏱️  SSE connection timeout - falling back to REST API");
+          fetchNICs();
+        }
+      }, 5000);
+
       eventSourceRef.current.onopen = () => {
         setIsLive(true);
         setError(null);
-        console.log("SSE connected - real-time updates enabled");
+        if (sseTimeout) clearTimeout(sseTimeout);
+        console.log("✅ SSE connected - real-time updates enabled");
       };
 
       eventSourceRef.current.onmessage = (event) => {
@@ -58,100 +158,41 @@ function NICManagement() {
         }
       };
 
-      eventSourceRef.current.onerror = () => {
+      eventSourceRef.current.onerror = (err) => {
+        console.log("⚠️  SSE connection error, will retry in 3 seconds");
         setIsLive(false);
         eventSourceRef.current?.close();
+
+        // Try fallback fetch on first error if we have no data
+        if (!hasDataRef.current) {
+          fetchNICs();
+        }
+
         // Reconnect after 3 seconds
-        setTimeout(connectSSE, 3000);
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = setTimeout(connectSSE, 3000);
       };
     };
 
     connectSSE();
 
     return () => {
+      if (sseTimeout) clearTimeout(sseTimeout);
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       eventSourceRef.current?.close();
     };
+  }, [handleSSEMessage]);
+
+  // Fetch hotspot status periodically
+  useEffect(() => {
+    fetchHotspotStatus();
+    const interval = setInterval(fetchHotspotStatus, 5000);
+    return () => clearInterval(interval);
   }, []);
-
-  // Handle SSE messages
-  const handleSSEMessage = useCallback((data) => {
-    setLastRefresh(new Date());
-    setLoading(false);
-
-    switch (data.type) {
-      case "full_update":
-        setNics(data.interfaces || []);
-        break;
-      
-      case "nic_added":
-        setNics(prev => [...prev, data.interface]);
-        showNotification(`🔌 ${data.interface.alias || data.interface.name} connected`);
-        break;
-      
-      case "nic_removed":
-        setNics(prev => prev.filter(n => n.index !== data.interface.index));
-        showNotification(`⚡ ${data.interface.alias || data.interface.name} disconnected`, "warning");
-        break;
-      
-      case "nic_status_changed":
-        setNics(prev => prev.map(n => 
-          n.index === data.interface.index ? { ...n, status: data.newValue } : n
-        ));
-        showNotification(`${data.interface.alias || data.interface.name} is now ${data.newValue}`);
-        break;
-      
-      case "nic_ip_changed":
-        setNics(prev => prev.map(n => 
-          n.index === data.interface.index ? { ...n, ipv4: data.interface.ipv4 } : n
-        ));
-        break;
-      
-      case "nic_primary_changed":
-        setNics(prev => prev.map(n => ({
-          ...n,
-          isPrimary: n.index === data.interface.index
-        })));
-        break;
-      
-      case "speed_update":
-        setNics(prev => prev.map(n => {
-          const speed = data.interfaces?.find(s => s.index === n.index);
-          if (speed) {
-            return { ...n, rxBps: speed.rxBps, txBps: speed.txBps };
-          }
-          return n;
-        }));
-        break;
-      
-      default:
-        break;
-    }
-  }, []);
-
-  // Fallback fetch (used for manual refresh only)
-  const fetchNICs = async () => {
-    try {
-      const res = await fetch(`${NIC_API_BASE}/nics`);
-      if (!res.ok) throw new Error("Failed to fetch NICs");
-      const data = await res.json();
-      setNics(data.interfaces || []);
-      setLastRefresh(new Date());
-      setError(null);
-    } catch (err) {
-      setError("Backend offline - please start NIC API server");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Navigate to NIC detail page
   const handleCardClick = (nic) => {
     navigate(`/network/${nic.index}`);
-  };
-
-  const showNotification = (message, type = "success") => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
   };
 
   const handleRename = (nic) => {
@@ -213,6 +254,86 @@ function NICManagement() {
       prev.map((n) => (n.index === nic.index ? { ...n, type: newType } : n))
     );
     showNotification(`Changed type to ${newType}`);
+  };
+
+  // WiFi/NIC toggle handler
+  const handleNICToggle = async (nic, enable) => {
+    const action = enable ? "enable" : "disable";
+
+    try {
+      const res = await fetch(`${NIC_API_BASE}/nics/${nic.index}/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        showNotification(`${nic.alias || nic.name} ${enable ? "enabled" : "disabled"}`);
+        // Wait a moment for the system to update
+        setTimeout(fetchNICs, 1000);
+      } else {
+        showNotification(data.message || `Failed to ${action} interface`, "warning");
+      }
+    } catch (err) {
+      showNotification(`Failed to ${action} interface - ${err.message}`, "warning");
+    }
+  };
+
+  // Hotspot management functions
+  const fetchHotspotStatus = async () => {
+    try {
+      const res = await fetch(`${NIC_API_BASE}/hotspot/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setHotspotStatus(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch hotspot status:', err);
+    }
+  };
+
+  const toggleHotspot = async () => {
+    setHotspotLoading(true);
+    try {
+      const endpoint = hotspotStatus?.enabled ? '/hotspot/stop' : '/hotspot/start';
+      const res = await fetch(`${NIC_API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Don't send config - use Windows native hotspot settings
+        body: JSON.stringify({}),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        await fetchHotspotStatus();
+        showNotification(
+          hotspotStatus?.enabled ? 'Hotspot stopped' : 'Hotspot started',
+          'success'
+        );
+      } else {
+        // Show a shorter, friendlier error message
+        let errorMsg = 'Failed to toggle hotspot';
+        if (data.error) {
+          if (data.error.includes('not ready') || data.error.includes('not in the correct state')) {
+            errorMsg = 'Hotspot unavailable. Try enabling Mobile Hotspot in Windows Settings.';
+          } else if (data.error.includes('does not support')) {
+            errorMsg = 'WiFi adapter does not support hosted networks.';
+          } else if (data.error.includes('radio')) {
+            errorMsg = 'WiFi is turned off. Please enable WiFi first.';
+          } else {
+            // Truncate long error messages
+            errorMsg = data.error.length > 80 ? data.error.substring(0, 80) + '...' : data.error;
+          }
+        }
+        showNotification(errorMsg, 'warning');
+      }
+    } catch (err) {
+      showNotification('Network error: ' + err.message, 'warning');
+    } finally {
+      setHotspotLoading(false);
+    }
   };
 
   const formatSpeed = (bps) => {
@@ -282,6 +403,56 @@ function NICManagement() {
 
       {error && <div className="nic-error-banner">⚠️ {error}</div>}
 
+      {/* Mobile Hotspot Control */}
+      {hotspotStatus && (
+        <div className="hotspot-section">
+          <div className="hotspot-card">
+            <div className="hotspot-header">
+              <div className="hotspot-title">
+                <span className="hotspot-icon">📡</span>
+                <h3>Mobile Hotspot</h3>
+              </div>
+              <div className="hotspot-status">
+                <span className={`status-dot ${hotspotStatus.enabled ? 'active' : 'inactive'}`}></span>
+                <span className="status-text">{hotspotStatus.enabled ? 'Active' : 'Inactive'}</span>
+              </div>
+            </div>
+
+            {hotspotStatus.enabled && hotspotStatus.ssid && (
+              <div className="hotspot-info">
+                <div className="info-item">
+                  <span className="info-label">Network Name:</span>
+                  <span className="info-value">{hotspotStatus.ssid}</span>
+                </div>
+                {hotspotStatus.clientCount !== undefined && (
+                  <div className="info-item">
+                    <span className="info-label">Connected Devices:</span>
+                    <span className="info-value">{hotspotStatus.clientCount}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="hotspot-actions">
+              <button
+                className={`hotspot-btn ${hotspotStatus.enabled ? 'stop' : 'start'}`}
+                onClick={toggleHotspot}
+                disabled={hotspotLoading}
+              >
+                {hotspotLoading ? '⏳ Processing...' : (
+                  hotspotStatus.enabled ? '🔴 Stop Hotspot' : '🟢 Start Hotspot'
+                )}
+              </button>
+              {!hotspotStatus.enabled && (
+                <p className="hotspot-hint">
+                  Will use Windows configured hotspot settings
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* WAN Interfaces */}
       {wanNics.length > 0 && (
         <section className="nic-section">
@@ -297,6 +468,7 @@ function NICManagement() {
                 priority={idx + 1}
                 onRename={handleRename}
                 onTypeChange={changeType}
+                onToggle={handleNICToggle}
                 onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
@@ -321,6 +493,7 @@ function NICManagement() {
                 nic={nic}
                 onRename={handleRename}
                 onTypeChange={changeType}
+                onToggle={handleNICToggle}
                 onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
@@ -345,6 +518,7 @@ function NICManagement() {
                 nic={nic}
                 onRename={handleRename}
                 onTypeChange={changeType}
+                onToggle={handleNICToggle}
                 onCardClick={handleCardClick}
                 formatSpeed={formatSpeed}
                 formatIP={formatIP}
@@ -425,6 +599,7 @@ function NICCard({
   priority,
   onRename,
   onTypeChange,
+  onToggle,
   onCardClick,
   formatSpeed,
   formatIP,
@@ -432,6 +607,13 @@ function NICCard({
 }) {
   const isOnline = nic.status === "UP";
   const typeIcon = TYPE_ICONS[nic.type] || TYPE_ICONS.UNKNOWN;
+
+  // Check if this is a WiFi interface
+  const isWiFi = nic.name &&
+    (nic.name.toLowerCase().includes("wi-fi") ||
+      nic.name.toLowerCase().includes("wireless") ||
+      nic.name.toLowerCase().includes("wlan") ||
+      nic.name.toLowerCase().includes("802.11"));
 
   return (
     <div
@@ -490,6 +672,34 @@ function NICCard({
 
       {/* Card Footer */}
       <div className="nic-card-footer">
+        {/* WiFi Toggle Switch */}
+        {isWiFi && (
+          <div className="nic-wifi-toggle" onClick={(e) => e.stopPropagation()}>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={isOnline}
+                onChange={(e) => onToggle(nic, e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+            <span className="toggle-label">{isOnline ? "WiFi On" : "WiFi Off"}</span>
+          </div>
+        )}
+
+        {/* Regular enable/disable buttons for non-WiFi */}
+        {!isWiFi && (
+          <button
+            className={`nic-control-btn ${isOnline ? "disable" : "enable"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(nic, !isOnline);
+            }}
+          >
+            {isOnline ? "🔴 Disable" : "🟢 Enable"}
+          </button>
+        )}
+
         <select
           className="nic-type-select"
           value={nic.type}

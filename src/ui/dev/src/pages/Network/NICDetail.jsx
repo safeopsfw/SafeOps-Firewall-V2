@@ -53,17 +53,17 @@ function NICDetail() {
       if (res.ok) {
         const data = await res.json()
         setNic(data)
-        setDevices(getConnectedDevices(data))
+        await getConnectedDevices(data)
       } else {
         // Use mock data
         const mockNic = getMockNIC(parseInt(nicId))
         setNic(mockNic)
-        setDevices(getConnectedDevices(mockNic))
+        await getConnectedDevices(mockNic)
       }
     } catch (err) {
       const mockNic = getMockNIC(parseInt(nicId))
       setNic(mockNic)
-      setDevices(getConnectedDevices(mockNic))
+      await getConnectedDevices(mockNic)
     }
     setLoading(false)
   }
@@ -73,10 +73,17 @@ function NICDetail() {
     return null
   }
 
-  const getConnectedDevices = (nic) => {
-    // TODO: Fetch real connected devices from ARP table or DHCP leases
-    // For now, return empty - no fake demo data
-    return []
+  const getConnectedDevices = async (nic) => {
+    try {
+      const res = await fetch(`${NIC_API}/devices`)
+      if (res.ok) {
+        const data = await res.json()
+        setDevices(data.devices || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch connected devices:', err)
+      setDevices([])
+    }
   }
 
   // Simulate traffic data (in production, this comes from WebSocket)

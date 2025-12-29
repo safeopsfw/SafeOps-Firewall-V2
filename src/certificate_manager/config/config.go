@@ -58,6 +58,13 @@ type RawConfig struct {
 	DNSChallenge  RawDNSChallengeConfig  `toml:"dns_challenge"`
 	Metrics       RawMetricsConfig       `toml:"metrics"`
 	Health        RawHealthConfig        `toml:"health"`
+	// SafeOps Internal CA Sections
+	CA         RawCAConfig         `toml:"ca"`
+	CRL        RawCRLConfig        `toml:"crl"`
+	OCSP       RawOCSPConfig       `toml:"ocsp"`
+	Security   RawSecurityConfig   `toml:"security"`
+	Backup     RawBackupConfig     `toml:"backup"`
+	HTTPServer RawHTTPServerConfig `toml:"http_server"`
 }
 
 type RawServiceConfig struct {
@@ -188,6 +195,104 @@ type RawHealthConfig struct {
 	Path                  string `toml:"path"`
 	CheckDatabase         bool   `toml:"check_database"`
 	CheckACMEConnectivity bool   `toml:"check_acme_connectivity"`
+}
+
+// ============================================================================
+// SafeOps Internal CA Configuration Structures
+// ============================================================================
+
+// RawCAConfig for internal SafeOps CA
+type RawCAConfig struct {
+	Organization       string `toml:"organization"`
+	OrganizationalUnit string `toml:"organizational_unit"`
+	Country            string `toml:"country"`
+	Province           string `toml:"province"`
+	Locality           string `toml:"locality"`
+	ValidityYears      int    `toml:"validity_years"`
+	KeySize            int    `toml:"key_size"`
+	KeyType            string `toml:"key_type"`
+	SignatureHash      string `toml:"signature_hash"`
+	SerialNumberBits   int    `toml:"serial_number_bits"`
+	CAKeyPath          string `toml:"ca_key_path"`
+	CACertPath         string `toml:"ca_cert_path"`
+	CAChainPath        string `toml:"ca_chain_path"`
+	PassphraseFile     string `toml:"passphrase_file"`
+	EncryptPrivateKey  bool   `toml:"encrypt_private_key"`
+	HSMEnabled         bool   `toml:"hsm_enabled"`
+	HSMSlotID          int    `toml:"hsm_slot_id"`
+	AutoGenerate       bool   `toml:"auto_generate"`
+}
+
+// RawCRLConfig for CRL generation
+type RawCRLConfig struct {
+	Enabled          bool   `toml:"enabled"`
+	UpdateInterval   string `toml:"update_interval"`
+	NextUpdateOffset string `toml:"next_update_offset"`
+	CRLPath          string `toml:"crl_path"`
+	CRLURL           string `toml:"crl_url"`
+	CRLDERPath       string `toml:"crl_der_path"`
+	MaxCRLSize       int    `toml:"max_crl_size"`
+	SignatureHash    string `toml:"signature_hash"`
+	ServeHTTP        bool   `toml:"serve_http"`
+	HTTPPort         int    `toml:"http_port"`
+}
+
+// RawOCSPConfig for OCSP responder
+type RawOCSPConfig struct {
+	Enabled               bool   `toml:"enabled"`
+	BindAddress           string `toml:"bind_address"`
+	Port                  int    `toml:"port"`
+	OCSPURL               string `toml:"ocsp_url"`
+	SignerCertPath        string `toml:"signer_cert_path"`
+	SignerKeyPath         string `toml:"signer_key_path"`
+	SignerCertValidity    string `toml:"signer_cert_validity"`
+	ResponseValidity      string `toml:"response_validity"`
+	CacheEnabled          bool   `toml:"cache_enabled"`
+	CacheTTL              string `toml:"cache_ttl"`
+	MaxConcurrentRequests int    `toml:"max_concurrent_requests"`
+	Timeout               string `toml:"timeout"`
+}
+
+// RawSecurityConfig for audit and rate limiting
+type RawSecurityConfig struct {
+	AuditLoggingEnabled   bool     `toml:"audit_logging_enabled"`
+	AuditLogPath          string   `toml:"audit_log_path"`
+	AuditLogMaxSize       int      `toml:"audit_log_max_size"`
+	AuditLogMaxBackups    int      `toml:"audit_log_max_backups"`
+	RateLimitEnabled      bool     `toml:"rate_limit_enabled"`
+	MaxCertsPerHour       int      `toml:"max_certs_per_hour"`
+	MaxCertsPerDay        int      `toml:"max_certs_per_day"`
+	MaxRevocationsPerDay  int      `toml:"max_revocations_per_day"`
+	RequireAuthentication bool     `toml:"require_authentication"`
+	AllowedIPs            []string `toml:"allowed_ips"`
+	AllowedSubnets        []string `toml:"allowed_subnets"`
+	KeyRotationEnabled    bool     `toml:"key_rotation_enabled"`
+	KeyRotationInterval   string   `toml:"key_rotation_interval"`
+}
+
+// RawBackupConfig for CA backup settings
+type RawBackupConfig struct {
+	Enabled           bool   `toml:"enabled"`
+	BackupInterval    string `toml:"backup_interval"`
+	BackupPath        string `toml:"backup_path"`
+	RetentionDays     int    `toml:"retention_days"`
+	MaxBackups        int    `toml:"max_backups"`
+	IncludePrivateKey bool   `toml:"include_private_key"`
+	EncryptBackup     bool   `toml:"encrypt_backup"`
+	CompressBackup    bool   `toml:"compress_backup"`
+}
+
+// RawHTTPServerConfig for CA distribution HTTP server
+type RawHTTPServerConfig struct {
+	Enabled        bool   `toml:"enabled"`
+	BindAddress    string `toml:"bind_address"`
+	Port           int    `toml:"port"`
+	TLSEnabled     bool   `toml:"tls_enabled"`
+	TLSCertPath    string `toml:"tls_cert_path"`
+	TLSKeyPath     string `toml:"tls_key_path"`
+	BasePath       string `toml:"base_path"`
+	MaxRequestSize int64  `toml:"max_request_size"`
+	RateLimit      int    `toml:"rate_limit"`
 }
 
 // ============================================================================
@@ -450,6 +555,101 @@ func convertConfig(raw *RawConfig) (*types.Config, error) {
 		Path:                  raw.Health.Path,
 		CheckDatabase:         raw.Health.CheckDatabase,
 		CheckACMEConnectivity: raw.Health.CheckACMEConnectivity,
+	}
+
+	// SafeOps Internal CA Configuration
+	caKeyType, _ := types.ParseKeyType(raw.CA.KeyType)
+	config.CA = &types.CAConfig{
+		Organization:       raw.CA.Organization,
+		OrganizationalUnit: raw.CA.OrganizationalUnit,
+		Country:            raw.CA.Country,
+		Province:           raw.CA.Province,
+		Locality:           raw.CA.Locality,
+		ValidityYears:      raw.CA.ValidityYears,
+		KeySize:            raw.CA.KeySize,
+		KeyType:            caKeyType,
+		SignatureHash:      raw.CA.SignatureHash,
+		SerialNumberBits:   raw.CA.SerialNumberBits,
+		CAKeyPath:          raw.CA.CAKeyPath,
+		CACertPath:         raw.CA.CACertPath,
+		CAChainPath:        raw.CA.CAChainPath,
+		PassphraseFile:     raw.CA.PassphraseFile,
+		EncryptPrivateKey:  raw.CA.EncryptPrivateKey,
+		HSMEnabled:         raw.CA.HSMEnabled,
+		HSMSlotID:          raw.CA.HSMSlotID,
+		AutoGenerate:       raw.CA.AutoGenerate,
+	}
+
+	// CRL Configuration
+	config.CRL = &types.CRLConfig{
+		Enabled:          raw.CRL.Enabled,
+		UpdateInterval:   parseDuration(raw.CRL.UpdateInterval, 24*time.Hour),
+		NextUpdateOffset: parseDuration(raw.CRL.NextUpdateOffset, 7*24*time.Hour),
+		CRLPath:          raw.CRL.CRLPath,
+		CRLURL:           raw.CRL.CRLURL,
+		CRLDERPath:       raw.CRL.CRLDERPath,
+		MaxCRLSize:       raw.CRL.MaxCRLSize,
+		SignatureHash:    raw.CRL.SignatureHash,
+		ServeHTTP:        raw.CRL.ServeHTTP,
+		HTTPPort:         raw.CRL.HTTPPort,
+	}
+
+	// OCSP Configuration
+	config.OCSP = &types.OCSPConfig{
+		Enabled:               raw.OCSP.Enabled,
+		BindAddress:           raw.OCSP.BindAddress,
+		Port:                  raw.OCSP.Port,
+		OCSPURL:               raw.OCSP.OCSPURL,
+		SignerCertPath:        raw.OCSP.SignerCertPath,
+		SignerKeyPath:         raw.OCSP.SignerKeyPath,
+		SignerCertValidity:    parseDuration(raw.OCSP.SignerCertValidity, 30*24*time.Hour),
+		ResponseValidity:      parseDuration(raw.OCSP.ResponseValidity, 1*time.Hour),
+		CacheEnabled:          raw.OCSP.CacheEnabled,
+		CacheTTL:              parseDuration(raw.OCSP.CacheTTL, 5*time.Minute),
+		MaxConcurrentRequests: raw.OCSP.MaxConcurrentRequests,
+		Timeout:               parseDuration(raw.OCSP.Timeout, 10*time.Second),
+	}
+
+	// Security Configuration
+	config.Security = &types.SecurityConfig{
+		AuditLoggingEnabled:   raw.Security.AuditLoggingEnabled,
+		AuditLogPath:          raw.Security.AuditLogPath,
+		AuditLogMaxSize:       raw.Security.AuditLogMaxSize,
+		AuditLogMaxBackups:    raw.Security.AuditLogMaxBackups,
+		RateLimitEnabled:      raw.Security.RateLimitEnabled,
+		MaxCertsPerHour:       raw.Security.MaxCertsPerHour,
+		MaxCertsPerDay:        raw.Security.MaxCertsPerDay,
+		MaxRevocationsPerDay:  raw.Security.MaxRevocationsPerDay,
+		RequireAuthentication: raw.Security.RequireAuthentication,
+		AllowedIPs:            raw.Security.AllowedIPs,
+		AllowedSubnets:        raw.Security.AllowedSubnets,
+		KeyRotationEnabled:    raw.Security.KeyRotationEnabled,
+		KeyRotationInterval:   parseDuration(raw.Security.KeyRotationInterval, 0),
+	}
+
+	// Backup Configuration
+	config.Backup = &types.BackupConfig{
+		Enabled:           raw.Backup.Enabled,
+		BackupInterval:    parseDuration(raw.Backup.BackupInterval, 24*time.Hour),
+		BackupPath:        raw.Backup.BackupPath,
+		RetentionDays:     raw.Backup.RetentionDays,
+		MaxBackups:        raw.Backup.MaxBackups,
+		IncludePrivateKey: raw.Backup.IncludePrivateKey,
+		EncryptBackup:     raw.Backup.EncryptBackup,
+		CompressBackup:    raw.Backup.CompressBackup,
+	}
+
+	// HTTP Server Configuration
+	config.HTTPServer = &types.HTTPServerConfig{
+		Enabled:        raw.HTTPServer.Enabled,
+		BindAddress:    raw.HTTPServer.BindAddress,
+		Port:           raw.HTTPServer.Port,
+		TLSEnabled:     raw.HTTPServer.TLSEnabled,
+		TLSCertPath:    raw.HTTPServer.TLSCertPath,
+		TLSKeyPath:     raw.HTTPServer.TLSKeyPath,
+		BasePath:       raw.HTTPServer.BasePath,
+		MaxRequestSize: raw.HTTPServer.MaxRequestSize,
+		RateLimit:      raw.HTTPServer.RateLimit,
 	}
 
 	return config, nil

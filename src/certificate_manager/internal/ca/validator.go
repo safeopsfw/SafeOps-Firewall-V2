@@ -667,3 +667,499 @@ func (r *CertValidationResult) GetIssuesByCode(code string) []ValidationIssue {
 	}
 	return issues
 }
+
+// ============================================================================
+// CA-Specific Validation Functions
+// ============================================================================
+
+// CAValidationResult provides comprehensive CA validation report.
+type CAValidationResult struct {
+	Valid           bool      `json:"valid"`
+	Errors          []error   `json:"errors"`
+	Warnings        []string  `json:"warnings"`
+	ChecksPerformed []string  `json:"checks_performed"`
+	Timestamp       time.Time `json:"timestamp"`
+}
+
+// ValidateCA performs comprehensive validation of a CA certificate.
+// This is the master validation function that orchestrates all CA-specific checks.
+func ValidateCA(cert *x509.Certificate) (*CAValidationResult, error) {
+	if cert == nil {
+		return nil, errors.New("certificate is nil")
+	}
+
+	result := &CAValidationResult{
+		Valid:           true,
+		Errors:          []error{},
+		Warnings:        []string{},
+		ChecksPerformed: []string{},
+		Timestamp:       time.Now(),
+	}
+
+	// Check 1: Is CA certificate
+	result.ChecksPerformed = append(result.ChecksPerformed, "IsCA")
+	if !cert.IsCA {
+		result.Errors = append(result.Errors, errors.New("certificate is not a CA certificate (IsCA=false)"))
+		result.Valid = false
+	}
+
+	// Check 2: Expiry
+	result.ChecksPerformed = append(result.ChecksPerformed, "Expiry")
+	if err := CheckExpiry(cert); err != nil {
+		result.Errors = append(result.Errors, err)
+		result.Valid = false
+	}
+
+	// Check 3: Add expiry warnings
+	warnings := GetExpiryWarnings(cert)
+	result.Warnings = append(result.Warnings, warnings...)
+
+	// Check 4: Self-signature verification
+	result.ChecksPerformed = append(result.ChecksPerformed, "SelfSignature")
+	if err := VerifySignature(cert); err != nil {
+		result.Errors = append(result.Errors, err)
+		result.Valid = false
+	}
+
+	// Check 5: Key usage
+	result.ChecksPerformed = append(result.ChecksPerformed, "KeyUsage")
+	if err := CheckKeyUsage(cert); err != nil {
+		result.Errors = append(result.Errors, err)
+		result.Valid = false
+	}
+
+	// Check 6: Key size
+	result.ChecksPerformed = append(result.ChecksPerformed, "KeySize")
+	if err := CheckKeySize(cert); err != nil {
+		if strings.Contains(err.Error(), "warning") {
+			result.Warnings = append(result.Warnings, err.Error())
+		} else {
+			result.Errors = append(result.Errors, err)
+			result.Valid = false
+		}
+	}
+
+	// Check 7: Validity period
+	result.ChecksPerformed = append(result.ChecksPerformed, "ValidityPeriod")
+	if err := CheckValidityPeriod(cert); err != nil {
+		result.Warnings = append(result.Warnings, err.Error())
+	}
+
+	// Check 8: Subject DN
+	result.ChecksPerformed = append(result.ChecksPerformed, "SubjectDN")
+	if err := ValidateSubjectDN(cert); err != nil {
+		if strings.Contains(err.Error(), "warning") {
+			result.Warnings = append(result.Warnings, err.Error())
+		} else {
+			result.Errors = append(result.Errors, err)
+			result.Valid = false
+		}
+	}
+
+	// Check 9: Self-signed (for root CA)
+	result.ChecksPerformed = append(result.ChecksPerformed, "SelfSigned")
+	if err := ValidateSelfSignedCA(cert); err != nil {
+		result.Errors = append(result.Errors, err)
+		result.Valid = false
+	}
+
+	// Check 10: Serial number
+	result.ChecksPerformed = append(result.ChecksPerformed, "SerialNumber")
+	if err := ValidateSerialNumber(cert); err != nil {
+		result.Errors = append(result.Errors, err)
+		result.Valid = false
+	}
+
+	// Check 11: Path length constraint
+	result.ChecksPerformed = append(result.ChecksPerformed, "PathLength")
+	if err := CheckPathLength(cert); err != nil {
+		result.Warnings = append(result.Warnings, err.Error())
+	}
+
+	// Check 12: Signature algorithm
+	result.ChecksPerformed = append(result.ChecksPerformed, "SignatureAlgorithm")
+	if err := ValidateCASignatureAlgorithm(cert); err != nil {
+		result.Errors = append(result.Errors, err)
+		result.Valid = false
+	}
+
+	return result, nil
+}
+
+// CheckExpiry verifies certificate is currently valid (within NotBefore and NotAfter).
+func CheckExpiry(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	now := time.Now()
+
+	if now.Before(cert.NotBefore) {
+		return fmt.Errorf("certificate not yet valid: starts at %s", cert.NotBefore.Format(time.RFC3339))
+	}
+
+	if now.After(cert.NotAfter) {
+		return fmt.Errorf("certificate expired: expired at %s", cert.NotAfter.Format(time.RFC3339))
+	}
+
+	return nil
+}
+
+// GetExpiryWarnings returns warning messages for certificates nearing expiry.
+// Warning thresholds: < 30 days (critical), < 90 days (warning), < 365 days (notice).
+func GetExpiryWarnings(cert *x509.Certificate) []string {
+	if cert == nil {
+		return nil
+	}
+
+	var warnings []string
+	daysRemaining := int(time.Until(cert.NotAfter).Hours() / 24)
+
+	if daysRemaining < 0 {
+		warnings = append(warnings, fmt.Sprintf("CRITICAL: Certificate has expired %d days ago", -daysRemaining))
+	} else if daysRemaining < 30 {
+		warnings = append(warnings, fmt.Sprintf("CRITICAL: Certificate expires in %d days - immediate renewal required", daysRemaining))
+	} else if daysRemaining < 90 {
+		warnings = append(warnings, fmt.Sprintf("WARNING: Certificate expires in %d days - schedule renewal soon", daysRemaining))
+	} else if daysRemaining < 365 {
+		warnings = append(warnings, fmt.Sprintf("NOTICE: Certificate expires in %d days - consider scheduling renewal", daysRemaining))
+	}
+
+	return warnings
+}
+
+// VerifySignature verifies the certificate's self-signature is valid.
+// For root CAs, the certificate signs itself.
+func VerifySignature(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// Check signature algorithm is not weak
+	if WeakSignatureAlgorithms[cert.SignatureAlgorithm] {
+		return fmt.Errorf("certificate uses weak/deprecated signature algorithm: %s", cert.SignatureAlgorithm)
+	}
+
+	// Verify self-signature
+	err := cert.CheckSignature(cert.SignatureAlgorithm, cert.RawTBSCertificate, cert.Signature)
+	if err != nil {
+		return fmt.Errorf("self-signature verification failed: %w", err)
+	}
+
+	return nil
+}
+
+// CheckKeyUsage verifies certificate has correct key usage extensions for CA operation.
+func CheckKeyUsage(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// Check IsCA flag
+	if !cert.IsCA {
+		return errors.New("certificate does not have CA flag set (BasicConstraints CA:TRUE)")
+	}
+
+	// Check BasicConstraintsValid
+	if !cert.BasicConstraintsValid {
+		return errors.New("certificate BasicConstraints extension is not valid")
+	}
+
+	// Check KeyUsage includes CertSign
+	if cert.KeyUsage&x509.KeyUsageCertSign == 0 {
+		return errors.New("certificate lacks KeyUsage CertSign (required for CA)")
+	}
+
+	// Check KeyUsage includes CRLSign
+	if cert.KeyUsage&x509.KeyUsageCRLSign == 0 {
+		return errors.New("certificate lacks KeyUsage CRLSign (required for CA)")
+	}
+
+	return nil
+}
+
+// CheckKeySize validates public key size meets minimum security requirements.
+// Minimum: 2048 bits (hard requirement). Recommended: 4096 bits.
+func CheckKeySize(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	switch key := cert.PublicKey.(type) {
+	case *rsa.PublicKey:
+		bitLen := key.N.BitLen()
+		if bitLen < MinRSAKeySize {
+			return fmt.Errorf("RSA key size %d bits is below minimum %d bits (NIST requirement)", bitLen, MinRSAKeySize)
+		}
+		if bitLen < RecommendedRSASize {
+			return fmt.Errorf("warning: RSA key size %d bits is below recommended %d bits for root CAs", bitLen, RecommendedRSASize)
+		}
+	case *ecdsa.PublicKey:
+		curveSize := key.Curve.Params().BitSize
+		if curveSize < MinECDSACurve {
+			return fmt.Errorf("ECDSA curve size %d bits is below minimum %d bits", curveSize, MinECDSACurve)
+		}
+	default:
+		return errors.New("unsupported public key type")
+	}
+
+	return nil
+}
+
+// CheckValidityPeriod validates certificate validity period is reasonable.
+// Maximum CA lifetime: 30 years.
+func CheckValidityPeriod(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// Check NotBefore is not in the future (with 5 minute tolerance for clock skew)
+	if time.Now().Add(5 * time.Minute).Before(cert.NotBefore) {
+		return fmt.Errorf("certificate NotBefore is in the future: %s", cert.NotBefore.Format(time.RFC3339))
+	}
+
+	// Check NotAfter is after NotBefore
+	if cert.NotAfter.Before(cert.NotBefore) {
+		return errors.New("certificate NotAfter is before NotBefore")
+	}
+
+	// Check validity period doesn't exceed 30 years
+	validityYears := cert.NotAfter.Sub(cert.NotBefore).Hours() / 24 / 365
+	if validityYears > 30 {
+		return fmt.Errorf("certificate validity period %.1f years exceeds maximum 30 years", validityYears)
+	}
+
+	return nil
+}
+
+// ValidateSubjectDN verifies subject Distinguished Name is properly populated.
+func ValidateSubjectDN(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// CommonName is required
+	if cert.Subject.CommonName == "" {
+		return errors.New("certificate Subject CommonName (CN) is empty")
+	}
+
+	// Organization is recommended
+	if len(cert.Subject.Organization) == 0 {
+		return errors.New("warning: certificate Subject Organization (O) is empty")
+	}
+
+	// Validate country code if present
+	for _, country := range cert.Subject.Country {
+		if len(country) != 2 {
+			return fmt.Errorf("invalid country code '%s': must be 2 letters", country)
+		}
+	}
+
+	return nil
+}
+
+// ValidateSelfSignedCA verifies certificate is self-signed (Issuer == Subject).
+func ValidateSelfSignedCA(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// Compare Subject and Issuer strings
+	if cert.Issuer.String() != cert.Subject.String() {
+		return fmt.Errorf("certificate is not self-signed: Issuer '%s' != Subject '%s'",
+			cert.Issuer.String(), cert.Subject.String())
+	}
+
+	return nil
+}
+
+// ValidateSerialNumber validates certificate serial number is properly formatted.
+func ValidateSerialNumber(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	if cert.SerialNumber == nil {
+		return errors.New("certificate serial number is nil")
+	}
+
+	// Serial number must be positive
+	if cert.SerialNumber.Sign() <= 0 {
+		return errors.New("certificate serial number must be positive")
+	}
+
+	// RFC 5280: Serial number should be no more than 20 octets
+	if len(cert.SerialNumber.Bytes()) > 20 {
+		return fmt.Errorf("certificate serial number exceeds 20 octets (RFC 5280 limit): %d bytes",
+			len(cert.SerialNumber.Bytes()))
+	}
+
+	// Check for minimum entropy (at least 64 bits recommended)
+	if cert.SerialNumber.BitLen() < 64 {
+		return fmt.Errorf("warning: certificate serial number has low entropy: %d bits (recommend >= 64 bits)",
+			cert.SerialNumber.BitLen())
+	}
+
+	return nil
+}
+
+// CheckPathLength validates BasicConstraints pathlen for root CA.
+func CheckPathLength(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// Root CAs should typically have MaxPathLen = 0
+	// This means no intermediate CAs can be issued
+	if cert.MaxPathLen > 0 && !cert.MaxPathLenZero {
+		return fmt.Errorf("warning: root CA has MaxPathLen=%d, consider restricting to 0", cert.MaxPathLen)
+	}
+
+	return nil
+}
+
+// ValidateCASignatureAlgorithm verifies signature algorithm meets security requirements.
+func ValidateCASignatureAlgorithm(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// Check against known weak algorithms
+	if WeakSignatureAlgorithms[cert.SignatureAlgorithm] {
+		return fmt.Errorf("certificate uses deprecated/insecure signature algorithm: %s", cert.SignatureAlgorithm)
+	}
+
+	// Verify it's a known secure algorithm
+	switch cert.SignatureAlgorithm {
+	case x509.SHA256WithRSA, x509.SHA384WithRSA, x509.SHA512WithRSA,
+		x509.ECDSAWithSHA256, x509.ECDSAWithSHA384, x509.ECDSAWithSHA512,
+		x509.SHA256WithRSAPSS, x509.SHA384WithRSAPSS, x509.SHA512WithRSAPSS:
+		return nil
+	default:
+		return fmt.Errorf("unknown or potentially insecure signature algorithm: %s", cert.SignatureAlgorithm)
+	}
+}
+
+// PerformHealthCheck performs comprehensive health check for stored CA files.
+func PerformHealthCheck(config *CAStorageConfig) (*CAValidationResult, error) {
+	if config == nil {
+		config = DefaultStorageConfig()
+	}
+
+	result := &CAValidationResult{
+		Valid:           true,
+		Errors:          []error{},
+		Warnings:        []string{},
+		ChecksPerformed: []string{},
+		Timestamp:       time.Now(),
+	}
+
+	// Check 1: Load certificate
+	result.ChecksPerformed = append(result.ChecksPerformed, "LoadCertificate")
+	cert, err := LoadCACertificate(config)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Errorf("failed to load certificate: %w", err))
+		result.Valid = false
+		return result, nil // Can't continue without certificate
+	}
+
+	// Check 2: Validate certificate
+	result.ChecksPerformed = append(result.ChecksPerformed, "ValidateCertificate")
+	caResult, err := ValidateCA(cert)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Errorf("certificate validation error: %w", err))
+		result.Valid = false
+	} else {
+		result.Errors = append(result.Errors, caResult.Errors...)
+		result.Warnings = append(result.Warnings, caResult.Warnings...)
+		result.ChecksPerformed = append(result.ChecksPerformed, caResult.ChecksPerformed...)
+		if !caResult.Valid {
+			result.Valid = false
+		}
+	}
+
+	// Check 3: Validate file permissions
+	result.ChecksPerformed = append(result.ChecksPerformed, "FilePermissions")
+	permResults := ValidateCAFilePermissions(config)
+	for name, err := range permResults {
+		if err != nil {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("Permission check '%s': %v", name, err))
+		}
+	}
+
+	// Check 4: Verify private key exists and can be loaded
+	result.ChecksPerformed = append(result.ChecksPerformed, "LoadPrivateKey")
+	privateKey, err := LoadCAPrivateKey(config)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Errorf("failed to load private key: %w", err))
+		result.Valid = false
+	} else {
+		// Check 5: Verify public key in cert matches private key
+		result.ChecksPerformed = append(result.ChecksPerformed, "KeyPairMatch")
+		certPubKey, ok := cert.PublicKey.(*rsa.PublicKey)
+		if ok {
+			if certPubKey.N.Cmp(privateKey.PublicKey.N) != 0 {
+				result.Errors = append(result.Errors, errors.New("certificate public key does not match private key"))
+				result.Valid = false
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// QuickValidate performs fast validation for critical checks only.
+// Used during high-frequency operations like certificate signing.
+func QuickValidate(cert *x509.Certificate) error {
+	if cert == nil {
+		return errors.New("certificate is nil")
+	}
+
+	// Quick check 1: Not expired
+	now := time.Now()
+	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
+		return ErrCertificateExpired
+	}
+
+	// Quick check 2: Is CA certificate
+	if !cert.IsCA {
+		return errors.New("not a CA certificate")
+	}
+
+	// Quick check 3: Has CertSign key usage
+	if cert.KeyUsage&x509.KeyUsageCertSign == 0 {
+		return ErrMissingKeyUsage
+	}
+
+	return nil
+}
+
+// GetValidationSummary returns a human-readable summary of validation result.
+func GetValidationSummary(result *CAValidationResult) string {
+	if result == nil {
+		return "No validation result"
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("CA Validation Summary (performed at %s)\n", result.Timestamp.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("Overall Status: %v\n", result.Valid))
+	sb.WriteString(fmt.Sprintf("Checks Performed: %d\n", len(result.ChecksPerformed)))
+	sb.WriteString(fmt.Sprintf("Errors: %d\n", len(result.Errors)))
+	sb.WriteString(fmt.Sprintf("Warnings: %d\n", len(result.Warnings)))
+
+	if len(result.Errors) > 0 {
+		sb.WriteString("\nErrors:\n")
+		for i, err := range result.Errors {
+			sb.WriteString(fmt.Sprintf("  %d. %v\n", i+1, err))
+		}
+	}
+
+	if len(result.Warnings) > 0 {
+		sb.WriteString("\nWarnings:\n")
+		for i, warning := range result.Warnings {
+			sb.WriteString(fmt.Sprintf("  %d. %s\n", i+1, warning))
+		}
+	}
+
+	return sb.String()
+}

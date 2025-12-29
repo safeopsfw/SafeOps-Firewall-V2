@@ -151,7 +151,7 @@ const (
 
 const (
 	// GRPCPort is the default gRPC management API port
-	GRPCPort = 50054
+	GRPCPort = 50055
 	// MetricsPort is the default Prometheus metrics port
 	MetricsPort = 9154
 )

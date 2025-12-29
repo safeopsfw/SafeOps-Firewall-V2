@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"certificate_manager/pkg/types"
@@ -861,4 +862,412 @@ func (d *Database) GetTotalCertificates(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("%w: %v", ErrQueryFailed, err)
 	}
 	return count, nil
+}
+
+// ============================================================================
+// Health Check and Connection Pool Monitoring
+// ============================================================================
+
+// HealthCheckResult contains detailed health check results
+type HealthCheckResult struct {
+	Healthy       bool          `json:"healthy"`
+	PingOK        bool          `json:"ping_ok"`
+	QueryOK       bool          `json:"query_ok"`
+	QueryDuration time.Duration `json:"query_duration"`
+	PoolStats     sql.DBStats   `json:"pool_stats"`
+	PoolSaturated bool          `json:"pool_saturated"`
+	SchemaOK      bool          `json:"schema_ok"`
+	Errors        []string      `json:"errors,omitempty"`
+	Warnings      []string      `json:"warnings,omitempty"`
+	CheckedAt     time.Time     `json:"checked_at"`
+}
+
+// HealthCheck performs comprehensive database health validation
+func (d *Database) HealthCheck(ctx context.Context) (*HealthCheckResult, error) {
+	result := &HealthCheckResult{
+		Healthy:   true,
+		CheckedAt: time.Now(),
+		Errors:    []string{},
+		Warnings:  []string{},
+	}
+
+	// Check 1: Ping database
+	pingCtx, pingCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer pingCancel()
+
+	if err := d.db.PingContext(pingCtx); err != nil {
+		result.PingOK = false
+		result.Healthy = false
+		result.Errors = append(result.Errors, fmt.Sprintf("ping failed: %v", err))
+	} else {
+		result.PingOK = true
+	}
+
+	// Check 2: Execute test query and measure duration
+	queryStart := time.Now()
+	queryCtx, queryCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer queryCancel()
+
+	var testResult int
+	err := d.db.QueryRowContext(queryCtx, "SELECT 1").Scan(&testResult)
+	result.QueryDuration = time.Since(queryStart)
+
+	if err != nil {
+		result.QueryOK = false
+		result.Healthy = false
+		result.Errors = append(result.Errors, fmt.Sprintf("query failed: %v", err))
+	} else {
+		result.QueryOK = true
+		// Warn if query slow (> 100ms)
+		if result.QueryDuration > 100*time.Millisecond {
+			result.Warnings = append(result.Warnings,
+				fmt.Sprintf("query slow: %v", result.QueryDuration))
+		}
+	}
+
+	// Check 3: Connection pool statistics
+	result.PoolStats = d.db.Stats()
+
+	// Check for pool saturation
+	if result.PoolStats.OpenConnections >= result.PoolStats.MaxOpenConnections {
+		result.PoolSaturated = true
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("connection pool saturated: %d/%d connections in use",
+				result.PoolStats.OpenConnections, result.PoolStats.MaxOpenConnections))
+	}
+
+	// Warn if too few idle connections
+	if result.PoolStats.Idle < 2 && result.PoolStats.OpenConnections > 5 {
+		result.Warnings = append(result.Warnings,
+			fmt.Sprintf("low idle connections: %d idle", result.PoolStats.Idle))
+	}
+
+	// Check 4: Verify schema_migrations table exists
+	var tableExists bool
+	schemaQuery := `
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_schema = 'public' 
+			AND table_name = 'schema_migrations'
+		)`
+	if err := d.db.QueryRowContext(ctx, schemaQuery).Scan(&tableExists); err != nil {
+		result.SchemaOK = false
+		result.Errors = append(result.Errors, fmt.Sprintf("schema check failed: %v", err))
+	} else {
+		result.SchemaOK = tableExists
+		if !tableExists {
+			result.Warnings = append(result.Warnings, "schema_migrations table not found")
+		}
+	}
+
+	return result, nil
+}
+
+// GetStats returns current connection pool statistics
+func (d *Database) GetStats() sql.DBStats {
+	return d.db.Stats()
+}
+
+// TestQuery executes a simple test query to verify database accessibility
+func (d *Database) TestQuery(ctx context.Context) error {
+	var version string
+	err := d.db.QueryRowContext(ctx, "SELECT version()").Scan(&version)
+	if err != nil {
+		return fmt.Errorf("test query failed: %w", err)
+	}
+	return nil
+}
+
+// ============================================================================
+// Query Execution with Timeout
+// ============================================================================
+
+// DefaultQueryTimeout is the default timeout for queries
+const DefaultQueryTimeout = 30 * time.Second
+
+// QueryWithTimeout executes a SELECT query with timeout
+func (d *Database) QueryWithTimeout(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	// Apply timeout if context doesn't have one
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, DefaultQueryTimeout)
+		defer cancel()
+	}
+
+	return d.db.QueryContext(ctx, query, args...)
+}
+
+// QueryRowWithTimeout executes a query expected to return single row with timeout
+func (d *Database) QueryRowWithTimeout(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	// Apply timeout if context doesn't have one
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, DefaultQueryTimeout)
+		_ = cancel // Will be called when Row is scanned
+	}
+
+	return d.db.QueryRowContext(ctx, query, args...)
+}
+
+// ExecWithTimeout executes INSERT/UPDATE/DELETE with timeout
+func (d *Database) ExecWithTimeout(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	// Apply timeout if context doesn't have one
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, DefaultQueryTimeout)
+		defer cancel()
+	}
+
+	return d.db.ExecContext(ctx, query, args...)
+}
+
+// ============================================================================
+// Retry Logic for Transient Failures
+// ============================================================================
+
+// RetryConfig holds retry behavior configuration
+type RetryConfig struct {
+	MaxRetries     int
+	InitialBackoff time.Duration
+	MaxBackoff     time.Duration
+	BackoffFactor  float64
+}
+
+// DefaultRetryConfig returns sensible retry defaults
+func DefaultRetryConfig() *RetryConfig {
+	return &RetryConfig{
+		MaxRetries:     3,
+		InitialBackoff: 100 * time.Millisecond,
+		MaxBackoff:     5 * time.Second,
+		BackoffFactor:  2.0,
+	}
+}
+
+// RetryQuery retries query execution on transient failures with exponential backoff
+func (d *Database) RetryQuery(ctx context.Context, config *RetryConfig, query string, args ...interface{}) (*sql.Rows, error) {
+	if config == nil {
+		config = DefaultRetryConfig()
+	}
+
+	var lastErr error
+	backoff := config.InitialBackoff
+
+	for attempt := 0; attempt <= config.MaxRetries; attempt++ {
+		rows, err := d.db.QueryContext(ctx, query, args...)
+		if err == nil {
+			return rows, nil
+		}
+
+		lastErr = err
+
+		// Check if error is retryable
+		if !isRetryableError(err) {
+			return nil, err
+		}
+
+		// Check if context is done
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		// Wait before retry
+		if attempt < config.MaxRetries {
+			time.Sleep(backoff)
+
+			// Calculate next backoff (exponential)
+			backoff = time.Duration(float64(backoff) * config.BackoffFactor)
+			if backoff > config.MaxBackoff {
+				backoff = config.MaxBackoff
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("query failed after %d retries: %w", config.MaxRetries+1, lastErr)
+}
+
+// RetryExec retries exec on transient failures with exponential backoff
+func (d *Database) RetryExec(ctx context.Context, config *RetryConfig, query string, args ...interface{}) (sql.Result, error) {
+	if config == nil {
+		config = DefaultRetryConfig()
+	}
+
+	var lastErr error
+	backoff := config.InitialBackoff
+
+	for attempt := 0; attempt <= config.MaxRetries; attempt++ {
+		result, err := d.db.ExecContext(ctx, query, args...)
+		if err == nil {
+			return result, nil
+		}
+
+		lastErr = err
+
+		// Check if error is retryable
+		if !isRetryableError(err) {
+			return nil, err
+		}
+
+		// Check if context is done
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		// Wait before retry
+		if attempt < config.MaxRetries {
+			time.Sleep(backoff)
+
+			// Calculate next backoff (exponential)
+			backoff = time.Duration(float64(backoff) * config.BackoffFactor)
+			if backoff > config.MaxBackoff {
+				backoff = config.MaxBackoff
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("exec failed after %d retries: %w", config.MaxRetries+1, lastErr)
+}
+
+// isRetryableError determines if an error is transient and can be retried
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := strings.ToLower(err.Error())
+
+	// Connection errors (retryable)
+	if strings.Contains(errStr, "connection refused") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "connection timeout") ||
+		strings.Contains(errStr, "no connection") ||
+		strings.Contains(errStr, "too many connections") ||
+		strings.Contains(errStr, "deadlock detected") ||
+		strings.Contains(errStr, "lock timeout") ||
+		strings.Contains(errStr, "serialization failure") {
+		return true
+	}
+
+	// Driver-specific errors
+	if strings.Contains(errStr, "pq: could not obtain") ||
+		strings.Contains(errStr, "pq: canceling statement") {
+		return true
+	}
+
+	return false
+}
+
+// ============================================================================
+// Prepared Statement Cache
+// ============================================================================
+
+// PreparedStatementCache caches prepared statements for repeated execution
+type PreparedStatementCache struct {
+	db         *sql.DB
+	statements map[string]*sql.Stmt
+	mu         sync.RWMutex
+}
+
+// NewPreparedStatementCache creates a new statement cache
+func (d *Database) NewPreparedStatementCache() *PreparedStatementCache {
+	return &PreparedStatementCache{
+		db:         d.db,
+		statements: make(map[string]*sql.Stmt),
+	}
+}
+
+// Prepare prepares and caches a SQL statement
+func (c *PreparedStatementCache) Prepare(query string) (*sql.Stmt, error) {
+	// Check cache first (read lock)
+	c.mu.RLock()
+	if stmt, ok := c.statements[query]; ok {
+		c.mu.RUnlock()
+		return stmt, nil
+	}
+	c.mu.RUnlock()
+
+	// Prepare statement (write lock)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if stmt, ok := c.statements[query]; ok {
+		return stmt, nil
+	}
+
+	// Prepare new statement
+	stmt, err := c.db.Prepare(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare statement: %w", err)
+	}
+
+	c.statements[query] = stmt
+	return stmt, nil
+}
+
+// Close closes all cached prepared statements
+func (c *PreparedStatementCache) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var errs []string
+	for query, stmt := range c.statements {
+		if err := stmt.Close(); err != nil {
+			errs = append(errs, fmt.Sprintf("failed to close statement: %v", err))
+		}
+		delete(c.statements, query)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("errors closing statements: %s", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+// Size returns the number of cached statements
+func (c *PreparedStatementCache) Size() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.statements)
+}
+
+// ============================================================================
+// Graceful Shutdown
+// ============================================================================
+
+// GracefulShutdownTimeout is the maximum time to wait for in-flight queries
+const GracefulShutdownTimeout = 30 * time.Second
+
+// CloseGracefully waits for in-flight queries before closing
+func (d *Database) CloseGracefully(ctx context.Context) error {
+	// Get initial stats
+	stats := d.db.Stats()
+	inUse := stats.InUse
+
+	if inUse > 0 {
+		// Wait for in-flight queries
+		deadline := time.Now().Add(GracefulShutdownTimeout)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+	WaitLoop:
+		for time.Now().Before(deadline) {
+			select {
+			case <-ctx.Done():
+				// Context cancelled, force close
+				break WaitLoop
+			case <-ticker.C:
+				stats = d.db.Stats()
+				if stats.InUse == 0 {
+					// All queries completed
+					break WaitLoop
+				}
+			}
+		}
+	}
+
+	return d.db.Close()
 }

@@ -1,10 +1,12 @@
 // DHCP Management REST API
-// Provides endpoints for DHCP lease management and statistics
+// Provides endpoints for DHCP lease management from Windows Mobile Hotspot
 package api
 
 import (
 	"encoding/json"
 	"net/http"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +26,7 @@ type DHCPLease struct {
 	LeaseEnd   time.Time `json:"leaseEnd"`
 	PoolName   string    `json:"poolName"`
 	VendorID   string    `json:"vendorId,omitempty"`
+	Source     string    `json:"source"` // "hotspot", "dhcp-server", "arp"
 }
 
 // DHCPPool represents a DHCP pool
@@ -47,59 +50,184 @@ type DHCPStats struct {
 	ExpiredLeases int        `json:"expiredLeases"`
 	Pools         []DHCPPool `json:"pools"`
 	Uptime        string     `json:"uptime"`
+	HotspotActive bool       `json:"hotspotActive"`
 	Timestamp     string     `json:"timestamp"`
 }
 
-// DHCPAPIServer provides REST API for DHCP management
-type DHCPAPIServer struct {
-	port int
-	// In real implementation, would connect to actual DHCP server
-	mockLeases []DHCPLease
-	mockPools  []DHCPPool
-}
+// ============================================================================
+// Real Data Functions (Windows Hotspot Integration)
+// ============================================================================
 
-// NewDHCPAPIServer creates a new DHCP API server
-func NewDHCPAPIServer(port int) *DHCPAPIServer {
-	s := &DHCPAPIServer{port: port}
-	s.initMockData()
-	return s
-}
+// getHotspotLeases gets clients connected to Windows Mobile Hotspot as DHCP leases
+func getHotspotLeases() []DHCPLease {
+	if runtime.GOOS != "windows" {
+		return []DHCPLease{}
+	}
 
-// initMockData creates sample data for testing
-func (s *DHCPAPIServer) initMockData() {
+	leases := []DHCPLease{}
 	now := time.Now()
 
-	s.mockLeases = []DHCPLease{
-		{MAC: "AA:BB:CC:DD:EE:01", IP: "192.168.1.101", Hostname: "desktop-pc", State: "ACTIVE", LeaseStart: now.Add(-2 * time.Hour), LeaseEnd: now.Add(22 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:02", IP: "192.168.1.102", Hostname: "laptop-work", State: "ACTIVE", LeaseStart: now.Add(-1 * time.Hour), LeaseEnd: now.Add(23 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:03", IP: "192.168.1.103", Hostname: "phone-android", State: "ACTIVE", LeaseStart: now.Add(-30 * time.Minute), LeaseEnd: now.Add(23 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:04", IP: "192.168.1.104", Hostname: "tablet-ipad", State: "ACTIVE", LeaseStart: now.Add(-15 * time.Minute), LeaseEnd: now.Add(23 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:05", IP: "192.168.1.105", Hostname: "smart-tv", State: "ACTIVE", LeaseStart: now.Add(-5 * time.Hour), LeaseEnd: now.Add(19 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:06", IP: "192.168.1.106", Hostname: "printer-hp", State: "ACTIVE", LeaseStart: now.Add(-12 * time.Hour), LeaseEnd: now.Add(12 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:07", IP: "192.168.1.107", Hostname: "camera-nest", State: "EXPIRED", LeaseStart: now.Add(-25 * time.Hour), LeaseEnd: now.Add(-1 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:08", IP: "192.168.1.108", Hostname: "router-mesh", State: "ACTIVE", LeaseStart: now.Add(-6 * time.Hour), LeaseEnd: now.Add(18 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:09", IP: "192.168.1.109", Hostname: "alexa-echo", State: "ACTIVE", LeaseStart: now.Add(-3 * time.Hour), LeaseEnd: now.Add(21 * time.Hour), PoolName: "LAN-Pool"},
-		{MAC: "AA:BB:CC:DD:EE:10", IP: "192.168.1.110", Hostname: "gaming-pc", State: "ACTIVE", LeaseStart: now.Add(-45 * time.Minute), LeaseEnd: now.Add(23 * time.Hour), PoolName: "LAN-Pool"},
+	// Use PowerShell TetheringManager to get connected clients
+	psScript := "Add-Type -AssemblyName System.Runtime.WindowsRuntime\n" +
+		"\n" +
+		"$asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation" + "`" + "1' })[0]\n" +
+		"\n" +
+		"Function Await($WinRtTask, $ResultType) {\n" +
+		"    $asTask = $asTaskGeneric.MakeGenericMethod($ResultType)\n" +
+		"    $netTask = $asTask.Invoke($null, @($WinRtTask))\n" +
+		"    $netTask.Wait(-1) | Out-Null\n" +
+		"    $netTask.Result\n" +
+		"}\n" +
+		"\n" +
+		"[Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager,Windows.Networking.NetworkOperators,ContentType=WindowsRuntime] | Out-Null\n" +
+		"[Windows.Networking.Connectivity.NetworkInformation,Windows.Networking.Connectivity,ContentType=WindowsRuntime] | Out-Null\n" +
+		"\n" +
+		"try {\n" +
+		"    $connectionProfile = [Windows.Networking.Connectivity.NetworkInformation]::GetInternetConnectionProfile()\n" +
+		"    if ($null -eq $connectionProfile) {\n" +
+		"        $profiles = [Windows.Networking.Connectivity.NetworkInformation]::GetConnectionProfiles()\n" +
+		"        if ($profiles.Count -gt 0) { $connectionProfile = $profiles[0] }\n" +
+		"    }\n" +
+		"    \n" +
+		"    if ($null -ne $connectionProfile) {\n" +
+		"        $tetheringManager = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager]::CreateFromConnectionProfile($connectionProfile)\n" +
+		"        \n" +
+		"        if ($null -ne $tetheringManager -and $tetheringManager.TetheringOperationalState -eq 1) {\n" +
+		"            $clients = $tetheringManager.GetTetheringClients()\n" +
+		"            foreach ($client in $clients) {\n" +
+		"                $hostNames = $client.HostNames\n" +
+		"                $hostname = ''\n" +
+		"                if ($hostNames.Count -gt 0) { $hostname = $hostNames[0].DisplayName }\n" +
+		"                Write-Host \"CLIENT:$($client.MacAddress)|$hostname\"\n" +
+		"            }\n" +
+		"        }\n" +
+		"    }\n" +
+		"}\n" +
+		"catch {\n" +
+		"    # Silently fail\n" +
+		"}\n"
+
+	cmd := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript)
+	output, err := cmd.Output()
+	if err == nil {
+		lines := strings.Split(string(output), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "CLIENT:") {
+				parts := strings.SplitN(strings.TrimPrefix(line, "CLIENT:"), "|", 2)
+				if len(parts) >= 1 {
+					mac := normalizeMACAddress(parts[0])
+					hostname := ""
+					if len(parts) >= 2 {
+						hostname = strings.TrimSpace(parts[1])
+					}
+					if mac != "" && mac != "FF:FF:FF:FF:FF:FF" {
+						lease := DHCPLease{
+							MAC:        mac,
+							IP:         "", // Will be filled by ARP
+							Hostname:   hostname,
+							State:      "ACTIVE",
+							LeaseStart: now.Add(-1 * time.Hour), // Approximate
+							LeaseEnd:   now.Add(23 * time.Hour),
+							PoolName:   "Hotspot",
+							VendorID:   getVendorFromMAC(mac),
+							Source:     "hotspot",
+						}
+						leases = append(leases, lease)
+					}
+				}
+			}
+		}
 	}
 
-	s.mockPools = []DHCPPool{
-		{
-			Name:        "LAN-Pool",
-			StartIP:     "192.168.1.100",
-			EndIP:       "192.168.1.200",
-			Subnet:      "255.255.255.0",
-			Gateway:     "192.168.1.1",
-			DNS:         "192.168.1.1",
-			LeaseTime:   86400,
-			TotalIPs:    101,
-			UsedIPs:     9,
-			Utilization: 8.9,
-		},
+	// Also check ARP table for hotspot subnet (192.168.137.x)
+	arpCmd := exec.Command("arp", "-a")
+	arpOutput, err := arpCmd.Output()
+	if err == nil {
+		arpLines := strings.Split(string(arpOutput), "\n")
+		inHotspotInterface := false
+
+		for _, line := range arpLines {
+			line = strings.TrimSpace(line)
+
+			// Detect hotspot interface section
+			if strings.Contains(line, "Interface:") {
+				inHotspotInterface = strings.Contains(line, "192.168.137") ||
+					strings.Contains(line, "192.168.2.") ||
+					strings.Contains(line, "192.168.43.")
+				continue
+			}
+
+			// Parse ARP entries in hotspot interface
+			if inHotspotInterface {
+				fields := strings.Fields(line)
+				if len(fields) >= 3 {
+					ip := fields[0]
+					mac := normalizeMACAddress(fields[1])
+
+					// Skip gateway and broadcast
+					if mac != "" && mac != "FF:FF:FF:FF:FF:FF" &&
+						!strings.HasSuffix(ip, ".1") && !strings.HasSuffix(ip, ".255") {
+
+						// Check if we already have this MAC from PowerShell
+						found := false
+						for i := range leases {
+							if leases[i].MAC == mac {
+								leases[i].IP = ip
+								found = true
+								break
+							}
+						}
+
+						// Add new entry if not found
+						if !found {
+							lease := DHCPLease{
+								MAC:        mac,
+								IP:         ip,
+								Hostname:   "",
+								State:      "ACTIVE",
+								LeaseStart: now.Add(-30 * time.Minute),
+								LeaseEnd:   now.Add(23 * time.Hour),
+								PoolName:   "Hotspot",
+								VendorID:   getVendorFromMAC(mac),
+								Source:     "arp",
+							}
+							leases = append(leases, lease)
+						}
+					}
+				}
+			}
+		}
 	}
+
+	return leases
+}
+
+// getHotspotPool returns the Windows Mobile Hotspot pool configuration
+func getHotspotPool() DHCPPool {
+	// Windows Mobile Hotspot default configuration
+	return DHCPPool{
+		Name:        "Windows Hotspot",
+		StartIP:     "192.168.137.2",
+		EndIP:       "192.168.137.254",
+		Subnet:      "255.255.255.0",
+		Gateway:     "192.168.137.1",
+		DNS:         "192.168.137.1",
+		LeaseTime:   86400,
+		TotalIPs:    253,
+		UsedIPs:     0, // Will be updated
+		Utilization: 0,
+	}
+}
+
+// isHotspotActive checks if Windows Mobile Hotspot is enabled
+func isHotspotActive() bool {
+	status := getHotspotStatus()
+	return status.Enabled
 }
 
 // ============================================================================
-// DHCP API Handlers (for NIC API integration)
+// DHCP API Handlers (Real Data)
 // ============================================================================
 
 // HandleDHCPLeases handles GET /api/dhcp/leases
@@ -110,16 +238,15 @@ func (s *NICAPIServer) HandleDHCPLeases(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Get limit parameter
-	limit := 10
+	limit := 100
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
 			limit = l
 		}
 	}
 
-	// Get mock data
-	dhcp := NewDHCPAPIServer(0)
-	leases := dhcp.mockLeases
+	// Get real hotspot leases
+	leases := getHotspotLeases()
 
 	// Apply limit
 	if limit < len(leases) {
@@ -128,9 +255,10 @@ func (s *NICAPIServer) HandleDHCPLeases(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"leases":    leases,
-		"total":     len(dhcp.mockLeases),
-		"timestamp": time.Now().Format(time.RFC3339),
+		"leases":        leases,
+		"total":         len(leases),
+		"hotspotActive": isHotspotActive(),
+		"timestamp":     time.Now().Format(time.RFC3339),
 	})
 }
 
@@ -147,10 +275,10 @@ func (s *NICAPIServer) HandleDHCPSearch(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	dhcp := NewDHCPAPIServer(0)
+	leases := getHotspotLeases()
 	var results []DHCPLease
 
-	for _, lease := range dhcp.mockLeases {
+	for _, lease := range leases {
 		if strings.Contains(strings.ToLower(lease.MAC), query) ||
 			strings.Contains(strings.ToLower(lease.IP), query) ||
 			strings.Contains(strings.ToLower(lease.Hostname), query) {
@@ -174,24 +302,29 @@ func (s *NICAPIServer) HandleDHCPStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dhcp := NewDHCPAPIServer(0)
+	leases := getHotspotLeases()
+	pool := getHotspotPool()
+
+	// Update pool usage
+	pool.UsedIPs = len(leases)
+	if pool.TotalIPs > 0 {
+		pool.Utilization = float64(pool.UsedIPs) / float64(pool.TotalIPs) * 100
+	}
 
 	activeCount := 0
-	expiredCount := 0
-	for _, lease := range dhcp.mockLeases {
+	for _, lease := range leases {
 		if lease.State == "ACTIVE" {
 			activeCount++
-		} else {
-			expiredCount++
 		}
 	}
 
 	stats := DHCPStats{
-		TotalLeases:   len(dhcp.mockLeases),
+		TotalLeases:   len(leases),
 		ActiveLeases:  activeCount,
-		ExpiredLeases: expiredCount,
-		Pools:         dhcp.mockPools,
-		Uptime:        "2d 5h 30m",
+		ExpiredLeases: len(leases) - activeCount,
+		Pools:         []DHCPPool{pool},
+		Uptime:        getHotspotUptime(),
+		HotspotActive: isHotspotActive(),
 		Timestamp:     time.Now().Format(time.RFC3339),
 	}
 
@@ -201,7 +334,7 @@ func (s *NICAPIServer) HandleDHCPStats(w http.ResponseWriter, r *http.Request) {
 
 // HandleDHCPRelease handles POST /api/dhcp/leases/:mac/release
 func (s *NICAPIServer) HandleDHCPRelease(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -214,10 +347,12 @@ func (s *NICAPIServer) HandleDHCPRelease(w http.ResponseWriter, r *http.Request)
 	}
 	mac := parts[4]
 
+	// Note: Windows doesn't provide an API to disconnect individual hotspot clients
+	// This is a known limitation
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Lease released",
+		"success": false,
+		"message": "Disconnecting individual clients from Mobile Hotspot is not supported by Windows API",
 		"mac":     mac,
 	})
 }
@@ -229,11 +364,31 @@ func (s *NICAPIServer) HandleDHCPPools(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dhcp := NewDHCPAPIServer(0)
+	leases := getHotspotLeases()
+	pool := getHotspotPool()
+	pool.UsedIPs = len(leases)
+	if pool.TotalIPs > 0 {
+		pool.Utilization = float64(pool.UsedIPs) / float64(pool.TotalIPs) * 100
+	}
+
+	pools := []DHCPPool{}
+	if isHotspotActive() {
+		pools = append(pools, pool)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"pools":     dhcp.mockPools,
-		"timestamp": time.Now().Format(time.RFC3339),
+		"pools":         pools,
+		"hotspotActive": isHotspotActive(),
+		"timestamp":     time.Now().Format(time.RFC3339),
 	})
+}
+
+// getHotspotUptime returns how long the hotspot has been active
+func getHotspotUptime() string {
+	if !isHotspotActive() {
+		return "Hotspot Inactive"
+	}
+	// Windows doesn't provide hotspot start time via API
+	return "Active"
 }

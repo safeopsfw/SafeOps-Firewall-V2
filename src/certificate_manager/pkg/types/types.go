@@ -406,6 +406,13 @@ type Config struct {
 	DNSChallenge  DNSChallengeConfig  `json:"dns_challenge"`
 	Metrics       MetricsConfig       `json:"metrics"`
 	Health        HealthConfig        `json:"health"`
+	// SafeOps Internal CA Configuration
+	CA         *CAConfig         `json:"ca,omitempty"`
+	CRL        *CRLConfig        `json:"crl,omitempty"`
+	OCSP       *OCSPConfig       `json:"ocsp,omitempty"`
+	Security   *SecurityConfig   `json:"security,omitempty"`
+	Backup     *BackupConfig     `json:"backup,omitempty"`
+	HTTPServer *HTTPServerConfig `json:"http_server,omitempty"`
 }
 
 // ServiceConfig for service identity
@@ -749,4 +756,488 @@ func ValidateIP(ip string) error {
 		return fmt.Errorf("invalid IP address: %s", ip)
 	}
 	return nil
+}
+
+// ============================================================================
+// Section 14: SafeOps Internal CA Types
+// ============================================================================
+
+// CAConfig defines internal SafeOps Certificate Authority settings
+type CAConfig struct {
+	// Organization details
+	Organization       string `json:"organization"`
+	OrganizationalUnit string `json:"organizational_unit"`
+	Country            string `json:"country"`
+	Province           string `json:"province"`
+	Locality           string `json:"locality"`
+
+	// CA Certificate settings
+	ValidityYears    int     `json:"validity_years"`     // CA certificate validity (default: 10)
+	KeySize          int     `json:"key_size"`           // RSA key size (2048, 4096)
+	KeyType          KeyType `json:"key_type"`           // Key algorithm
+	SignatureHash    string  `json:"signature_hash"`     // SHA256, SHA384, SHA512
+	SerialNumberBits int     `json:"serial_number_bits"` // Serial number size (default: 128)
+
+	// Storage paths
+	CAKeyPath   string `json:"ca_key_path"`   // Path to CA private key
+	CACertPath  string `json:"ca_cert_path"`  // Path to CA certificate
+	CAChainPath string `json:"ca_chain_path"` // Path to CA chain
+
+	// Key protection
+	PassphraseFile    string `json:"passphrase_file"`     // File containing key passphrase
+	EncryptPrivateKey bool   `json:"encrypt_private_key"` // Encrypt at rest
+	HSMEnabled        bool   `json:"hsm_enabled"`         // Use HSM for key storage
+	HSMSlotID         int    `json:"hsm_slot_id"`         // HSM slot identifier
+
+	// Auto-generation
+	AutoGenerate bool `json:"auto_generate"` // Generate CA on first start if missing
+}
+
+// DefaultCAConfig returns sensible CA defaults
+func DefaultCAConfig() *CAConfig {
+	return &CAConfig{
+		Organization:      "SafeOps",
+		Country:           "US",
+		ValidityYears:     10,
+		KeySize:           4096,
+		KeyType:           KeyRSA4096,
+		SignatureHash:     "SHA256",
+		SerialNumberBits:  128,
+		CAKeyPath:         "/opt/safeops/ca/private/ca.key",
+		CACertPath:        "/opt/safeops/ca/certs/ca.crt",
+		CAChainPath:       "/opt/safeops/ca/certs/ca-chain.crt",
+		EncryptPrivateKey: true,
+		AutoGenerate:      true,
+	}
+}
+
+// CAMetadata contains CA certificate information
+type CAMetadata struct {
+	SerialNumber      string    `json:"serial_number"`
+	Subject           string    `json:"subject"`
+	Issuer            string    `json:"issuer"`
+	NotBefore         time.Time `json:"not_before"`
+	NotAfter          time.Time `json:"not_after"`
+	KeyType           KeyType   `json:"key_type"`
+	KeySize           int       `json:"key_size"`
+	Fingerprint       string    `json:"fingerprint"`      // SHA-256 fingerprint
+	FingerprintSHA1   string    `json:"fingerprint_sha1"` // SHA-1 for legacy
+	Version           int       `json:"version"`
+	IsCA              bool      `json:"is_ca"`
+	PathLenConstraint int       `json:"path_len_constraint"`
+}
+
+// DaysUntilExpiry returns days until CA expires
+func (ca *CAMetadata) DaysUntilExpiry() int {
+	return int(time.Until(ca.NotAfter).Hours() / 24)
+}
+
+// IsExpiring checks if CA expires within days
+func (ca *CAMetadata) IsExpiring(days int) bool {
+	return time.Until(ca.NotAfter) <= time.Duration(days)*24*time.Hour
+}
+
+// ============================================================================
+// Section 15: Revocation Types
+// ============================================================================
+
+// RevocationReason as per RFC 5280
+type RevocationReason int
+
+const (
+	ReasonUnspecified          RevocationReason = 0
+	ReasonKeyCompromise        RevocationReason = 1
+	ReasonCACompromise         RevocationReason = 2
+	ReasonAffiliationChanged   RevocationReason = 3
+	ReasonSuperseded           RevocationReason = 4
+	ReasonCessationOfOperation RevocationReason = 5
+	ReasonCertificateHold      RevocationReason = 6
+	ReasonRemoveFromCRL        RevocationReason = 8
+	ReasonPrivilegeWithdrawn   RevocationReason = 9
+	ReasonAACompromise         RevocationReason = 10
+)
+
+// String returns human-readable revocation reason
+func (r RevocationReason) String() string {
+	switch r {
+	case ReasonUnspecified:
+		return "unspecified"
+	case ReasonKeyCompromise:
+		return "key_compromise"
+	case ReasonCACompromise:
+		return "ca_compromise"
+	case ReasonAffiliationChanged:
+		return "affiliation_changed"
+	case ReasonSuperseded:
+		return "superseded"
+	case ReasonCessationOfOperation:
+		return "cessation_of_operation"
+	case ReasonCertificateHold:
+		return "certificate_hold"
+	case ReasonRemoveFromCRL:
+		return "remove_from_crl"
+	case ReasonPrivilegeWithdrawn:
+		return "privilege_withdrawn"
+	case ReasonAACompromise:
+		return "aa_compromise"
+	default:
+		return "unknown"
+	}
+}
+
+// RevocationInfo contains certificate revocation details
+type RevocationInfo struct {
+	ID             int64            `json:"id"`
+	CertificateID  int64            `json:"certificate_id"`
+	SerialNumber   string           `json:"serial_number"`
+	CommonName     string           `json:"common_name"`
+	Reason         RevocationReason `json:"reason"`
+	ReasonText     string           `json:"reason_text"`
+	RevokedAt      time.Time        `json:"revoked_at"`
+	RevokedBy      string           `json:"revoked_by"` // User/system that revoked
+	InvalidityDate time.Time        `json:"invalidity_date,omitempty"`
+	CreatedAt      time.Time        `json:"created_at"`
+}
+
+// RevocationRequest for revoking a certificate
+type RevocationRequest struct {
+	CertificateID  int64            `json:"certificate_id"`
+	SerialNumber   string           `json:"serial_number"`
+	Reason         RevocationReason `json:"reason"`
+	ReasonText     string           `json:"reason_text,omitempty"`
+	InvalidityDate *time.Time       `json:"invalidity_date,omitempty"`
+}
+
+// CRLEntry represents a single entry in a CRL
+type CRLEntry struct {
+	SerialNumber   string           `json:"serial_number"`
+	RevocationDate time.Time        `json:"revocation_date"`
+	Reason         RevocationReason `json:"reason"`
+}
+
+// ============================================================================
+// Section 16: CRL and OCSP Configuration
+// ============================================================================
+
+// CRLConfig for Certificate Revocation List generation
+type CRLConfig struct {
+	Enabled          bool          `json:"enabled"`
+	UpdateInterval   time.Duration `json:"update_interval"`    // How often to regenerate CRL
+	NextUpdateOffset time.Duration `json:"next_update_offset"` // NextUpdate = Now + offset
+	CRLPath          string        `json:"crl_path"`           // File path for CRL
+	CRLURL           string        `json:"crl_url"`            // Distribution point URL
+	CRLDERPath       string        `json:"crl_der_path"`       // DER format path
+	MaxCRLSize       int           `json:"max_crl_size"`       // Maximum entries
+	SignatureHash    string        `json:"signature_hash"`     // SHA256, SHA384
+	ServeHTTP        bool          `json:"serve_http"`         // Serve CRL over HTTP
+	HTTPPort         int           `json:"http_port"`          // HTTP port for CRL
+}
+
+// DefaultCRLConfig returns sensible CRL defaults
+func DefaultCRLConfig() *CRLConfig {
+	return &CRLConfig{
+		Enabled:          true,
+		UpdateInterval:   24 * time.Hour,
+		NextUpdateOffset: 7 * 24 * time.Hour,
+		CRLPath:          "/opt/safeops/ca/crl/ca.crl.pem",
+		CRLDERPath:       "/opt/safeops/ca/crl/ca.crl",
+		MaxCRLSize:       100000,
+		SignatureHash:    "SHA256",
+		ServeHTTP:        true,
+		HTTPPort:         8080,
+	}
+}
+
+// OCSPConfig for Online Certificate Status Protocol responder
+type OCSPConfig struct {
+	Enabled               bool          `json:"enabled"`
+	BindAddress           string        `json:"bind_address"`
+	Port                  int           `json:"port"`
+	OCSPURL               string        `json:"ocsp_url"`                // OCSP responder URL
+	SignerCertPath        string        `json:"signer_cert_path"`        // OCSP signing cert
+	SignerKeyPath         string        `json:"signer_key_path"`         // OCSP signing key
+	SignerCertValidity    time.Duration `json:"signer_cert_validity"`    // OCSP cert validity
+	ResponseValidity      time.Duration `json:"response_validity"`       // Response cache time
+	CacheEnabled          bool          `json:"cache_enabled"`           // Cache OCSP responses
+	CacheTTL              time.Duration `json:"cache_ttl"`               // Cache TTL
+	MaxConcurrentRequests int           `json:"max_concurrent_requests"` // Request limit
+	Timeout               time.Duration `json:"timeout"`                 // Request timeout
+}
+
+// DefaultOCSPConfig returns sensible OCSP defaults
+func DefaultOCSPConfig() *OCSPConfig {
+	return &OCSPConfig{
+		Enabled:               true,
+		BindAddress:           "0.0.0.0",
+		Port:                  8081,
+		SignerCertValidity:    30 * 24 * time.Hour,
+		ResponseValidity:      1 * time.Hour,
+		CacheEnabled:          true,
+		CacheTTL:              5 * time.Minute,
+		MaxConcurrentRequests: 100,
+		Timeout:               10 * time.Second,
+	}
+}
+
+// OCSPStatus represents OCSP response status
+type OCSPStatus string
+
+const (
+	OCSPStatusGood    OCSPStatus = "good"
+	OCSPStatusRevoked OCSPStatus = "revoked"
+	OCSPStatusUnknown OCSPStatus = "unknown"
+)
+
+func (os OCSPStatus) String() string { return string(os) }
+
+// OCSPResponse represents an OCSP query response
+type OCSPResponse struct {
+	SerialNumber   string           `json:"serial_number"`
+	Status         OCSPStatus       `json:"status"`
+	RevocationTime time.Time        `json:"revocation_time,omitempty"`
+	Reason         RevocationReason `json:"reason,omitempty"`
+	ThisUpdate     time.Time        `json:"this_update"`
+	NextUpdate     time.Time        `json:"next_update"`
+	ProducedAt     time.Time        `json:"produced_at"`
+}
+
+// ============================================================================
+// Section 17: Security and Audit Types
+// ============================================================================
+
+// SecurityConfig for audit and rate limiting
+type SecurityConfig struct {
+	// Audit logging
+	AuditLoggingEnabled bool   `json:"audit_logging_enabled"`
+	AuditLogPath        string `json:"audit_log_path"`
+	AuditLogMaxSize     int    `json:"audit_log_max_size"` // MB
+	AuditLogMaxBackups  int    `json:"audit_log_max_backups"`
+
+	// Rate limiting
+	RateLimitEnabled     bool `json:"rate_limit_enabled"`
+	MaxCertsPerHour      int  `json:"max_certs_per_hour"`
+	MaxCertsPerDay       int  `json:"max_certs_per_day"`
+	MaxRevocationsPerDay int  `json:"max_revocations_per_day"`
+
+	// Access control
+	RequireAuthentication bool     `json:"require_authentication"`
+	AllowedIPs            []string `json:"allowed_ips"`
+	AllowedSubnets        []string `json:"allowed_subnets"`
+
+	// Key security
+	KeyRotationEnabled  bool          `json:"key_rotation_enabled"`
+	KeyRotationInterval time.Duration `json:"key_rotation_interval"`
+}
+
+// DefaultSecurityConfig returns sensible security defaults
+func DefaultSecurityConfig() *SecurityConfig {
+	return &SecurityConfig{
+		AuditLoggingEnabled:   true,
+		AuditLogPath:          "/var/log/safeops/ca-audit.log",
+		AuditLogMaxSize:       100,
+		AuditLogMaxBackups:    10,
+		RateLimitEnabled:      true,
+		MaxCertsPerHour:       50,
+		MaxCertsPerDay:        500,
+		MaxRevocationsPerDay:  100,
+		RequireAuthentication: true,
+	}
+}
+
+// AuditAction represents audited actions
+type AuditAction string
+
+const (
+	AuditActionCertIssued     AuditAction = "cert_issued"
+	AuditActionCertRenewed    AuditAction = "cert_renewed"
+	AuditActionCertRevoked    AuditAction = "cert_revoked"
+	AuditActionCertDownloaded AuditAction = "cert_downloaded"
+	AuditActionCAGenerated    AuditAction = "ca_generated"
+	AuditActionCRLGenerated   AuditAction = "crl_generated"
+	AuditActionConfigChanged  AuditAction = "config_changed"
+	AuditActionAuthSuccess    AuditAction = "auth_success"
+	AuditActionAuthFailed     AuditAction = "auth_failed"
+	AuditActionBackupCreated  AuditAction = "backup_created"
+	AuditActionBackupRestored AuditAction = "backup_restored"
+)
+
+func (aa AuditAction) String() string { return string(aa) }
+
+// AuditLogEntry represents an audit log record
+type AuditLogEntry struct {
+	ID           int64       `json:"id"`
+	Timestamp    time.Time   `json:"timestamp"`
+	Action       AuditAction `json:"action"`
+	Actor        string      `json:"actor"`         // User or system
+	ActorIP      string      `json:"actor_ip"`      // Source IP
+	ResourceType string      `json:"resource_type"` // certificate, ca, config
+	ResourceID   string      `json:"resource_id"`   // Certificate ID, etc.
+	Details      string      `json:"details"`       // Additional detail
+	Success      bool        `json:"success"`
+	ErrorMessage string      `json:"error_message,omitempty"`
+}
+
+// ============================================================================
+// Section 18: Backup and Recovery Types
+// ============================================================================
+
+// BackupConfig for CA backup settings
+type BackupConfig struct {
+	Enabled           bool          `json:"enabled"`
+	BackupInterval    time.Duration `json:"backup_interval"`
+	BackupPath        string        `json:"backup_path"`
+	RetentionDays     int           `json:"retention_days"`
+	MaxBackups        int           `json:"max_backups"`
+	IncludePrivateKey bool          `json:"include_private_key"`
+	EncryptBackup     bool          `json:"encrypt_backup"`
+	EncryptionKey     string        `json:"-"` // Never serialize
+	CompressBackup    bool          `json:"compress_backup"`
+}
+
+// DefaultBackupConfig returns sensible backup defaults
+func DefaultBackupConfig() *BackupConfig {
+	return &BackupConfig{
+		Enabled:           true,
+		BackupInterval:    24 * time.Hour,
+		BackupPath:        "/opt/safeops/backups/ca",
+		RetentionDays:     90,
+		MaxBackups:        30,
+		IncludePrivateKey: true,
+		EncryptBackup:     true,
+		CompressBackup:    true,
+	}
+}
+
+// BackupMetadata describes a backup archive
+type BackupMetadata struct {
+	ID               string    `json:"id"` // Backup UUID
+	Timestamp        time.Time `json:"timestamp"`
+	Size             int64     `json:"size"`     // Bytes
+	Checksum         string    `json:"checksum"` // SHA-256
+	Path             string    `json:"path"`
+	Encrypted        bool      `json:"encrypted"`
+	Compressed       bool      `json:"compressed"`
+	IncludesKey      bool      `json:"includes_key"`
+	CertificateCount int       `json:"certificate_count"`
+	CASerialNumber   string    `json:"ca_serial_number"`
+	CreatedBy        string    `json:"created_by"`
+}
+
+// RestoreRequest for restoring from backup
+type RestoreRequest struct {
+	BackupID          string `json:"backup_id"`
+	BackupPath        string `json:"backup_path"`
+	DecryptionKey     string `json:"-"`
+	Force             bool   `json:"force"`         // Overwrite existing
+	ValidateOnly      bool   `json:"validate_only"` // Dry run
+	RestorePrivateKey bool   `json:"restore_private_key"`
+}
+
+// RestoreResult contains restore operation results
+type RestoreResult struct {
+	Success             bool      `json:"success"`
+	Timestamp           time.Time `json:"timestamp"`
+	RestoredCerts       int       `json:"restored_certs"`
+	RestoredRevocations int       `json:"restored_revocations"`
+	RestoredCA          bool      `json:"restored_ca"`
+	Warnings            []string  `json:"warnings,omitempty"`
+	Error               string    `json:"error,omitempty"`
+}
+
+// ============================================================================
+// Section 19: HTTP Distribution Server Types
+// ============================================================================
+
+// HTTPServerConfig for CA certificate distribution server
+type HTTPServerConfig struct {
+	Enabled        bool   `json:"enabled"`
+	BindAddress    string `json:"bind_address"`
+	Port           int    `json:"port"`
+	TLSEnabled     bool   `json:"tls_enabled"`
+	TLSCertPath    string `json:"tls_cert_path"`
+	TLSKeyPath     string `json:"tls_key_path"`
+	BasePath       string `json:"base_path"`        // URL base path
+	MaxRequestSize int64  `json:"max_request_size"` // Bytes
+	RateLimit      int    `json:"rate_limit"`       // Requests per second
+}
+
+// DefaultHTTPServerConfig returns sensible HTTP server defaults
+func DefaultHTTPServerConfig() *HTTPServerConfig {
+	return &HTTPServerConfig{
+		Enabled:        true,
+		BindAddress:    "0.0.0.0",
+		Port:           8443,
+		TLSEnabled:     true,
+		BasePath:       "/ca",
+		MaxRequestSize: 1024 * 1024, // 1MB
+		RateLimit:      100,
+	}
+}
+
+// QRCodeConfig for QR code generation
+type QRCodeConfig struct {
+	Enabled    bool          `json:"enabled"`
+	Size       int           `json:"size"`        // Pixels
+	ErrorLevel string        `json:"error_level"` // L, M, Q, H
+	CachePath  string        `json:"cache_path"`
+	CacheTTL   time.Duration `json:"cache_ttl"`
+	IncludeURL string        `json:"include_url"` // URL to encode
+}
+
+// DefaultQRCodeConfig returns sensible QR code defaults
+func DefaultQRCodeConfig() *QRCodeConfig {
+	return &QRCodeConfig{
+		Enabled:    true,
+		Size:       256,
+		ErrorLevel: "M",
+		CachePath:  "/tmp/safeops/qr",
+		CacheTTL:   24 * time.Hour,
+	}
+}
+
+// ============================================================================
+// Section 20: TLS Proxy Integration Types
+// ============================================================================
+
+// ProxyCertRequest for TLS proxy certificate signing
+type ProxyCertRequest struct {
+	CommonName      string      `json:"common_name"`
+	SubjectAltNames []string    `json:"subject_alt_names"`
+	IPAddresses     []net.IP    `json:"ip_addresses"`
+	ValidityHours   int         `json:"validity_hours"`
+	KeyType         KeyType     `json:"key_type"`
+	Purpose         CertPurpose `json:"purpose"`
+}
+
+// CertPurpose indicates certificate use case
+type CertPurpose string
+
+const (
+	PurposeServerAuth  CertPurpose = "server_auth"  // TLS server certificate
+	PurposeClientAuth  CertPurpose = "client_auth"  // TLS client certificate
+	PurposeCodeSigning CertPurpose = "code_signing" // Code signing
+	PurposeEmailSign   CertPurpose = "email_sign"   // S/MIME email
+)
+
+func (cp CertPurpose) String() string { return string(cp) }
+
+// ProxyCertResponse contains signed certificate for TLS proxy
+type ProxyCertResponse struct {
+	CertificatePEM string    `json:"certificate_pem"`
+	PrivateKeyPEM  string    `json:"-"`
+	ChainPEM       string    `json:"chain_pem"`
+	SerialNumber   string    `json:"serial_number"`
+	NotBefore      time.Time `json:"not_before"`
+	NotAfter       time.Time `json:"not_after"`
+	Fingerprint    string    `json:"fingerprint"`
+}
+
+// SigningStats tracks certificate signing metrics
+type SigningStats struct {
+	TotalSigned          int64     `json:"total_signed"`
+	SignedLast24Hours    int64     `json:"signed_last_24_hours"`
+	SignedLast7Days      int64     `json:"signed_last_7_days"`
+	AverageSigningTimeMs int64     `json:"average_signing_time_ms"`
+	CacheHitRate         float64   `json:"cache_hit_rate"`
+	LastSignedAt         time.Time `json:"last_signed_at"`
 }

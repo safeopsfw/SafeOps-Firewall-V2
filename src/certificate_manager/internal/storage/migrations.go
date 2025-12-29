@@ -694,3 +694,386 @@ CREATE INDEX IF NOT EXISTS idx_cert_status ON certificates(status);
 CREATE INDEX IF NOT EXISTS idx_renewal_next_check ON renewal_schedule(next_renewal_check);
 CREATE INDEX IF NOT EXISTS idx_challenges_domain_status ON domain_challenges(domain, status);
 `
+
+// ============================================================================
+// CA Management Schema Migration (Version 014)
+// ============================================================================
+
+// CertificateManagerSchemaVersion is the version for CA management migration
+const CertificateManagerSchemaVersion = 14
+
+// caManagementSchemaSQL creates tables for CA management
+const caManagementSchemaSQL = `
+-- Certificate Manager CA Management Schema
+-- Version: 014
+
+-- Device CA Status: Tracks which devices have installed the root CA
+CREATE TABLE IF NOT EXISTS device_ca_status (
+    id SERIAL PRIMARY KEY,
+    device_ip INET NOT NULL,
+    mac_address MACADDR NOT NULL,
+    hostname VARCHAR(255),
+    ca_fingerprint VARCHAR(64) NOT NULL,
+    ca_serial VARCHAR(255) NOT NULL,
+    installed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_seen TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    installation_method VARCHAR(50) DEFAULT 'dhcp',
+    user_agent TEXT,
+    status VARCHAR(30) DEFAULT 'installed',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(device_ip, mac_address)
+);
+
+-- Certificate Downloads: Tracks CA certificate download history
+CREATE TABLE IF NOT EXISTS certificate_downloads (
+    id SERIAL PRIMARY KEY,
+    device_ip INET NOT NULL,
+    device_mac MACADDR,
+    ca_fingerprint VARCHAR(64) NOT NULL,
+    download_format VARCHAR(20) DEFAULT 'pem',
+    user_agent TEXT,
+    download_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    success BOOLEAN DEFAULT TRUE,
+    error_message TEXT
+);
+
+-- Revoked Certificates: Tracks revoked certificates for CRL/OCSP
+CREATE TABLE IF NOT EXISTS revoked_certificates (
+    id SERIAL PRIMARY KEY,
+    serial_number VARCHAR(255) NOT NULL UNIQUE,
+    common_name VARCHAR(255),
+    issuer_dn TEXT,
+    revocation_reason INTEGER DEFAULT 0,
+    revocation_reason_text VARCHAR(100),
+    revoked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    revoked_by VARCHAR(100) DEFAULT 'system',
+    invalidity_date TIMESTAMP WITH TIME ZONE,
+    certificate_pem TEXT,
+    ca_serial VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Issued Certificates: Metadata for all certificates signed by our CA
+CREATE TABLE IF NOT EXISTS issued_certificates (
+    id SERIAL PRIMARY KEY,
+    serial_number VARCHAR(255) NOT NULL UNIQUE,
+    common_name VARCHAR(255) NOT NULL,
+    subject_dn TEXT NOT NULL,
+    issuer_dn TEXT NOT NULL,
+    subject_alt_names TEXT[] DEFAULT '{}',
+    not_before TIMESTAMP WITH TIME ZONE NOT NULL,
+    not_after TIMESTAMP WITH TIME ZONE NOT NULL,
+    signature_algorithm VARCHAR(100),
+    key_type VARCHAR(20),
+    key_size INTEGER,
+    fingerprint_sha256 VARCHAR(64),
+    fingerprint_sha1 VARCHAR(40),
+    certificate_pem TEXT NOT NULL,
+    certificate_type VARCHAR(30) DEFAULT 'client',
+    issued_to_device_ip INET,
+    issued_to_mac MACADDR,
+    issued_by VARCHAR(100) DEFAULT 'system',
+    status VARCHAR(30) DEFAULT 'active',
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CA Backups: Tracks CA backup metadata
+CREATE TABLE IF NOT EXISTS ca_backups (
+    id SERIAL PRIMARY KEY,
+    backup_id UUID DEFAULT gen_random_uuid(),
+    ca_serial VARCHAR(255) NOT NULL,
+    ca_fingerprint VARCHAR(64) NOT NULL,
+    backup_path TEXT NOT NULL,
+    backup_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    backup_reason VARCHAR(100),
+    backup_type VARCHAR(30) DEFAULT 'scheduled',
+    includes_private_key BOOLEAN DEFAULT TRUE,
+    encrypted BOOLEAN DEFAULT TRUE,
+    file_size_bytes BIGINT,
+    checksum_sha256 VARCHAR(64),
+    verified BOOLEAN DEFAULT FALSE,
+    verified_at TIMESTAMP WITH TIME ZONE,
+    created_by VARCHAR(100) DEFAULT 'system',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CA Audit Log: Tamper-proof audit trail for CA operations
+CREATE TABLE IF NOT EXISTS ca_audit_log (
+    id SERIAL PRIMARY KEY,
+    event_id UUID DEFAULT gen_random_uuid(),
+    event_type VARCHAR(50) NOT NULL,
+    event_category VARCHAR(30) NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    ca_serial VARCHAR(255),
+    certificate_serial VARCHAR(255),
+    actor VARCHAR(100) DEFAULT 'system',
+    actor_ip INET,
+    target VARCHAR(255),
+    action VARCHAR(100) NOT NULL,
+    result VARCHAR(20) DEFAULT 'success',
+    details JSONB DEFAULT '{}',
+    error_message TEXT,
+    previous_state JSONB,
+    new_state JSONB,
+    checksum VARCHAR(64)
+);
+
+-- Indexes for CA Management Tables
+CREATE INDEX IF NOT EXISTS idx_device_ca_status_ip ON device_ca_status(device_ip);
+CREATE INDEX IF NOT EXISTS idx_device_ca_status_mac ON device_ca_status(mac_address);
+CREATE INDEX IF NOT EXISTS idx_device_ca_status_fingerprint ON device_ca_status(ca_fingerprint);
+CREATE INDEX IF NOT EXISTS idx_certificate_downloads_ip ON certificate_downloads(device_ip);
+CREATE INDEX IF NOT EXISTS idx_certificate_downloads_timestamp ON certificate_downloads(download_timestamp);
+CREATE INDEX IF NOT EXISTS idx_revoked_serial ON revoked_certificates(serial_number);
+CREATE INDEX IF NOT EXISTS idx_revoked_date ON revoked_certificates(revoked_at);
+CREATE INDEX IF NOT EXISTS idx_issued_serial ON issued_certificates(serial_number);
+CREATE INDEX IF NOT EXISTS idx_issued_common_name ON issued_certificates(common_name);
+CREATE INDEX IF NOT EXISTS idx_issued_not_after ON issued_certificates(not_after);
+CREATE INDEX IF NOT EXISTS idx_issued_status ON issued_certificates(status);
+CREATE INDEX IF NOT EXISTS idx_ca_backups_serial ON ca_backups(ca_serial);
+CREATE INDEX IF NOT EXISTS idx_ca_backups_timestamp ON ca_backups(backup_timestamp);
+CREATE INDEX IF NOT EXISTS idx_ca_audit_timestamp ON ca_audit_log(timestamp);
+CREATE INDEX IF NOT EXISTS idx_ca_audit_event_type ON ca_audit_log(event_type);
+CREATE INDEX IF NOT EXISTS idx_ca_audit_actor ON ca_audit_log(actor);
+CREATE INDEX IF NOT EXISTS idx_ca_audit_result ON ca_audit_log(result);
+`
+
+// ============================================================================
+// Migration Configuration
+// ============================================================================
+
+// MigrationConfig holds configuration for migration behavior
+type MigrationConfig struct {
+	DatabaseURL    string
+	MigrationsPath string
+	MigrationTable string
+	AutoMigrate    bool
+}
+
+// DefaultMigrationConfig returns default configuration
+func DefaultMigrationConfig() *MigrationConfig {
+	return &MigrationConfig{
+		MigrationsPath: "database/schemas/",
+		MigrationTable: "schema_migrations",
+		AutoMigrate:    true,
+	}
+}
+
+// ============================================================================
+// CA Schema Verification
+// ============================================================================
+
+// requiredCATables lists all tables that must exist after CA migration
+var requiredCATables = []string{
+	"device_ca_status",
+	"certificate_downloads",
+	"revoked_certificates",
+	"issued_certificates",
+	"ca_backups",
+	"ca_audit_log",
+}
+
+// requiredCAIndexes lists all indexes that must exist
+var requiredCAIndexes = []string{
+	"idx_device_ca_status_ip",
+	"idx_device_ca_status_mac",
+	"idx_revoked_serial",
+	"idx_issued_common_name",
+	"idx_ca_audit_timestamp",
+}
+
+// VerifyCASchema validates all CA management tables exist
+func (m *Migrator) VerifyCASchema(ctx context.Context) error {
+	// Check tables exist
+	for _, table := range requiredCATables {
+		exists, err := m.tableExists(ctx, table)
+		if err != nil {
+			return fmt.Errorf("failed to check table %s: %w", table, err)
+		}
+		if !exists {
+			return fmt.Errorf("required table %s does not exist", table)
+		}
+	}
+
+	// Check indexes exist
+	for _, index := range requiredCAIndexes {
+		exists, err := m.indexExists(ctx, index)
+		if err != nil {
+			return fmt.Errorf("failed to check index %s: %w", index, err)
+		}
+		if !exists {
+			return fmt.Errorf("required index %s does not exist", index)
+		}
+	}
+
+	return nil
+}
+
+// tableExists checks if a table exists in the database
+func (m *Migrator) tableExists(ctx context.Context, tableName string) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_schema = 'public' 
+			AND table_name = $1
+		)`
+	err := m.db.QueryRowContext(ctx, query, tableName).Scan(&exists)
+	return exists, err
+}
+
+// indexExists checks if an index exists in the database
+func (m *Migrator) indexExists(ctx context.Context, indexName string) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS (
+			SELECT FROM pg_indexes 
+			WHERE schemaname = 'public' 
+			AND indexname = $1
+		)`
+	err := m.db.QueryRowContext(ctx, query, indexName).Scan(&exists)
+	return exists, err
+}
+
+// ============================================================================
+// CA Schema Rollback
+// ============================================================================
+
+// caSchemaRollbackSQL drops all CA management tables
+const caSchemaRollbackSQL = `
+DROP TABLE IF EXISTS ca_audit_log CASCADE;
+DROP TABLE IF EXISTS ca_backups CASCADE;
+DROP TABLE IF EXISTS issued_certificates CASCADE;
+DROP TABLE IF EXISTS revoked_certificates CASCADE;
+DROP TABLE IF EXISTS certificate_downloads CASCADE;
+DROP TABLE IF EXISTS device_ca_status CASCADE;
+`
+
+// RollbackCASchema removes all CA management tables (USE WITH CAUTION)
+func (m *Migrator) RollbackCASchema(ctx context.Context) error {
+	// Begin transaction
+	tx, err := m.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	// Execute rollback
+	_, err = tx.ExecContext(ctx, caSchemaRollbackSQL)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("rollback failed: %w", err)
+	}
+
+	// Remove from migrations table
+	_, err = tx.ExecContext(ctx,
+		"DELETE FROM schema_migrations WHERE version = $1",
+		fmt.Sprintf("%03d", CertificateManagerSchemaVersion),
+	)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to remove migration record: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// ============================================================================
+// Apply CA Management Schema
+// ============================================================================
+
+// ApplyCAManagementSchema applies the CA management schema migration
+func (m *Migrator) ApplyCAManagementSchema(ctx context.Context) error {
+	version := fmt.Sprintf("%03d", CertificateManagerSchemaVersion)
+
+	// Check if already applied
+	applied, err := m.IsAlreadyApplied(ctx, version)
+	if err != nil {
+		return fmt.Errorf("failed to check migration status: %w", err)
+	}
+
+	if applied {
+		// Verify checksum matches
+		var storedChecksum string
+		err := m.db.QueryRowContext(ctx,
+			"SELECT checksum FROM schema_migrations WHERE version = $1",
+			version,
+		).Scan(&storedChecksum)
+		if err != nil {
+			return fmt.Errorf("failed to get stored checksum: %w", err)
+		}
+
+		currentChecksum := calculateChecksum(caManagementSchemaSQL)
+		if storedChecksum != currentChecksum {
+			return fmt.Errorf("%w: CA management schema was modified after being applied", ErrChecksumMismatch)
+		}
+
+		return nil // Already applied and checksum matches
+	}
+
+	// Apply the migration
+	migration := &Migration{
+		Version:  version,
+		Name:     "certificate_manager_ca_management",
+		SQL:      caManagementSchemaSQL,
+		Checksum: calculateChecksum(caManagementSchemaSQL),
+		Status:   StatusPending,
+	}
+
+	return m.applyMigration(ctx, migration)
+}
+
+// ============================================================================
+// Schema Health Check
+// ============================================================================
+
+// SchemaHealth contains database schema health information
+type SchemaHealth struct {
+	AllTablesExist  bool     `json:"all_tables_exist"`
+	AllIndexesExist bool     `json:"all_indexes_exist"`
+	MissingTables   []string `json:"missing_tables,omitempty"`
+	MissingIndexes  []string `json:"missing_indexes,omitempty"`
+	CurrentVersion  string   `json:"current_version"`
+	SchemaValid     bool     `json:"schema_valid"`
+}
+
+// GetSchemaHealth returns comprehensive schema health status
+func (m *Migrator) GetSchemaHealth(ctx context.Context) (*SchemaHealth, error) {
+	health := &SchemaHealth{
+		AllTablesExist:  true,
+		AllIndexesExist: true,
+		MissingTables:   []string{},
+		MissingIndexes:  []string{},
+		SchemaValid:     true,
+	}
+
+	// Get current version
+	version, err := m.GetCurrentVersion(ctx)
+	if err == nil {
+		health.CurrentVersion = version
+	}
+
+	// Check tables
+	for _, table := range requiredCATables {
+		exists, err := m.tableExists(ctx, table)
+		if err != nil || !exists {
+			health.AllTablesExist = false
+			health.MissingTables = append(health.MissingTables, table)
+		}
+	}
+
+	// Check indexes
+	for _, index := range requiredCAIndexes {
+		exists, err := m.indexExists(ctx, index)
+		if err != nil || !exists {
+			health.AllIndexesExist = false
+			health.MissingIndexes = append(health.MissingIndexes, index)
+		}
+	}
+
+	// Overall validity
+	health.SchemaValid = health.AllTablesExist && health.AllIndexesExist
+
+	return health, nil
+}

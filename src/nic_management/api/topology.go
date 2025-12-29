@@ -144,8 +144,9 @@ func (s *NICAPIServer) HandleTopology(w http.ResponseWriter, r *http.Request) {
 		}
 
 		connType := "wired"
-		if strings.Contains(strings.ToLower(nic.Name), "wi-fi") ||
-			strings.Contains(strings.ToLower(nic.Name), "wireless") {
+		isWiFi := strings.Contains(strings.ToLower(nic.Name), "wi-fi") ||
+			strings.Contains(strings.ToLower(nic.Name), "wireless")
+		if isWiFi {
 			connType = "wireless"
 		}
 
@@ -172,6 +173,53 @@ func (s *NICAPIServer) HandleTopology(w http.ResponseWriter, r *http.Request) {
 			Source: "safeops",
 			Target: fmt.Sprintf("nic-%d", nic.Index),
 			Type:   connType,
+		})
+	}
+
+	// Add hotspot connected clients
+	hotspotClients := getHotspotClients()
+	for i, client := range hotspotClients {
+		clientID := fmt.Sprintf("hotspot-client-%d", i)
+		label := client.Hostname
+		if label == "" {
+			label = client.Vendor
+			if label == "" {
+				label = "Unknown Device"
+			}
+		}
+
+		nodes = append(nodes, TopologyNode{
+			ID:     clientID,
+			Type:   "device",
+			Label:  label,
+			Status: "online",
+			IP:     client.IP,
+			MAC:    client.MAC,
+			Details: map[string]interface{}{
+				"vendor":     client.Vendor,
+				"type":       "hotspot-client",
+				"connection": "wireless",
+			},
+		})
+
+		// Connect to WiFi/hotspot interface
+		// Find the WiFi interface to connect to
+		targetNIC := "safeops" // Default to safeops if no WiFi found
+		for _, nic := range nics {
+			if strings.Contains(strings.ToLower(nic.Name), "wi-fi") ||
+				strings.Contains(strings.ToLower(nic.Name), "wireless") ||
+				strings.Contains(strings.ToLower(nic.Name), "local area connection") {
+				if len(nic.IPv4) > 0 && strings.Contains(nic.IPv4[0], "192.168.137") {
+					targetNIC = fmt.Sprintf("nic-%d", nic.Index)
+					break
+				}
+			}
+		}
+
+		edges = append(edges, TopologyEdge{
+			Source: targetNIC,
+			Target: clientID,
+			Type:   "wireless",
 		})
 	}
 

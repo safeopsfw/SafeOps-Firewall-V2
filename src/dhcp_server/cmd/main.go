@@ -182,7 +182,7 @@ func (a *Application) start(_ context.Context) error {
 	logInfo("Starting UDP listener on port 67")
 
 	// 7. Start gRPC API server
-	logInfo("Starting gRPC API server on port 50054")
+	logInfo("Starting gRPC API server on port 50055")
 
 	// 8. Start metrics server
 	logInfo("Starting metrics server on port 9154")

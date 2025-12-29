@@ -361,17 +361,26 @@ foreach ($protoFile in $protoFiles) {
     $fileName = $protoFile.Name
     $filePath = $protoFile.FullName
     
+    # Extract service name for per-service subdirectory
+    $serviceName = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
+    $serviceOutDir = Join-Path $GoOutDir $serviceName
+    
+    # Create service-specific output directory
+    if (-not (Test-Path $serviceOutDir)) {
+        New-Item -Path $serviceOutDir -ItemType Directory -Force | Out-Null
+    }
+    
     if ($VerboseOutput) {
-        Write-ColorOutput "Compiling: $fileName" -Type Info
+        Write-ColorOutput "Compiling: $fileName -> $serviceName/" -Type Info
     }
     
     try {
-        # Build protoc command for Go
+        # Build protoc command for Go (output to service-specific directory)
         $protocArgs = @(
             "--proto_path=$GrpcDir"
-            "--go_out=$GoOutDir"
+            "--go_out=$serviceOutDir"
             "--go_opt=paths=source_relative"
-            "--go-grpc_out=$GoOutDir"
+            "--go-grpc_out=$serviceOutDir"
             "--go-grpc_opt=paths=source_relative"
             $filePath
         )

@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { path: '/network', label: 'Overview', icon: '📊', exact: true },
   { path: '/network/search', label: 'Search', icon: '🔍' },
   { path: '/network/topology', label: 'Topology', icon: '🗺️' },
+  { path: '/network/dhcp', label: 'DHCP Server', icon: '🏊' },
 ]
 
 function NetworkLayout() {

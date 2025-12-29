@@ -106,6 +106,9 @@ func (s *NICAPIServer) Start() error {
 	mux.HandleFunc("/api/dhcp/stats", s.corsMiddleware(s.HandleDHCPStats))
 	mux.HandleFunc("/api/dhcp/pools", s.corsMiddleware(s.HandleDHCPPools))
 
+	// Connected Devices Discovery
+	mux.HandleFunc("/api/devices", s.corsMiddleware(s.HandleConnectedDevices))
+
 	mux.HandleFunc("/api/health", s.corsMiddleware(s.handleHealth))
 
 	s.server = &http.Server{

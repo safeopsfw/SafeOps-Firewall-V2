@@ -26,6 +26,7 @@ import NICManagement from './pages/NICManagement';
 import NICSearch from './pages/Network/NICSearch';
 import NetworkTopology from './pages/Network/NetworkTopology';
 import NICDetail from './pages/Network/NICDetail';
+import DHCPManagement from './pages/Network/DHCPManagement';
 
 // Protected Route wrapper
 function ProtectedRoute() {
@@ -111,6 +112,7 @@ function App() {
                 <Route index element={<NICManagement />} />
                 <Route path="search" element={<NICSearch />} />
                 <Route path="topology" element={<NetworkTopology />} />
+                <Route path="dhcp" element={<DHCPManagement />} />
                 <Route path=":nicId" element={<NICDetail />} />
               </Route>
               <Route path="/cognitive" element={<Cognitive />} />

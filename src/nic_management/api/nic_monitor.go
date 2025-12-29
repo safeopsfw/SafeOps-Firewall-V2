@@ -236,12 +236,33 @@ func (m *NICMonitor) detectPrimaryWAN(nics []NICInfo) int {
 		}
 	}
 
-	// Priority 1: Prefer wired Ethernet over WiFi
+	// Priority 1: Prefer physical wired Ethernet over WiFi
+	// First pass: Look for physical Ethernet adapters (not virtual, not WiFi)
 	for _, nic := range candidates {
 		name := strings.ToLower(nic.Name)
-		// Check if it's Ethernet (not WiFi)
+		// Skip WiFi interfaces
+		if strings.Contains(name, "wi-fi") || strings.Contains(name, "wireless") ||
+			strings.Contains(name, "wlan") || strings.Contains(name, "802.11") {
+			continue
+		}
+		// Skip virtual adapters
+		if strings.Contains(name, "vethernet") || strings.Contains(name, "vmware") ||
+			strings.Contains(name, "virtualbox") || strings.Contains(name, "hyper-v") ||
+			strings.Contains(name, "loopback") {
+			continue
+		}
+		// Prefer simple "Ethernet" or "Ethernet N" names (physical adapters)
+		if strings.HasPrefix(name, "ethernet") {
+			return nic.Index
+		}
+	}
+
+	// Second pass: Any non-WiFi, non-virtual with gateway
+	for _, nic := range candidates {
+		name := strings.ToLower(nic.Name)
 		if !strings.Contains(name, "wi-fi") && !strings.Contains(name, "wireless") &&
-			!strings.Contains(name, "wlan") {
+			!strings.Contains(name, "wlan") && !strings.Contains(name, "vethernet") &&
+			!strings.Contains(name, "vmware") && !strings.Contains(name, "virtualbox") {
 			return nic.Index
 		}
 	}
