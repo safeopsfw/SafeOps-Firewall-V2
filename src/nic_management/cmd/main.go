@@ -467,6 +467,7 @@ func printVersion() {
 // =============================================================================
 
 // runServiceInstall runs the service installation process.
+// Uses functions from installer.go
 func runServiceInstall() {
 	config := DefaultServiceConfig()
 	if err := InstallService(config); err != nil {

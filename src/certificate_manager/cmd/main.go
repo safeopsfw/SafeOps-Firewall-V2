@@ -338,18 +338,66 @@ func (app *Application) initServers() error {
 		return fmt.Errorf("gRPC server creation failed: %w", err)
 	}
 
-	// Create HTTP server for health checks and metrics
+	// Create HTTP server for health checks, metrics, AND CA distribution
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/ready", app.readyHandler)
 	mux.HandleFunc("/metrics", app.metricsHandler)
 
+	// Add CA distribution handlers for certificate downloads
+	caCertPath := "certs/root-cert.pem"
+	if app.config.Storage.CertPath != "" {
+		caCertPath = app.config.Storage.CertPath + "/root-cert.pem"
+	}
+	distConfig := &distribution.HandlersConfig{
+		CACertPath:     caCertPath,
+		BaseURL:        fmt.Sprintf("http://192.168.137.1:%d", app.getHTTPPort()),
+		CacheMaxAge:    24 * time.Hour,
+		Organization:   "SafeOps Network",
+		CACommonName:   "SafeOps Root CA",
+		SupportEmail:   "support@safeops.local",
+		EnableTracking: true,
+	}
+	distHandlers := distribution.NewHandlers(distConfig)
+	distHandlers.RegisterDistributionRoutes(mux)
+
+	// Create captive portal for automatic CA installation redirect
+	captivePortal := distribution.NewCaptivePortal(distConfig.BaseURL)
+	captiveHandler := captivePortal.InterceptHTTP(mux)
+
+	// CORS middleware for frontend access (wraps captive portal)
+	corsHandler := corsMiddleware(captiveHandler)
+
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%d", app.getHTTPPort()),
-		Handler: mux,
+		Handler: corsHandler,
 	}
 
 	return nil
+}
+
+// corsMiddleware adds CORS headers for frontend access
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Allow requests from frontend dev server and production
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		// Handle preflight OPTIONS request
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ============================================================================

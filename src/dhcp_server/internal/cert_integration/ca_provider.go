@@ -31,7 +31,7 @@ type CAProviderConfig struct {
 // DefaultCAProviderConfig returns sensible defaults.
 func DefaultCAProviderConfig() *CAProviderConfig {
 	return &CAProviderConfig{
-		Address:           "localhost:50060",
+		Address:           "localhost:50053",
 		Timeout:           5 * time.Second,
 		MaxRetries:        3,
 		CacheTTL:          time.Hour,

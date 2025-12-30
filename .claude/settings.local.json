@@ -39,7 +39,11 @@
       "Bash(cmd /c launch-safeops.bat)",
       "Bash(tasklist:*)",
       "Bash(if exist launcher-output.log type launcher-output.log)",
-      "Bash(powershell -Command \"Start-Process ''D:\\SafeOpsFV2\\launch-safeops.bat'' -Verb RunAs\")"
+      "Bash(powershell -Command \"Start-Process ''D:\\SafeOpsFV2\\launch-safeops.bat'' -Verb RunAs\")",
+      "Bash(./start_all_services.bat)",
+      "Bash(if not exist \"D:\\SafeOpsFV2\\src\\dns_server\" mkdir \"D:\\SafeOpsFV2\\src\\dns_server\")",
+      "Bash(if not exist \"D:\\SafeOpsFV2\\src\\dns_server\\cmd\" mkdir \"D:\\SafeOpsFV2\\src\\dns_server\\cmd\")",
+      "Bash(dir:*)"
     ]
   }
 }

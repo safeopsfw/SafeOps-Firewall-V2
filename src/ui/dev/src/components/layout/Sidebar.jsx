@@ -30,6 +30,7 @@ const moduleNav = [
   { name: 'DNS Server', path: '/dns', icon: Globe, badge: 'Soon' },
   { name: 'Firewall', path: '/firewall', icon: Lock, badge: 'Soon' },
   { name: 'Network', path: '/network', icon: Network },
+  { name: 'Certificates', path: '/certificates', icon: Key },
   { name: 'Cognitive', path: '/cognitive', icon: Database },
 ];
 

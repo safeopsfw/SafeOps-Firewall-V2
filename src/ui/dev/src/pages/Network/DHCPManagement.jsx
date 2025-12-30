@@ -1,39 +1,35 @@
 // DHCP Management Page - Complete DHCP Server Control
 // View leases, pools, stats, and manage DHCP configurations
 
-import { useState, useEffect } from 'react';
-import './DHCPManagement.css';
+import { useState, useEffect } from "react";
+import "./DHCPManagement.css";
 
-const NIC_API_BASE = 'http://localhost:8081/api';
+const NIC_API_BASE = "http://localhost:8081/api";
 
 function DHCPManagement() {
-  const [activeTab, setActiveTab] = useState('leases');
+  const [activeTab, setActiveTab] = useState("leases");
   const [leases, setLeases] = useState([]);
   const [pools, setPools] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [filteredLeases, setFilteredLeases] = useState([]);
 
   // Fetch all data
   useEffect(() => {
-    fetchAllData();
-    const interval = setInterval(fetchAllData, 10000); // Refresh every 10 seconds
+    fetchAllData(true); // Show loading on initial load
+    const interval = setInterval(() => fetchAllData(false), 10000); // Silent refresh every 10 seconds
     return () => clearInterval(interval);
   }, []);
 
-  const fetchAllData = async () => {
-    setLoading(true);
+  const fetchAllData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
-      await Promise.all([
-        fetchLeases(),
-        fetchPools(),
-        fetchStats(),
-      ]);
+      await Promise.all([fetchLeases(), fetchPools(), fetchStats()]);
     } catch (err) {
-      console.error('Failed to fetch DHCP data:', err);
+      console.error("Failed to fetch DHCP data:", err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -46,7 +42,7 @@ function DHCPManagement() {
         setFilteredLeases(data.leases || []);
       }
     } catch (err) {
-      console.error('Failed to fetch leases:', err);
+      console.error("Failed to fetch leases:", err);
     }
   };
 
@@ -58,7 +54,7 @@ function DHCPManagement() {
         setPools(data.pools || []);
       }
     } catch (err) {
-      console.error('Failed to fetch pools:', err);
+      console.error("Failed to fetch pools:", err);
     }
   };
 
@@ -70,7 +66,7 @@ function DHCPManagement() {
         setStats(data);
       }
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      console.error("Failed to fetch stats:", err);
     }
   };
 
@@ -98,17 +94,17 @@ function DHCPManagement() {
 
     try {
       const res = await fetch(`${NIC_API_BASE}/dhcp/leases/${mac}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       if (res.ok) {
         await fetchLeases();
-        alert('Lease released successfully');
+        alert("Lease released successfully");
       } else {
-        alert('Failed to release lease');
+        alert("Failed to release lease");
       }
     } catch (err) {
-      alert('Error: ' + err.message);
+      alert("Error: " + err.message);
     }
   };
 
@@ -118,7 +114,7 @@ function DHCPManagement() {
     const endDate = new Date(end);
     const diff = endDate - now;
 
-    if (diff < 0) return 'Expired';
+    if (diff < 0) return "Expired";
 
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -138,7 +134,7 @@ function DHCPManagement() {
           <h1>DHCP Server Management</h1>
           <p>Manage DHCP leases, pools, and server configuration</p>
         </div>
-        <button className="refresh-btn" onClick={fetchAllData}>
+        <button className="refresh-btn" onClick={() => fetchAllData(true)}>
           🔄 Refresh
         </button>
       </div>
@@ -180,21 +176,21 @@ function DHCPManagement() {
       {/* Tabs */}
       <div className="dhcp-tabs">
         <button
-          className={`tab-btn ${activeTab === 'leases' ? 'active' : ''}`}
-          onClick={() => setActiveTab('leases')}
+          className={`tab-btn ${activeTab === "leases" ? "active" : ""}`}
+          onClick={() => setActiveTab("leases")}
         >
           📋 Leases ({leases.length})
         </button>
         <button
-          className={`tab-btn ${activeTab === 'pools' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pools')}
+          className={`tab-btn ${activeTab === "pools" ? "active" : ""}`}
+          onClick={() => setActiveTab("pools")}
         >
           🏊 Pools ({pools.length})
         </button>
       </div>
 
       {/* Search Bar (only for leases tab) */}
-      {activeTab === 'leases' && (
+      {activeTab === "leases" && (
         <div className="search-bar">
           <input
             type="text"
@@ -214,7 +210,7 @@ function DHCPManagement() {
           </div>
         )}
 
-        {!loading && activeTab === 'leases' && (
+        {!loading && activeTab === "leases" && (
           <div className="leases-table">
             <table>
               <thead>
@@ -233,9 +229,11 @@ function DHCPManagement() {
                   <tr key={lease.mac} className={lease.state.toLowerCase()}>
                     <td className="mac">{lease.mac}</td>
                     <td className="ip">{lease.ip}</td>
-                    <td className="hostname">{lease.hostname || '-'}</td>
+                    <td className="hostname">{lease.hostname || "-"}</td>
                     <td>
-                      <span className={`state-badge ${lease.state.toLowerCase()}`}>
+                      <span
+                        className={`state-badge ${lease.state.toLowerCase()}`}
+                      >
                         {lease.state}
                       </span>
                     </td>
@@ -245,7 +243,7 @@ function DHCPManagement() {
                       <button
                         className="release-btn"
                         onClick={() => releaseLease(lease.mac)}
-                        disabled={lease.state !== 'ACTIVE'}
+                        disabled={lease.state !== "ACTIVE"}
                       >
                         Release
                       </button>
@@ -263,7 +261,7 @@ function DHCPManagement() {
           </div>
         )}
 
-        {!loading && activeTab === 'pools' && (
+        {!loading && activeTab === "pools" && (
           <div className="pools-grid">
             {pools.map((pool, idx) => (
               <div key={idx} className="pool-card">

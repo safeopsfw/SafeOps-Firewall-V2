@@ -731,8 +731,49 @@ func (h *Handlers) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/healthz", h.HandleHealth)
 	mux.HandleFunc("/metrics", h.HandleMetrics)
 
+	// API endpoints for installation reporting
+	h.RegisterAPIRoutes(mux)
+
 	// Index
 	mux.HandleFunc("/", h.HandleIndex)
+}
+
+// RegisterDistributionRoutes registers only CA distribution routes (without health/metrics/index).
+// Use this when integrating with an existing HTTP server that already has those routes.
+func (h *Handlers) RegisterDistributionRoutes(mux *http.ServeMux) {
+	// Certificate endpoints
+	mux.HandleFunc("/ca.crt", h.HandleCACertPEM)
+	mux.HandleFunc("/ca.pem", h.HandleCACertPEM)
+	mux.HandleFunc("/ca.der", h.HandleCACertDER)
+	mux.HandleFunc("/ca.cer", h.HandleCACertDER)
+
+	// Script endpoints
+	mux.HandleFunc("/install-ca.sh", h.HandleInstallScriptLinux)
+	mux.HandleFunc("/install-ca.ps1", h.HandleInstallScriptWindows)
+	mux.HandleFunc("/install-ca-mac.sh", h.HandleInstallScriptMac)
+	mux.HandleFunc("/install-ca-firefox.sh", h.HandleInstallScriptFirefox)
+
+	// Mobile profile endpoints
+	mux.HandleFunc("/ca.mobileconfig", h.HandleMobileConfig)
+	mux.HandleFunc("/ca-android.crt", h.HandleAndroidCert)
+
+	// QR code endpoints
+	mux.HandleFunc("/ca-qr-code.png", h.HandleQRCodeGeneric)
+	mux.HandleFunc("/ca-qr-ios.png", h.HandleQRCodeiOS)
+	mux.HandleFunc("/ca-qr-android.png", h.HandleQRCodeAndroid)
+	mux.HandleFunc("/ca-qr-guide.png", h.HandleQRCodeGuide)
+
+	// Trust guide endpoints
+	mux.HandleFunc("/trust-guide", h.HandleTrustGuide)
+	mux.HandleFunc("/trust-guide.html", h.HandleTrustGuide)
+	mux.HandleFunc("/help", h.HandleTrustGuide)
+
+	// CRL endpoint
+	mux.HandleFunc("/crl.pem", h.HandleCRL)
+	mux.HandleFunc("/crl", h.HandleCRL)
+
+	// API endpoints for installation reporting
+	h.RegisterAPIRoutes(mux)
 }
 
 // GetTracker returns the download tracker instance.

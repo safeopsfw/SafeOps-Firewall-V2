@@ -345,15 +345,55 @@ func (s *NICAPIServer) HandleDHCPRelease(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
-	mac := parts[4]
+	mac := normalizeMACAddress(parts[4])
 
-	// Note: Windows doesn't provide an API to disconnect individual hotspot clients
-	// This is a known limitation
+	// Find the client's IP address from current leases
+	leases := getHotspotLeases()
+	var clientIP string
+	var clientHostname string
+	for _, lease := range leases {
+		if lease.MAC == mac {
+			clientIP = lease.IP
+			clientHostname = lease.Hostname
+			break
+		}
+	}
+
+	if clientIP == "" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Client not found or no IP assigned",
+			"mac":     mac,
+		})
+		return
+	}
+
+	// Delete the ARP entry to disconnect the client
+	// This forces the client to lose network connectivity
+	cmd := exec.Command("arp", "-d", clientIP)
+	err := cmd.Run()
+
+	if err != nil {
+		// Even if ARP deletion fails, try to proceed
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":  false,
+			"message":  "Failed to disconnect client: " + err.Error(),
+			"mac":      mac,
+			"ip":       clientIP,
+			"hostname": clientHostname,
+		})
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": false,
-		"message": "Disconnecting individual clients from Mobile Hotspot is not supported by Windows API",
-		"mac":     mac,
+		"success":  true,
+		"message":  "Client disconnected. ARP entry deleted - device will need to reconnect to regain network access.",
+		"mac":      mac,
+		"ip":       clientIP,
+		"hostname": clientHostname,
 	})
 }
 

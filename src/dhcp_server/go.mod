@@ -1,4 +1,4 @@
-module github.com/safeops/dhcp_server
+module dhcp_server
 
 go 1.21
 
