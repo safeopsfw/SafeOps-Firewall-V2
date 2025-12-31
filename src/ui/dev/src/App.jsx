@@ -26,13 +26,13 @@ import NICManagement from './pages/NICManagement';
 import NICSearch from './pages/Network/NICSearch';
 import NetworkTopology from './pages/Network/NetworkTopology';
 import NICDetail from './pages/Network/NICDetail';
-import DHCPManagement from './pages/Network/DHCPManagement';
-import CertificateManager from './pages/CertificateManager';
+import StepCAManager from './pages/StepCAManager';
+import DHCPMonitor from './pages/DHCPMonitor';
 
 // Protected Route wrapper
 function ProtectedRoute() {
   const { isAuthenticated, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-900">
@@ -40,18 +40,18 @@ function ProtectedRoute() {
       </div>
     );
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <Outlet />;
 }
 
 // Main Layout with Sidebar
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   return (
     <div className="flex min-h-screen bg-dark-900">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -83,13 +83,13 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
-          
+
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               {/* Main Dashboard */}
               <Route path="/dashboard" element={<Dashboard />} />
-              
+
               {/* Threat Intelligence Module */}
               <Route path="/threat-intel" element={<ThreatIntelLayout />}>
                 <Route index element={<ThreatIntelDashboard />} />
@@ -97,13 +97,13 @@ function App() {
                 <Route path="indicators" element={<Indicators />} />
                 <Route path="analytics" element={<Analytics />} />
               </Route>
-              
+
               {/* Management Routes */}
               <Route path="/manage/users" element={<UserManagement />} />
               <Route path="/manage/feeds" element={<Feeds />} />
               <Route path="/manage/databases" element={<SettingsPage />} />
               <Route path="/manage/ids-rules" element={<IDSRuleManager />} />
-              
+
               {/* Other Modules */}
               <Route path="/dns" element={<ComingSoon title="DNS Server" />} />
               <Route path="/firewall" element={<FirewallManager />} />
@@ -113,18 +113,19 @@ function App() {
                 <Route index element={<NICManagement />} />
                 <Route path="search" element={<NICSearch />} />
                 <Route path="topology" element={<NetworkTopology />} />
-                <Route path="dhcp" element={<DHCPManagement />} />
                 <Route path=":nicId" element={<NICDetail />} />
               </Route>
               <Route path="/cognitive" element={<Cognitive />} />
-              <Route path="/certificates" element={<CertificateManager />} />
-              
+              <Route path="/dhcp-monitor" element={<DHCPMonitor />} />
+              <Route path="/certificates" element={<StepCAManager />} />
+              <Route path="/step-ca" element={<StepCAManager />} />
+
               {/* Settings */}
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/staging" element={<ComingSoon title="Staging Config" />} />
             </Route>
           </Route>
-          
+
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

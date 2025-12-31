@@ -206,3 +206,15 @@ INSTALLATION_IMPLEMENTATION_REPORT.md
 # Project Planning Notes
 # =====================================
 plan
+# Step-CA database and logs
+certs/step-ca/ca/db/
+certs/step-ca/ca/secrets/
+*.vlog
+*.sst
+
+# Executables
+*.exe
+
+# Database files
+*.db
+certs/step-ca/ca/db_backup*

@@ -1,3 +1,5 @@
-module github.com/safeops/dns_server
+module safeops/dns_server
 
 go 1.21
+
+require github.com/lib/pq v1.10.9

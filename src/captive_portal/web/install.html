@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Setup Required - SafeOps</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .info-box {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #4a5568;
+        }
+
+        .info-box li {
+            margin-bottom: 8px;
+        }
+
+        .download-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-btn img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .instructions {
+            background: #fff;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .instructions.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .instructions h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #4a5568;
+        }
+
+        .instructions li {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .instructions li strong {
+            color: #667eea;
+        }
+
+        .verify-section {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .verify-btn {
+            background: #48bb78;
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        .verify-btn:hover {
+            background: #38a169;
+            transform: scale(1.05);
+        }
+
+        .verify-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 2px solid #48bb78;
+            display: block;
+        }
+
+        .status-message.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 2px solid #f56565;
+            display: block;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            background: #f7fafc;
+            padding: 20px;
+            text-align: center;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .download-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Network Setup Required</h1>
+            <p>Install Security Certificate to Access the Internet</p>
+        </div>
+
+        <div class="content">
+            <div class="info-box">
+                <h3>Why do I need this?</h3>
+                <p>To access the internet through this network, you must install a security certificate. This is required for:</p>
+                <ul>
+                    <li>✓ Network security and content filtering</li>
+                    <li>✓ Malware and threat protection</li>
+                    <li>✓ Compliance with security policies</li>
+                </ul>
+            </div>
+
+            <h3 style="margin-bottom: 20px; color: #2d3748;">Step 1: Download Certificate for Your Device</h3>
+            <div class="download-buttons">
+                <button class="download-btn" onclick="downloadCert('windows')" data-os="windows">
+                    <span style="font-size: 2em;">🪟</span>
+                    <span>Windows</span>
+                </button>
+                <button class="download-btn" onclick="downloadCert('android')" data-os="android">
+                    <span style="font-size: 2em;">🤖</span>
+                    <span>Android</span>
+                </button>
+                <button class="download-btn" onclick="downloadCert('ios')" data-os="ios">
+                    <span style="font-size: 2em;">🍎</span>
+                    <span>iPhone/iPad</span>
+                </button>
+                <button class="download-btn" onclick="downloadCert('macos')" data-os="macos">
+                    <span style="font-size: 2em;">🖥️</span>
+                    <span>macOS</span>
+                </button>
+                <button class="download-btn" onclick="downloadCert('linux')" data-os="linux">
+                    <span style="font-size: 2em;">🐧</span>
+                    <span>Linux</span>
+                </button>
+            </div>
+
+            <!-- Windows Instructions -->
+            <div class="instructions" id="windows-instructions">
+                <h3>🪟 Windows Installation Instructions</h3>
+                <ol>
+                    <li>The certificate file <strong>ca.crt</strong> should now be downloaded</li>
+                    <li>Find the downloaded file (usually in your Downloads folder)</li>
+                    <li><strong>Double-click</strong> the ca.crt file</li>
+                    <li>Click "<strong>Install Certificate</strong>"</li>
+                    <li>Select "<strong>Local Machine</strong>" (you'll need administrator rights)</li>
+                    <li>Click "<strong>Yes</strong>" on the security prompt</li>
+                    <li>Choose "<strong>Place all certificates in the following store</strong>"</li>
+                    <li>Click "<strong>Browse</strong>" and select "<strong>Trusted Root Certification Authorities</strong>"</li>
+                    <li>Click "<strong>Next</strong>" → "<strong>Finish</strong>"</li>
+                    <li>You should see "The import was successful"</li>
+                </ol>
+            </div>
+
+            <!-- Android Instructions -->
+            <div class="instructions" id="android-instructions">
+                <h3>🤖 Android Installation Instructions</h3>
+                <ol>
+                    <li>The certificate file should now be downloaded</li>
+                    <li>Open "<strong>Settings</strong>"</li>
+                    <li>Go to "<strong>Security</strong>" (or "<strong>Biometrics and Security</strong>")</li>
+                    <li>Tap "<strong>Install from storage</strong>" or "<strong>Install certificates</strong>"</li>
+                    <li>Tap "<strong>CA certificate</strong>"</li>
+                    <li>You may see a warning - tap "<strong>Install anyway</strong>"</li>
+                    <li>Find and select the downloaded <strong>ca.crt</strong> file</li>
+                    <li>Give it a name (e.g., "SafeOps Network")</li>
+                    <li>Tap "<strong>OK</strong>"</li>
+                </ol>
+            </div>
+
+            <!-- iOS Instructions -->
+            <div class="instructions" id="ios-instructions">
+                <h3>🍎 iOS/iPadOS Installation Instructions</h3>
+                <ol>
+                    <li>The certificate profile should now be downloaded</li>
+                    <li>Open "<strong>Settings</strong>" app</li>
+                    <li>A banner should appear at the top saying "Profile Downloaded"</li>
+                    <li>Tap on the banner (or go to General → VPN & Device Management)</li>
+                    <li>Tap the downloaded profile</li>
+                    <li>Tap "<strong>Install</strong>" (top right)</li>
+                    <li>Enter your passcode if prompted</li>
+                    <li>Tap "<strong>Install</strong>" again (you'll see a red warning - this is normal)</li>
+                    <li>Tap "<strong>Done</strong>"</li>
+                    <li><strong>IMPORTANT:</strong> Go to Settings → General → About → <strong>Certificate Trust Settings</strong></li>
+                    <li>Toggle ON the certificate under "Enable Full Trust"</li>
+                    <li>Tap "<strong>Continue</strong>"</li>
+                </ol>
+                <div style="background: #fef5e7; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <strong>⚠️ Don't skip step 10-11!</strong> iOS requires this extra step to trust the certificate.
+                </div>
+            </div>
+
+            <!-- macOS Instructions -->
+            <div class="instructions" id="macos-instructions">
+                <h3>🖥️ macOS Installation Instructions</h3>
+                <ol>
+                    <li>The certificate file <strong>ca.crt</strong> should now be downloaded</li>
+                    <li>Find the file in your Downloads folder</li>
+                    <li><strong>Double-click</strong> the ca.crt file</li>
+                    <li>Keychain Access will open</li>
+                    <li>Make sure "<strong>login</strong>" or "<strong>System</strong>" is selected</li>
+                    <li>Click "<strong>Add</strong>"</li>
+                    <li>Find the certificate in Keychain Access (look for "SafeOps")</li>
+                    <li><strong>Double-click</strong> the certificate</li>
+                    <li>Expand "<strong>Trust</strong>"</li>
+                    <li>Set "When using this certificate" to "<strong>Always Trust</strong>"</li>
+                    <li>Close the window and enter your password</li>
+                </ol>
+            </div>
+
+            <!-- Linux Instructions -->
+            <div class="instructions" id="linux-instructions">
+                <h3>🐧 Linux Installation Instructions</h3>
+                <p><strong>Ubuntu/Debian:</strong></p>
+                <ol>
+                    <li>Download the certificate</li>
+                    <li>Open Terminal</li>
+                    <li>Run: <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">sudo cp ~/Downloads/ca.crt /usr/local/share/ca-certificates/safeops-ca.crt</code></li>
+                    <li>Run: <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">sudo update-ca-certificates</code></li>
+                    <li>Restart your browser</li>
+                </ol>
+                <p style="margin-top: 15px;"><strong>Fedora/RHEL/CentOS:</strong></p>
+                <ol>
+                    <li>Download the certificate</li>
+                    <li>Open Terminal</li>
+                    <li>Run: <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">sudo cp ~/Downloads/ca.crt /etc/pki/ca-trust/source/anchors/safeops-ca.crt</code></li>
+                    <li>Run: <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">sudo update-ca-trust</code></li>
+                    <li>Restart your browser</li>
+                </ol>
+            </div>
+
+            <!-- Verification Section -->
+            <div class="verify-section">
+                <h3 style="color: #2d3748; margin-bottom: 20px;">Step 2: Verify Installation</h3>
+                <p style="margin-bottom: 20px; color: #4a5568;">
+                    After installing the certificate, click the button below to verify it's working correctly.
+                </p>
+                <button class="verify-btn" onclick="verifyCertificate()">✓ I've Installed the Certificate</button>
+                <div class="loader" id="loader"></div>
+                <div class="status-message" id="status-message"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Having trouble? Contact your network administrator for assistance.</p>
+            <p style="margin-top: 10px;">SafeOps Network Security © 2024</p>
+        </div>
+    </div>
+
+    <script>
+        // Detect user's OS and show instructions automatically
+        function detectOS() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            if (userAgent.indexOf('win') !== -1) return 'windows';
+            if (userAgent.indexOf('android') !== -1) return 'android';
+            if (userAgent.indexOf('iphone') !== -1 || userAgent.indexOf('ipad') !== -1) return 'ios';
+            if (userAgent.indexOf('mac') !== -1) return 'macos';
+            if (userAgent.indexOf('linux') !== -1) return 'linux';
+            return 'windows'; // default
+        }
+
+        // Download certificate
+        function downloadCert(os) {
+            // Hide all instructions
+            document.querySelectorAll('.instructions').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Show instructions for selected OS
+            const instructions = document.getElementById(os + '-instructions');
+            if (instructions) {
+                instructions.classList.add('active');
+                instructions.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // Download appropriate certificate format
+            let url;
+            switch(os) {
+                case 'ios':
+                    url = 'http://localhost:80/ca.mobileconfig';
+                    break;
+                case 'linux':
+                    url = 'http://localhost:80/ca.pem';
+                    break;
+                default:
+                    url = 'http://localhost:80/ca.crt';
+            }
+
+            // Trigger download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = os === 'ios' ? 'safeops.mobileconfig' : 'ca.crt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Verify certificate installation
+        async function verifyCertificate() {
+            const btn = document.querySelector('.verify-btn');
+            const loader = document.getElementById('loader');
+            const statusMsg = document.getElementById('status-message');
+
+            btn.disabled = true;
+            loader.style.display = 'block';
+            statusMsg.style.display = 'none';
+            statusMsg.className = 'status-message';
+
+            try {
+                // Try to make HTTPS request to certificate manager
+                const response = await fetch('https://localhost:8443/verify-cert', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+
+                if (response.ok) {
+                    // Success!
+                    statusMsg.className = 'status-message success';
+                    statusMsg.innerHTML = `
+                        <h3 style="margin-bottom: 10px;">✓ Certificate Installed Successfully!</h3>
+                        <p>Your device is now configured. Redirecting to the internet...</p>
+                    `;
+                    statusMsg.style.display = 'block';
+
+                    // Mark device as having certificate installed
+                    await fetch('http://localhost:80/api/mark-installed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            mac: 'detected',
+                            timestamp: new Date().toISOString()
+                        })
+                    });
+
+                    // Redirect after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = 'http://www.google.com';
+                    }, 3000);
+                } else {
+                    throw new Error('Certificate not trusted');
+                }
+            } catch (error) {
+                // Certificate not installed or not trusted
+                statusMsg.className = 'status-message error';
+                statusMsg.innerHTML = `
+                    <h3 style="margin-bottom: 10px;">✗ Certificate Not Installed Yet</h3>
+                    <p>Please follow the installation instructions above and try again.</p>
+                    <p style="margin-top: 10px;"><strong>Make sure to:</strong></p>
+                    <ul style="text-align: left; margin-top: 10px;">
+                        <li>Complete ALL steps in the instructions</li>
+                        <li>Restart your browser after installation</li>
+                        <li>On iOS: Enable "Certificate Trust Settings"</li>
+                    </ul>
+                `;
+                statusMsg.style.display = 'block';
+                btn.disabled = false;
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        // Auto-detect OS and show hint
+        window.onload = function() {
+            const os = detectOS();
+            const btn = document.querySelector(`[data-os="${os}"]`);
+            if (btn) {
+                btn.style.border = '3px solid #48bb78';
+                btn.style.boxShadow = '0 0 20px rgba(72, 187, 120, 0.5)';
+            }
+        };
+    </script>
+</body>
+</html>

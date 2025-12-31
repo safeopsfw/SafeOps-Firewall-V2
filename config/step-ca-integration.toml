@@ -1,0 +1,66 @@
+# Step-CA Integration Configuration for SafeOps
+# This file contains settings for integrating step-ca with SafeOps services
+
+[step_ca]
+# Step-CA server settings
+enabled = true
+api_url = "https://192.168.137.1:9000"
+acme_directory = "https://192.168.137.1:9000/acme/safeops-acme/directory"
+
+# CA certificate locations
+root_ca_path = "D:/SafeOpsFV2/certs/safeops-root-ca.crt"
+intermediate_ca_path = "D:/SafeOpsFV2/certs/step-ca/ca/certs/intermediate_ca.crt"
+
+# CA distribution settings (for devices to download)
+ca_download_url = "http://192.168.137.1:8082/ca/download"
+ca_download_path = "D:/SafeOpsFV2/certs/safeops-root-ca.crt"
+
+[certificate_manager]
+# Update certificate manager to use step-ca
+backend = "step-ca"  # Options: "step-ca", "acme", "custom"
+
+# CA certificate serving
+http_port = 8082
+cert_path = "D:/SafeOpsFV2/certs/safeops-root-ca.crt"
+
+# Branding (shown on captive portal and certificates)
+organization = "SafeOps Network"
+ca_common_name = "SafeOps Root CA"
+support_email = "admin@safeops.local"
+
+[dhcp]
+# DHCP Option 114 - CA URL for automatic discovery
+provide_ca_url = true
+ca_url = "http://192.168.137.1:8082/ca/download"
+
+# DHCP Option 252 - WPAD for automatic proxy/captive portal discovery
+provide_wpad_url = true
+wpad_url = "http://192.168.137.1:8080/wpad.dat"
+
+[dns]
+# DNS captive portal settings
+captive_portal_enabled = true
+captive_portal_ip = "192.168.137.1"
+captive_portal_port = 8080
+
+# Check enrollment via step-ca API
+enrollment_check_url = "http://192.168.137.1:9000/health"
+
+[captive_portal]
+# Captive portal configuration
+listen_port = 8080
+ca_download_url = "http://192.168.137.1:8082/ca/download"
+
+# Installation page branding
+title = "SafeOps Network"
+subtitle = "Certificate Installation Required"
+organization = "SafeOps Network"
+
+[dashboard]
+# Dashboard API endpoints for step-ca statistics
+enabled = true
+step_ca_api_url = "https://192.168.137.1:9000"
+step_ca_health_url = "https://192.168.137.1:9000/health"
+
+# Refresh interval for step-ca statistics
+refresh_interval = "15s"

@@ -1,426 +1,470 @@
-﻿# SafeOps v2.0
+# SafeOps Network Security Platform
 
-<div align="center">
-
-**Enterprise-Grade Network Security Gateway for Windows**
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?logo=windows)](https://www.microsoft.com/windows)
-[![Rust](https://img.shields.io/badge/Rust-1.74+-orange?logo=rust)](https://www.rust-lang.org/)
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://golang.org/)
-
-</div>
+**Enterprise-Grade Network Security & Certificate Management System**
 
 ---
 
-## 🛡️ What is SafeOps?
+## 🎯 What is SafeOps?
 
-SafeOps is a comprehensive Windows network security gateway combining:
+SafeOps is a comprehensive network security platform that provides:
+- **Certificate Management** (powered by step-ca)
+- **DHCP Server** with automatic CA distribution
+- **DNS Server** with captive portal redirection
+- **Device Enrollment** via captive portal
+- **Real-time Monitoring Dashboard**
 
-- **Stateful Firewall** - Kernel-level packet filtering with 100K+ rules
-- **IDS/IPS** - Suricata-compatible intrusion detection (100K+ signatures)
-- **DNS Server** - Filtering DNS with ad/malware blocking
-- **DHCP Server** - Network address management
-- **WiFi Access Point** - WPA3-capable wireless AP
-- **TLS Inspection** - HTTPS decryption for threat detection
-- **Threat Intelligence** - Multi-feed IP/domain reputation
-- **Web UI** - Modern dashboard built with Wails
+### Current Status: Phase 3 Complete ✅
 
----
+✅ **Working Now:**
+- NIC Management
+- DHCP Server (IP assignment + CA URL distribution)
+- DNS Server (resolution + captive portal redirect)
+- Certificate Manager (with step-ca backend)
+- Captive Portal (forced CA installation)
+- Dashboard (real-time monitoring)
 
-## 🏗️ Technology Stack
-
-| Layer | Technology |
-|-------|------------|
-| **Kernel Driver** | Go (WDF-based) |
-| **Core Services** | Rust |
-| **Web UI** | Go (Wails) + TypeScript |
-| **Database** | PostgreSQL 15+ |
-| **Cache** | Redis |
-| **IPC** | gRPC (Protocol Buffers) |
-| **Signatures** | Suricata-compatible rules |
-
----
-
-## 📁 Project Structure (Phase 1 Complete - 210 files)
-
-> **Phase 1 Status**: ✅ All core components implemented and tested  
-> **Dependency Map**: See [PHASE1_DEPENDENCY_MAP.md](PHASE1_DEPENDENCY_MAP.md) for complete file dependencies
-
-```
-SafeOps/
-│
-├── src/
-│   ├── kernel_driver/                     # Windows Kernel Driver (20 files)
-│   │
-│   ├── userspace_service/                 # Windows Service (7 files) 
-│   │   └── README.md
-│   │
-│   └── shared/                            # Shared utilities (56 files) 
-│       ├── rust/                          # Rust shared library ✅ COMPILED
-│       │   ├── Cargo.toml                 # Package manifest with dependencies
-│       │   ├── README.md                  # Library documentation
-│       │   ├── build.rs                   # Build script for proto generation
-│       │   ├── benches/                   # Performance benchmarks (2 files)
-│       │   │   ├── hash_performance.rs    # Hash function benchmarks
-│       │   │   └── ip_parsing.rs          # IP parsing benchmarks
-│       │   ├── src/                       # Source files (13 files)
-│       │   │   ├── lib.rs                 # Library root & public API
-│       │   │   ├── error.rs               # SafeOpsError types & Result
-│       │   │   ├── ip_utils.rs            # IP parsing & CIDR utilities
-│       │   │   ├── hash_utils.rs          # xxHash & aHash functions
-│       │   │   ├── memory_pool.rs         # Object pooling for performance
-│       │   │   ├── buffer_pool.rs         # Packet buffer pooling
-│       │   │   ├── lock_free.rs           # Lock-free data structures
-│       │   │   ├── simd_utils.rs          # SIMD packet parsing
-│       │   │   ├── time_utils.rs          # Time & timestamp utilities
-│       │   │   ├── proto_utils.rs         # Protobuf helper functions
-│       │   │   ├── metrics.rs             # Prometheus metrics collection
-│       │   │   └── proto/                 # Generated proto code
-│       │   │       └── mod.rs             # Proto module declarations
-│       │   └── tests/                     # Integration tests
-│       ├── go/                            # Go shared packages (37 files)
-│       │   ├── config/                    # Viper config (5 files)
-│       │   ├── logging/                   # Logrus wrapper (5 files)
-│       │   ├── errors/                    # Structured errors (3 files)
-│       │   ├── health/                    # Health checks (2 files)
-│       │   ├── metrics/                   # Prometheus (3 files)
-│       │   ├── utils/                     # Retry, rate limit (5 files)
-│       │   ├── redis/                     # Redis client (4 files)
-│       │   ├── postgres/                  # pgx pool (4 files)
-│       │   ├── grpc_client/               # gRPC client (3 files)
-│       │   └── go.mod
-│       ├── c/
-│       └── README.md
-│
-├── proto/                                 # Protocol Buffers (44 files) ✅
-│   ├── README.md
-│   ├── build.ps1                          # Windows build
-│   ├── build.sh                           # Linux build
-│   ├── network_manager.proto
-│   └── grpc/
-├── config/                                # Configuration (49 files) ✅
-│   ├── README.md
-│   ├── HOW_TO_MANAGE_NETWORK.md
-│   ├── config_validator.ps1
-│   ├── network_topology.yaml
-│   ├── templates/                         # 20 TOML files
-│   │   ├── safeops.toml                   # Master config
-│   │   ├── kernel_driver.toml
-│   │   ├── firewall.toml
-│   │   ├── firewall_engine.toml
-│   │   ├── network_logger.toml
-│   │   ├── ids_ips.toml
-│   │   ├── ids_ips.yaml
-│   │   ├── threat_intel.toml
-│   │   ├── logging.toml
-│   │   ├── backup_restore.toml
-│   │   ├── certificate_manager.toml
-│   │   ├── dhcp_server.toml
-│   │   ├── dns_server.toml
-│   │   ├── dns_dhcp_combined.toml
-│   │   ├── orchestrator.toml
-│   │   ├── tls_proxy.toml
-│   │   ├── update_manager.toml
-│   │   ├── vpn_server.toml
-│   │   ├── web_ui.toml
-│   │   └── wifi_ap.toml
-│   ├── defaults/                          # 5 presets
-│   │   ├── application_settings.toml
-│   │   ├── enterprise.toml
-│   │   ├── home_network.toml
-│   │   ├── monitoring_only.toml
-│   │   └── small_business.toml
-│   ├── examples/                          # 7 examples
-│   │   ├── custom_firewall_rules.yaml
-│   │   ├── enterprise.toml
-│   │   ├── home_network.toml
-│   │   ├── network_interfaces.yaml
-│   │   ├── small_business.toml
-│   │   ├── threat_feed_sources.yaml
-│   │   └── user_policies.yaml
-│   ├── schemas/                           # 6 JSON schemas
-│   │   ├── config_schema.json
-│   │   ├── firewall_rules_schema.json
-│   │   ├── ids_ips_rules_schema.json
-│   │   ├── ids_ips_suricata.rules
-│   │   ├── suricata_rules_format.md
-│   │   └── validation_rules.md
-│   └── ids_ips/                           # 2 rule configs
-│       ├── rule_categories.toml
-│       └── suricata_vars.yaml
-│
-├── database/                              # PostgreSQL (25 files) ✅
-│   ├── README.md
-│   ├── init_database.sh
-│   ├── schemas/                           # 10 SQL files
-│   │   ├── 001_initial_setup.sql
-│   │   ├── 002_ip_reputation.sql
-│   │   ├── 003_domain_reputation.sql
-│   │   ├── 004_hash_reputation.sql
-│   │   ├── 005_ioc_storage.sql
-│   │   ├── 006_proxy_anonymizer.sql
-│   │   ├── 007_geolocation.sql
-│   │   ├── 008_threat_feeds.sql
-│   │   ├── 009_asn_data.sql
-│   │   └── 999_indexes_and_maintenance.sql
-│   ├── views/                             # 3 views
-│   │   ├── active_threats_view.sql
-│   │   ├── high_confidence_iocs.sql
-│   │   └── threat_summary_stats.sql
-│   ├── seeds/                             # 3 seed files
-│   │   ├── feed_sources_config.sql
-│   │   ├── initial_threat_categories.sql
-│   │   └── test_ioc_data.sql
-│   ├── migrations/up/
-│   ├── migrations/down/
-│   └── functions/
-│
-├── docs/                                  # Documentation (36 files) ✅
-│   ├── README.md
-│   ├── architecture/                      # 6 files
-│   │   ├── system_overview.md
-│   │   ├── service_architecture.md
-│   │   ├── security_model.md
-│   │   ├── performance_design.md
-│   │   ├── network_topology.md
-│   │   └── data_flow.md
-│   ├── api/                               # 4 files
-│   │   ├── authentication.md
-│   │   ├── error_codes.md
-│   │   ├── grpc_api_reference.md
-│   │   └── rest_api_reference.md
-│   ├── developer_guide/                   # 6 files
-│   │   ├── building_from_source.md
-│   │   ├── code_standards.md
-│   │   ├── contributing.md
-│   │   ├── development_environment.md
-│   │   ├── release_process.md
-│   │   └── testing_guide.md
-│   └── user_guide/                        # 8 files
-│       ├── faq.md
-│       ├── firewall_rules.md
-│       ├── installation_guide.md
-│       ├── network_monitoring.md
-│       ├── quick_start.md
-│       ├── threat_intelligence.md
-│       ├── troubleshooting.md
-│       └── web_ui_guide.md
-│
-├── tests/                                 # Test suites (planned)
-├── certs/                                 # Certificate management
-├── feeds/                                 # Threat intelligence feeds
-├── scripts/                               # Build scripts
-├── installer/                             # Windows installer
-├── build/                                 # Build output
-├── tools/                                 # Dev utilities
-├── examples/                              # Example configs
-│
-├── .gitignore
-├── .gitattributes
-├── Makefile
-├── README.md
-├── LICENSE
-└── CHANGELOG.md
-
-Total: 210 files | Phase 1 Complete ✅
-```
-
-> **Note**: Service implementation skeletons (~50 files) exist but await Phase 2 implementation
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Windows 10/11 Pro (21H2+)
-- PowerShell 7+
-- Git
-
-### 1. Install Development Environment
-
-```powershell
-
-# Run the installer (installs Rust, Go, Node.js, protoc, etc.)
-.\safeops_installer.ps1
-```
-
-### 2. Build the Project
-
-```powershell
-# Generate proto files
-.\proto\build.ps1
-
-# Build all services
-make build
-
-# Or use the Makefile targets
-make all      # Build everything
-make test     # Run tests
-make clean    # Clean build artifacts
-```
-
-### 3. Database Setup (Native Installation)
-
-```powershell
-# Install PostgreSQL 15+ (download from postgresql.org or use winget)
-winget install PostgreSQL.PostgreSQL
-
-# After installation, open PowerShell as Admin and start service
-net start postgresql-x64-15
-
-# Create SafeOps database
-psql -U postgres -c "CREATE DATABASE safeops;"
-psql -U postgres -c "CREATE USER safeops_user WITH PASSWORD 'changeme';"
-psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE safeops TO safeops_user;"
-
-# Install Redis (download from github.com/microsoftarchive/redis or use winget)
-winget install Redis.Redis
-
-# Start Redis service
-net start redis
-
-# Initialize threat intel database
-cd database
-.\init_database.sh
-```
-
-> **Note**: PostgreSQL and Redis run as Windows services - no Docker required.
-
-### 4. Run Services
-
-```powershell
-# Start the orchestrator (manages all services)
-.\build\orchestrator.exe
-
-# Access Web UI
-start http://localhost:8080
-```
-
----
-
-## 📡 gRPC API
-
-SafeOps services communicate via gRPC. See [`proto/grpc/`](proto/grpc/) for all 13 service definitions:
-
-| Service | Description |
-|---------|-------------|
-| `FirewallService` | Packet filtering rules |
-| `IdsIpsService` | Intrusion detection/prevention |
-| `DnsServerService` | DNS filtering |
-| `DhcpServerService` | DHCP management |
-| `WifiApService` | WiFi access point |
-| `TlsProxyService` | HTTPS inspection |
-| `ThreatIntelService` | Threat feed lookups |
-| `NetworkLoggerService` | Traffic logging |
-| `OrchestratorService` | Service lifecycle |
-| `CertificateManagerService` | PKI operations |
-| `BackupRestoreService` | Config backup/restore |
-| `UpdateManagerService` | Updates & rollback |
-
-> 📖 **Full API Docs:** [`docs/api/grpc_api_reference.md`](docs/api/grpc_api_reference.md)
-
----
-
-## 🗄️ Threat Intelligence Database
-
-PostgreSQL database for IOCs, reputation data, and threat feeds:
-
-| Schema | Purpose |
-|--------|---------|
-| `ip_reputation` | IP threat scores |
-| `domain_reputation` | Domain intelligence |
-| `hash_reputation` | File hash malware DB |
-| `ioc_storage` | Generic IOC storage |
-| `proxy_anonymizer` | VPN/Proxy/Tor detection |
-| `geolocation` | IP-to-location |
-| `threat_feeds` | Feed configuration |
-| `asn_data` | ASN reputation |
-
-> 📖 **Full Schema Docs:** [`database/README.md`](database/README.md)
+❌ **Not Yet Built:**
+- TLS/SSL Proxy (critical for SSL interception)
+- Firewall Engine
+- IDS/IPS
+- Network Logger
 
 ---
 
 ## 📚 Documentation
 
-| Category | Location | Description |
-|----------|----------|-------------|
-| **Architecture** | [`docs/architecture/`](docs/architecture/) | System design (6 docs) |
-| **API Reference** | [`docs/api/`](docs/api/) | gRPC/REST APIs (4 docs) |
-| **User Guide** | [`docs/user_guide/`](docs/user_guide/) | End-user docs (8 docs) |
-| **Developer Guide** | [`docs/developer_guide/`](docs/developer_guide/) | Build & contribute (6 docs) |
-| **Database** | [`database/README.md`](database/README.md) | Threat intel schemas |
-| **Proto Files** | [`proto/README.md`](proto/README.md) | gRPC definitions |
+### Getting Started
+| Document | Purpose |
+|----------|---------|
+| **[ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md)** | **START HERE** - Why step-ca? What's working? Technical decisions |
+| **[README_STEP_CA.md](README_STEP_CA.md)** | Complete step-ca integration guide |
+| **[QUICK_START_STEP_CA.md](QUICK_START_STEP_CA.md)** | Quick start in 3 commands |
+| **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** | Quick command reference |
 
-> 📖 **Start Here:** [`docs/README.md`](docs/README.md)
+### Detailed Documentation
+| Document | Purpose |
+|----------|---------|
+| [STEP_CA_INTEGRATION_COMPLETE.md](STEP_CA_INTEGRATION_COMPLETE.md) | Detailed step-ca integration documentation |
+
+---
+
+## 🚀 Quick Start
+
+### Start All Services
+
+**Option 1: Master Startup Script (Recommended)**
+```powershell
+# Run as Administrator
+D:\SafeOpsFV2\start-safeops-with-stepca.ps1
+```
+
+**Option 2: Manual Startup**
+```powershell
+# Terminal 1: step-ca
+D:\SafeOpsFV2\certs\step-ca\start-safeops-ca.ps1
+
+# Terminal 2: Certificate Manager
+cd D:\SafeOpsFV2\src\certificate_manager
+.\start_certificate_manager.ps1
+
+# Terminal 3: DHCP Server (as Admin)
+cd D:\SafeOpsFV2\src\dhcp_server
+.\start_dhcp.bat
+
+# Terminal 4: DNS Server (as Admin)
+cd D:\SafeOpsFV2\src\dns_server
+.\start_dns.bat
+
+# Terminal 5: Dashboard
+cd D:\SafeOpsFV2\src\ui\dev
+npm run dev
+```
+
+### Verify Services
+
+```powershell
+# Check step-ca
+curl -k https://192.168.137.1:9000/health
+
+# Check Dashboard
+Start-Process "http://localhost:5173"
+```
+
+---
+
+## 🏗️ Architecture
+
+### Current Implementation
+
+```
+Device Connects
+    ↓
+DHCP Server (assigns IP + CA URL)
+    ↓
+DNS Server (checks CA installed? → redirects if not)
+    ↓
+Captive Portal (forces CA installation)
+    ↓
+User Installs CA (10-30 seconds)
+    ↓
+Internet Access Granted ✅
+    ↓
+SSL Interception (NOT YET BUILT ❌)
+```
+
+### Services
+
+| Service | Port | Status | Purpose |
+|---------|------|--------|---------|
+| **step-ca** | 9000 | ✅ Working | Certificate Authority backend |
+| **Certificate Manager** | 8082 | ✅ Working | CA distribution |
+| **DHCP Server** | 67 | ✅ Working | IP assignment |
+| **DNS Server** | 53 | ✅ Working | DNS resolution + redirect |
+| **Captive Portal** | 8080 | ✅ Working | Force CA installation |
+| **Dashboard** | 5173 | ✅ Working | Monitoring UI |
+| **TLS Proxy** | 443 | ❌ Not Built | SSL interception |
+
+---
+
+## 🔐 Certificate Management (step-ca)
+
+### Why step-ca?
+
+We chose step-ca over custom implementation because:
+- ✅ **3x faster** certificate signing (<50ms vs ~150ms)
+- ✅ **Security audited** by professionals
+- ✅ **Battle-tested** (used by thousands of companies)
+- ✅ **ACME/SCEP/OCSP** built-in
+- ✅ **100% FREE** (Apache 2.0 license)
+- ✅ **Unlimited devices**
+- ✅ **Community maintained**
+
+See: [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) for full comparison.
+
+### SafeOps CA Details
+
+```
+Organization: SafeOps Network
+Root CA: SafeOps Root CA (10 years validity)
+Intermediate CA: SafeOps Intermediate CA (5 years)
+Key Size: RSA 4096-bit
+Algorithm: SHA256-RSA
+Location: D:\SafeOpsFV2\certs\safeops-root-ca.crt
+```
+
+### step-ca Endpoints
+
+```
+API Server: https://192.168.137.1:9000
+ACME Endpoint: https://192.168.137.1:9000/acme/safeops-acme/directory
+Health Check: https://192.168.137.1:9000/health
+Root CA: https://192.168.137.1:9000/root
+```
+
+---
+
+## 📊 What's Working
+
+### ✅ Complete Features
+
+**Network Foundation**
+- NIC Management (interface control)
+- DHCP Server (IP assignment, CA URL distribution)
+- DNS Server (resolution, captive portal redirect, enrollment checking)
+
+**Certificate Infrastructure**
+- step-ca Certificate Authority (fast, secure, free)
+- Certificate Manager (CA distribution, device tracking)
+- Captive Portal (forced installation, OS detection)
+
+**Monitoring**
+- Real-time Dashboard (service status, device tracking)
+- Device enrollment tracking
+- Service health monitoring
+
+### ❌ Missing Components
+
+**Critical (Needed for SSL Interception)**
+- TLS/SSL Proxy - **HIGHEST PRIORITY**
+
+**Important (Security Features)**
+- Firewall Engine
+- IDS/IPS (Intrusion Detection/Prevention)
+- Network Logger
+- Threat Intelligence
+
+---
+
+## 🎓 How Device Enrollment Works
+
+1. **Device connects** to network
+2. **DHCP assigns** IP + DNS + Gateway + CA URL (automatic)
+3. **User opens browser** → any website
+4. **DNS intercepts** → checks if CA installed
+5. **If NO CA**: Redirects to captive portal (automatic)
+6. **Captive portal opens** → "Install SafeOps CA" (automatic)
+7. **User clicks download** → Gets certificate (1 click)
+8. **User installs** → 10-30 seconds (manual - OS security)
+9. **DNS detects install** → via TLS handshake (automatic)
+10. **Internet granted** → Device can browse (automatic)
+
+**Only step 8 requires manual user action** (cannot be automated - OS security restriction)
+
+---
+
+## 📁 Project Structure
+
+```
+D:\SafeOpsFV2\
+├── certs/
+│   ├── safeops-root-ca.crt          # Root CA for distribution
+│   └── step-ca/                     # step-ca installation
+│       ├── step-ca.exe              # CA server binary
+│       ├── ca/                      # CA data
+│       └── start-safeops-ca.ps1     # Startup script
+│
+├── config/
+│   ├── safeops.toml                 # Main configuration
+│   └── step-ca-integration.toml     # step-ca integration config
+│
+├── src/
+│   ├── certificate_manager/         # ✅ CA distribution service
+│   ├── dhcp_server/                 # ✅ DHCP with CA URL
+│   ├── dns_server/                  # ✅ DNS + captive redirect
+│   ├── nic_management/              # ✅ Network interface control
+│   ├── ui/dev/                      # ✅ Dashboard
+│   ├── tls_proxy/                   # ❌ NOT BUILT (empty)
+│   ├── firewall_engine/             # ❌ NOT BUILT (empty)
+│   └── ids_ips/                     # ❌ NOT BUILT (empty)
+│
+├── start-safeops-with-stepca.ps1    # Master startup script
+│
+└── Documentation/
+    ├── README.md                    # This file
+    ├── ARCHITECTURE_DECISIONS.md    # Technical decisions & status
+    ├── README_STEP_CA.md            # step-ca guide
+    └── QUICK_START_STEP_CA.md       # Quick start
+```
+
+---
+
+## 🔧 Configuration
+
+### Main Config: `config/safeops.toml`
+
+```toml
+[network]
+server_ip = "192.168.137.1"
+managed_subnet = "192.168.137.0/24"
+
+[dhcp]
+pool_start = "192.168.137.100"
+pool_end = "192.168.137.200"
+dns_server = "192.168.137.1"
+gateway = "192.168.137.1"
+
+[dns]
+upstream_servers = ["8.8.8.8:53", "1.1.1.1:53"]
+authoritative_zones = ["safeops.local"]
+
+[certificate_manager]
+ca_cert_path = "D:/SafeOpsFV2/certs/safeops-root-ca.crt"
+```
+
+### step-ca Config: `certs/step-ca/ca/config/ca.json`
+
+```json
+{
+  "address": "192.168.137.1:9000",
+  "dnsNames": ["safeops.local", "192.168.137.1"],
+  "authority": {
+    "provisioners": [{
+      "type": "ACME",
+      "name": "safeops-acme"
+    }]
+  }
+}
+```
+
+---
+
+## 📊 Service Limits & Performance
+
+### Device Capacity
+
+| Devices | step-ca Performance | Your Hardware Requirement |
+|---------|---------------------|---------------------------|
+| 1-50 | Instant (<20ms) | Any modern PC |
+| 50-100 | Very fast (<30ms) | Normal PC (4GB+ RAM) |
+| 100-500 | Fast (<50ms) | Good server (8GB+ RAM) |
+| 500-1000 | Good (<100ms) | Enterprise server (16GB+ RAM) |
+| 1000+ | Enterprise | Dedicated server (32GB+ RAM) |
+
+**step-ca itself: UNLIMITED** (no license restrictions)
+
+### Current Bottlenecks
+
+- **DHCP Pool**: 100 IPs (192.168.137.100-200) - easily expandable
+- **Hardware**: Depends on your PC specs
+- **step-ca**: No limits
+
+---
+
+## 💰 Cost
+
+| Component | License | Cost |
+|-----------|---------|------|
+| **step-ca** | Apache 2.0 | ✅ FREE |
+| **SafeOps Code** | Your Code | ✅ FREE |
+| **Device Limits** | None | ✅ Unlimited |
+| **Certificate Signing** | Unlimited | ✅ FREE |
+| **Support** | Community | ✅ FREE |
+
+**Total Cost: $0 forever**
+
+---
+
+## 🛣️ Roadmap
+
+### Phase 1: Network Foundation ✅ COMPLETE
+- [x] NIC Management
+- [x] DHCP Server
+- [x] DNS Server
+- [x] Basic configuration
+
+### Phase 2: Certificate Infrastructure ✅ COMPLETE
+- [x] step-ca installation & configuration
+- [x] SafeOps CA creation
+- [x] Certificate Manager
+- [x] Captive Portal
+- [x] CA distribution
+
+### Phase 3: Monitoring ✅ COMPLETE
+- [x] Real-time Dashboard
+- [x] Device tracking
+- [x] Service monitoring
+
+### Phase 4: SSL Interception ❌ NEXT PRIORITY
+- [ ] TLS/SSL Proxy implementation
+- [ ] Certificate request to step-ca
+- [ ] HTTPS decryption
+- [ ] Traffic logging
+
+### Phase 5: Security Features ❌ FUTURE
+- [ ] Firewall Engine
+- [ ] IDS/IPS
+- [ ] Threat Intelligence
+- [ ] Network Logger
 
 ---
 
 ## 🧪 Testing
 
+### Test step-ca
 ```powershell
-# Run all tests
-make test
-
-# Run specific service tests
-cd src/firewall && cargo test
-cd src/ids_ips && cargo test
-
-# Run integration tests
-.\tests\run_integration.ps1
+curl -k https://192.168.137.1:9000/health
+# Expected: {"status":"ok"}
 ```
+
+### Test Complete Flow
+1. Connect a device to your network
+2. Device gets IP from DHCP (automatic)
+3. Open browser → google.com
+4. Redirected to captive portal (automatic)
+5. Download SafeOps CA certificate
+6. Install certificate (10-30 seconds)
+7. Internet access granted!
+
+See: [QUICK_START_STEP_CA.md](QUICK_START_STEP_CA.md) for detailed testing guide.
+
+---
+
+## 📞 Troubleshooting
+
+### Services Won't Start?
+
+**Check if running as Administrator:**
+```powershell
+# Right-click PowerShell → Run as Administrator
+```
+
+**Check ports:**
+```powershell
+netstat -ano | findstr ":9000 :67 :53 :8082"
+```
+
+### Can't Access step-ca?
+
+**Allow through firewall:**
+```powershell
+netsh advfirewall firewall add rule name="SafeOps CA" dir=in action=allow protocol=TCP localport=9000
+```
+
+### Dashboard Not Loading?
+
+**Check Node.js:**
+```powershell
+cd D:\SafeOpsFV2\src\ui\dev
+npm install
+npm run dev
+```
+
+---
+
+## 📖 Additional Resources
+
+### Official Documentation
+- **step-ca**: https://smallstep.com/docs/step-ca
+- **ACME Protocol**: https://smallstep.com/docs/tutorials/acme-protocol-acme-clients
+
+### SafeOps Documentation
+- **Architecture Decisions**: [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md)
+- **step-ca Integration**: [README_STEP_CA.md](README_STEP_CA.md)
+- **Quick Start**: [QUICK_START_STEP_CA.md](QUICK_START_STEP_CA.md)
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please read:
-
-1. [Contributing Guide](docs/developer_guide/contributing.md)
-2. [Code Standards](docs/developer_guide/code_standards.md)
-3. [Development Environment](docs/developer_guide/development_environment.md)
-
-```bash
-# Fork, clone, and create a branch
-git checkout -b feature/your-feature
-
-# Make changes, test, and submit PR
-git push origin feature/your-feature
-```
-
----
-
-## 📋 Makefile Targets
-
-| Target | Description |
-|--------|-------------|
-| `make all` | Build everything (proto + database + services) |
-| `make proto` | Generate Protocol Buffer code |
-| `make database` | Initialize database schemas |
-| `make build` | Build all services |
-| `make test` | Run test suite |
-| `make clean` | Clean build artifacts |
-| `make help` | Show all targets |
-
----
-
-## 📦 Release Notes
-
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+This is a personal project. The codebase structure:
+- **Go**: DHCP, DNS, Certificate Manager, Orchestrator
+- **JavaScript/React**: Dashboard UI
+- **Configuration**: TOML files
 
 ---
 
 ## 📄 License
 
-Copyright © 2025 SafeOps Project
-
-Licensed under the [MIT License](LICENSE).
+- **SafeOps Code**: Your proprietary code
+- **step-ca**: Apache 2.0 (100% FREE)
 
 ---
 
-<div align="center">
+## ✅ Summary
 
-**[Documentation](docs/README.md)** • **[Issues](https://github.com/bakchodikarle237-afk/SafeOps-FW/issues)** • **[Discussions](https://github.com/bakchodikarle237-afk/SafeOps-FW/discussions)**
+**What You Have:**
+- ✅ Complete device enrollment system
+- ✅ Enterprise-grade CA (step-ca)
+- ✅ Automated CA distribution
+- ✅ Real-time monitoring
+- ✅ 100% FREE, unlimited devices
+- ✅ Full SafeOps branding
 
-</div>
+**What You Need Next:**
+- ❌ TLS/SSL Proxy (for HTTPS interception)
+- ❌ Firewall Engine
+- ❌ IDS/IPS
+
+**To Get Started:**
+```powershell
+# Start everything
+D:\SafeOpsFV2\start-safeops-with-stepca.ps1
+
+# Open dashboard
+Start-Process "http://localhost:5173"
+```
+
+---
+
+**SafeOps Network Security Platform**
+*Powered by step-ca Certificate Authority*

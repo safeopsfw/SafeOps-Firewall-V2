@@ -1,0 +1,32 @@
+{
+  "root": "D:/SafeOpsFV2/certs/step-ca/ca/certs/root_ca.crt",
+  "crt": "D:/SafeOpsFV2/certs/step-ca/ca/certs/intermediate_ca.crt",
+  "key": "D:/SafeOpsFV2/certs/step-ca/ca/secrets/intermediate_ca_key",
+  "address": "0.0.0.0:9000",
+  "dnsNames": ["safeops.local", "localhost"],
+  "logger": {"format": "text"},
+  "db": {
+    "type": "badgerv2",
+    "dataSource": "D:/SafeOpsFV2/certs/step-ca/ca/db"
+  },
+  "authority": {
+    "provisioners": [
+      {
+        "type": "ACME",
+        "name": "safeops-acme",
+        "forceCN": false,
+        "claims": {
+          "minTLSCertDuration": "5m",
+          "maxTLSCertDuration": "87600h",
+          "defaultTLSCertDuration": "720h",
+          "disableRenewal": false
+        }
+      }
+    ]
+  },
+  "tls": {
+    "minVersion": 1.2,
+    "maxVersion": 1.3,
+    "renegotiation": false
+  }
+}

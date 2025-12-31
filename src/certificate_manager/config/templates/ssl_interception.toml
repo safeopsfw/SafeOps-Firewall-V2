@@ -1,0 +1,394 @@
+# ============================================================================
+# SSL Interception Configuration - Optimized for Transparent HTTPS Inspection
+# SafeOps v2.0 - Certificate Manager
+# ============================================================================
+#
+# This configuration is specifically designed for SSL/TLS interception scenarios
+# where the Certificate Manager acts as a dynamic CA for on-the-fly certificate
+# signing in transparent proxy environments.
+#
+# ============================================================================
+
+[service]
+name = "certificate_manager_ssl_interception"
+version = "2.0.0"
+environment = "production"
+log_level = "info"  # Options: debug, info, warn, error
+log_format = "json"  # Options: text, json
+log_file = "logs/certificate_manager.log"
+
+# ============================================================================
+# gRPC Server - For TLS Proxy Integration
+# ============================================================================
+# The TLS Proxy calls this service via gRPC to sign certificates on-the-fly
+# Port 50060 is the standard port for Certificate Manager
+
+[grpc]
+enabled = true
+host = "0.0.0.0"  # Listen on all interfaces
+port = "50060"
+reflection_enabled = true  # Enable for grpcurl testing
+max_concurrent_requests = 1000
+request_timeout = "5s"
+
+# ============================================================================
+# Root CA Configuration - The Foundation of SSL Interception
+# ============================================================================
+# This CA will be installed on all network devices and used to sign
+# fake certificates for intercepted HTTPS connections
+
+[ca]
+enabled = true
+
+# Organization Details (shown in certificate)
+organization = "SafeOps Network Security"
+organizational_unit = "Network Operations"
+country = "US"
+state = "California"
+locality = "San Francisco"
+common_name = "SafeOps Root CA"
+
+# Key Configuration
+key_algorithm = "RSA"  # Options: RSA, ECDSA
+key_size = 4096        # RSA: 2048, 3072, 4096 | ECDSA uses P-256 curve
+validity_years = 10    # CA valid for 10 years
+
+# Storage
+ca_cert_path = "certs/ca.crt"
+ca_key_path = "certs/ca.key"
+
+# Security
+key_encryption_enabled = false  # Enable in production for extra security
+# If enabled, passphrase will be auto-generated and stored in secrets/ca_passphrase
+
+# Auto-generation
+auto_generate = true  # Automatically generate CA on first run if missing
+regenerate_on_expire = false  # Never auto-regenerate (requires manual intervention)
+
+# ============================================================================
+# CA Distribution HTTP Server - For Device Certificate Installation
+# ============================================================================
+# This server provides the CA certificate for download by network devices
+# Serves on port 80 (standard HTTP) for easy access
+
+[ca_distribution]
+enabled = true
+bind_address = "0.0.0.0"
+http_port = "80"
+
+# Base URL - IMPORTANT: Set this to your firewall's IP
+# This URL will be provided in DHCP options for automatic discovery
+base_url = "http://192.168.1.1"
+
+# Features
+generate_qr_codes = true  # Generate QR codes for mobile device enrollment
+generate_trust_instructions = true  # Generate OS-specific instructions
+track_downloads = true  # Track which devices downloaded the certificate
+
+# Platform-Specific Formats
+serve_windows_format = true  # .crt format
+serve_android_format = true  # .crt format
+serve_ios_format = true      # .mobileconfig profile
+serve_macos_format = true    # .crt format
+serve_linux_format = true    # .pem format
+
+# Auto-Install Scripts
+generate_powershell_script = true  # Windows PowerShell auto-install
+generate_bash_script = true        # Linux/macOS bash auto-install
+
+# Caching
+cache_max_age = 86400  # 24 hours in seconds
+enable_compression = true
+
+# ============================================================================
+# TLS Integration - On-the-Fly Certificate Signing
+# ============================================================================
+# This is the core of SSL interception - signs certificates dynamically
+# when the TLS Proxy intercepts HTTPS connections
+
+[tls_integration]
+enabled = true
+
+# Certificate Generation
+key_algorithm = "RSA"  # For signed certificates (not CA)
+rsa_key_size = 2048    # Smaller keys for faster signing (2048 recommended)
+ecdsa_curve = "P256"   # If using ECDSA
+
+# Validity
+default_validity_days = 90  # Signed certificates valid for 90 days
+max_validity_days = 365     # Maximum allowed validity
+
+# Performance
+enable_caching = true
+cache_max_size = 10000          # Cache up to 10,000 certificates
+cache_ttl = "24h"               # Cache for 24 hours
+cache_cleanup_interval = "15m"  # Cleanup expired entries every 15 minutes
+
+# Wildcard Certificates
+enable_wildcard = true  # Generate *.example.com for subdomains
+wildcard_depth = 1      # How many levels (1 = *.example.com, 2 = *.*.example.com)
+
+# SAN (Subject Alternative Names)
+auto_add_www = true  # Automatically add www.domain.com to SAN
+max_san_entries = 10 # Maximum SANs per certificate
+
+# Security
+enable_audit_log = true  # Log all certificate signing operations
+check_revocation = true  # Check if domain is blacklisted before signing
+
+# Rate Limiting
+enable_rate_limit = true
+max_signings_per_second = 100
+max_signings_per_minute = 5000
+
+# ============================================================================
+# Certificate Revocation - CRL & OCSP
+# ============================================================================
+# Provides revocation checking for signed certificates
+# Required for browsers to validate certificate status
+
+[revocation.crl]
+enabled = true
+update_interval = "24h"
+crl_path = "certs/crl.pem"
+crl_url = "http://192.168.1.1/crl.pem"
+auto_publish = true  # Automatically serve CRL via HTTP
+
+[revocation.ocsp]
+enabled = true
+listen_address = ":8888"
+ocsp_url = "http://192.168.1.1:8888"
+
+# Response Configuration
+response_validity = "1h"   # OCSP responses valid for 1 hour
+cache_max_age = 600        # Cache-Control: max-age=600 (10 minutes)
+enable_nonce = true        # Support nonce extension (prevents replay)
+enable_get = true          # Support HTTP GET method (in addition to POST)
+
+# Performance
+max_concurrent_requests = 100
+request_timeout = "10s"
+response_timeout = "10s"
+
+# ============================================================================
+# Device Tracking - Automatic CA Installation Detection
+# ============================================================================
+# Tracks which devices have installed the CA certificate
+# Enables automatic detection via TLS handshake testing
+
+[device_tracking]
+enabled = true
+
+# Detection Method
+detection_method = "passive"  # Options: passive, active, both
+# passive: Detect via normal TLS connections
+# active: Periodically test devices
+# both: Use both methods
+
+# Passive Detection
+passive_detection_enabled = true
+update_on_successful_handshake = true  # Update status when device trusts cert
+
+# Active Detection
+active_detection_enabled = false  # Disabled by default (not needed for SSL interception)
+active_detection_interval = "1h"
+active_detection_concurrency = 10
+
+# Database
+store_in_database = true  # Requires database.enabled = true
+cache_in_memory = true    # Keep recent status in memory for fast lookups
+memory_cache_ttl = "15m"
+
+# ============================================================================
+# Storage - Database for Tracking
+# ============================================================================
+# PostgreSQL database for storing device tracking, certificate metadata, etc.
+# Optional but recommended for production
+
+[database]
+enabled = false  # Enable in production
+host = "localhost"
+port = "5432"
+name = "safeops_certificates"
+user = "safeops"
+password = ""  # Set via environment variable: CERT_MANAGER_DB_PASSWORD
+ssl_mode = "prefer"  # Options: disable, prefer, require
+
+# Connection Pool
+max_open_connections = 25
+max_idle_connections = 5
+connection_max_lifetime = "1h"
+
+# ============================================================================
+# Monitoring & Metrics
+# ============================================================================
+# Prometheus metrics and health checks
+
+[metrics]
+enabled = true
+port = 9093
+path = "/metrics"
+include_runtime = true  # Include Go runtime metrics
+
+[health]
+enabled = true
+port = 8093
+path = "/health"
+timeout = "5s"
+
+# ============================================================================
+# Security - Audit Logging & Access Control
+# ============================================================================
+
+[security]
+audit_logging_enabled = true
+audit_log_path = "logs/audit.log"
+audit_log_format = "json"
+
+# Rate Limiting (global)
+rate_limit_enabled = true
+rate_limit_requests_per_second = 1000
+rate_limit_burst = 2000
+
+# Access Control
+enable_ip_whitelist = false
+# ip_whitelist = ["127.0.0.1", "10.0.0.0/8", "192.168.0.0/16"]
+
+# ============================================================================
+# Backup & Recovery
+# ============================================================================
+# Automatic backup of CA private key and critical data
+
+[backup]
+enabled = true
+backup_path = "backups"
+schedule = "0 2 * * *"  # Daily at 2 AM (cron format)
+retention_days = 30
+encrypt_backups = true
+compression = "gzip"
+
+# What to backup
+backup_ca_key = true
+backup_ca_cert = true
+backup_signed_certs = false  # Don't backup signed certs (can be regenerated)
+backup_database = true  # If database enabled
+
+# ============================================================================
+# Notifications - Alerts for Important Events
+# ============================================================================
+
+[notifications.email]
+enabled = false
+smtp_host = "smtp.example.com"
+smtp_port = 587
+from_address = "alerts@example.com"
+to_addresses = ["admin@example.com"]
+
+# Alert on:
+alert_on_ca_expiry = true
+alert_on_ca_expiry_days = 90  # Alert 90 days before expiry
+alert_on_signing_errors = true
+alert_on_high_error_rate = true
+
+[notifications.slack]
+enabled = false
+webhook_url = ""
+channel = "#security-alerts"
+
+[notifications.webhook]
+enabled = false
+url = "https://your-webhook-endpoint.com"
+method = "POST"
+
+# ============================================================================
+# Advanced Configuration
+# ============================================================================
+
+[advanced]
+# Certificate Template
+default_key_usage = ["digital_signature", "key_encipherment"]
+default_ext_key_usage = ["server_auth"]
+
+# Serial Numbers
+serial_number_bits = 128  # 128-bit random serial numbers
+
+# Certificate Lifetime Strategy
+enforce_max_validity = true
+reject_excessive_validity = true
+
+# Domain Filtering
+enable_domain_blacklist = false
+# domain_blacklist_file = "config/domain_blacklist.txt"
+
+enable_domain_whitelist = false
+# domain_whitelist_file = "config/domain_whitelist.txt"
+
+# ============================================================================
+# Integration Configuration
+# ============================================================================
+
+[integration.dhcp]
+# DHCP server can query this service for CA URLs to include in DHCP options
+enabled = true
+provide_ca_url = true  # Include CA download URL
+provide_wpad_url = true  # Include WPAD URL for proxy auto-config
+provide_install_scripts = true  # Include auto-install script URLs
+
+[integration.dns]
+# DNS server can query device CA installation status
+enabled = true
+cache_device_status = true
+cache_ttl = "5m"
+
+[integration.tls_proxy]
+# TLS proxy configuration
+enabled = true
+require_authentication = false  # Enable in production
+# auth_token = ""  # Set via environment variable: CERT_MANAGER_AUTH_TOKEN
+
+[integration.captive_portal]
+# Captive portal integration
+enabled = true
+redirect_url = "http://192.168.1.1/portal"
+provide_installation_page = true
+
+# ============================================================================
+# Feature Flags
+# ============================================================================
+# Experimental or optional features
+
+[features]
+enable_certificate_transparency = false  # Log to CT logs (not recommended for private CA)
+enable_key_rotation = false  # Automatic CA key rotation (dangerous, keep disabled)
+enable_geo_blocking = false  # Block certificate signing based on geography
+enable_time_based_policies = false  # Different policies based on time of day
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+
+[performance]
+# Worker Pools
+signing_workers = 10  # Number of concurrent signing workers
+cache_workers = 2     # Number of cache cleanup workers
+
+# Timeouts
+signing_timeout = "5s"
+cache_lookup_timeout = "100ms"
+database_query_timeout = "1s"
+
+# Memory Limits
+max_memory_mb = 512  # Restart if memory exceeds this (0 = disabled)
+
+# ============================================================================
+# Development & Testing
+# ============================================================================
+
+[development]
+enable_test_endpoints = false  # Enable /test/* endpoints for testing
+mock_ocsp = false  # Mock OCSP responses for testing
+debug_logging = false  # Extra verbose logging
+
+# ============================================================================
+# End of Configuration
+# ============================================================================

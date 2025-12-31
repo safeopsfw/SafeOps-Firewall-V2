@@ -1,4 +1,5 @@
-// Package main provides the entry point for the NIC Management service.
+// Package main provides the unified entry point for NIC Management service.
+// This combines both the gRPC service and REST API into a single executable.
 package main
 
 import (
@@ -9,9 +10,11 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
+	"safeops/nic_management/api"
 	"safeops/nic_management/config"
 	"safeops/nic_management/internal/discovery"
 	"safeops/nic_management/internal/failover"
@@ -40,6 +43,8 @@ var (
 	configPath     = flag.String("config", "/etc/safeops/nic_management.yaml", "Path to config file")
 	showVersion    = flag.Bool("version", false, "Show version information")
 	installService = flag.Bool("install-service", false, "Install as Windows service")
+	apiPort        = flag.Int("api-port", 8081, "REST API port")
+	grpcPort       = flag.Int("grpc-port", 50056, "gRPC server port")
 )
 
 // =============================================================================
@@ -69,6 +74,9 @@ type ServiceComponents struct {
 	handlers       *internalgrpc.Handlers
 	streamHandlers *internalgrpc.StreamHandlers
 	grpcServer     *internalgrpc.GrpcServer
+
+	// REST API layer.
+	apiServer *api.NICAPIServer
 }
 
 // =============================================================================
@@ -93,7 +101,7 @@ func main() {
 
 	// Initialize logger.
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
-	log.Printf("Starting NIC Management Service v%s (commit: %s, built: %s)", Version, GitCommit, BuildDate)
+	log.Printf("Starting Unified NIC Management Service v%s (commit: %s, built: %s)", Version, GitCommit, BuildDate)
 	log.Printf("Platform: %s/%s, Go version: %s", runtime.GOOS, runtime.GOARCH, runtime.Version())
 
 	// Load configuration.
@@ -115,20 +123,13 @@ func main() {
 	log.Println("All components initialized successfully")
 
 	// Start all workers.
-	if err := startAllWorkers(ctx, components); err != nil {
+	var wg sync.WaitGroup
+	if err := startAllWorkers(ctx, components, &wg); err != nil {
 		log.Fatalf("Failed to start workers: %v", err)
 	}
 
-	// Get port from config.
-	port := 50054
-	if cfg.GRPC.ListenAddress != "" {
-		// Parse port from listen address.
-		var p int
-		if _, err := fmt.Sscanf(cfg.GRPC.ListenAddress, "0.0.0.0:%d", &p); err == nil {
-			port = p
-		}
-	}
-	log.Printf("NIC Management service ready on port %d", port)
+	log.Printf("NIC Management gRPC service ready on port %d", *grpcPort)
+	log.Printf("NIC Management REST API ready on port %d", *apiPort)
 
 	// Set up signal handlers.
 	sigChan := setupSignalHandlers()
@@ -142,7 +143,22 @@ func main() {
 
 	// Perform graceful shutdown.
 	shutdownService(components)
-	log.Println("NIC Management service stopped")
+
+	// Wait for all goroutines to finish.
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Println("All services stopped gracefully")
+	case <-time.After(30 * time.Second):
+		log.Println("Shutdown timeout exceeded, forcing exit")
+	}
+
+	log.Println("Unified NIC Management service stopped")
 }
 
 // =============================================================================
@@ -178,7 +194,7 @@ func createDefaultConfig() *config.Config {
 			LogLevel: "info",
 		},
 		GRPC: config.GRPCConfig{
-			ListenAddress: "0.0.0.0:50054",
+			ListenAddress: fmt.Sprintf("0.0.0.0:%d", *grpcPort),
 		},
 		Failover: config.FailoverConfig{
 			Enabled: true,
@@ -316,14 +332,9 @@ func initializeComponents(ctx context.Context, cfg *config.Config) (*ServiceComp
 		streamConfig,
 	)
 
-	// Extract port from listen address.
+	// Create gRPC server with configured port.
 	serverConfig := internalgrpc.DefaultServerConfig()
-	if cfg.GRPC.ListenAddress != "" {
-		var port int
-		if _, err := fmt.Sscanf(cfg.GRPC.ListenAddress, "0.0.0.0:%d", &port); err == nil {
-			serverConfig.Port = port
-		}
-	}
+	serverConfig.Port = *grpcPort
 	if cfg.GRPC.TLS != nil && cfg.GRPC.TLS.Enabled {
 		serverConfig.TLSEnabled = true
 		serverConfig.TLSCertPath = cfg.GRPC.TLS.CertFile
@@ -338,6 +349,9 @@ func initializeComponents(ctx context.Context, cfg *config.Config) (*ServiceComp
 		return nil, fmt.Errorf("failed to create gRPC server: %w", err)
 	}
 
+	// Initialize REST API Server.
+	components.apiServer = api.NewNICAPIServer(*apiPort, *configPath)
+
 	return components, nil
 }
 
@@ -346,7 +360,7 @@ func initializeComponents(ctx context.Context, cfg *config.Config) (*ServiceComp
 // =============================================================================
 
 // startAllWorkers starts all background workers.
-func startAllWorkers(ctx context.Context, c *ServiceComponents) error {
+func startAllWorkers(ctx context.Context, c *ServiceComponents, wg *sync.WaitGroup) error {
 	// Start discovery monitor.
 	if c.monitor != nil {
 		if err := c.monitor.Start(ctx); err != nil {
@@ -375,6 +389,18 @@ func startAllWorkers(ctx context.Context, c *ServiceComponents) error {
 		}
 	}
 
+	// Start REST API server in goroutine.
+	if c.apiServer != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Printf("Starting REST API server on port %d", *apiPort)
+			if err := c.apiServer.Start(); err != nil {
+				log.Printf("REST API server error: %v", err)
+			}
+		}()
+	}
+
 	return nil
 }
 
@@ -394,6 +420,9 @@ func shutdownService(c *ServiceComponents) {
 	log.Println("Phase 1: Stopping new connections...")
 	if c.grpcServer != nil {
 		_ = c.grpcServer.Stop()
+	}
+	if c.apiServer != nil {
+		_ = c.apiServer.Stop()
 	}
 
 	// Phase 2: Stop background workers.
@@ -454,7 +483,7 @@ func setupSignalHandlers() chan os.Signal {
 
 // printVersion prints service version information.
 func printVersion() {
-	fmt.Println("NIC Management Service")
+	fmt.Println("Unified NIC Management Service")
 	fmt.Printf("  Version:    %s\n", Version)
 	fmt.Printf("  Git Commit: %s\n", GitCommit)
 	fmt.Printf("  Build Date: %s\n", BuildDate)
@@ -469,8 +498,10 @@ func printVersion() {
 // runServiceInstall runs the service installation process.
 // Uses functions from installer.go
 func runServiceInstall() {
-	config := DefaultServiceConfig()
-	if err := InstallService(config); err != nil {
-		log.Fatalf("Installation failed: %v", err)
-	}
+	// TODO: Implement service installation
+	log.Println("Service installation not yet implemented")
+	// config := DefaultServiceConfig()
+	// if err := InstallService(config); err != nil {
+	// 	log.Fatalf("Installation failed: %v", err)
+	// }
 }

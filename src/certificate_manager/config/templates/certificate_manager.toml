@@ -1,0 +1,142 @@
+# ============================================================================
+# Certificate Manager Configuration - Windows Version
+# SafeOps v2.0 - SSL/TLS Certificate Lifecycle Management
+# ============================================================================
+
+[service]
+name = "certificate_manager"
+version = "2.0.0"
+environment = "development"
+log_level = "info"
+log_format = "text"
+log_file = "logs/certificate_manager.log"
+
+[grpc]
+enabled = true
+host = "0.0.0.0"
+port = "50060"
+reflection_enabled = true
+
+[acme]
+directory_url = "https://acme-staging-v02.api.letsencrypt.org/directory"
+email = "admin@safeops.local"
+terms_agreed = true
+preferred_challenge = "http-01"
+key_type = "ECDSA-P256"
+
+# ============================================================================
+# Managed Domains - SafeOps local network
+# ============================================================================
+[[domains]]
+common_name = "safeops.local"
+subject_alt_names = ["www.safeops.local", "api.safeops.local", "portal.safeops.local", "captive.safeops.local"]
+wildcard = false
+challenge_type = "http-01"
+enabled = true
+auto_renew = true
+renew_before_days = 30
+
+# ============================================================================
+# Storage - Windows paths
+# ============================================================================
+[storage]
+type = "filesystem"
+cert_path = "certs"
+key_path = "private"
+chain_path = "chains"
+encrypt_keys = false
+
+# ============================================================================
+# Database - Disabled for now
+# ============================================================================
+[database]
+enabled = false
+host = "localhost"
+port = "5432"
+name = "safeops_db"
+user = "postgres"
+password = ""
+
+# ============================================================================
+# Renewal Scheduler
+# ============================================================================
+[renewal]
+enabled = true
+check_interval = "24h"
+renew_before_days = 30
+
+# ============================================================================
+# HTTP Challenge Server
+# ============================================================================
+[http_challenge]
+enabled = false
+port = 8082
+
+# ============================================================================
+# SafeOps Internal CA Configuration
+# ============================================================================
+[ca]
+enabled = true
+organization = "SafeOps Network"
+country = "US"
+validity_years = 10
+key_algorithm = "RSA"
+key_size = 4096
+key_encryption_enabled = false
+ca_cert_path = "certs/ca.crt"
+ca_key_path = "certs/ca.key"
+
+# ============================================================================
+# CA Distribution (for DHCP clients)
+# ============================================================================
+[ca_distribution]
+enabled = true
+bind_address = "0.0.0.0"
+http_port = "8082"
+base_url = "http://192.168.137.1"
+generate_qr_codes = true
+generate_trust_instructions = true
+
+# ============================================================================
+# HTTP Server for Dashboard API
+# ============================================================================
+[http_server]
+enabled = true
+bind_address = "0.0.0.0"
+port = 8082
+tls_enabled = false
+
+# ============================================================================
+# Metrics
+# ============================================================================
+[metrics]
+enabled = true
+port = 9093
+path = "/metrics"
+
+[health]
+enabled = true
+port = 8093
+path = "/health"
+
+[notifications.email]
+enabled = false
+
+[notifications.slack]
+enabled = false
+
+[notifications.webhook]
+enabled = false
+
+[revocation.crl]
+enabled = false
+
+[revocation.ocsp]
+enabled = false
+
+[security]
+audit_logging_enabled = false
+rate_limit_enabled = false
+
+[backup]
+enabled = false

@@ -1,0 +1,99 @@
+# DHCP Monitor Configuration
+
+service:
+  name: "dhcp_monitor"
+  log_level: "info"
+
+# Windows DHCP Monitoring
+windows_dhcp:
+  # Monitoring method: wmi, powershell, or netsh
+  method: "powershell"
+
+  # Poll interval for checking new leases
+  poll_interval: "30s"
+
+  # DHCP server to monitor (localhost for local DHCP server)
+  server: "localhost"
+
+  # Automatically configure Windows DHCP options
+  auto_configure: true
+
+# DNS Hijacking Server
+dns:
+  # TEMPORARILY DISABLED - needs more testing, device detection still works via ARP
+  # Enable DNS hijacking for one-time captive portal redirect
+  # When enabled: new devices are redirected ONCE to view the portal, then DNS works normally
+  enabled: false
+
+  # Port to listen on (53 for standard DNS)
+  port: 53
+
+  # Upstream DNS server for devices that have seen the portal
+  upstream: "8.8.8.8"
+
+  # TTL for hijacked DNS responses (0 = no caching)
+  hijack_ttl: 0
+
+# Captive Portal
+portal:
+  # Portal IP address (your machine's IP)
+  # Auto-detected if not specified
+  ip: "auto"
+
+  # HTTP port
+  http_port: 80
+
+  # HTTPS port (optional, requires portal certificate)
+  https_port: 443
+  https_enabled: false
+
+  # Portal certificate paths (from Step-CA)
+  cert_path: ""
+  key_path: ""
+
+  # Session timeout for certificate installation
+  session_timeout: "10m"
+
+# Step-CA Integration
+stepca:
+  # Step-CA API URL
+  api_url: "https://localhost:9000"
+
+  # Root CA certificate path
+  root_cert_path: "D:/SafeOpsFV2/certs/step-ca/ca/certs/root_ca.crt"
+
+  # Verify device certificates via TLS handshake
+  verify_client_certs: true
+
+# Device Tracking Database
+database:
+  # SQLite database path
+  path: "./devices.db"
+
+  # Clean up old device records after N days
+  retention_days: 90
+
+# Monitoring & Metrics
+monitoring:
+  # Prometheus metrics port
+  metrics_port: 9155
+
+  # Health check port
+  health_port: 8068
+
+  # Enable profiling endpoints
+  profiling: false
+
+# Logging
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+
+  # Log format: json, text
+  format: "text"
+
+  # Log output: stdout, file, or both
+  output: "stdout"
+
+  # Log file path (if output includes "file")
+  file_path: "./dhcp_monitor.log"

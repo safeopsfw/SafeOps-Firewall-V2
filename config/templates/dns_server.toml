@@ -1,450 +1,245 @@
 # SafeOps DNS Server Configuration
-# Domain name resolution service with filtering, threat intelligence, and caching
-#
-# This service provides DNS resolution, DNS-based content filtering, threat
-# intelligence integration, and caching for the SafeOps network.
+# File: config/templates/dns_server.toml
+# Version: 1.0
+# 
+# This configuration file controls all DNS server runtime parameters.
+# Reload on SIGHUP for non-critical settings.
 
 # ============================================================================
-# Service Configuration
+# [server] - Network Listeners and Service Identity
 # ============================================================================
-[service]
-# Service identifier for orchestrator registration
-service_name = "dns_server"
 
-# DNS listening addresses (UDP and TCP)
-# Can be overridden with ${DNS_LISTEN_IP}
-listen_addresses = ["0.0.0.0:53", "[::]:53"]
+[server]
+service_name = "dns-server"
 
-# DNS listening port (default 53)
-listen_port = 53
+# DNS listeners - Port 53 requires admin privileges
+udp_listen = "0.0.0.0:53"
+tcp_listen = "0.0.0.0:53"
 
-# gRPC management API address
-grpc_listen_address = "127.0.0.1:50056"
+# gRPC API for DHCP integration and management
+grpc_listen = "0.0.0.0:50053"
 
-# Maximum simultaneous DNS queries
-max_concurrent_queries = 10000
-
-# Maximum time to wait for upstream response (seconds)
-query_timeout = 5
-
-# Self-health check frequency (seconds)
-health_check_interval = 30
-
-# Enable Prometheus metrics export
-metrics_enabled = true
-metrics_port = 9096
+# Performance tuning
+worker_threads = 8                      # Goroutine workers (CPU cores x 2)
+max_concurrent_queries = 10000          # Backpressure limit
 
 # ============================================================================
-# Upstream Forwarders
+# [upstream] - Recursive DNS Servers
 # ============================================================================
-# DNS servers to forward queries to
 
-[[forwarders]]
-server_address = "${UPSTREAM_DNS_1:-8.8.8.8}"
-server_port = 53
-protocol = "UDP"
-priority = 1
-timeout = 2
-max_failures = 3
-health_check_enabled = true
-description = "Google Public DNS Primary"
-
-[[forwarders]]
-server_address = "${UPSTREAM_DNS_2:-8.8.4.4}"
-server_port = 53
-protocol = "UDP"
-priority = 2
-timeout = 2
-max_failures = 3
-health_check_enabled = true
-description = "Google Public DNS Secondary"
-
-[[forwarders]]
-server_address = "1.1.1.1"
-server_port = 53
-protocol = "UDP"
-priority = 3
-timeout = 2
-max_failures = 3
-health_check_enabled = true
-description = "Cloudflare DNS Primary"
-
-[[forwarders]]
-server_address = "1.0.0.1"
-server_port = 53
-protocol = "UDP"
-priority = 4
-timeout = 2
-max_failures = 3
-health_check_enabled = true
-description = "Cloudflare DNS Secondary"
-
-# Forwarder selection strategy
-# Valid values: "PRIORITY", "ROUND_ROBIN", "FASTEST"
-# PRIORITY: Use lowest priority first
-# ROUND_ROBIN: Distribute evenly across forwarders
-# FASTEST: Use forwarder with lowest response time
-forwarder_selection = "PRIORITY"
-
-# Send queries to multiple forwarders simultaneously
-parallel_queries = false
-
-# ============================================================================
-# Caching Configuration
-# ============================================================================
-[caching]
-# Enable DNS response caching
-cache_enabled = true
-
-# Maximum cache entries
-cache_size = 100000
-
-# Minimum TTL for cached records (seconds)
-cache_min_ttl = 60
-
-# Maximum TTL for cached records (seconds)
-cache_max_ttl = 86400
-
-# TTL for NXDOMAIN responses (seconds)
-cache_negative_ttl = 600
-
-# Refresh popular records before expiry
-cache_prefetch_enabled = true
-
-# Refresh when TTL below this percentage
-cache_prefetch_threshold = 10
-
-# Eviction strategy when full
-# Valid values: "LRU", "LFU", "FIFO"
-cache_eviction_policy = "LRU"
-
-# Cache statistics tracking
-cache_stats_enabled = true
-
-# ============================================================================
-# Domain Filtering
-# ============================================================================
-[filtering]
-# Enable domain filtering
-filtering_enabled = true
-
-# Action for filtered domains
-# Valid values: "BLOCK", "REDIRECT", "LOG_ONLY"
-default_filter_action = "BLOCK"
-
-# Response type for blocked queries
-# Valid values: "NXDOMAIN", "REFUSED", "CUSTOM_IP"
-block_response_type = "NXDOMAIN"
-
-# IP to return for blocked domains (if CUSTOM_IP)
-# block_redirect_ip = "0.0.0.0"
-
-# Domain block list sources
-[[filtering.filter_lists]]
-list_name = "StevenBlack Unified Hosts"
-list_url = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-list_format = "HOSTS"
-enabled = true
-update_interval = 24  # hours
-categories = ["ads", "malware"]
-description = "Comprehensive ad and malware blocking"
-
-[[filtering.filter_lists]]
-list_name = "Malware Domain List"
-list_url = "https://www.malwaredomainlist.com/hostslist/hosts.txt"
-list_format = "HOSTS"
-enabled = true
-update_interval = 12
-categories = ["malware"]
-description = "Malware domains"
-
-[[filtering.filter_lists]]
-list_name = "Phishing Database"
-list_url = "https://phishing.army/download/phishing_army_blocklist.txt"
-list_format = "DOMAINS"
-enabled = true
-update_interval = 6
-categories = ["phishing"]
-description = "Phishing domains"
-
-# Domains to never filter (always allow)
-whitelist_domains = [
-    "microsoft.com",
-    "google.com",
-    "apple.com",
-    "cloudflare.com",
-    "safeops.local"
+[upstream]
+# Upstream DNS servers (minimum 2 for redundancy)
+servers = [
+    "8.8.8.8:53",       # Google Primary
+    "8.8.4.4:53",       # Google Secondary
+    "1.1.1.1:53",       # Cloudflare Primary
+    "1.0.0.1:53"        # Cloudflare Secondary
 ]
 
-# Domains to always block
-blacklist_domains = []
-
-# Block list storage
-blocklist_cache_dir = "D:\\SafeOpsFV2\\data\\dns\\blocklists"
+strategy = "fastest"                    # round_robin, fastest, random
+timeout = "5s"                          # Max wait for upstream response
+retries = 2                             # Retry attempts on failure
+health_check_interval = "30s"           # Upstream health monitoring
 
 # ============================================================================
-# Threat Intelligence Integration
+# [cache] - DNS Response Cache
 # ============================================================================
+
+[cache]
+enabled = true
+max_size = 100000                       # Max cached entries (LRU eviction)
+default_ttl = 3600                      # Default TTL (1 hour)
+max_ttl = 86400                         # Maximum TTL (24 hours)
+min_ttl = 300                           # Minimum TTL (5 minutes)
+negative_ttl = 3600                     # NXDOMAIN cache TTL (1 hour)
+
+# Redis distributed cache (optional)
+redis_enabled = false
+redis_address = "localhost:6379"
+redis_password = ""
+redis_db = 0
+
+# ============================================================================
+# [database] - PostgreSQL Connection
+# ============================================================================
+
+[database]
+host = "localhost"
+port = 5432
+database = "safeops_network"
+username = "dns_server"
+password = "${DNS_DB_PASSWORD}"         # Use environment variable
+max_connections = 20
+connection_timeout = "10s"
+ssl_mode = "disable"                    # disable, require, verify-ca, verify-full
+
+# ============================================================================
+# [threat_intel] - Threat Intelligence Integration
+# ============================================================================
+
 [threat_intel]
-# Enable threat intelligence lookup
-threat_intel_enabled = true
-
-# threat_intel service gRPC endpoint
-# Can be overridden with ${THREAT_INTEL_ENDPOINT}
-threat_intel_grpc_address = "127.0.0.1:50054"
-
-# Timeout for reputation queries (milliseconds)
-threat_intel_timeout = 500
-
-# Cache threat reputation results (seconds)
-threat_intel_cache_ttl = 3600
-
-# Minimum threat score to block (0-100)
-threat_intel_min_score = 70
-
-# Action for malicious domains
-# Valid values: "BLOCK", "WARN", "LOG"
-# BLOCK: Return NXDOMAIN or block IP
-# WARN: Return result but log warning
-# LOG: Log only, don't affect response
-threat_intel_action = "BLOCK"
-
-# Threat categories to check
-threat_intel_categories = ["malware", "phishing", "c2", "dga"]
+enabled = true
+api_address = "http://localhost:8080"   # Threat Intel Service endpoint
+timeout_ms = 100                        # Very short to avoid latency
+cache_ttl = "5m"                        # Cache TI results
+fail_open = true                        # Allow queries if TI unavailable
+block_threshold = 70                    # Block domains with score >= 70
 
 # ============================================================================
-# DNSSEC Validation
+# [filtering] - Domain Filtering and Blocking
 # ============================================================================
+
+[filtering]
+enabled = true
+block_response = "NXDOMAIN"             # NXDOMAIN, 0.0.0.0, ::, REFUSED
+allowlist_precedence = true             # Allowlist overrides blocklist
+
+# External blocklists
+[[filtering.blocklists]]
+name = "adguard"
+url = "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt"
+enabled = true
+update_interval = "24h"
+category = "ads"
+
+[[filtering.blocklists]]
+name = "malware_domains"
+url = "https://urlhaus.abuse.ch/downloads/hostfile/"
+enabled = true
+update_interval = "12h"
+category = "malware"
+
+[[filtering.blocklists]]
+name = "phishing"
+url = "https://phishing.army/download/phishing_army_blocklist_extended.txt"
+enabled = true
+update_interval = "12h"
+category = "phishing"
+
+# ============================================================================
+# [dynamic_dns] - DHCP Integration (Automatic DNS Records)
+# ============================================================================
+
+[dynamic_dns]
+enabled = true
+default_ttl = 300                       # Short TTL for dynamic records (5 min)
+zone = "safeops.local"                  # Forward lookup zone
+reverse_zone = "168.192.in-addr.arpa"   # Reverse DNS zone for 192.168.x.x
+
+# Authorized sources for Dynamic DNS updates
+allowed_sources = [
+    "127.0.0.1",
+    "localhost",
+    "::1"
+]
+
+cleanup_interval = "5m"                 # Expired record cleanup frequency
+
+# ============================================================================
+# [captive] - Captive Portal Redirect (Certificate Enrollment)
+# ============================================================================
+
+[captive]
+enabled = true
+portal_ip = "0.0.0.0"                     # Auto-detected gateway IP (set via CLI -portal-ip flag)
+portal_port = 8080
+portal_url = "http://localhost:8080/install"  # Updated dynamically at runtime
+
+# Certificate Manager HTTP API for enrollment callbacks (step-ca integration)
+cert_manager_addr = "localhost:8082"
+
+cache_ttl = "5m"                        # Enrollment status cache
+redirect_ttl = 60                       # Short DNS TTL for redirects
+
+# Domains to never redirect
+excluded_domains = [
+    "localhost",
+    "*.local",
+    "*.internal",
+    "*.lan",
+    "*.safeops.local"
+]
+
+# ============================================================================
+# [dnssec] - DNSSEC Validation
+# ============================================================================
+
 [dnssec]
-# Enable DNSSEC validation
-dnssec_enabled = false
-
-# Validation strictness
-# Valid values: "STRICT", "PERMISSIVE", "DISABLED"
-# STRICT: Reject all invalid signatures
-# PERMISSIVE: Log validation failures but serve anyway
-# DISABLED: No validation
-dnssec_validation_mode = "STRICT"
-
-# Trust anchor files
-trust_anchors = [
-    "D:\\SafeOpsFV2\\data\\dns\\root-trust-anchor.xml"
-]
-
-# Action for failed validation
-# Valid values: "REFUSE", "SERVE_ANYWAY", "LOG"
-dnssec_bogus_action = "REFUSE"
-
-# Cache DNSSEC validation results
-dnssec_cache_enabled = true
+enabled = false                         # Enable for DNSSEC validation
+trust_anchors_file = ""                 # Path to root trust anchor
+validate_upstream = true
 
 # ============================================================================
-# Local DNS Records
-# ============================================================================
-# Locally-defined DNS zones and records
-
-[[local_zones]]
-zone_name = "local.lan"
-zone_type = "AUTHORITATIVE"
-description = "Internal network zone"
-
-[[local_zones.records]]
-name = "gateway"
-type = "A"
-ttl = 3600
-value = "192.168.1.1"
-
-[[local_zones.records]]
-name = "nas"
-type = "A"
-ttl = 3600
-value = "192.168.1.10"
-
-[[local_zones.records]]
-name = "printer"
-type = "A"
-ttl = 3600
-value = "192.168.1.20"
-
-[[local_zones]]
-zone_name = "safeops.local"
-zone_type = "AUTHORITATIVE"
-description = "SafeOps services zone"
-
-[[local_zones.records]]
-name = "orchestrator"
-type = "A"
-ttl = 300
-value = "127.0.0.1"
-
-[[local_zones.records]]
-name = "firewall"
-type = "A"
-ttl = 300
-value = "127.0.0.1"
-
-# ============================================================================
-# Query Logging
-# ============================================================================
-[query_logging]
-# Log all DNS queries
-query_logging_enabled = true
-
-# Log queries that returned results
-log_successful_queries = true
-
-# Log queries that failed or were blocked
-log_failed_queries = true
-
-# Detail level
-# Valid values: "MINIMAL", "STANDARD", "VERBOSE"
-log_detail_level = "STANDARD"
-
-# Log destination
-# Valid values: "FILE", "DATABASE", "GRPC"
-log_destination = "FILE"
-
-# network_logger service endpoint (if using GRPC)
-# logger_grpc_address = "127.0.0.1:50052"
-
-# Log file path
-log_file_path = "D:\\SafeOpsFV2\\logs\\dns_queries.log"
-
-# Maximum log file size before rotation (MB)
-log_rotation_size = 100
-
-# Days to retain query logs
-log_retention_days = 30
-
-# Log format
-# Valid values: "TEXT", "JSON", "CSV"
-log_format = "JSON"
-
-# ============================================================================
-# Performance Tuning
-# ============================================================================
-[performance]
-# Number of query processing threads
-# 0 = auto-detect (CPU cores)
-worker_threads = 0
-
-# UDP socket buffer size (bytes)
-udp_buffer_size = 65536
-
-# Maximum concurrent TCP DNS connections
-tcp_max_connections = 100
-
-# Enable per-client query rate limiting
-rate_limiting_enabled = true
-
-# Maximum queries per second per client
-rate_limit_qps = 100
-
-# Burst allowance for rate limiting
-rate_limit_burst = 50
-
-# Query queue size
-query_queue_size = 10000
-
-# ============================================================================
-# Response Policy Zones (RPZ)
-# ============================================================================
-[rpz]
-# Enable response policy zones
-rpz_enabled = false
-
-# RPZ zone definitions
-# [[rpz.zones]]
-# zone_name = "rpz.example.com"
-# zone_source = "https://example.com/rpz.zone"
-# priority = 1
-# action = "NXDOMAIN"
-# update_interval = 24  # hours
-
-# ============================================================================
-# Advanced Settings
-# ============================================================================
-[advanced]
-# Enable EDNS0 (Extension Mechanisms for DNS)
-edns0_enabled = true
-
-# EDNS0 UDP payload size
-edns0_udp_size = 4096
-
-# Enable DNS-over-TLS for upstream queries
-dot_enabled = false
-
-# DoT upstream servers
-# dot_servers = ["dns.google:853", "cloudflare-dns.com:853"]
-
-# Enable DNS-over-HTTPS for upstream queries
-doh_enabled = false
-
-# DoH upstream servers
-# doh_servers = ["https://dns.google/dns-query", "https://cloudflare-dns.com/dns-query"]
-
-# Minimum response TTL (override upstream)
-min_response_ttl = 10
-
-# Maximum response TTL (override upstream)
-max_response_ttl = 86400
-
-# Stale cache serving (serve expired cache during outage)
-serve_stale_enabled = true
-serve_stale_ttl = 3600
-
-# ============================================================================
-# Statistics and Monitoring
-# ============================================================================
-[statistics]
-# Enable statistics collection
-statistics_enabled = true
-
-# Statistics interval (seconds)
-stats_interval = 60
-
-# Metrics to track
-track_metrics = [
-    "queries_total",
-    "queries_blocked",
-    "cache_hits",
-    "cache_misses",
-    "forwarder_errors",
-    "response_time_avg"
-]
-
-# Export statistics via Prometheus
-export_to_prometheus = true
-
-# ============================================================================
-# Environment Variable Overrides
-# ============================================================================
-# These settings can be overridden by environment variables:
-#
-# DNS_LISTEN_IP - Override DNS server listen address
-# UPSTREAM_DNS_1 - Primary upstream DNS server
-# UPSTREAM_DNS_2 - Secondary upstream DNS server
-# THREAT_INTEL_ENDPOINT - Threat intelligence service gRPC address
-# BLOCK_LISTS_DIR - Directory for downloaded block lists
-#
+# [logging] - Query Logging and Audit Trail
 # ============================================================================
 
+[logging]
+query_log = true                        # Log all DNS queries
+log_level = "INFO"                      # DEBUG, INFO, WARN, ERROR
+log_format = "json"                     # json or text
+log_file = ""                           # Empty = stdout only
+syslog_server = ""                      # Remote syslog (host:port)
+export_to_siem = false                  # Forward to SIEM
+
 # ============================================================================
-# Configuration Validation
+# [metrics] - Prometheus Metrics
 # ============================================================================
-# The dns_server service validates this configuration at startup and will
-# fail to start if validation fails. Common checks:
-#
-# 1. At least one upstream forwarder must be defined
-# 2. listen_addresses must bind to valid interfaces
-# 3. cache_size must be positive
-# 4. threat_intel_grpc_address must be reachable if enabled
-# 5. filter_lists URLs must be accessible
-# 6. DNSSEC trust anchors must exist if dnssec_enabled
-# 7. Log directory must be writable
-# 8. worker_threads must be positive after auto-detection
-# 9. Local zone records must have valid IP addresses
-# 10. Rate limit values must be reasonable
-#
-# Use the validator: safeops-cli config validate dns_server.toml
+
+[metrics]
+enabled = true
+listen = "0.0.0.0:9153"                 # Standard DNS exporter port
+path = "/metrics"
+include_query_labels = false            # Warning: high cardinality
+
 # ============================================================================
+# [security] - Rate Limiting and TLS
+# ============================================================================
+
+[security]
+rate_limit_enabled = true
+qps_per_ip = 100                        # Max queries/sec per client
+burst = 200                             # Burst allowance
+ban_duration = "5m"                     # Temporary ban duration
+
+# TLS for gRPC API
+tls_enabled = false
+tls_cert_file = ""
+tls_key_file = ""
+
+# ============================================================================
+# [authoritative] - Authoritative DNS Settings
+# ============================================================================
+
+[authoritative]
+enabled = true
+zones_dir = ""                          # Optional: load zones from files
+notify_secondaries = false              # Send NOTIFY on zone changes
+allow_axfr = false                      # Allow zone transfers
+
+# Secondary zone transfer settings
+[authoritative.transfer]
+allow_from = []                         # IPs allowed to request AXFR
+deny_from = []
+
+# ============================================================================
+# Profiles - Load different defaults based on deployment
+# ============================================================================
+
+# Profile: enterprise (uncomment to enable)
+# [profile.enterprise]
+# cache.max_size = 1000000
+# logging.query_log = true
+# filtering.enabled = true
+# threat_intel.enabled = true
+
+# Profile: home_network
+# [profile.home_network]
+# cache.max_size = 10000
+# logging.query_log = false
+# server.udp_listen = "192.168.1.1:53"
+
+# Profile: small_business
+# [profile.small_business]
+# cache.max_size = 50000
+# logging.query_log = true
+# filtering.enabled = true

@@ -1,0 +1,65 @@
+{
+  "root": "D:\\SafeOpsFV2\\certs\\step-ca\\ca\\certs\\root_ca.crt",
+  "federatedRoots": null,
+  "crt": "D:\\SafeOpsFV2\\certs\\step-ca\\ca\\certs\\intermediate_ca.crt",
+  "key": "D:\\SafeOpsFV2\\certs\\step-ca\\ca\\secrets\\intermediate_ca_key",
+  "address": "192.168.137.1:9000",
+  "insecureAddress": "",
+  "dnsNames": ["safeops.local", "192.168.137.1", "localhost"],
+  "logger": {"format": "text"},
+  "db": {
+    "type": "badgerv2",
+    "dataSource": "D:\\SafeOpsFV2\\certs\\step-ca\\ca\\db"
+  },
+  "authority": {
+    "provisioners": [
+      {
+        "type": "JWK",
+        "name": "safeops-admin",
+        "key": {
+          "use": "sig",
+          "kty": "EC",
+          "kid": "safeops-admin-key",
+          "crv": "P-256",
+          "alg": "ES256"
+        },
+        "encryptedKey": "will-be-generated",
+        "claims": {
+          "minTLSCertDuration": "5m",
+          "maxTLSCertDuration": "87600h",
+          "defaultTLSCertDuration": "720h",
+          "disableRenewal": false
+        }
+      },
+      {
+        "type": "ACME",
+        "name": "safeops-acme",
+        "forceCN": false,
+        "claims": {
+          "minTLSCertDuration": "5m",
+          "maxTLSCertDuration": "87600h",
+          "defaultTLSCertDuration": "720h"
+        }
+      },
+      {
+        "type": "X5C",
+        "name": "safeops-x5c",
+        "roots": [],
+        "claims": {
+          "minTLSCertDuration": "5m",
+          "maxTLSCertDuration": "87600h",
+          "defaultTLSCertDuration": "720h"
+        }
+      }
+    ]
+  },
+  "tls": {
+    "cipherSuites": [
+      "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+      "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+    ],
+    "minVersion": 1.2,
+    "maxVersion": 1.3,
+    "renegotiation": false
+  }
+}

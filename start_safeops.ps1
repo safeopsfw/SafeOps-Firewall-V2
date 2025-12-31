@@ -1,181 +1,178 @@
-# SafeOps Complete Network Suite - PowerShell Startup Script
-# Starts all 4 modules: Certificate Manager, DHCP, NIC API, Threat Intel + Dev UI
-# Run with: powershell -ExecutionPolicy Bypass -File start_safeops.ps1
+# SafeOps Services Startup Script
+# This script starts all SafeOps services with correct configuration
+# Run as Administrator for DHCP (port 67) and DNS (port 53)
 
 param(
-    [switch]$NoUI,        # Skip starting the Dev UI
-    [switch]$NoBrowser,   # Don't open browser
-    [switch]$Silent       # Minimal output
+    [switch]$StartHotspot,
+    [switch]$NoDashboard
 )
 
-$ErrorActionPreference = "Continue"
-$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ErrorActionPreference = "Stop"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Check for admin privileges
-function Test-Admin {
-    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "    SafeOps Services Launcher" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-if (-not (Test-Admin)) {
-    Write-Host "[!] Restarting with administrator privileges..." -ForegroundColor Yellow
-    Start-Process powershell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
-}
-
-# Colors and formatting
-function Write-Header {
-    param([string]$Text)
+# Check for admin rights (needed for ports 53 and 67)
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "[WARN] Not running as Administrator!" -ForegroundColor Yellow
+    Write-Host "       DHCP (port 67) and DNS (port 53) may fail to bind." -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  ============================================================" -ForegroundColor Cyan
-    Write-Host "  $Text" -ForegroundColor White
-    Write-Host "  ============================================================" -ForegroundColor Cyan
 }
 
-function Write-Step {
-    param([string]$Step, [string]$Text)
-    Write-Host "  [$Step] $Text" -ForegroundColor Green
+# Stop any existing services
+Write-Host "[INFO] Stopping any existing services..." -ForegroundColor Yellow
+Stop-Process -Name certificate_manager,dhcp_server,dns_server,captive_portal,nic_api -Force -ErrorAction SilentlyContinue
+taskkill /F /IM node.exe 2>$null | Out-Null
+Start-Sleep -Seconds 2
+
+# Auto-detect local IP (any non-loopback, non-link-local IPv4)
+Write-Host "[INFO] Detecting network configuration..." -ForegroundColor Yellow
+$hotspotIP = (Get-NetIPAddress -AddressFamily IPv4 |
+    Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
+    Select-Object -First 1).IPAddress
+
+if ($hotspotIP) {
+    Write-Host "       Gateway IP: $hotspotIP" -ForegroundColor Green
+} else {
+    Write-Host "       ERROR: No network interface found!" -ForegroundColor Red
+    Write-Host "       Please connect to a network and try again." -ForegroundColor Red
+    exit 1
 }
 
-function Write-Info {
-    param([string]$Text)
-    Write-Host "        $Text" -ForegroundColor Gray
+# Create logs directory
+$logsDir = Join-Path $ScriptDir "logs"
+if (-not (Test-Path $logsDir)) {
+    New-Item -ItemType Directory -Path $logsDir | Out-Null
 }
 
-# Clear screen
-Clear-Host
+# Function to start a service
+function Start-SafeOpsService {
+    param(
+        [string]$Name,
+        [string]$Path,
+        [string]$Arguments = "",
+        [string]$WorkingDir
+    )
+    
+    if (-not (Test-Path $Path)) {
+        Write-Host "[ERROR] $Name not found at: $Path" -ForegroundColor Red
+        return $false
+    }
+    
+    $startInfo = @{
+        FilePath = $Path
+        WorkingDirectory = $WorkingDir
+        WindowStyle = "Minimized"
+    }
+    
+    if ($Arguments) {
+        $startInfo.ArgumentList = $Arguments -split " "
+    }
+    
+    try {
+        Start-Process @startInfo
+        Write-Host "[OK] $Name started" -ForegroundColor Green
+        return $true
+    } catch {
+        Write-Host "[ERROR] Failed to start ${Name}: $_" -ForegroundColor Red
+        return $false
+    }
+}
 
-Write-Header "SafeOps Network Security Suite - 4 Module Startup"
 Write-Host ""
-Write-Host "  Modules:" -ForegroundColor White
-Write-Host "    1. Certificate Manager (CA + Captive Portal)" -ForegroundColor DarkGreen
-Write-Host "    2. DHCP Server (IP Assignment)" -ForegroundColor DarkCyan
-Write-Host "    3. NIC Management API (Network Control)" -ForegroundColor DarkYellow
-Write-Host "    4. Threat Intelligence (Security Database)" -ForegroundColor DarkMagenta
-Write-Host "    5. Dev UI (React Dashboard)" -ForegroundColor DarkRed
-Write-Host ""
+Write-Host "[STEP 1] Starting Certificate Manager..." -ForegroundColor Cyan
+Start-SafeOpsService -Name "Certificate Manager" `
+    -Path (Join-Path $ScriptDir "src\certificate_manager\certificate_manager.exe") `
+    -WorkingDir (Join-Path $ScriptDir "src\certificate_manager")
 
-# Define services
+Start-Sleep -Seconds 2
+
+Write-Host "[STEP 2] Starting NIC Management API..." -ForegroundColor Cyan  
+Start-SafeOpsService -Name "NIC API" `
+    -Path (Join-Path $ScriptDir "src\nic_management\api\nic_api.exe") `
+    -WorkingDir (Join-Path $ScriptDir "src\nic_management\api")
+
+Start-Sleep -Seconds 1
+
+Write-Host "[STEP 3] Starting DNS Server (portal: $hotspotIP)..." -ForegroundColor Cyan
+$dnsArgs = "-captive true -portal-ip $hotspotIP -portal-port 8093"
+Start-SafeOpsService -Name "DNS Server" `
+    -Path (Join-Path $ScriptDir "src\dns_server\dns_server.exe") `
+    -Arguments $dnsArgs `
+    -WorkingDir (Join-Path $ScriptDir "src\dns_server")
+
+Start-Sleep -Seconds 1
+
+Write-Host "[STEP 4] Starting DHCP Server..." -ForegroundColor Cyan
+Start-SafeOpsService -Name "DHCP Server" `
+    -Path (Join-Path $ScriptDir "src\dhcp_server\dhcp_server.exe") `
+    -WorkingDir (Join-Path $ScriptDir "src\dhcp_server")
+
+Start-Sleep -Seconds 1
+
+Write-Host "[STEP 5] Starting Captive Portal..." -ForegroundColor Cyan
+$portalArgs = "-addr :8080 -cert-path $ScriptDir\certs\ca.crt -cert-manager http://localhost:8093"
+Start-SafeOpsService -Name "Captive Portal" `
+    -Path (Join-Path $ScriptDir "src\captive_portal\captive_portal.exe") `
+    -Arguments $portalArgs `
+    -WorkingDir (Join-Path $ScriptDir "src\captive_portal")
+
+Start-Sleep -Seconds 1
+
+if (-not $NoDashboard) {
+    Write-Host "[STEP 6] Starting Dashboard..." -ForegroundColor Cyan
+    $dashboardDir = Join-Path $ScriptDir "src\ui\dev"
+    if (Test-Path $dashboardDir) {
+        Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev" `
+            -WorkingDirectory $dashboardDir -WindowStyle Normal
+        Write-Host "[OK] Dashboard started" -ForegroundColor Green
+    }
+}
+
+Start-Sleep -Seconds 2
+
+# Verify services
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "    Service Status" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
 $services = @(
-    @{
-        Name = "Certificate Manager"
-        Path = "$ScriptRoot\src\certificate_manager"
-        Command = "go run ./cmd/."
-        Port = 8082
-        Color = "Green"
-        Wait = 5
-    },
-    @{
-        Name = "DHCP Server"
-        Path = "$ScriptRoot\src\dhcp_server"
-        Command = "go run ./cmd/."
-        Port = 67
-        Color = "Cyan"
-        Wait = 3
-    },
-    @{
-        Name = "NIC Management API"
-        Path = "$ScriptRoot\src\nic_management\api"
-        Command = "go run cmd/main.go"
-        Port = 8081
-        Color = "Yellow"
-        Wait = 3
-    },
-    @{
-        Name = "Threat Intel API"
-        Path = "$ScriptRoot\src\threat_intel"
-        Command = "go run ./cmd/api/."
-        Port = 8084
-        Color = "Magenta"
-        Wait = 3
-    }
+    @{Name="Certificate Manager"; Process="certificate_manager"; Port="8093, 50060"},
+    @{Name="NIC API"; Process="nic_api"; Port="8081"},
+    @{Name="DNS Server"; Process="dns_server"; Port="53"},
+    @{Name="DHCP Server"; Process="dhcp_server"; Port="67"},
+    @{Name="Captive Portal"; Process="captive_portal"; Port="8080"}
 )
-
-# Add UI if not skipped
-if (-not $NoUI) {
-    $services += @{
-        Name = "Dev UI"
-        Path = "$ScriptRoot\src\ui\dev"
-        Command = "npm run dev"
-        Port = 3001
-        Color = "Red"
-        Wait = 5
-    }
-}
-
-# Start each service
-$processes = @()
-$step = 1
-$total = $services.Count
 
 foreach ($svc in $services) {
-    Write-Step "$step/$total" "Starting $($svc.Name)..."
-    
-    $proc = Start-Process -FilePath "cmd.exe" `
-        -ArgumentList "/k", "title SafeOps $($svc.Name) && cd /d `"$($svc.Path)`" && $($svc.Command)" `
-        -PassThru `
-        -WindowStyle Normal
-    
-    $processes += @{ Name = $svc.Name; Process = $proc }
-    
-    Write-Info "Waiting $($svc.Wait)s for $($svc.Name) to initialize..."
-    Start-Sleep -Seconds $svc.Wait
-    $step++
-}
-
-# Open browser
-if (-not $NoBrowser -and -not $NoUI) {
-    Write-Host ""
-    Write-Step "*" "Opening browser..."
-    Start-Process "http://localhost:3001"
-}
-
-# Display status
-Write-Header "All Services Started!"
-Write-Host ""
-Write-Host "  Service Endpoints:" -ForegroundColor White
-Write-Host "    Certificate Manager:  http://localhost:8082" -ForegroundColor Green
-Write-Host "    DHCP Server:          Port 67 (UDP)" -ForegroundColor Cyan
-Write-Host "    NIC Management API:   http://localhost:8081/api" -ForegroundColor Yellow
-Write-Host "    Threat Intel API:     http://localhost:8084/api" -ForegroundColor Magenta
-if (-not $NoUI) {
-    Write-Host "    Dev UI Dashboard:     http://localhost:3001" -ForegroundColor Red
-}
-Write-Host ""
-Write-Host "  CA Certificate Distribution:" -ForegroundColor White
-Write-Host "    CA Certificate:       http://192.168.137.1:8082/ca.crt" -ForegroundColor Gray
-Write-Host "    Trust Guide:          http://192.168.137.1:8082/trust-guide" -ForegroundColor Gray
-Write-Host "    Linux Install:        http://192.168.137.1:8082/install-ca.sh" -ForegroundColor Gray
-Write-Host ""
-
-# Wait for user input
-Write-Host "  Press any key to STOP all services..." -ForegroundColor Yellow
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-
-# Stop all services
-Write-Host ""
-Write-Step "*" "Stopping all services..."
-
-# Kill by window title
-$windowTitles = @(
-    "SafeOps Certificate Manager",
-    "SafeOps DHCP Server",
-    "SafeOps NIC API",
-    "SafeOps Threat Intel",
-    "SafeOps Dev UI"
-)
-
-foreach ($title in $windowTitles) {
-    $procs = Get-Process | Where-Object { $_.MainWindowTitle -like "*$title*" }
-    foreach ($p in $procs) {
-        try { $p | Stop-Process -Force } catch { }
+    $proc = Get-Process -Name $svc.Process -ErrorAction SilentlyContinue
+    if ($proc) {
+        Write-Host "[RUNNING] $($svc.Name) (PID: $($proc.Id)) - Port(s): $($svc.Port)" -ForegroundColor Green
+    } else {
+        Write-Host "[STOPPED] $($svc.Name)" -ForegroundColor Red
     }
 }
 
-# Also kill go.exe and node.exe from our directories (be careful)
-# This is a fallback in case window title matching fails
-taskkill /FI "WINDOWTITLE eq SafeOps*" /F 2>$null
-
-Write-Host "  [+] All services stopped. Goodbye!" -ForegroundColor Green
-Start-Sleep -Seconds 2
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "    Access URLs" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Dashboard:       http://localhost:3001" -ForegroundColor White
+Write-Host "  Captive Portal:  http://${hotspotIP}:8080/install" -ForegroundColor White
+Write-Host "  Certificate API: http://localhost:8093/api/stats" -ForegroundColor White
+Write-Host "  CA Download:     http://localhost:8093/ca.crt" -ForegroundColor White
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  For devices to auto-detect captive portal:" -ForegroundColor Yellow
+Write-Host "  1. Enable Mobile Hotspot on Windows" -ForegroundColor White
+Write-Host "  2. Connect phone/device to hotspot" -ForegroundColor White
+Write-Host "  3. Device should show 'Sign in to network'" -ForegroundColor White
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""

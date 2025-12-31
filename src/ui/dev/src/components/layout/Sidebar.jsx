@@ -1,9 +1,9 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Shield, 
-  Globe, 
-  Database, 
+import {
+  LayoutDashboard,
+  Shield,
+  Globe,
+  Database,
   Settings,
   Lock,
   AlertTriangle,
@@ -14,7 +14,8 @@ import {
   FileCode,
   Server,
   Key,
-  ClipboardList
+  ClipboardList,
+  Wifi
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -30,6 +31,7 @@ const moduleNav = [
   { name: 'DNS Server', path: '/dns', icon: Globe, badge: 'Soon' },
   { name: 'Firewall', path: '/firewall', icon: Lock, badge: 'Soon' },
   { name: 'Network', path: '/network', icon: Network },
+  { name: 'DHCP Monitor', path: '/dhcp-monitor', icon: Wifi },
   { name: 'Certificates', path: '/certificates', icon: Key },
   { name: 'Cognitive', path: '/cognitive', icon: Database },
 ];
@@ -47,23 +49,22 @@ const managementNav = [
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const { user } = useAuth();
-  
+
   const isAdmin = user?.role === 'superadmin' || user?.role === 'admin';
 
   const NavItem = ({ item }) => {
     const Icon = item.icon;
-    const isActive = location.pathname === item.path || 
+    const isActive = location.pathname === item.path ||
       (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-    
+
     return (
       <NavLink
         to={item.badge ? '#' : item.path}
         onClick={item.badge ? (e) => e.preventDefault() : onClose}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-          isActive
+        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${isActive
             ? 'bg-primary-500/20 text-primary-400'
             : 'text-dark-300 hover:bg-dark-700 hover:text-white'
-        } ${item.badge ? 'opacity-50 cursor-not-allowed' : ''}`}
+          } ${item.badge ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <Icon className="w-5 h-5 flex-shrink-0" />
         <span className="flex-1 text-sm">{item.name}</span>
@@ -80,12 +81,12 @@ export default function Sidebar({ isOpen, onClose }) {
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 lg:hidden z-40"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
