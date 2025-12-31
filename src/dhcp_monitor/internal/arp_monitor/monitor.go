@@ -136,8 +136,12 @@ func (m *Monitor) scan() error {
 	// Get ARP entries using PowerShell
 	devices, err := m.getARPTable()
 	if err != nil {
+		fmt.Printf("[ERROR] ARP scan failed: %v\n", err)
 		return err
 	}
+
+	// Debug: Log how many devices were found
+	fmt.Printf("[DEBUG] ARP scan found %d devices\n", len(devices))
 
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -7,11 +7,13 @@ import (
 	"crypto/x509"
 	"dhcp_monitor/internal/storage"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -669,8 +671,13 @@ func (s *Server) handleAPIDevices(w http.ResponseWriter, r *http.Request) {
 	// Get all devices first, then filter if needed
 	devices, err = s.db.GetAllDevices()
 	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusInternalServerError)
-		return
+		fmt.Printf("[WARN] Database query failed, trying direct ARP: %v\n", err)
+		devices = nil
+	}
+
+	// If database is empty, fall back to direct ARP table scan
+	if len(devices) == 0 {
+		devices = s.getDevicesFromARPTable()
 	}
 
 	// Filter by enrolled status if requested
@@ -715,6 +722,223 @@ func (s *Server) handleAPIDevices(w http.ResponseWriter, r *http.Request) {
 			device.NICInterfaceName)
 	}
 	w.Write([]byte("]"))
+}
+
+// getDevicesFromARPTable fetches devices directly from Windows ARP table via PowerShell
+func (s *Server) getDevicesFromARPTable() []storage.Device {
+	cmd := exec.Command("powershell", "-NoProfile", "-Command", `
+		Get-NetNeighbor | Where-Object { 
+			$_.LinkLayerAddress -ne '' -and
+			$_.LinkLayerAddress -ne '00-00-00-00-00-00' -and
+			$_.LinkLayerAddress -ne 'FF-FF-FF-FF-FF-FF' -and
+			-not $_.LinkLayerAddress.StartsWith('01-00-5E') -and
+			-not $_.LinkLayerAddress.StartsWith('33-33') -and
+			-not $_.IPAddress.StartsWith('224.') -and
+			-not $_.IPAddress.StartsWith('239.') -and
+			-not $_.IPAddress.StartsWith('ff0') -and
+			$_.IPAddress -ne '127.0.0.1' -and
+			$_.IPAddress -ne '::1'
+		} | Select-Object IPAddress, LinkLayerAddress, InterfaceAlias, State | 
+		ConvertTo-Json -Depth 2 -Compress
+	`)
+
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("[ERROR] PowerShell ARP fetch failed: %v\n", err)
+		return nil
+	}
+
+	// Parse JSON output
+	var devices []storage.Device
+	type ARPEntry struct {
+		IPAddress        string `json:"IPAddress"`
+		LinkLayerAddress string `json:"LinkLayerAddress"`
+		InterfaceAlias   string `json:"InterfaceAlias"`
+		State            int    `json:"State"`
+	}
+
+	var entries []ARPEntry
+	outputStr := strings.TrimSpace(string(output))
+	if outputStr == "" || outputStr == "null" {
+		return devices
+	}
+
+	// Handle single object vs array
+	if strings.HasPrefix(outputStr, "{") {
+		var single ARPEntry
+		if err := json.Unmarshal([]byte(outputStr), &single); err == nil {
+			entries = append(entries, single)
+		}
+	} else {
+		json.Unmarshal([]byte(outputStr), &entries)
+	}
+
+	now := time.Now()
+	for _, e := range entries {
+		vendor := lookupMACVendor(e.LinkLayerAddress)
+		devices = append(devices, storage.Device{
+			IP:               e.IPAddress,
+			MAC:              e.LinkLayerAddress,
+			Hostname:         vendor,
+			NICInterfaceName: e.InterfaceAlias,
+			NICType:          detectNICType(e.InterfaceAlias),
+			FirstSeen:        now,
+			LastSeen:         now,
+		})
+	}
+
+	fmt.Printf("[INFO] Direct ARP fetch found %d devices\n", len(devices))
+	return devices
+}
+
+// detectNICType determines the NIC type from interface name
+func detectNICType(interfaceName string) string {
+	lower := strings.ToLower(interfaceName)
+	if strings.Contains(lower, "wi-fi") || strings.Contains(lower, "wifi") || strings.Contains(lower, "wireless") {
+		return "WiFi"
+	}
+	if strings.Contains(lower, "ethernet") || strings.Contains(lower, "local area") {
+		return "LAN"
+	}
+	if strings.Contains(lower, "mobile") || strings.Contains(lower, "hotspot") {
+		return "Hotspot"
+	}
+	return "Unknown"
+}
+
+// lookupMACVendor returns the manufacturer name based on MAC address OUI
+func lookupMACVendor(mac string) string {
+	// Normalize MAC address - take first 3 octets (OUI)
+	mac = strings.ToUpper(strings.ReplaceAll(mac, ":", "-"))
+	parts := strings.Split(mac, "-")
+	if len(parts) < 3 {
+		return "Unknown Device"
+	}
+	oui := parts[0] + "-" + parts[1] + "-" + parts[2]
+
+	// MAC OUI vendor lookup table (common manufacturers)
+	vendors := map[string]string{
+		// Apple
+		"00-03-93": "Apple", "00-05-02": "Apple", "00-0A-27": "Apple", "00-0A-95": "Apple",
+		"00-0D-93": "Apple", "00-10-FA": "Apple", "00-11-24": "Apple", "00-14-51": "Apple",
+		"00-16-CB": "Apple", "00-17-F2": "Apple", "00-19-E3": "Apple", "00-1B-63": "Apple",
+		"00-1C-B3": "Apple", "00-1D-4F": "Apple", "00-1E-52": "Apple", "00-1E-C2": "Apple",
+		"00-1F-5B": "Apple", "00-1F-F3": "Apple", "00-21-E9": "Apple", "00-22-41": "Apple",
+		"00-23-12": "Apple", "00-23-32": "Apple", "00-23-6C": "Apple", "00-23-DF": "Apple",
+		"00-24-36": "Apple", "00-25-00": "Apple", "00-25-4B": "Apple", "00-25-BC": "Apple",
+		"00-26-08": "Apple", "00-26-4A": "Apple", "00-26-B0": "Apple", "00-26-BB": "Apple",
+		"28-CF-DA": "Apple", "34-C0-59": "Apple", "3C-15-C2": "Apple", "40-A6-D9": "Apple",
+		"44-D8-84": "Apple", "5C-59-48": "Apple", "68-A8-6D": "Apple", "70-DE-E2": "Apple",
+		"78-31-C1": "Apple", "7C-6D-62": "Apple", "80-E6-50": "Apple", "84-38-35": "Apple",
+		"88-66-A5": "Apple", "8C-58-77": "Apple", "9C-20-7B": "Apple", "A4-5E-60": "Apple",
+		"A8-88-08": "Apple", "AC-BC-32": "Apple", "B4-F0-AB": "Apple", "BC-52-B7": "Apple",
+		"C0-63-94": "Apple", "C8-69-CD": "Apple", "D0-23-DB": "Apple", "D4-9A-20": "Apple",
+		"D8-30-62": "Apple", "DC-A4-CA": "Apple", "E0-B9-BA": "Apple", "E4-C6-3D": "Apple",
+		"F0-B4-79": "Apple", "F4-5C-89": "Apple", "F8-1E-DF": "Apple", "FC-25-3F": "Apple",
+
+		// Samsung
+		"00-00-F0": "Samsung", "00-02-78": "Samsung", "00-09-18": "Samsung", "00-0D-AE": "Samsung",
+		"00-12-47": "Samsung", "00-12-FB": "Samsung", "00-13-77": "Samsung", "00-15-99": "Samsung",
+		"00-16-32": "Samsung", "00-16-6B": "Samsung", "00-17-C9": "Samsung", "00-17-D5": "Samsung",
+		"00-18-AF": "Samsung", "00-1A-8A": "Samsung", "00-1B-98": "Samsung", "00-1C-43": "Samsung",
+		"00-1D-25": "Samsung", "00-1D-F6": "Samsung", "00-1E-7D": "Samsung", "00-1F-CC": "Samsung",
+		"00-21-19": "Samsung", "00-21-4C": "Samsung", "00-21-D1": "Samsung", "00-21-D2": "Samsung",
+		"00-23-39": "Samsung", "00-23-3A": "Samsung", "00-23-99": "Samsung", "00-23-D6": "Samsung",
+		"00-23-D7": "Samsung", "00-24-54": "Samsung", "00-24-90": "Samsung", "00-24-91": "Samsung",
+		"00-24-E9": "Samsung", "00-25-66": "Samsung", "00-25-67": "Samsung", "00-26-37": "Samsung",
+		"14-49-E0": "Samsung", "18-3A-2D": "Samsung", "24-C6-96": "Samsung", "2C-AE-2B": "Samsung",
+		"34-23-BA": "Samsung", "38-01-97": "Samsung", "40-0E-85": "Samsung", "50-01-BB": "Samsung",
+		"50-CC-F8": "Samsung", "5C-2E-59": "Samsung", "5C-A3-9D": "Samsung", "64-B3-10": "Samsung",
+		"84-25-DB": "Samsung", "84-55-A5": "Samsung", "88-32-9B": "Samsung", "90-00-4E": "Samsung",
+		"94-35-0A": "Samsung", "9C-2A-83": "Samsung", "A0-82-1F": "Samsung", "AC-5F-3E": "Samsung",
+
+		// OnePlus / OPPO / Realme
+		"64-A2-F9": "OnePlus", "8A-76-8F": "OnePlus", "94-65-2D": "OnePlus", "C0-EE-40": "OnePlus",
+		"58-CB-52": "OPPO", "2C-5B-B8": "OPPO", "A4-3B-FA": "OPPO", "3C-CD-5D": "OPPO",
+		"D0-17-69": "Realme", "2C-4D-54": "Realme",
+
+		// Xiaomi / Redmi
+		"00-9E-C8": "Xiaomi", "04-CF-8C": "Xiaomi", "0C-1D-AF": "Xiaomi", "10-2A-B3": "Xiaomi",
+		"14-F6-5A": "Xiaomi", "18-59-36": "Xiaomi", "20-34-FB": "Xiaomi", "28-6C-07": "Xiaomi",
+		"34-80-B3": "Xiaomi", "38-A4-ED": "Xiaomi", "3C-BD-3E": "Xiaomi", "50-8F-4C": "Xiaomi",
+		"58-44-98": "Xiaomi", "64-09-80": "Xiaomi", "64-B4-73": "Xiaomi", "68-DF-DD": "Xiaomi",
+		"74-23-44": "Xiaomi", "78-02-F8": "Xiaomi", "7C-1D-D9": "Xiaomi", "84-F3-EB": "Xiaomi",
+		"8C-BE-BE": "Xiaomi", "98-FA-E3": "Xiaomi", "9C-99-A0": "Xiaomi", "AC-C1-EE": "Xiaomi",
+		"B0-E2-35": "Xiaomi", "C4-0B-CB": "Xiaomi", "C8-D7-B0": "Xiaomi", "D4-97-0B": "Xiaomi",
+		"F0-B4-29": "Xiaomi", "F4-F5-E8": "Xiaomi", "F8-A4-5F": "Xiaomi", "FC-64-BA": "Xiaomi",
+
+		// Google
+		"00-1A-11": "Google", "3C-5A-B4": "Google", "54-60-09": "Google", "94-EB-2C": "Google",
+		"F4-F5-D8": "Google", "F8-0F-F9": "Google", "20-DF-B9": "Google", "30-FD-38": "Google",
+
+		// Huawei / Honor
+		"00-0F-E2": "Huawei", "00-18-82": "Huawei", "00-1E-10": "Huawei", "00-22-A1": "Huawei",
+		"00-25-68": "Huawei", "00-25-9E": "Huawei", "00-2E-C7": "Huawei", "00-34-FE": "Huawei",
+		"00-46-4B": "Huawei", "00-5A-13": "Huawei", "00-66-4B": "Huawei", "00-9A-CD": "Huawei",
+		"00-E0-FC": "Huawei", "04-02-1F": "Huawei", "04-25-C5": "Huawei", "04-33-89": "Huawei",
+		"04-4F-4C": "Huawei", "04-B0-E7": "Huawei", "04-BD-70": "Huawei", "04-C0-6F": "Huawei",
+		"08-19-A6": "Huawei", "08-63-61": "Huawei", "08-7A-4C": "Huawei", "08-E8-4F": "Huawei",
+		"0C-45-BA": "Huawei", "0C-96-BF": "Huawei", "10-1B-54": "Huawei", "10-44-00": "Huawei",
+		"10-47-80": "Huawei", "14-30-04": "Honor", "38-37-8B": "Honor", "78-D2-94": "Honor",
+
+		// TP-Link
+		"00-14-78": "TP-Link", "00-1D-0F": "TP-Link", "00-21-27": "TP-Link", "00-23-CD": "TP-Link",
+		"00-27-19": "TP-Link", "14-CC-20": "TP-Link", "14-CF-92": "TP-Link", "14-E6-E4": "TP-Link",
+		"18-A6-F7": "TP-Link", "1C-3B-F3": "TP-Link", "24-69-68": "TP-Link", "30-B4-9E": "TP-Link",
+		"50-3E-AA": "TP-Link", "54-E6-FC": "TP-Link", "5C-63-BF": "TP-Link", "60-E3-27": "TP-Link",
+		"64-56-01": "TP-Link", "64-66-B3": "TP-Link", "64-70-02": "TP-Link", "68-FF-7B": "TP-Link",
+
+		// Intel
+		"00-02-B3": "Intel", "00-03-47": "Intel", "00-04-23": "Intel", "00-07-E9": "Intel",
+		"00-0C-F1": "Intel", "00-0E-0C": "Intel", "00-0E-35": "Intel", "00-11-11": "Intel",
+		"00-12-F0": "Intel", "00-13-02": "Intel", "00-13-20": "Intel", "00-13-CE": "Intel",
+		"00-13-E8": "Intel", "00-15-00": "Intel", "00-15-17": "Intel", "00-16-6F": "Intel",
+		"00-16-76": "Intel", "00-16-EA": "Intel", "00-16-EB": "Intel", "00-18-DE": "Intel",
+		"00-19-D1": "Intel", "00-19-D2": "Intel", "00-1B-21": "Intel", "00-1B-77": "Intel",
+		"00-1C-BF": "Intel", "00-1C-C0": "Intel", "00-1D-E0": "Intel", "00-1D-E1": "Intel",
+		"00-1E-64": "Intel", "00-1E-65": "Intel", "00-1E-67": "Intel", "00-1F-3B": "Intel",
+		"00-1F-3C": "Intel", "00-21-5C": "Intel", "00-21-5D": "Intel", "00-21-6A": "Intel",
+		"00-21-6B": "Intel", "00-22-FA": "Intel", "00-22-FB": "Intel", "00-24-D6": "Intel",
+		"00-24-D7": "Intel", "00-26-C6": "Intel", "00-26-C7": "Intel", "00-27-10": "Intel",
+		"78-AF-08": "Intel", "8C-EC-4B": "Intel", "A4-34-D9": "Intel", "B4-B5-2F": "Intel",
+		"C8-D3-FF": "Intel", "F4-26-79": "Intel", "F8-16-54": "Intel",
+
+		// Realtek (common in routers/NICs)
+		"00-E0-4C": "Realtek", "52-54-00": "Realtek", "00-1A-4A": "Realtek",
+
+		// Microsoft
+		"00-03-FF": "Microsoft", "00-0D-3A": "Microsoft", "00-12-5A": "Microsoft", "00-15-5D": "Microsoft",
+		"00-17-FA": "Microsoft", "00-1D-D8": "Microsoft", "00-22-48": "Microsoft", "00-25-AE": "Microsoft",
+		"28-18-78": "Microsoft", "50-1A-C5": "Microsoft", "60-45-BD": "Microsoft", "7C-1E-52": "Microsoft",
+
+		// Motorola
+		"00-0A-28": "Motorola", "00-0C-E5": "Motorola", "00-14-9A": "Motorola", "00-17-00": "Motorola",
+		"00-1A-66": "Motorola", "00-1C-11": "Motorola", "00-1E-46": "Motorola", "00-21-36": "Motorola",
+
+		// LG
+		"00-05-C9": "LG", "00-0B-E9": "LG", "00-1C-62": "LG", "00-1E-75": "LG",
+		"00-1F-6B": "LG", "00-1F-E3": "LG", "00-22-A9": "LG", "00-24-83": "LG",
+		"00-25-E5": "LG", "00-26-E2": "LG", "10-68-3F": "LG", "20-21-A5": "LG",
+
+		// Lenovo
+		"00-09-2D": "Lenovo", "00-0A-E4": "Lenovo", "00-12-FE": "Lenovo", "00-16-D4": "Lenovo",
+		"00-1A-6B": "Lenovo", "00-20-25": "Lenovo", "00-21-5E": "Lenovo",
+		"00-22-68": "Lenovo", "00-24-7E": "Lenovo", "00-26-6C": "Lenovo", "00-27-13": "Lenovo",
+
+		// Dell
+		"00-06-5B": "Dell", "00-08-74": "Dell", "00-0B-DB": "Dell", "00-0D-56": "Dell",
+		"00-0F-1F": "Dell", "00-11-43": "Dell", "00-12-3F": "Dell", "00-13-72": "Dell",
+		"00-14-22": "Dell", "00-15-C5": "Dell", "00-18-8B": "Dell", "00-19-B9": "Dell",
+		"00-1A-A0": "Dell", "00-1C-23": "Dell", "00-1D-09": "Dell", "00-1E-4F": "Dell",
+		"00-1E-C9": "Dell", "00-21-70": "Dell", "00-21-9B": "Dell", "00-22-19": "Dell",
+		"00-24-E8": "Dell", "00-25-64": "Dell", "00-26-B9": "Dell", "14-FE-B5": "Dell",
+		"18-03-73": "Dell", "18-A9-9B": "Dell", "18-DB-F2": "Dell", "1C-40-24": "Dell",
+	}
+
+	if vendor, ok := vendors[oui]; ok {
+		return vendor
+	}
+	return "Unknown Device"
 }
 
 // handleAPIHealth returns service health status for monitoring
