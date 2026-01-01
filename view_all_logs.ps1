@@ -27,29 +27,24 @@ if ($wtExists) {
 
     # Use Windows Terminal with tabs
     wt `
-      new-tab --title "Cert Manager" powershell -NoExit -Command "Write-Host 'Certificate Manager Logs' -ForegroundColor Cyan; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\certificate_manager.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
-      new-tab --title "DHCP" powershell -NoExit -Command "Write-Host 'DHCP Server Logs' -ForegroundColor Green; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\dhcp_server.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
-      new-tab --title "DNS" powershell -NoExit -Command "Write-Host 'DNS Server Logs' -ForegroundColor Yellow; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\dns_server.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
-      new-tab --title "Captive Portal" powershell -NoExit -Command "Write-Host 'Captive Portal Logs' -ForegroundColor Magenta; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\captive_portal.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
-      new-tab --title "Dashboard" powershell -NoExit -Command "Write-Host 'Dashboard Logs' -ForegroundColor Blue; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\dashboard.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
-      new-tab --title "All Logs" powershell -NoExit -Command "Write-Host 'All Logs (Combined)' -ForegroundColor White; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\*.log -Wait -Tail 50 -ErrorAction SilentlyContinue"
+        new-tab --title "DHCP" powershell -NoExit -Command "Write-Host 'DHCP Server Logs' -ForegroundColor Green; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\dhcp_server.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
+        new-tab --title "DNS" powershell -NoExit -Command "Write-Host 'DNS Server Logs' -ForegroundColor Yellow; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\dns_server.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
+        new-tab --title "Dashboard" powershell -NoExit -Command "Write-Host 'Dashboard Logs' -ForegroundColor Blue; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\dashboard.log -Wait -Tail 100 -ErrorAction SilentlyContinue" `; `
+        new-tab --title "All Logs" powershell -NoExit -Command "Write-Host 'All Logs (Combined)' -ForegroundColor White; Write-Host '========================================' -ForegroundColor Gray; Write-Host ''; Get-Content $logPath\*.log -Wait -Tail 50 -ErrorAction SilentlyContinue"
 
-} else {
+}
+else {
     Write-Host "Windows Terminal not found. Opening separate PowerShell windows..." -ForegroundColor Yellow
     Write-Host ""
 
     # Fallback: Open separate PowerShell windows
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Certificate Manager Logs' -ForegroundColor Cyan; Write-Host '========================================'; Write-Host ''; Get-Content $logPath\certificate_manager.log -Wait -Tail 100 -ErrorAction SilentlyContinue"
-
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'DHCP Server Logs' -ForegroundColor Green; Write-Host '========================================'; Write-Host ''; Get-Content $logPath\dhcp_server.log -Wait -Tail 100 -ErrorAction SilentlyContinue"
 
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'DNS Server Logs' -ForegroundColor Yellow; Write-Host '========================================'; Write-Host ''; Get-Content $logPath\dns_server.log -Wait -Tail 100 -ErrorAction SilentlyContinue"
 
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Captive Portal Logs' -ForegroundColor Magenta; Write-Host '========================================'; Write-Host ''; Get-Content $logPath\captive_portal.log -Wait -Tail 100 -ErrorAction SilentlyContinue"
-
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Dashboard Logs' -ForegroundColor Blue; Write-Host '========================================'; Write-Host ''; Get-Content $logPath\dashboard.log -Wait -Tail 100 -ErrorAction SilentlyContinue"
 
-    Write-Host "Opened 5 log windows" -ForegroundColor Green
+    Write-Host "Opened 3 log windows" -ForegroundColor Green
 }
 
 Write-Host ""

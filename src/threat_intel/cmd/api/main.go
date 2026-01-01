@@ -49,6 +49,7 @@ func main() {
 	// Routes with CORS
 	http.HandleFunc("/api/status", cors(handleStatus))
 	http.HandleFunc("/api/lookup/ip/", cors(handleIPLookup))
+	http.HandleFunc("/api/lookup/geo/", cors(handleGeoLookup))
 	http.HandleFunc("/api/lookup/domain/", cors(handleDomainLookup))
 	http.HandleFunc("/api/lookup/hash/", cors(handleHashLookup))
 	http.HandleFunc("/api/headers", cors(handleHeaders))
@@ -59,6 +60,7 @@ func main() {
 	log.Println("Endpoints:")
 	log.Println("  GET /api/status")
 	log.Println("  GET /api/lookup/ip/{ip}")
+	log.Println("  GET /api/lookup/geo/{ip}")
 	log.Println("  GET /api/lookup/domain/{domain}")
 	log.Println("  GET /api/lookup/hash/{hash}")
 	log.Println("  GET /api/headers")
@@ -143,6 +145,51 @@ func handleIPLookup(w http.ResponseWriter, r *http.Request) {
 	if rec, err := anonStore.GetByIP(ctx, ip); err == nil && rec != nil {
 		result["anonymization"] = rec
 		result["found"] = true
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// handleGeoLookup returns geolocation for an IP (country, city, ASN, coordinates)
+func handleGeoLookup(w http.ResponseWriter, r *http.Request) {
+	ip := strings.TrimPrefix(r.URL.Path, "/api/lookup/geo/")
+	if ip == "" {
+		http.Error(w, "IP required", http.StatusBadRequest)
+		return
+	}
+
+	db, err := storage.NewDB(storage.DefaultDBConfig())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+	geoStore := storage.NewIPGeoStorage(db)
+
+	rec, err := geoStore.GetByIP(ctx, ip)
+
+	result := make(map[string]interface{})
+	result["ip"] = ip
+
+	if err != nil || rec == nil {
+		result["found"] = false
+	} else {
+		result["found"] = true
+		result["country_code"] = rec.CountryCode
+		result["country_name"] = rec.CountryName
+		result["city"] = rec.City
+		result["region"] = rec.Region
+		result["latitude"] = rec.Latitude
+		result["longitude"] = rec.Longitude
+		result["asn"] = rec.ASN
+		result["asn_org"] = rec.ASNOrg
+		result["isp"] = rec.ISP
+		result["timezone"] = rec.Timezone
+		result["is_mobile"] = rec.IsMobile
+		result["is_hosting"] = rec.IsHosting
 	}
 
 	w.Header().Set("Content-Type", "application/json")

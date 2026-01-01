@@ -1,6 +1,6 @@
 # SafeOps Services Startup Script
 # This script starts all SafeOps services with correct configuration
-# Run as Administrator for DHCP (port 67) and DNS (port 53)
+# Run as Administrator for DNS (port 53)
 
 param(
     [switch]$StartHotspot,
@@ -16,17 +16,17 @@ Write-Host "    SafeOps Services Launcher" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check for admin rights (needed for ports 53 and 67)
+# Check for admin rights (needed for port 53)
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Host "[WARN] Not running as Administrator!" -ForegroundColor Yellow
-    Write-Host "       DHCP (port 67) and DNS (port 53) may fail to bind." -ForegroundColor Yellow
+    Write-Host "       DNS (port 53) may fail to bind." -ForegroundColor Yellow
     Write-Host ""
 }
 
 # Stop any existing services
 Write-Host "[INFO] Stopping any existing services..." -ForegroundColor Yellow
-Stop-Process -Name certificate_manager,dhcp_server,dns_server,captive_portal,nic_api -Force -ErrorAction SilentlyContinue
+Stop-Process -Name dhcp_server, dns_server, nic_api -Force -ErrorAction SilentlyContinue
 taskkill /F /IM node.exe 2>$null | Out-Null
 Start-Sleep -Seconds 2
 
@@ -38,7 +38,8 @@ $hotspotIP = (Get-NetIPAddress -AddressFamily IPv4 |
 
 if ($hotspotIP) {
     Write-Host "       Gateway IP: $hotspotIP" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "       ERROR: No network interface found!" -ForegroundColor Red
     Write-Host "       Please connect to a network and try again." -ForegroundColor Red
     exit 1
@@ -65,9 +66,9 @@ function Start-SafeOpsService {
     }
     
     $startInfo = @{
-        FilePath = $Path
+        FilePath         = $Path
         WorkingDirectory = $WorkingDir
-        WindowStyle = "Minimized"
+        WindowStyle      = "Minimized"
     }
     
     if ($Arguments) {
@@ -78,28 +79,22 @@ function Start-SafeOpsService {
         Start-Process @startInfo
         Write-Host "[OK] $Name started" -ForegroundColor Green
         return $true
-    } catch {
+    }
+    catch {
         Write-Host "[ERROR] Failed to start ${Name}: $_" -ForegroundColor Red
         return $false
     }
 }
 
 Write-Host ""
-Write-Host "[STEP 1] Starting Certificate Manager..." -ForegroundColor Cyan
-Start-SafeOpsService -Name "Certificate Manager" `
-    -Path (Join-Path $ScriptDir "src\certificate_manager\certificate_manager.exe") `
-    -WorkingDir (Join-Path $ScriptDir "src\certificate_manager")
-
-Start-Sleep -Seconds 2
-
-Write-Host "[STEP 2] Starting NIC Management API..." -ForegroundColor Cyan  
+Write-Host "[STEP 1] Starting NIC Management API..." -ForegroundColor Cyan  
 Start-SafeOpsService -Name "NIC API" `
     -Path (Join-Path $ScriptDir "src\nic_management\api\nic_api.exe") `
     -WorkingDir (Join-Path $ScriptDir "src\nic_management\api")
 
 Start-Sleep -Seconds 1
 
-Write-Host "[STEP 3] Starting DNS Server (portal: $hotspotIP)..." -ForegroundColor Cyan
+Write-Host "[STEP 2] Starting DNS Server (portal: $hotspotIP)..." -ForegroundColor Cyan
 $dnsArgs = "-captive true -portal-ip $hotspotIP -portal-port 8093"
 Start-SafeOpsService -Name "DNS Server" `
     -Path (Join-Path $ScriptDir "src\dns_server\dns_server.exe") `
@@ -108,24 +103,15 @@ Start-SafeOpsService -Name "DNS Server" `
 
 Start-Sleep -Seconds 1
 
-Write-Host "[STEP 4] Starting DHCP Server..." -ForegroundColor Cyan
+Write-Host "[STEP 3] Starting DHCP Server..." -ForegroundColor Cyan
 Start-SafeOpsService -Name "DHCP Server" `
     -Path (Join-Path $ScriptDir "src\dhcp_server\dhcp_server.exe") `
     -WorkingDir (Join-Path $ScriptDir "src\dhcp_server")
 
 Start-Sleep -Seconds 1
 
-Write-Host "[STEP 5] Starting Captive Portal..." -ForegroundColor Cyan
-$portalArgs = "-addr :8080 -cert-path $ScriptDir\certs\ca.crt -cert-manager http://localhost:8093"
-Start-SafeOpsService -Name "Captive Portal" `
-    -Path (Join-Path $ScriptDir "src\captive_portal\captive_portal.exe") `
-    -Arguments $portalArgs `
-    -WorkingDir (Join-Path $ScriptDir "src\captive_portal")
-
-Start-Sleep -Seconds 1
-
 if (-not $NoDashboard) {
-    Write-Host "[STEP 6] Starting Dashboard..." -ForegroundColor Cyan
+    Write-Host "[STEP 4] Starting Dashboard..." -ForegroundColor Cyan
     $dashboardDir = Join-Path $ScriptDir "src\ui\dev"
     if (Test-Path $dashboardDir) {
         Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev" `
@@ -143,18 +129,17 @@ Write-Host "    Service Status" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 $services = @(
-    @{Name="Certificate Manager"; Process="certificate_manager"; Port="8093, 50060"},
-    @{Name="NIC API"; Process="nic_api"; Port="8081"},
-    @{Name="DNS Server"; Process="dns_server"; Port="53"},
-    @{Name="DHCP Server"; Process="dhcp_server"; Port="67"},
-    @{Name="Captive Portal"; Process="captive_portal"; Port="8080"}
+    @{Name = "NIC API"; Process = "nic_api"; Port = "8081" },
+    @{Name = "DNS Server"; Process = "dns_server"; Port = "53" },
+    @{Name = "DHCP Server"; Process = "dhcp_server"; Port = "67" }
 )
 
 foreach ($svc in $services) {
     $proc = Get-Process -Name $svc.Process -ErrorAction SilentlyContinue
     if ($proc) {
         Write-Host "[RUNNING] $($svc.Name) (PID: $($proc.Id)) - Port(s): $($svc.Port)" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "[STOPPED] $($svc.Name)" -ForegroundColor Red
     }
 }
@@ -165,14 +150,5 @@ Write-Host "    Access URLs" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Dashboard:       http://localhost:3001" -ForegroundColor White
-Write-Host "  Captive Portal:  http://${hotspotIP}:8080/install" -ForegroundColor White
-Write-Host "  Certificate API: http://localhost:8093/api/stats" -ForegroundColor White
-Write-Host "  CA Download:     http://localhost:8093/ca.crt" -ForegroundColor White
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  For devices to auto-detect captive portal:" -ForegroundColor Yellow
-Write-Host "  1. Enable Mobile Hotspot on Windows" -ForegroundColor White
-Write-Host "  2. Connect phone/device to hotspot" -ForegroundColor White
-Write-Host "  3. Device should show 'Sign in to network'" -ForegroundColor White
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""

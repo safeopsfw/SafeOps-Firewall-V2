@@ -63,20 +63,6 @@ func main() {
 			Env:     []string{"DB_PASSWORD=safeops123"},
 			Port:    8080,
 		},
-		{
-			Name:    "Step-CA",
-			Dir:     filepath.Join(baseDir, "certs", "step-ca"),
-			Command: filepath.Join(baseDir, "certs", "step-ca", "step-ca.exe"),
-			Args:    []string{"ca/config/ca.json", "--password-file", "ca/secrets/password.txt"},
-			Port:    9000,
-		},
-		{
-			Name:    "Network Monitor",
-			Dir:     filepath.Join(baseDir, "src", "dhcp_monitor"),
-			Command: filepath.Join(baseDir, "src", "dhcp_monitor", "dhcp_monitor.exe"),
-			Args:    []string{},
-			Port:    80,
-		},
 	}
 
 	// Start all services
@@ -116,8 +102,6 @@ func main() {
 	fmt.Println("    Backend API:     http://localhost:5050")
 	fmt.Println("    NIC Management:  http://localhost:8081")
 	fmt.Println("    Threat Intel:    http://localhost:8080")
-	fmt.Println("    Step-CA:         https://localhost:9000")
-	fmt.Println("    Captive Portal:  http://192.168.137.1")
 	fmt.Println()
 	fmt.Println("  Press Ctrl+C to stop all services")
 	fmt.Println("═══════════════════════════════════════════════════════════════")

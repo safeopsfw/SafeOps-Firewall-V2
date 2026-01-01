@@ -1,9 +1,6 @@
-go 1.25.5
+go 1.24.0
 
 use (
-	./src/captive_portal
-	./src/certificate_manager
-	./src/dhcp_monitor
 	./src/dns_server
 	./src/nic_management
 	./src/orchestrator

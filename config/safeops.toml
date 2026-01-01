@@ -40,35 +40,6 @@ cache_max_entries = 10000
 # Filtering
 filtering_enabled = true
 
-# Captive Portal Configuration
-[captive_portal]
-enabled = true
-listen_address = ":80"
-portal_ip = "192.168.1.1"
-portal_url = "http://192.168.1.1/install"
-
-# Certificate path (served to clients)
-cert_path = "certs/ca.crt"
-
-# Redirect TTL (how long browser caches redirect)
-redirect_ttl = 60
-
-# Enrollment cache TTL
-enrollment_cache_ttl = "5m"
-
-# Certificate Manager Configuration
-[certificate_manager]
-enabled = true
-listen_address = ":50055"
-
-# CA Certificate settings
-ca_cert_path = "certs/ca.crt"
-ca_key_path = "certs/ca.key"
-ca_validity_years = 10
-
-# Device certificate settings
-device_cert_validity_days = 365
-
 # NIC API Configuration
 [nic_api]
 enabled = true
@@ -109,14 +80,8 @@ nic_api_address = "localhost:50051"
 # DHCP Server (for status checks)
 dhcp_api_address = "localhost:50067"
 
-# Certificate Manager (gRPC)
-cert_manager_address = "localhost:50055"
-
 # DNS Server API (HTTP)
 dns_api_address = "localhost:50053"
-
-# Captive Portal (HTTP)
-captive_portal_address = "localhost:80"
 
 # Dev UI Dashboard (HTTP)
 dashboard_address = "localhost:5173"
@@ -125,14 +90,8 @@ dashboard_address = "localhost:5173"
 # Service Integration Settings
 # ==============================================================================
 [integration]
-# Enable DNS → Certificate Manager enrollment checks
-dns_cert_check_enabled = true
-
 # Enable DHCP → DNS device notifications
 dhcp_dns_notify_enabled = true
-
-# Enable Captive Portal → DNS enrollment notifications
-portal_dns_notify_enabled = true
 
 # WebSocket settings for real-time dashboard
 websocket_enabled = true

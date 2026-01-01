@@ -9,10 +9,8 @@ Write-Host ""
 
 # Kill all service processes
 $services = @(
-    "certificate_manager",
     "dhcp_server",
     "dns_server",
-    "captive_portal",
     "tls_proxy"
 )
 
