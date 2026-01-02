@@ -1,245 +1,56 @@
-# SafeOps DNS Server Configuration
-# File: config/templates/dns_server.toml
-# Version: 1.0
-# 
-# This configuration file controls all DNS server runtime parameters.
-# Reload on SIGHUP for non-critical settings.
-
-# ============================================================================
-# [server] - Network Listeners and Service Identity
-# ============================================================================
+# DNS Server Configuration
+# All values have sensible defaults for Phase 1
 
 [server]
-service_name = "dns-server"
-
-# DNS listeners - Port 53 requires admin privileges
-udp_listen = "0.0.0.0:53"
-tcp_listen = "0.0.0.0:53"
-
-# gRPC API for DHCP integration and management
-grpc_listen = "0.0.0.0:50053"
-
-# Performance tuning
-worker_threads = 8                      # Goroutine workers (CPU cores x 2)
-max_concurrent_queries = 10000          # Backpressure limit
-
-# ============================================================================
-# [upstream] - Recursive DNS Servers
-# ============================================================================
-
-[upstream]
-# Upstream DNS servers (minimum 2 for redundancy)
-servers = [
-    "8.8.8.8:53",       # Google Primary
-    "8.8.4.4:53",       # Google Secondary
-    "1.1.1.1:53",       # Cloudflare Primary
-    "1.0.0.1:53"        # Cloudflare Secondary
-]
-
-strategy = "fastest"                    # round_robin, fastest, random
-timeout = "5s"                          # Max wait for upstream response
-retries = 2                             # Retry attempts on failure
-health_check_interval = "30s"           # Upstream health monitoring
-
-# ============================================================================
-# [cache] - DNS Response Cache
-# ============================================================================
+# UDP/TCP bind address for DNS queries
+bind_address = ":53"
+# Enable TCP DNS (in addition to UDP)
+enable_tcp = true
 
 [cache]
-enabled = true
-max_size = 100000                       # Max cached entries (LRU eviction)
-default_ttl = 3600                      # Default TTL (1 hour)
-max_ttl = 86400                         # Maximum TTL (24 hours)
-min_ttl = 300                           # Minimum TTL (5 minutes)
-negative_ttl = 3600                     # NXDOMAIN cache TTL (1 hour)
+# Maximum cache entries
+max_size = 50000
+# Default TTL for cached responses (seconds)
+default_ttl = 300
+# Cache cleanup interval
+cleanup_interval = "60s"
 
-# Redis distributed cache (optional)
-redis_enabled = false
-redis_address = "localhost:6379"
-redis_password = ""
-redis_db = 0
+[upstream]
+# Upstream DNS servers for recursive resolution
+servers = ["8.8.8.8:53", "1.1.1.1:53", "8.8.4.4:53"]
+# Query timeout
+timeout = "3s"
+# Retry count per server
+retries = 2
 
-# ============================================================================
-# [database] - PostgreSQL Connection
-# ============================================================================
+[authoritative]
+# Enable authoritative zone handling
+enabled = false  # Phase 1: disabled
+# Zones this server is authoritative for
+zones = ["safeops.local"]
+
+[grpc]
+# gRPC server address for DynamicUpdate()
+address = "localhost:50053"
+# Enable gRPC reflection for debugging
+enable_reflection = true
+
+[metrics]
+# Prometheus metrics endpoint
+address = ":9153"
+# Metrics path
+path = "/metrics"
 
 [database]
+# PostgreSQL connection (Phase 2+)
 host = "localhost"
 port = 5432
 database = "safeops_network"
 username = "dns_server"
-password = "${DNS_DB_PASSWORD}"         # Use environment variable
-max_connections = 20
-connection_timeout = "10s"
-ssl_mode = "disable"                    # disable, require, verify-ca, verify-full
-
-# ============================================================================
-# [threat_intel] - Threat Intelligence Integration
-# ============================================================================
-
-[threat_intel]
-enabled = true
-api_address = "http://localhost:8080"   # Threat Intel Service endpoint
-timeout_ms = 100                        # Very short to avoid latency
-cache_ttl = "5m"                        # Cache TI results
-fail_open = true                        # Allow queries if TI unavailable
-block_threshold = 70                    # Block domains with score >= 70
-
-# ============================================================================
-# [filtering] - Domain Filtering and Blocking
-# ============================================================================
-
-[filtering]
-enabled = true
-block_response = "NXDOMAIN"             # NXDOMAIN, 0.0.0.0, ::, REFUSED
-allowlist_precedence = true             # Allowlist overrides blocklist
-
-# External blocklists
-[[filtering.blocklists]]
-name = "adguard"
-url = "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt"
-enabled = true
-update_interval = "24h"
-category = "ads"
-
-[[filtering.blocklists]]
-name = "malware_domains"
-url = "https://urlhaus.abuse.ch/downloads/hostfile/"
-enabled = true
-update_interval = "12h"
-category = "malware"
-
-[[filtering.blocklists]]
-name = "phishing"
-url = "https://phishing.army/download/phishing_army_blocklist_extended.txt"
-enabled = true
-update_interval = "12h"
-category = "phishing"
-
-# ============================================================================
-# [dynamic_dns] - DHCP Integration (Automatic DNS Records)
-# ============================================================================
-
-[dynamic_dns]
-enabled = true
-default_ttl = 300                       # Short TTL for dynamic records (5 min)
-zone = "safeops.local"                  # Forward lookup zone
-reverse_zone = "168.192.in-addr.arpa"   # Reverse DNS zone for 192.168.x.x
-
-# Authorized sources for Dynamic DNS updates
-allowed_sources = [
-    "127.0.0.1",
-    "localhost",
-    "::1"
-]
-
-cleanup_interval = "5m"                 # Expired record cleanup frequency
-
-# ============================================================================
-# [captive] - Captive Portal Redirect (Certificate Enrollment)
-# ============================================================================
-
-[captive]
-enabled = true
-portal_ip = "0.0.0.0"                     # Auto-detected gateway IP (set via CLI -portal-ip flag)
-portal_port = 8080
-portal_url = "http://localhost:8080/install"  # Updated dynamically at runtime
-
-# Certificate Manager HTTP API for enrollment callbacks (step-ca integration)
-cert_manager_addr = "localhost:8082"
-
-cache_ttl = "5m"                        # Enrollment status cache
-redirect_ttl = 60                       # Short DNS TTL for redirects
-
-# Domains to never redirect
-excluded_domains = [
-    "localhost",
-    "*.local",
-    "*.internal",
-    "*.lan",
-    "*.safeops.local"
-]
-
-# ============================================================================
-# [dnssec] - DNSSEC Validation
-# ============================================================================
-
-[dnssec]
-enabled = false                         # Enable for DNSSEC validation
-trust_anchors_file = ""                 # Path to root trust anchor
-validate_upstream = true
-
-# ============================================================================
-# [logging] - Query Logging and Audit Trail
-# ============================================================================
+# Password from environment: DNS_DB_PASSWORD
 
 [logging]
-query_log = true                        # Log all DNS queries
-log_level = "INFO"                      # DEBUG, INFO, WARN, ERROR
-log_format = "json"                     # json or text
-log_file = ""                           # Empty = stdout only
-syslog_server = ""                      # Remote syslog (host:port)
-export_to_siem = false                  # Forward to SIEM
-
-# ============================================================================
-# [metrics] - Prometheus Metrics
-# ============================================================================
-
-[metrics]
-enabled = true
-listen = "0.0.0.0:9153"                 # Standard DNS exporter port
-path = "/metrics"
-include_query_labels = false            # Warning: high cardinality
-
-# ============================================================================
-# [security] - Rate Limiting and TLS
-# ============================================================================
-
-[security]
-rate_limit_enabled = true
-qps_per_ip = 100                        # Max queries/sec per client
-burst = 200                             # Burst allowance
-ban_duration = "5m"                     # Temporary ban duration
-
-# TLS for gRPC API
-tls_enabled = false
-tls_cert_file = ""
-tls_key_file = ""
-
-# ============================================================================
-# [authoritative] - Authoritative DNS Settings
-# ============================================================================
-
-[authoritative]
-enabled = true
-zones_dir = ""                          # Optional: load zones from files
-notify_secondaries = false              # Send NOTIFY on zone changes
-allow_axfr = false                      # Allow zone transfers
-
-# Secondary zone transfer settings
-[authoritative.transfer]
-allow_from = []                         # IPs allowed to request AXFR
-deny_from = []
-
-# ============================================================================
-# Profiles - Load different defaults based on deployment
-# ============================================================================
-
-# Profile: enterprise (uncomment to enable)
-# [profile.enterprise]
-# cache.max_size = 1000000
-# logging.query_log = true
-# filtering.enabled = true
-# threat_intel.enabled = true
-
-# Profile: home_network
-# [profile.home_network]
-# cache.max_size = 10000
-# logging.query_log = false
-# server.udp_listen = "192.168.1.1:53"
-
-# Profile: small_business
-# [profile.small_business]
-# cache.max_size = 50000
-# logging.query_log = true
-# filtering.enabled = true
+# Log level: debug, info, warn, error
+level = "info"
+# Log format: json, text
+format = "text"

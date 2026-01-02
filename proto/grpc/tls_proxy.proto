@@ -1,59 +1,132 @@
 syntax = "proto3";
 
-// Package and Imports
+// =============================================================================
+// TLS PROXY SERVICE - gRPC Protocol Definition
+// =============================================================================
+// Package: safeops.tls_proxy
+// Purpose: TLS/SSL termination, inspection, and packet interception
+// 
+// This proto file defines the gRPC contract for:
+// 1. Packet Interception (Phase 1) - NIC Management <-> TLS Proxy communication
+// 2. Proxy Control - Start/stop/status management
+// 3. Certificate Management - Install/renew/remove certificates
+// 4. Policy Management - Inspection policies and bypass rules
+// 5. Statistics - Traffic and connection metrics
+// 6. SNI Routing - Backend routing based on SNI
+// =============================================================================
+
 package safeops.tls_proxy;
 
 import "common.proto";
 
 option go_package = "safeops/build/proto/go/tls_proxy";
 
-// ============================================================================
+// =============================================================================
 // SERVICE DEFINITION
-// ============================================================================
+// =============================================================================
 
 // TLS Proxy Service - SSL/TLS termination and inspection
 service TLSProxyService {
+  // =========================================================================
+  // PHASE 1: Packet Interception (NIC Management Integration)
+  // =========================================================================
+  // 
+  // InterceptPacket is the core RPC method for Phase 1 bi-directional
+  // packet monitoring. NIC Management forwards ALL captured packets
+  // (outgoing and incoming) to TLS Proxy via this method.
+  //
+  // Phase 1 Behavior:
+  //   - Receives packet from NIC Management
+  //   - Extracts SNI from TLS ClientHello (for HTTPS traffic)
+  //   - Queries DNS Server for SNI verification (localhost:53)
+  //   - Buffers packet for future inspection
+  //   - Returns FORWARD_UNCHANGED action (no modifications)
+  //
+  // Port: localhost:50054 (TLS Proxy gRPC server)
+  // Pattern: Unary request-response (synchronous)
+  // =========================================================================
+  rpc InterceptPacket(InterceptPacketRequest) returns (InterceptPacketResponse);
+
+  // =========================================================================
   // Proxy Control
+  // =========================================================================
   rpc StartProxy(StartProxyRequest) returns (ProxyStatusResponse);
   rpc StopProxy(StopProxyRequest) returns (ProxyStatusResponse);
   rpc GetProxyStatus(GetProxyStatusRequest) returns (ProxyStatusResponse);
   rpc ReloadConfig(ReloadConfigRequest) returns (ProxyStatusResponse);
   
+  // =========================================================================
   // Certificate Methods
+  // =========================================================================
   rpc InstallCertificate(InstallCertificateRequest) returns (CertificateResponse);
   rpc RemoveCertificate(RemoveCertificateRequest) returns (CertificateResponse);
   rpc ListCertificates(ListCertificatesRequest) returns (CertificateListResponse);
   rpc GetCertificateDetails(GetCertificateDetailsRequest) returns (CertificateDetailResponse);
   rpc RenewCertificate(RenewCertificateRequest) returns (CertificateResponse);
   
+  // =========================================================================
   // Policy Methods
+  // =========================================================================
   rpc SetInspectionPolicy(InspectionPolicyRequest) returns (InspectionPolicyResponse);
   rpc GetInspectionPolicy(GetInspectionPolicyRequest) returns (InspectionPolicyResponse);
   rpc AddBypassRule(BypassRuleRequest) returns (BypassRuleResponse);
   rpc RemoveBypassRule(RemoveBypassRuleRequest) returns (BypassRuleResponse);
   rpc ListBypassRules(ListBypassRulesRequest) returns (BypassRuleListResponse);
   
+  // =========================================================================
   // Statistics Methods
+  // =========================================================================
   rpc GetProxyStats(GetProxyStatsRequest) returns (ProxyStatsResponse);
   rpc GetConnectionStats(GetConnectionStatsRequest) returns (ConnectionStatsResponse);
   rpc GetCertificateStats(GetCertificateStatsRequest) returns (CertificateStatsResponse);
   rpc StreamTrafficStats(StreamTrafficStatsRequest) returns (stream ProxyStatsResponse);
   
+  // =========================================================================
   // SNI Routing
+  // =========================================================================
   rpc AddRoute(RouteRequest) returns (RouteResponse);
   rpc RemoveRoute(RemoveRouteRequest) returns (RouteResponse);
   rpc UpdateRoute(UpdateRouteRequest) returns (RouteResponse);
   rpc ListRoutes(ListRoutesRequest) returns (RouteListResponse);
   
+  // =========================================================================
   // Cipher Control
+  // =========================================================================
   rpc SetCipherSuites(CipherSuitesRequest) returns (CipherSuitesResponse);
   rpc GetCipherSuites(GetCipherSuitesRequest) returns (CipherSuitesResponse);
   rpc SetTLSVersions(TLSVersionsRequest) returns (TLSVersionsResponse);
 }
 
-// ============================================================================
+// =============================================================================
 // ENUMERATIONS
-// ============================================================================
+// =============================================================================
+
+// Packet action returned by InterceptPacket
+// Phase 1: Only FORWARD_UNCHANGED is used
+// Future phases will add BLOCK, DECRYPT, MODIFY, LOG_ONLY
+enum PacketAction {
+  PACKET_ACTION_UNKNOWN = 0;
+  PACKET_ACTION_FORWARD_UNCHANGED = 1;  // Phase 1: Pass-through mode
+  PACKET_ACTION_FORWARD_MODIFIED = 2;   // Future: Return modified packet
+  PACKET_ACTION_BLOCK = 3;              // Future: Drop packet
+  PACKET_ACTION_LOG_ONLY = 4;           // Future: Log but don't forward
+  PACKET_ACTION_DECRYPT = 5;            // Future: Decrypt TLS traffic
+}
+
+// Traffic direction
+enum TrafficDirection {
+  DIRECTION_UNKNOWN = 0;
+  DIRECTION_OUTGOING = 1;    // LAN to WAN (user to internet)
+  DIRECTION_INCOMING = 2;    // WAN to LAN (internet to user)
+}
+
+// Transport protocol
+enum TransportProtocol {
+  PROTOCOL_UNKNOWN = 0;
+  PROTOCOL_TCP = 1;
+  PROTOCOL_UDP = 2;
+  PROTOCOL_ICMP = 3;
+}
 
 // Inspection mode
 enum InspectionMode {
@@ -104,9 +177,119 @@ enum ProxyStatus {
   STATUS_ERROR = 4;
 }
 
-// ============================================================================
+// =============================================================================
+// PHASE 1: PACKET INTERCEPTION MESSAGES
+// =============================================================================
+
+// InterceptPacketRequest - Packet data sent from NIC Management to TLS Proxy
+// 
+// This message contains complete network tuple information and raw packet
+// payload, enabling TLS Proxy to:
+// - Track connections across multiple packets
+// - Extract SNI from TLS ClientHello messages
+// - Apply inspection policies based on source/destination
+// - Buffer traffic for future deep packet inspection
+//
+// Files that use this:
+// - src/nic_management/internal/integration/tls_proxy_client.go (constructs)
+// - src/tls_proxy/internal/grpc/tls_proxy_service.go (receives)
+// - src/tls_proxy/internal/processor/packet_processor.go (processes)
+message InterceptPacketRequest {
+  // Unique identifier for tracking TCP/UDP connection across packets
+  // Format: "src_ip:src_port->dst_ip:dst_port"
+  // Example: "192.168.1.100:54321->142.250.185.46:443"
+  string connection_id = 1;
+
+  // Source IP address in dotted-decimal notation
+  // Example: "192.168.1.100" (LAN device for outgoing)
+  string src_ip = 2;
+
+  // Source port number (0-65535)
+  uint32 src_port = 3;
+
+  // Destination IP address in dotted-decimal notation
+  // Example: "142.250.185.46" (Google server for outgoing)
+  string dst_ip = 4;
+
+  // Destination port number (0-65535)
+  // Port 443 indicates HTTPS traffic requiring SNI extraction
+  uint32 dst_port = 5;
+
+  // Traffic flow direction
+  // DIRECTION_OUTGOING: LAN to WAN (user to internet)
+  // DIRECTION_INCOMING: WAN to LAN (internet to user)
+  TrafficDirection direction = 6;
+
+  // Transport protocol (TCP, UDP, ICMP)
+  // Most HTTPS traffic uses TCP
+  TransportProtocol protocol = 7;
+
+  // Complete packet payload including application-layer headers and data
+  // For TLS traffic, contains ClientHello with SNI extension
+  // Binary data - use bytes field to handle without encoding issues
+  bytes raw_data = 8;
+
+  // Timestamp when packet was captured (microseconds since epoch)
+  // Used for latency measurement and buffering ordering
+  int64 timestamp_us = 9;
+
+  // Interface name where packet was captured (e.g., "eth0", "LAN")
+  string interface_name = 10;
+}
+
+// InterceptPacketResponse - Processing decision returned from TLS Proxy to NIC
+//
+// Phase 1 always returns:
+//   action = PACKET_ACTION_FORWARD_UNCHANGED
+//   modified = false
+//   packet_data = (same as raw_data from request)
+//
+// Future phases may return different actions and modified packet data
+//
+// Files that use this:
+// - src/tls_proxy/internal/forwarder/packet_forwarder.go (constructs)
+// - src/tls_proxy/internal/grpc/tls_proxy_service.go (sends)
+// - src/nic_management/internal/integration/tls_proxy_client.go (receives)
+// - src/nic_management/internal/router/routing_engine.rs (processes action)
+message InterceptPacketResponse {
+  // Processing instruction for NIC Management
+  // Phase 1: Always PACKET_ACTION_FORWARD_UNCHANGED
+  PacketAction action = 1;
+
+  // Flag indicating whether packet_data differs from original raw_data
+  // Phase 1: Always false (no modifications)
+  bool modified = 2;
+
+  // Packet payload to forward
+  // Phase 1: Identical to request's raw_data
+  // Future: May contain decrypted/modified data
+  bytes packet_data = 3;
+
+  // Echo back connection_id for correlation tracking
+  // Allows NIC Management to match response to original request
+  string connection_id = 4;
+
+  // Extracted SNI hostname (if TLS ClientHello detected)
+  // Empty string if not HTTPS or SNI not present
+  // Example: "www.google.com"
+  string sni_hostname = 5;
+
+  // DNS resolution result for SNI (if resolved)
+  // Empty string if not resolved or not applicable
+  string resolved_ip = 6;
+
+  // Processing latency in microseconds
+  // For monitoring TLS Proxy performance
+  int64 processing_time_us = 7;
+
+  // Optional error message if processing failed
+  // Empty string on success
+  string error_message = 8;
+}
+
+// =============================================================================
 // REQUEST MESSAGES - PROXY CONTROL
-// ============================================================================
+// =============================================================================
 
 // Start proxy request
 message StartProxyRequest {
@@ -131,9 +314,9 @@ message GetProxyStatusRequest {
 message ReloadConfigRequest {
 }
 
-// ============================================================================
+// =============================================================================
 // REQUEST MESSAGES - CERTIFICATE METHODS
-// ============================================================================
+// =============================================================================
 
 // Install certificate request
 message InstallCertificateRequest {
@@ -167,9 +350,9 @@ message RenewCertificateRequest {
   bool force = 2;                                // Force renewal
 }
 
-// ============================================================================
+// =============================================================================
 // REQUEST MESSAGES - POLICY METHODS
-// ============================================================================
+// =============================================================================
 
 // Inspection policy request
 message InspectionPolicyRequest {
@@ -202,9 +385,9 @@ message ListBypassRulesRequest {
   common.Pagination pagination = 2;              // Pagination
 }
 
-// ============================================================================
+// =============================================================================
 // REQUEST MESSAGES - STATISTICS
-// ============================================================================
+// =============================================================================
 
 // Get proxy stats request
 message GetProxyStatsRequest {
@@ -226,9 +409,9 @@ message StreamTrafficStatsRequest {
   uint32 interval_seconds = 1;                   // Update interval
 }
 
-// ============================================================================
+// =============================================================================
 // REQUEST MESSAGES - SNI ROUTING
-// ============================================================================
+// =============================================================================
 
 // Route request
 message RouteRequest {
@@ -259,9 +442,9 @@ message ListRoutesRequest {
   common.Pagination pagination = 2;              // Pagination
 }
 
-// ============================================================================
+// =============================================================================
 // REQUEST MESSAGES - CIPHER CONTROL
-// ============================================================================
+// =============================================================================
 
 // Cipher suites request
 message CipherSuitesRequest {
@@ -279,9 +462,9 @@ message TLSVersionsRequest {
   TLSVersion max_version = 2;                    // Maximum TLS version
 }
 
-// ============================================================================
+// =============================================================================
 // RESPONSE MESSAGES
-// ============================================================================
+// =============================================================================
 
 // Proxy status response
 message ProxyStatusResponse {
@@ -395,9 +578,9 @@ message TLSVersionsResponse {
   common.Status status = 3;                      // Operation status
 }
 
-// ============================================================================
+// =============================================================================
 // DATA STRUCTURES
-// ============================================================================
+// =============================================================================
 
 // Certificate
 message Certificate {

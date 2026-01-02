@@ -1,144 +1,238 @@
-// Package main provides the DNS Server entry point.
+// Package main is the DNS Server application entry point.
 package main
 
 import (
-	"context"
-	"flag"
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
-	"safeops/dns_server/internal/captive"
-	"safeops/dns_server/internal/protocol"
-	"safeops/dns_server/internal/server"
-	"safeops/dns_server/internal/storage"
+	"dns_server/internal/dns"
+	"dns_server/internal/recursive"
 )
 
-var (
-	// Configuration flags
-	listenAddr = flag.String("addr", ":53", "DNS server listen address")
-	dbHost     = flag.String("db-host", "localhost", "PostgreSQL host")
-	dbPort     = flag.Int("db-port", 5432, "PostgreSQL port")
-	dbUser     = flag.String("db-user", "dns_server", "PostgreSQL username")
-	dbName     = flag.String("db-name", "safeops_network", "PostgreSQL database name")
-	dbPass     = flag.String("db-pass", "", "PostgreSQL password (or use DNS_DB_PASSWORD env)")
+// =============================================================================
+// CONFIGURATION DEFAULTS
+// =============================================================================
 
-	// Captive portal flags
-	captiveEnabled = flag.Bool("captive", true, "Enable captive portal redirect")
-	portalIP       = flag.String("portal-ip", "192.168.1.1", "Captive portal IP address")
-	portalPort     = flag.Int("portal-port", 80, "Captive portal port")
-
-	// Feature flags
-	recursion = flag.Bool("recursion", true, "Enable recursive DNS resolution")
+const (
+	defaultBindAddress     = ":53"
+	defaultCacheSize       = 50000
+	defaultCacheTTL        = 300
+	defaultUpstreamServers = "8.8.8.8:53,1.1.1.1:53"
+	defaultUpstreamTimeout = "3s"
+	defaultServerName      = "ns1.safeops.local"
+	defaultEnableEDNS      = true
 )
+
+// Config holds DNS Server configuration.
+type Config struct {
+	BindAddress     string
+	CacheSize       int
+	CacheTTL        uint32
+	UpstreamServers []string
+	UpstreamTimeout time.Duration
+	ServerName      string
+	EnableEDNS      bool
+}
+
+// =============================================================================
+// MAIN ENTRY POINT
+// =============================================================================
 
 func main() {
-	flag.Parse()
+	// Setup logging
+	setupLogging()
 
-	log.Printf("SafeOps DNS Server starting...")
-	log.Printf("  Listen: %s", *listenAddr)
-	log.Printf("  Captive Portal: %v (IP: %s)", *captiveEnabled, *portalIP)
+	log.Println("Starting DNS Server...")
 
-	// Get password from environment if not provided
-	password := *dbPass
-	if password == "" {
-		password = os.Getenv("DNS_DB_PASSWORD")
+	// Load configuration
+	cfg := loadConfiguration()
+	logConfiguration(cfg)
+
+	// Initialize all components
+	server, err := initializeComponents(cfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize DNS Server: %v", err)
 	}
 
-	// Initialize database (optional - runs without DB for basic DNS)
-	var db *storage.Database
-	var err error
+	// Setup signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	if password != "" {
-		dbConfig := &storage.DatabaseConfig{
-			Host:              *dbHost,
-			Port:              *dbPort,
-			Database:          *dbName,
-			Username:          *dbUser,
-			Password:          password,
-			SSLMode:           "disable",
-			MaxConnections:    20,
-			MinConnections:    5,
-			ConnectionTimeout: 10 * time.Second,
+	// Start the UDP server in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		if err := server.Start(); err != nil {
+			errChan <- err
 		}
+	}()
 
-		db, err = storage.InitDatabase(dbConfig)
-		if err != nil {
-			log.Printf("Warning: Database connection failed: %v", err)
-			log.Printf("Running in standalone mode (no persistent storage)")
-		} else {
-			log.Printf("Database connected")
+	log.Printf("DNS Server running on %s", cfg.BindAddress)
+	log.Println("Press Ctrl+C to stop")
 
-			// Run migrations
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			if err := storage.RunMigrations(ctx, db); err != nil {
-				log.Printf("Warning: Migration failed: %v", err)
-			}
-			cancel()
+	// Wait for shutdown signal or error
+	select {
+	case sig := <-sigChan:
+		log.Printf("Received signal: %v", sig)
+	case err := <-errChan:
+		log.Printf("Server error: %v", err)
+	}
+
+	log.Println("Initiating graceful shutdown...")
+
+	// Shutdown server
+	if err := server.Shutdown(); err != nil {
+		log.Printf("Error during shutdown: %v", err)
+	}
+
+	log.Println("DNS Server stopped")
+}
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+
+// loadConfiguration reads configuration from environment variables with defaults.
+func loadConfiguration() *Config {
+	cfg := &Config{
+		BindAddress:     getEnvOrDefault("DNS_BIND_ADDRESS", defaultBindAddress),
+		CacheSize:       getEnvIntOrDefault("DNS_CACHE_SIZE", defaultCacheSize),
+		CacheTTL:        uint32(getEnvIntOrDefault("DNS_DEFAULT_TTL", defaultCacheTTL)),
+		UpstreamServers: getEnvSliceOrDefault("DNS_UPSTREAM_SERVERS", defaultUpstreamServers),
+		UpstreamTimeout: getEnvDurationOrDefault("DNS_UPSTREAM_TIMEOUT", defaultUpstreamTimeout),
+		ServerName:      getEnvOrDefault("DNS_SERVER_NAME", defaultServerName),
+		EnableEDNS:      getEnvBoolOrDefault("DNS_ENABLE_EDNS", defaultEnableEDNS),
+	}
+
+	// Validate configuration
+	if cfg.CacheSize <= 0 {
+		cfg.CacheSize = defaultCacheSize
+	}
+	if len(cfg.UpstreamServers) == 0 {
+		cfg.UpstreamServers = strings.Split(defaultUpstreamServers, ",")
+	}
+	if cfg.UpstreamTimeout <= 0 {
+		cfg.UpstreamTimeout = 3 * time.Second
+	}
+
+	return cfg
+}
+
+// logConfiguration logs loaded configuration values.
+func logConfiguration(cfg *Config) {
+	log.Println("Configuration loaded:")
+	log.Printf("  Bind Address:     %s", cfg.BindAddress)
+	log.Printf("  Cache Size:       %d entries", cfg.CacheSize)
+	log.Printf("  Default TTL:      %d seconds", cfg.CacheTTL)
+	log.Printf("  Upstream Servers: %v", cfg.UpstreamServers)
+	log.Printf("  Upstream Timeout: %v", cfg.UpstreamTimeout)
+	log.Printf("  Server Name:      %s", cfg.ServerName)
+	log.Printf("  EDNS Enabled:     %v", cfg.EnableEDNS)
+}
+
+// =============================================================================
+// COMPONENT INITIALIZATION
+// =============================================================================
+
+// initializeComponents creates and wires all DNS Server components.
+func initializeComponents(cfg *Config) (*dns.UDPServer, error) {
+	// Create cache (50,000 entries)
+	cache := dns.NewDNSCache(cfg.CacheSize)
+	log.Printf("Initialized DNS cache (max %d entries)", cfg.CacheSize)
+
+	// Create zone resolver (Phase 1: stub that always returns false)
+	zoneResolver := dns.NewZoneResolver()
+	log.Println("Initialized zone resolver (Phase 1: recursive-only mode)")
+
+	// Create upstream resolver
+	upstreamResolver := recursive.NewUpstreamResolver(cfg.UpstreamServers, cfg.UpstreamTimeout)
+	log.Printf("Initialized upstream resolver (%v)", cfg.UpstreamServers)
+
+	// Create response builder
+	responseBuilder := dns.NewResponseBuilder(cfg.ServerName, cfg.CacheTTL, cfg.EnableEDNS)
+	log.Println("Initialized response builder")
+
+	// Create UDP server with all dependencies
+	server := dns.NewUDPServer(
+		cfg.BindAddress,
+		cache,
+		zoneResolver,
+		upstreamResolver,
+		responseBuilder,
+	)
+	log.Println("Initialized UDP server")
+
+	log.Println("All components initialized successfully")
+	return server, nil
+}
+
+// =============================================================================
+// LOGGING SETUP
+// =============================================================================
+
+// setupLogging configures log output format.
+func setupLogging() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	log.SetOutput(os.Stdout)
+}
+
+// =============================================================================
+// ENVIRONMENT VARIABLE HELPERS
+// =============================================================================
+
+// getEnvOrDefault returns environment variable value or default.
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvIntOrDefault returns parsed int environment variable or default.
+func getEnvIntOrDefault(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			return parsed
 		}
 	}
+	return defaultValue
+}
 
-	// Create DNS handler
-	handlerConfig := &protocol.HandlerConfig{
-		RecursionEnabled: *recursion,
-		CacheEnabled:     true,
-		FilterEnabled:    true,
-		CaptiveEnabled:   *captiveEnabled,
-		AuthoritativeZones: []string{
-			"safeops.local",
-		},
-	}
-	handler := protocol.NewHandler(handlerConfig)
-
-	// Initialize captive portal
-	var captiveManager *captive.Manager
-	if *captiveEnabled {
-		captiveConfig := &captive.Config{
-			Enabled:     true,
-			PortalIP:    *portalIP,
-			PortalPort:  *portalPort,
-			PortalURL:   "http://" + *portalIP + "/install",
-			CacheTTL:    5 * time.Minute,
-			RedirectTTL: 60,
+// getEnvSliceOrDefault returns comma-separated environment variable as slice.
+func getEnvSliceOrDefault(key, defaultValue string) []string {
+	value := getEnvOrDefault(key, defaultValue)
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			result = append(result, trimmed)
 		}
-
-		var dbConn interface{} = nil
-		if db != nil {
-			dbConn = db.GetPool()
-		}
-		_ = dbConn // Will be used when we integrate with tracker
-
-		captiveManager = captive.NewManager(captiveConfig, nil)
-		log.Printf("Captive portal enabled: redirect to %s", *portalIP)
 	}
+	return result
+}
 
-	// Create DNS server
-	dnsServer := server.NewDNSServer(*listenAddr, handler)
-
-	// Start server
-	if err := dnsServer.Start(); err != nil {
-		log.Fatalf("Failed to start DNS server: %v", err)
+// getEnvDurationOrDefault returns parsed duration environment variable or default.
+func getEnvDurationOrDefault(key, defaultValue string) time.Duration {
+	value := getEnvOrDefault(key, defaultValue)
+	if parsed, err := time.ParseDuration(value); err == nil {
+		return parsed
 	}
-
-	log.Printf("DNS Server running on %s", *listenAddr)
-
-	// Wait for shutdown signal
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
-
-	log.Printf("Shutting down...")
-
-	// Cleanup
-	if captiveManager != nil {
-		captiveManager.Stop()
+	if defaultParsed, err := time.ParseDuration(defaultValue); err == nil {
+		return defaultParsed
 	}
-	dnsServer.Stop()
-	if db != nil {
-		db.Close()
-	}
+	return 3 * time.Second
+}
 
-	log.Printf("DNS Server stopped")
+// getEnvBoolOrDefault returns parsed bool environment variable or default.
+func getEnvBoolOrDefault(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		lower := strings.ToLower(value)
+		return lower == "true" || lower == "1" || lower == "yes"
+	}
+	return defaultValue
 }

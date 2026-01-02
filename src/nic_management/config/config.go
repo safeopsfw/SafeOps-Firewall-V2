@@ -39,6 +39,7 @@ type Config struct {
 	Monitoring         MonitoringConfig         `yaml:"monitoring" mapstructure:"monitoring"`
 	Database           DatabaseConfig           `yaml:"database" mapstructure:"database"`
 	GRPC               GRPCConfig               `yaml:"grpc" mapstructure:"grpc"`
+	TLSProxy           TLSProxyConfig           `yaml:"tls_proxy" mapstructure:"tls_proxy"` // NEW: Phase 1
 	Integrations       IntegrationsConfig       `yaml:"integrations" mapstructure:"integrations"`
 	RustEngine         RustEngineConfig         `yaml:"rust_engine" mapstructure:"rust_engine"`
 	Advanced           AdvancedConfig           `yaml:"advanced" mapstructure:"advanced"`
@@ -507,6 +508,33 @@ type IntegrationEndpointConfig struct {
 	SendMetadata  bool     `yaml:"send_metadata" mapstructure:"send_metadata"`
 }
 
+// TLSProxyConfig holds TLS Proxy integration settings for Phase 1 packet inspection.
+// When enabled, packets are sent to TLS Proxy for SNI extraction and DNS verification.
+type TLSProxyConfig struct {
+	// Enabled controls whether packet inspection is active
+	// true: Send packets to TLS Proxy for inspection (Phase 1 mode)
+	// false: Skip TLS Proxy entirely, forward directly (bypass mode)
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+
+	// Address is the TLS Proxy gRPC endpoint (e.g., "localhost:50054")
+	Address string `yaml:"address" mapstructure:"address"`
+
+	// TimeoutSecs is the gRPC request timeout in seconds
+	// Recommended: 3-5 seconds for production
+	TimeoutSecs int `yaml:"timeout_secs" mapstructure:"timeout_secs"`
+
+	// FailOpen determines behavior when TLS Proxy is unavailable
+	// true: Forward packets unchanged (Phase 1 default, prioritizes availability)
+	// false: Drop packets (Phase 2 security mode, prioritizes inspection)
+	FailOpen bool `yaml:"fail_open" mapstructure:"fail_open"`
+
+	// ConnectionPoolSize is the number of concurrent gRPC connections (Phase 2+)
+	ConnectionPoolSize int `yaml:"connection_pool_size" mapstructure:"connection_pool_size"`
+
+	// RetryAttempts is the number of retries before fail-open (Phase 2+)
+	RetryAttempts int `yaml:"retry_attempts" mapstructure:"retry_attempts"`
+}
+
 // RustEngineConfig holds Rust library settings.
 type RustEngineConfig struct {
 	LibraryPath string `yaml:"library_path" mapstructure:"library_path"`
@@ -660,6 +688,14 @@ func setDefaults(v *viper.Viper) {
 	// Monitoring defaults
 	v.SetDefault("monitoring.enabled", true)
 	v.SetDefault("monitoring.prometheus.port", 9091)
+
+	// TLS Proxy defaults (Phase 1)
+	v.SetDefault("tls_proxy.enabled", true)
+	v.SetDefault("tls_proxy.address", "localhost:50054")
+	v.SetDefault("tls_proxy.timeout_secs", 5)
+	v.SetDefault("tls_proxy.fail_open", true)
+	v.SetDefault("tls_proxy.connection_pool_size", 1)
+	v.SetDefault("tls_proxy.retry_attempts", 0)
 }
 
 // substituteEnvVars replaces ${VAR} and ${VAR:-default} patterns with environment values.

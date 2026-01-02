@@ -98,6 +98,39 @@ grpc:
   keepalive_timeout: 10s
 
 # =============================================================================
+# TLS Proxy Integration (Phase 1 - NEW)
+# =============================================================================
+# Configuration for sending packets to TLS Proxy for SNI extraction and
+# DNS-based destination verification. Enables transparent HTTPS inspection.
+tls_proxy:
+  # Master switch for TLS Proxy integration
+  # true: Send packets to TLS Proxy for inspection (Phase 1 mode)
+  # false: Skip TLS Proxy entirely, forward directly (bypass mode)
+  enabled: true
+
+  # TLS Proxy gRPC endpoint address
+  # Format: "hostname:port" - TLS Proxy listens on port 50054 by default
+  # Must match TLS Proxy's grpc.listen_address setting
+  address: "localhost:50054"
+
+  # gRPC request timeout in seconds
+  # Maximum time to wait for TLS Proxy InterceptPacket response
+  # Recommended: 3-5 seconds for production, 10-30 for debugging
+  timeout_secs: 5
+
+  # Fail-open behavior when TLS Proxy is unavailable
+  # true: Forward packets unchanged when TLS Proxy fails (Phase 1 default)
+  # false: Drop packets when TLS Proxy fails (Phase 2 security mode)
+  # Failure scenarios: connection refused, timeout, invalid response
+  fail_open: true
+
+  # Connection pool size for high-throughput scenarios (optional, Phase 2+)
+  # connection_pool_size: 10
+
+  # Retry attempts before fail-open (optional, Phase 2+)
+  # retry_attempts: 3
+
+# =============================================================================
 # Load Balancing (Multi-WAN)
 # =============================================================================
 load_balancing:

@@ -1,0 +1,100 @@
+# =============================================================================
+# NIC Management Configuration - Phase 1
+# =============================================================================
+# This TOML file provides runtime settings for packet capture and forwarding.
+# Edit values here without recompiling. Loaded at startup by config module.
+
+# =============================================================================
+# [network] - Network Interface Configuration
+# =============================================================================
+[network]
+# Primary WAN interface for internet traffic (run Get-NetAdapter to find name)
+wan_interface = "Wi-Fi"
+
+# Internal LAN interface for local network traffic
+lan_interface = "Ethernet 2"
+
+# Optional BPF filter (empty = capture all packets)
+# Example: "tcp port 443 or udp port 53"
+capture_filter = "tcp"
+
+# =============================================================================
+# [nat] - Network Address Translation Settings
+# =============================================================================
+[nat]
+# Enable NAT translation (required for gateway operation)
+enable = true
+
+# NAT connection tracking timeout in seconds
+timeout_secs = 300
+
+# Maximum concurrent NAT mappings (0 = unlimited)
+max_connections = 65535
+
+# NAT port allocation range
+port_range_start = 10000
+port_range_end = 65535
+
+# =============================================================================
+# [routing] - Packet Routing Configuration
+# =============================================================================
+[routing]
+# Enable IP forwarding between interfaces
+enable_forwarding = true
+
+# Default action for unmatched packets: "forward", "drop", "reject"
+default_action = "forward"
+
+# Maximum Transmission Unit
+mtu = 1500
+
+# =============================================================================
+# [tls_proxy] - TLS Proxy Integration (Phase 1 - NEW)
+# =============================================================================
+[tls_proxy]
+# Master switch for TLS Proxy packet inspection
+# true = send packets to TLS Proxy for SNI extraction
+# false = bypass inspection, forward directly
+enabled = true
+
+# TLS Proxy gRPC endpoint address
+# Format: "hostname:port" (no https:// prefix)
+address = "localhost:50054"
+
+# gRPC request timeout in seconds
+# Recommended: 3-5 for production, 10-30 for debugging
+timeout_secs = 5
+
+# Fail-open behavior when TLS Proxy is unavailable
+# true = forward packets unchanged (Phase 1 REQUIRED)
+# false = drop packets (Phase 2 security mode)
+fail_open = true
+
+# Connection pool size (Phase 2+, not implemented)
+# connection_pool_size = 10
+
+# Retry attempts before fail-open (Phase 2+, not implemented)
+# retry_attempts = 3
+
+# =============================================================================
+# [logging] - Log Output Configuration
+# =============================================================================
+[logging]
+# Minimum log level: error, warn, info, debug, trace
+level = "info"
+
+# Output destination: console, file, syslog
+output = "console"
+
+# Log file path (only if output = "file")
+# file_path = "C:\\SafeOps\\logs\\nic_management.log"
+
+# =============================================================================
+# [statistics] - Statistics Collection Settings
+# =============================================================================
+[statistics]
+# How often to update statistics in seconds
+collection_interval_secs = 60
+
+# Clear statistics on service restart
+reset_on_restart = true

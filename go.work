@@ -6,4 +6,5 @@ use (
 	./src/orchestrator
 	./src/shared/go
 	./src/threat_intel
+	./src/tls_proxy
 )

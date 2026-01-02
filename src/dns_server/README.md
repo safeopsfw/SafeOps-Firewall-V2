@@ -1,31 +1,31 @@
-﻿# DNS Server
+# DNS Server
 
-DNS filtering and forwarding server
+SafeOps DNS Server providing authoritative DNS for safeops.local and recursive forwarding.
 
-## Language
+## Features
 
-Go
+- Authoritative DNS for internal zones (safeops.local)
+- Recursive DNS forwarding to 8.8.8.8, 1.1.1.1
+- Dynamic DNS updates from DHCP Monitor via gRPC
+- In-memory query cache (50,000 entries)
+- PostgreSQL-backed zone and record storage
 
-## Structure
+## Ports
 
-- **cmd/** - Command-line entry points
-- **internal/** - Private implementation code
-- **pkg/** - Public library code
-- **config/** - Configuration files
-- **tests/** - Unit and integration tests
+- **UDP/TCP 53**: DNS queries
+- **gRPC 50053**: Internal API for DynamicUpdate()
+- **HTTP 9153**: Prometheus metrics
 
-## Building
-
-```bash
-# Build commands will be added here
-```
-
-## Testing
+## Quick Start
 
 ```bash
-# Test commands will be added here
+# Build
+go build -o dns_server.exe ./cmd/dns_server
+
+# Run
+./dns_server.exe
 ```
 
-## Documentation
+## Configuration
 
-See the main documentation in /docs for detailed information.
+See `config/templates/dns_server.toml` for configuration options.

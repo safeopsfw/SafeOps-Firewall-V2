@@ -91,6 +91,11 @@ serde_json = "1.0"
 anyhow = "1.0"
 thiserror = "1.0"
 
+# gRPC client runtime for TLS Proxy integration
+tonic = "0.10"
+prost = "0.12"
+tower = "0.4"
+
 # =============================================================================
 # DEV DEPENDENCIES
 # Crates used only for testing and benchmarking
@@ -115,6 +120,10 @@ cc = "1.0"
 
 # Auto-generate FFI bindings from C headers
 bindgen = "0.69"
+
+# gRPC/Protobuf code generation for TLS Proxy client
+tonic-build = "0.10"
+prost-build = "0.12"
 
 # =============================================================================
 # BENCHMARKS

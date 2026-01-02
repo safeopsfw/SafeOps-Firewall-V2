@@ -469,6 +469,9 @@ message Bridge {
 
 // Interface statistics
 message InterfaceStatistics {
+  // =========================================================================
+  // Standard Network Statistics (Fields 1-9)
+  // =========================================================================
   uint64 rx_bytes = 1;                           // Received bytes
   uint64 tx_bytes = 2;                           // Transmitted bytes
   uint64 rx_packets = 3;                         // Received packets
@@ -478,6 +481,40 @@ message InterfaceStatistics {
   uint64 rx_dropped = 7;                         // RX dropped
   uint64 tx_dropped = 8;                         // TX dropped
   uint64 collisions = 9;                         // Collisions
+
+  // =========================================================================
+  // TLS Proxy Integration Statistics (Phase 1 - Fields 10-16)
+  // =========================================================================
+  // These fields track packet inspection pipeline performance and health.
+  // All counters are monotonically increasing since last reset.
+  
+  // Total packets sent to TLS Proxy for inspection
+  // Increments on every InterceptPacket gRPC call
+  uint64 packets_sent_to_tls_proxy = 10;
+  
+  // Packets with destination port 443 (HTTPS traffic)
+  // Subset of packets_sent_to_tls_proxy that require SNI extraction
+  uint64 https_packets_detected = 11;
+  
+  // Successful SNI extractions from TLS ClientHello messages
+  // Should be <= https_packets_detected (extraction can fail)
+  uint64 sni_extractions_successful = 12;
+  
+  // DNS queries sent to DNS Server for SNI hostname resolution
+  // One query per successful SNI extraction (equals sni_extractions_successful)
+  uint64 dns_resolutions_performed = 13;
+  
+  // TLS Proxy failures (timeouts, connection errors, invalid responses)
+  // High values indicate TLS Proxy availability issues
+  uint64 tls_proxy_errors = 14;
+  
+  // Packets forwarded unchanged after inspection (Phase 1: all packets)
+  // Phase 1: equals packets_sent_to_tls_proxy (pass-through mode)
+  uint64 packets_forwarded_unchanged = 15;
+  
+  // Average TLS Proxy processing latency in milliseconds
+  // Target: <10ms for Phase 1 to avoid noticeable delay
+  uint64 tls_proxy_average_latency_ms = 16;
 }
 
 // Topology node
