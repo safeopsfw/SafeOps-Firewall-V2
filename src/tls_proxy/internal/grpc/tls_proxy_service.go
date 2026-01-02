@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -195,10 +196,12 @@ func (s *TLSProxyService) InterceptPacket(ctx context.Context, req *InterceptPac
 	// Step 2: Check context for cancellation
 	select {
 	case <-ctx.Done():
-		s.incrementErrors()
-		return s.buildErrorResponse(ctx.Err(), time.Since(startTime)), nil
 	default:
 	}
+
+	// LOGGING: Incoming Packet
+	log.Printf("[TRAFFIC] INCOMING: %s:%d -> %s:%d [%s] DataLen: %d",
+		req.SourceIP, req.SourcePort, req.DestinationIP, req.DestinationPort, req.Protocol, len(req.PacketData))
 
 	// Step 3: Create Internal Packet Model
 	packet := &models.Packet{
@@ -237,6 +240,10 @@ func (s *TLSProxyService) InterceptPacket(ctx context.Context, req *InterceptPac
 
 	// Step 6: Record Success
 	s.recordSuccess(time.Since(startTime))
+
+	// LOGGING: Outgoing Response
+	log.Printf("[TRAFFIC] OUTGOING: Action=%s SNI=%s Resolved=%s",
+		response.Action, response.SNIHostname, response.ResolvedIP)
 
 	return response, nil
 }

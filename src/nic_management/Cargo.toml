@@ -10,15 +10,20 @@ readme = "README.md"
 
 [lib]
 name = "nic_rust"
+path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
+[[bin]]
+name = "packet_engine"
+path = "internal/bin/packet_engine.rs"
 
 # =============================================================================
 # CORE DEPENDENCIES
 # Essential Rust crates for packet processing functionality
 # =============================================================================
 [dependencies]
+
 # Async runtime for concurrent packet processing and WAN health checking
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.35", features = ["full"], optional = true }
 
 # Lock-free data structures for multi-threaded packet queues
 crossbeam = "0.8"
@@ -29,8 +34,15 @@ pnet = "0.34"
 # libpcap bindings for packet capture (Windows Npcap / Linux libpcap)
 pcap = "1.1"
 
+# WinDivert for kernel-level packet interception (Windows firewall mode)
+windivert = "0.6"
+windivert-sys = "0.10"
+
 # C standard library bindings for FFI
 libc = "0.2"
+
+# Ctrl+C signal handling for graceful shutdown
+ctrlc = "3.4"
 
 # Lazy static initialization for global state management
 once_cell = "1.19"
@@ -41,7 +53,7 @@ once_cell = "1.19"
 # =============================================================================
 
 # SIMD-accelerated JSON parsing for configuration and metrics
-simd-json = "0.13"
+simd-json = { version = "0.13", optional = true }
 
 # Data parallelism for batch packet processing
 rayon = "1.8"
@@ -86,6 +98,7 @@ env_logger = "0.11"
 # Serialization/deserialization framework
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+toml = "0.8"
 
 # Error handling with context
 anyhow = "1.0"
@@ -93,8 +106,10 @@ thiserror = "1.0"
 
 # gRPC client runtime for TLS Proxy integration
 tonic = "0.10"
+simple_logger = "4.3.0"
 prost = "0.12"
 tower = "0.4"
+
 
 # =============================================================================
 # DEV DEPENDENCIES
@@ -129,18 +144,6 @@ prost-build = "0.12"
 # BENCHMARKS
 # Binary benchmark targets for performance testing
 # =============================================================================
-[[bench]]
-name = "packet_bench"
-harness = false
-
-[[bench]]
-name = "nat_bench"
-harness = false
-
-[[bench]]
-name = "queue_bench"
-harness = false
-
 # =============================================================================
 # RELEASE PROFILE
 # Optimization settings for production builds - maximum packet throughput
