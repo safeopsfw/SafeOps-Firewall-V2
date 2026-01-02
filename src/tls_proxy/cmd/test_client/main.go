@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"time"
@@ -74,6 +73,7 @@ func main() {
 	for i, pkt := range packets {
 		connID := fmt.Sprintf("%s:54321->%s:%d", pkt.src, pkt.dst, pkt.port)
 		tlsData := createTestTLSData(pkt.domain)
+		_ = tlsData // Used for simulated packet data
 
 		start := time.Now()
 
@@ -104,8 +104,8 @@ func main() {
 func createTestTLSData(hostname string) []byte {
 	// Minimal TLS ClientHello
 	data := []byte{0x16, 0x03, 0x01, 0x00, 0x00} // TLS Record
-	data = append(data, 0x01, 0x00, 0x00, 0x00)   // Handshake
-	data = append(data, 0x03, 0x03)               // TLS 1.2
+	data = append(data, 0x01, 0x00, 0x00, 0x00)  // Handshake
+	data = append(data, 0x03, 0x03)              // TLS 1.2
 
 	// Random
 	random := make([]byte, 32)

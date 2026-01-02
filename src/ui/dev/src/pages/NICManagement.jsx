@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./NICManagement.css";
+import PacketEnginePanel from "../components/PacketEnginePanel";
 
 const NIC_API_BASE = "http://localhost:8081/api";
 const NIC_SSE_URL = "http://localhost:8081/api/nics/events";
@@ -403,6 +404,9 @@ function NICManagement() {
 
       {error && <div className="nic-error-banner">⚠️ {error}</div>}
 
+      {/* Packet Engine Status Panel */}
+      <PacketEnginePanel />
+
       {/* Mobile Hotspot Control */}
       {hotspotStatus && (
         <div className="hotspot-section">
@@ -617,9 +621,8 @@ function NICCard({
 
   return (
     <div
-      className={`nic-card ${
-        isOnline ? "online" : "offline"
-      } ${nic.type.toLowerCase()} ${nic.isPrimary ? "primary" : ""}`}
+      className={`nic-card ${isOnline ? "online" : "offline"
+        } ${nic.type.toLowerCase()} ${nic.isPrimary ? "primary" : ""}`}
       onClick={() => onCardClick(nic)}
       style={{ cursor: 'pointer' }}
     >

@@ -9,9 +9,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -108,6 +110,10 @@ func (s *NICAPIServer) Start() error {
 
 	// Connected Devices Discovery
 	mux.HandleFunc("/api/devices", s.corsMiddleware(s.HandleConnectedDevices))
+
+	// Packet Engine endpoints (status and logs from subprocess)
+	mux.HandleFunc("/api/packet-engine/status", s.corsMiddleware(handlePacketEngineStatus))
+	mux.HandleFunc("/api/packet-engine/logs", s.corsMiddleware(handlePacketEngineLogs))
 
 	mux.HandleFunc("/api/health", s.corsMiddleware(s.handleHealth))
 
@@ -442,4 +448,89 @@ func StartNICAPI(port int, configPath string) (*NICAPIServer, error) {
 		}
 	}()
 	return server, nil
+}
+
+// =============================================================================
+// PACKET ENGINE HANDLERS
+// =============================================================================
+
+// handlePacketEngineStatus returns packet engine running status.
+// Reads from packet_engine_status.json file if available.
+func handlePacketEngineStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Try to read status file written by packet_engine
+	statusFile := "packet_engine_status.json"
+
+	fileInfo, err := os.Stat(statusFile)
+	if err == nil && time.Since(fileInfo.ModTime()) < 60*time.Second {
+		// File exists and is recent, read and return it
+		data, err := os.ReadFile(statusFile)
+		if err == nil {
+			w.Write(data)
+			return
+		}
+	}
+
+	// Fallback: check if process is running
+	running := isPacketEngineRunning()
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"running": running,
+		"message": func() string {
+			if running {
+				return "Packet engine running (waiting for status)"
+			}
+			return "Packet engine not running"
+		}(),
+	})
+}
+
+// isPacketEngineRunning checks if packet_engine.exe process exists
+func isPacketEngineRunning() bool {
+	cmd := exec.Command("tasklist", "/FI", "IMAGENAME eq packet_engine.exe", "/NH")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(output), "packet_engine.exe")
+}
+
+// handlePacketEngineLogs returns recent log entries.
+func handlePacketEngineLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	logs := packetEngineLogs.Load()
+	if logs == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"logs":  []interface{}{},
+			"count": 0,
+		})
+		return
+	}
+	json.NewEncoder(w).Encode(logs)
+}
+
+// Global atomic values for packet engine state (set by main.go)
+var (
+	packetEngineStatus atomic.Value // map[string]interface{}
+	packetEngineLogs   atomic.Value // map[string]interface{}
+)
+
+// SetPacketEngineStatus sets the global packet engine status
+func SetPacketEngineStatus(status map[string]interface{}) {
+	packetEngineStatus.Store(status)
+}
+
+// SetPacketEngineLogs sets the global packet engine logs
+func SetPacketEngineLogs(logs map[string]interface{}) {
+	packetEngineLogs.Store(logs)
 }

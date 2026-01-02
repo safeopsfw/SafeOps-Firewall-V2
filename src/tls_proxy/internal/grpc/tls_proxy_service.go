@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -199,9 +198,8 @@ func (s *TLSProxyService) InterceptPacket(ctx context.Context, req *InterceptPac
 	default:
 	}
 
-	// LOGGING: Incoming Packet
-	log.Printf("[TRAFFIC] INCOMING: %s:%d -> %s:%d [%s] DataLen: %d",
-		req.SourceIP, req.SourcePort, req.DestinationIP, req.DestinationPort, req.Protocol, len(req.PacketData))
+	// NOTE: Per-packet logging removed for performance
+	// Logging moved to periodic stats output
 
 	// Step 3: Create Internal Packet Model
 	packet := &models.Packet{
@@ -241,9 +239,7 @@ func (s *TLSProxyService) InterceptPacket(ctx context.Context, req *InterceptPac
 	// Step 6: Record Success
 	s.recordSuccess(time.Since(startTime))
 
-	// LOGGING: Outgoing Response
-	log.Printf("[TRAFFIC] OUTGOING: Action=%s SNI=%s Resolved=%s",
-		response.Action, response.SNIHostname, response.ResolvedIP)
+	// NOTE: Per-packet logging removed for performance
 
 	return response, nil
 }

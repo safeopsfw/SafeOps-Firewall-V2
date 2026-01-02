@@ -20,6 +20,7 @@ import (
 	"safeops/nic_management/internal/failover"
 	internalgrpc "safeops/nic_management/internal/grpc"
 	"safeops/nic_management/internal/nat"
+	"safeops/nic_management/internal/subprocess"
 )
 
 // =============================================================================
@@ -77,6 +78,9 @@ type ServiceComponents struct {
 
 	// REST API layer.
 	apiServer *api.NICAPIServer
+
+	// Packet Engine subprocess.
+	packetEngine *subprocess.PacketEngineManager
 }
 
 // =============================================================================
@@ -352,6 +356,10 @@ func initializeComponents(ctx context.Context, cfg *config.Config) (*ServiceComp
 	// Initialize REST API Server.
 	components.apiServer = api.NewNICAPIServer(*apiPort, *configPath)
 
+	// Initialize Packet Engine Manager.
+	components.packetEngine = subprocess.NewPacketEngineManager()
+	log.Println("Packet Engine manager initialized")
+
 	return components, nil
 }
 
@@ -401,6 +409,19 @@ func startAllWorkers(ctx context.Context, c *ServiceComponents, wg *sync.WaitGro
 		}()
 	}
 
+	// NOTE: Packet Engine runs separately with Admin privileges
+	// Uncomment below to auto-start packet_engine as subprocess
+	/*
+		if c.packetEngine != nil {
+			if err := c.packetEngine.Start(); err != nil {
+				log.Printf("Warning: Packet Engine start failed: %v", err)
+				log.Printf("Packet Engine requires Administrator privileges and WinDivert files")
+			} else {
+				log.Println("Packet Engine started successfully")
+			}
+		}
+	*/
+
 	return nil
 }
 
@@ -423,6 +444,10 @@ func shutdownService(c *ServiceComponents) {
 	}
 	if c.apiServer != nil {
 		_ = c.apiServer.Stop()
+	}
+	if c.packetEngine != nil {
+		_ = c.packetEngine.Stop()
+		log.Println("Packet Engine stopped")
 	}
 
 	// Phase 2: Stop background workers.
