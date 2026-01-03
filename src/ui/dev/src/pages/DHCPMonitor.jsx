@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import "./DHCPMonitor.css";
 
-const API_BASE = "http://localhost:80"; // DHCP Monitor captive portal API
+const API_BASE = "http://localhost:5050"; // Node.js backend API
 
 function DHCPMonitor() {
     const [devices, setDevices] = useState([]);
@@ -17,12 +17,12 @@ function DHCPMonitor() {
     const [error, setError] = useState(null);
     const [lastUpdate, setLastUpdate] = useState(null);
 
-    // Fetch devices from DHCP Monitor API
+    // Fetch devices from Node.js backend API
     const fetchData = useCallback(async () => {
         try {
             const [devicesRes, statsRes] = await Promise.all([
                 fetch(`${API_BASE}/api/devices`),
-                fetch(`${API_BASE}/api/stats`)
+                fetch(`${API_BASE}/api/devices/stats`)
             ]);
 
             if (devicesRes.ok) {
@@ -43,14 +43,14 @@ function DHCPMonitor() {
         } catch (err) {
             // Try health endpoint to check if service is running
             try {
-                const healthRes = await fetch(`${API_BASE}/api/health`);
+                const healthRes = await fetch(`${API_BASE}/health`);
                 if (healthRes.ok) {
-                    setError("DHCP Monitor running but may need Admin privileges for port 80");
+                    setError("Backend running but devices API may have an issue");
                 } else {
-                    setError("DHCP Monitor service not responding");
+                    setError("Backend service not responding");
                 }
             } catch {
-                setError("Cannot connect to Network Monitor (port 80)");
+                setError("Cannot connect to Backend API (port 5050)");
             }
         } finally {
             setLoading(false);
@@ -120,7 +120,7 @@ function DHCPMonitor() {
                     <AlertCircle className="w-5 h-5" />
                     {error}
                     <span className="error-hint">
-                        Run as Admin: <code>.\dhcp_monitor.exe</code>
+                        Start backend: <code>cd backend && npm start</code>
                     </span>
                 </div>
             )}

@@ -8,6 +8,7 @@ require('dotenv').config();
 
 const db = require('./db');
 const threatIntelRoutes = require('./routes/threat-intel');
+const devicesRoutes = require('./routes/devices');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -111,6 +112,7 @@ app.get('/api/stepca/roots.pem', async (req, res) => {
 
 // API Routes
 app.use('/api/threat-intel', threatIntelRoutes);
+app.use('/api/devices', devicesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -119,6 +121,13 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         endpoints: {
             health: '/health',
+            devices: {
+                list: '/api/devices',
+                stats: '/api/devices/stats',
+                byMac: '/api/devices/:mac',
+                updateTrust: '/api/devices/:id/trust (PATCH)',
+                delete: '/api/devices/:id (DELETE)'
+            },
             threatIntel: {
                 stats: '/api/threat-intel/stats',
                 domains: '/api/threat-intel/domains',

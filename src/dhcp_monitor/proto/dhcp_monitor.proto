@@ -1,0 +1,126 @@
+// Protocol Buffers definition for DHCP Monitor gRPC Service
+// Compile with: protoc --go_out=. --go-grpc_out=. proto/dhcp_monitor.proto
+
+syntax = "proto3";
+
+package dhcp_monitor;
+
+option go_package = "dhcp_monitor/proto/gen";
+
+// =============================================================================
+// MESSAGE DEFINITIONS
+// =============================================================================
+
+// Device - Complete device information from database
+message Device {
+    string device_id = 1;        // UUID primary key
+    string mac_address = 2;      // AA:BB:CC:DD:EE:FF format
+    string current_ip = 3;       // IPv4 or IPv6 address
+    string hostname = 4;         // Device-reported hostname
+    string device_type = 5;      // Laptop, Phone, IoT, Printer, Server, Unknown
+    string vendor = 6;           // MAC OUI vendor (Apple, Samsung, Dell)
+    string trust_status = 7;     // UNTRUSTED, TRUSTED, BLOCKED
+    string interface_name = 8;   // "Mobile Hotspot", "Ethernet", "vEthernet"
+    int32 interface_index = 9;   // Windows interface index
+    string status = 10;          // ACTIVE, OFFLINE, EXPIRED
+    string detection_method = 11;// IP_HELPER_API, DHCP_EVENT_LOG, ARP_TABLE
+    string first_seen = 12;      // ISO 8601 timestamp
+    string last_seen = 13;       // ISO 8601 timestamp
+    bool is_online = 14;         // Current online status
+}
+
+// IPRequest - Query device by IP address
+message IPRequest {
+    string ip_address = 1;       // IPv4 or IPv6 address to lookup
+}
+
+// MACRequest - Query device by MAC address
+message MACRequest {
+    string mac_address = 1;      // Hardware address (AA:BB:CC:DD:EE:FF)
+}
+
+// DeviceIDRequest - Query device by UUID
+message DeviceIDRequest {
+    string device_id = 1;        // UUID of device
+}
+
+// TrustUpdateRequest - Update device trust status
+message TrustUpdateRequest {
+    string device_id = 1;        // UUID of device to update
+    string trust_status = 2;     // TRUSTED, UNTRUSTED, or BLOCKED
+}
+
+// ListDevicesRequest - Paginated device list with filters
+message ListDevicesRequest {
+    string filter_by_trust = 1;  // Optional: TRUSTED, UNTRUSTED, BLOCKED, or empty for all
+    string filter_by_type = 2;   // Optional: Laptop, Phone, IoT, etc., or empty for all
+    string filter_by_status = 3; // Optional: ACTIVE, OFFLINE, EXPIRED, or empty for all
+    string interface_name = 4;   // Optional: Filter by interface name
+    int32 limit = 5;             // Max devices to return (0 = no limit)
+    int32 offset = 6;            // Number of devices to skip (pagination)
+    bool online_only = 7;        // If true, only return online devices
+}
+
+// DeviceList - Response containing array of devices
+message DeviceList {
+    repeated Device devices = 1; // Array of device records
+    int32 total_count = 2;       // Total matching devices (for pagination)
+}
+
+// DeviceStats - Aggregate statistics
+message DeviceStats {
+    int32 total_devices = 1;     // Total devices ever seen
+    int32 active_devices = 2;    // Devices with ACTIVE status
+    int32 trusted_devices = 3;   // Devices with TRUSTED status
+    int32 untrusted_devices = 4; // Devices with UNTRUSTED status
+    int32 blocked_devices = 5;   // Devices with BLOCKED status
+    int32 offline_devices = 6;   // Devices with OFFLINE status
+    int32 online_devices = 7;    // Devices currently online
+}
+
+// Empty - For RPCs that don't need parameters
+message Empty {}
+
+// HealthStatus - Service health check response
+message HealthStatus {
+    bool healthy = 1;            // Overall health status
+    string database_status = 2;  // "connected" or error message
+    string uptime = 3;           // Service uptime duration
+    int64 total_queries = 4;     // Total queries processed
+}
+
+// =============================================================================
+// SERVICE DEFINITION
+// =============================================================================
+
+// DHCPMonitor - gRPC service for device tracking and trust management
+service DHCPMonitor {
+    // GetDeviceByIP - Query device by IP address (PRIMARY lookup for TLS Proxy)
+    // Returns NOT_FOUND if IP not in database
+    rpc GetDeviceByIP(IPRequest) returns (Device);
+    
+    // GetDeviceByMAC - Query device by MAC address
+    // Used by Captive Portal for device identification
+    rpc GetDeviceByMAC(MACRequest) returns (Device);
+    
+    // GetDeviceByID - Query device by UUID
+    // Direct lookup by primary key
+    rpc GetDeviceByID(DeviceIDRequest) returns (Device);
+    
+    // UpdateTrustStatus - Change device trust status
+    // Called by Captive Portal after CA certificate installation
+    // Returns updated device record
+    rpc UpdateTrustStatus(TrustUpdateRequest) returns (Device);
+    
+    // ListDevices - Get paginated, filtered device list
+    // Used by admin dashboard and diagnostic tools
+    rpc ListDevices(ListDevicesRequest) returns (DeviceList);
+    
+    // GetDeviceStats - Get aggregate device statistics
+    // Used by monitoring dashboards and Prometheus exporter
+    rpc GetDeviceStats(Empty) returns (DeviceStats);
+    
+    // HealthCheck - Service health status
+    // Used by orchestrator and load balancers
+    rpc HealthCheck(Empty) returns (HealthStatus);
+}
