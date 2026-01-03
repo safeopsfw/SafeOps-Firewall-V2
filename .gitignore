@@ -218,3 +218,14 @@ certs/step-ca/ca/secrets/
 # Database files
 *.db
 certs/step-ca/ca/db_backup*
+
+# =====================================
+# SafeOps Phase 3A - Captive Portal
+# =====================================
+src/captive_portal/internal/certs/
+*.crt
+*.p12
+*.der
+src/captive_portal/logs/
+
+src/step-ca/db/

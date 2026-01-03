@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!--
+    ========================================================================
+    SafeOps Captive Portal - Welcome Page
+    ========================================================================
+    File: D:\SafeOpsFV2\src\captive_portal\internal\templates\welcome.html
+    Purpose: Main landing page for devices needing CA certificate installation
+    
+    Template Variables:
+      .DeviceInfo      - Device information (IP, MAC, etc.)
+      .PortalConfig    - Portal configuration (title, message)
+      .DetectedOS      - Server-detected OS
+      .PortalConfig.AutoVerifyEnabled   - Auto-verification enabled
+      .CAInfo          - Certificate information
+    
+    Author: SafeOps Phase 3A
+    ========================================================================
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="SafeOps Security Portal - Install certificate to access the network">
+
+    <title>{{.PortalConfig.Title}} - Welcome</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body data-auto-verify="{{if .PortalConfig.AutoVerifyEnabled}}true{{else}}false{{end}}">
+    <div class="container">
+        <div class="card">
+            <!-- Logo & Branding -->
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h1>{{.PortalConfig.Title}}</h1>
+                <p>{{.PortalConfig.WelcomeMessage}}</p>
+            </div>
+
+            <!-- Device Information Panel -->
+            {{if .DeviceInfo}}
+            <div class="device-info">
+                <div class="device-info-header">Your Device</div>
+                <div class="device-info-item">
+                    <span class="device-info-label">IP Address</span>
+                    <span class="device-info-value">{{.DeviceInfo.CurrentIP}}</span>
+                </div>
+                {{if .DeviceInfo.MACAddress}}
+                <div class="device-info-item">
+                    <span class="device-info-label">MAC Address</span>
+                    <span class="device-info-value">{{.DeviceInfo.MACAddress}}</span>
+                </div>
+                {{end}}
+                {{if .DeviceInfo.Vendor}}
+                <div class="device-info-item">
+                    <span class="device-info-label">Device</span>
+                    <span class="device-info-value">{{.DeviceInfo.Vendor}}</span>
+                </div>
+                {{end}}
+                <div class="device-info-item">
+                    <span class="device-info-label">Status</span>
+                    <span class="trust-badge trust-badge--untrusted">
+                        {{.DeviceInfo.TrustStatus}}
+                    </span>
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Instructions Message -->
+            <div class="message">
+                <h2>Install Security Certificate</h2>
+                <p>
+                    To access the internet through this network, you need to install our
+                    security certificate. This allows us to protect you from malicious websites.
+                </p>
+            </div>
+
+            <!-- Warning Alert -->
+            <div class="alert alert-warning">
+                <div class="alert-icon">
+                    <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-title">Browser Warning Expected</div>
+                    <div class="alert-message">
+                        You'll see a security warning. Click "Advanced" → "Proceed anyway" to continue.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Platform Selection Tabs -->
+            <div class="os-tabs">
+                <button class="os-tab" data-os="ios">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                    </svg>
+                    iOS
+                </button>
+                <button class="os-tab" data-os="android">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-1.47-.59-3.09-.94-4.83-.94s-3.36.35-4.83.94L5.69 5.67c-.19-.29-.55-.38-.84-.22-.3.16-.42.54-.26.85L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z" />
+                    </svg>
+                    Android
+                </button>
+                <button class="os-tab" data-os="windows">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M3 12V6.75l6-1.32v6.48L3 12zm17-9v8.75l-10 .15V5.21L20 3zM3 13l6 .09v6.81l-6-1.15V13zm17 .25V22l-10-1.91V13.1l10 .15z" />
+                    </svg>
+                    Windows
+                </button>
+                <button class="os-tab" data-os="macos">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                    </svg>
+                    macOS
+                </button>
+                <button class="os-tab" data-os="linux">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.132 1.897 1.132.218 0 .439-.027.654-.08.864-.203 1.645-.667 2.001-1.467.174-.39.268-.831.268-1.268v-.114c-.025-.676-.119-1.222-.278-1.678-.14-.39-.298-.736-.422-1.101-.124-.363-.21-.738-.174-1.065.046-.465.182-.877.37-1.263.085-.175.178-.344.267-.529.028-.063.06-.078.089-.156.32-.7.414-1.263.365-1.891-.042-.596-.238-1.252-.671-2.03-.095-.166-.209-.316-.312-.477.15-1.136.377-2.383.466-3.538.093-1.198.06-2.389-.284-3.374-.172-.487-.416-.926-.705-1.334-.29-.408-.616-.795-1.025-1.084C14.664.15 13.608 0 12.504 0z" />
+                    </svg>
+                    Linux
+                </button>
+            </div>
+
+            <!-- Platform-Specific Content -->
+
+            <!-- iOS Instructions -->
+            <div class="os-content" data-os="ios">
+                <a href="/api/download-ca/p12" class="btn btn-primary" data-download-format="p12">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Download Certificate for iOS
+                </a>
+
+                <div class="instructions">
+                    <h3>Installation Steps</h3>
+                    <ol>
+                        <li>Tap <strong>Download Certificate</strong> above</li>
+                        <li>Go to <strong>Settings</strong> → <strong>General</strong> → <strong>VPN & Device
+                                Management</strong></li>
+                        <li>Tap on <strong>SafeOps Root CA</strong> under "Downloaded Profile"</li>
+                        <li>Tap <strong>Install</strong> and enter your passcode</li>
+                        <li>Go to <strong>Settings</strong> → <strong>General</strong> → <strong>About</strong> →
+                            <strong>Certificate Trust Settings</strong>
+                        </li>
+                        <li>Enable full trust for <strong>SafeOps Root CA</strong></li>
+                        <li>Return here - we'll automatically detect when you're done!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Android Instructions -->
+            <div class="os-content" data-os="android">
+                <a href="/api/download-ca/pem" class="btn btn-primary" data-download-format="pem">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Download Certificate for Android
+                </a>
+
+                <div class="instructions">
+                    <h3>Installation Steps</h3>
+                    <ol>
+                        <li>Tap <strong>Download Certificate</strong> above</li>
+                        <li>Open the downloaded file (or go to notification)</li>
+                        <li>When prompted, enter a name like "SafeOps"</li>
+                        <li>Select <strong>VPN and apps</strong> for certificate use</li>
+                        <li>Tap <strong>OK</strong> to install</li>
+                        <li>You may need to set a screen lock if not already set</li>
+                        <li>Return here - we'll automatically detect when you're done!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Windows Instructions -->
+            <div class="os-content" data-os="windows">
+                <a href="/api/download-ca/der" class="btn btn-primary" data-download-format="der">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Download Certificate for Windows
+                </a>
+
+                <div class="instructions">
+                    <h3>Installation Steps</h3>
+                    <ol>
+                        <li>Click <strong>Download Certificate</strong> above</li>
+                        <li>Double-click the downloaded file</li>
+                        <li>Click <strong>Install Certificate</strong></li>
+                        <li>Select <strong>Local Machine</strong> and click Next</li>
+                        <li>Select <strong>Place all certificates in the following store</strong></li>
+                        <li>Click Browse and choose <strong>Trusted Root Certification Authorities</strong></li>
+                        <li>Click Next, then Finish</li>
+                        <li>Click Yes when prompted about trusting the certificate</li>
+                        <li>Return here - we'll automatically detect when you're done!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- macOS Instructions -->
+            <div class="os-content" data-os="macos">
+                <a href="/api/download-ca/pem" class="btn btn-primary" data-download-format="pem">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Download Certificate for macOS
+                </a>
+
+                <div class="instructions">
+                    <h3>Installation Steps</h3>
+                    <ol>
+                        <li>Click <strong>Download Certificate</strong> above</li>
+                        <li>Double-click the downloaded file to open Keychain Access</li>
+                        <li>Enter your password when prompted</li>
+                        <li>Find <strong>SafeOps Root CA</strong> in the login keychain</li>
+                        <li>Double-click the certificate</li>
+                        <li>Expand <strong>Trust</strong> section</li>
+                        <li>Set "When using this certificate" to <strong>Always Trust</strong></li>
+                        <li>Close and enter password to confirm</li>
+                        <li>Return here - we'll automatically detect when you're done!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Linux Instructions -->
+            <div class="os-content" data-os="linux">
+                <a href="/api/download-ca/pem" class="btn btn-primary" data-download-format="pem">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Download Certificate for Linux
+                </a>
+
+                <div class="instructions">
+                    <h3>Installation Steps (Ubuntu/Debian)</h3>
+                    <ol>
+                        <li>Click <strong>Download Certificate</strong> above</li>
+                        <li>Open Terminal and run:</li>
+                        <li><code>sudo cp ~/Downloads/SafeOps_Root_CA.crt /usr/local/share/ca-certificates/</code></li>
+                        <li><code>sudo update-ca-certificates</code></li>
+                        <li>For Firefox, import separately via Preferences → Privacy & Security → Certificates</li>
+                        <li>Return here - we'll automatically detect when you're done!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Verification Status -->
+            <div id="verify-status">
+                <!-- JavaScript will populate this -->
+            </div>
+
+            <!-- Manual Verify Button (fallback) -->
+            <button id="manual-verify-btn" class="btn btn-success" style="display: none;">
+                I've Installed the Certificate
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                Secured by <a href="#">SafeOps</a> ·
+                <a href="/privacy">Privacy Policy</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/verify.js"></script>
+</body>
+
+</html>
