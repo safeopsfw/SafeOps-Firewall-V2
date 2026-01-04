@@ -46,16 +46,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ==========================================================================
-    // TLS Proxy Proto Compilation (Client-Only)
+    // TLS Proxy Packet Processing Proto (for HTTP redirect with INJECT action)
     // ==========================================================================
-    // NIC Management acts as a gRPC CLIENT to TLS Proxy.
-    // Generate client code only - no server implementation needed.
+    // This proto defines PacketProcessingService with INJECT action for HTTP redirects
+    // File: src/tls_proxy/proto/packet_processing.proto
     //
-    // Generated code:
-    // - TlsProxyServiceClient: gRPC client for calling InterceptPacket RPC
-    // - InterceptPacketRequest/Response: Message types for packet inspection
-    // - PacketAction enum: FORWARD_UNCHANGED, BLOCK, etc.
-    //
+    let packet_processing_proto = PathBuf::from("../tls_proxy/proto/packet_processing.proto");
+    
+    if packet_processing_proto.exists() {
+        tonic_build::configure()
+            .build_server(false) // Client only
+            .build_client(true)
+            .compile(
+                &[packet_processing_proto.to_str().unwrap()],
+                &["../tls_proxy/proto"],
+            )?;
+        eprintln!("Compiled packet_processing.proto for INJECT action support");
+    } else {
+        eprintln!("Warning: packet_processing.proto not found at {:?}", packet_processing_proto);
+    }
+    
+    // ==========================================================================
+    // TLS Proxy Proto Compilation (Legacy - for SNI extraction)
+    // ==========================================================================
     tonic_build::configure()
         .build_server(false) // Client only - we call TLS Proxy, not serve it
         .build_client(true)

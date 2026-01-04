@@ -67,6 +67,12 @@ type Device struct {
 	FirstSeen       time.Time `json:"first_seen"`
 	LastSeen        time.Time `json:"last_seen"`
 	IsOnline        bool      `json:"is_online"`
+	// Phase 3A: Portal tracking for ALLOW_ONCE policy
+	PortalShown   bool      `json:"portal_shown"`
+	PortalShownAt time.Time `json:"portal_shown_at"`
+	// Phase 3B: CA certificate tracking
+	CACertInstalled   bool      `json:"ca_cert_installed"`
+	CACertInstalledAt time.Time `json:"ca_cert_installed_at"`
 }
 
 // DeviceStats contains aggregate statistics from DHCP Monitor
@@ -302,6 +308,46 @@ func (c *DHCPClient) MarkDeviceUntrusted(ctx context.Context, deviceID string) (
 // Used by administrators to deny network access
 func (c *DHCPClient) MarkDeviceBlocked(ctx context.Context, deviceID string) (*Device, error) {
 	return c.UpdateTrustStatus(ctx, deviceID, TrustStatusBlocked)
+}
+
+// MarkPortalShown marks that a device has seen the captive portal
+// Phase 3A: Called when welcome page loads - enables ALLOW_ONCE policy
+// This allows the device to access internet even if they reject the CA cert
+func (c *DHCPClient) MarkPortalShown(ctx context.Context, deviceID string) (*Device, error) {
+	if err := c.ensureConnected(); err != nil {
+		return nil, err
+	}
+
+	c.mu.Lock()
+	c.queryCount++
+	c.mu.Unlock()
+
+	log.Printf("[DHCPClient] MarkPortalShown called for device: %s", deviceID)
+
+	// TODO: Replace with actual gRPC call when proto is integrated
+	// request := &pb.MarkPortalShownRequest{DeviceId: deviceID}
+	// response, err := c.client.MarkPortalShown(ctx, request)
+
+	return nil, fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
+}
+
+// MarkCACertInstalled marks that device has installed CA certificate (Phase 3B)
+func (c *DHCPClient) MarkCACertInstalled(ctx context.Context, ipAddress string) error {
+	if err := c.ensureConnected(); err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	c.queryCount++
+	c.mu.Unlock()
+
+	log.Printf("[DHCPClient] MarkCACertInstalled called for IP: %s", ipAddress)
+
+	// TODO: Replace with actual gRPC call when proto is integrated
+	// request := &pb.MarkCACertInstalledRequest{IpAddress: ipAddress}
+	// _, err := c.client.MarkCACertInstalled(ctx, request)
+
+	return fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
 }
 
 // ============================================================================

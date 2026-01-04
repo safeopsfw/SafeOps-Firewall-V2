@@ -35,8 +35,8 @@ pnet = "0.34"
 pcap = "1.1"
 
 # WinDivert for kernel-level packet interception (Windows firewall mode)
-windivert = "0.6"
-windivert-sys = "0.10"
+windivert = { version = "0.6", features = ["vendored"] }
+windivert-sys = { version = "0.10", features = ["vendored"] }
 
 # C standard library bindings for FFI
 libc = "0.2"

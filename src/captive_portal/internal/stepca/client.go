@@ -34,10 +34,14 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
 )
+
+// LocalCertPath is the fallback path for the root CA certificate when Step-CA is unavailable
+const LocalCertPath = "D:\\SafeOpsFV2\\src\\step-ca\\certs\\root_ca.crt"
 
 // ============================================================================
 // Certificate Format Constants
@@ -315,8 +319,30 @@ func (c *StepCAClient) fetchRootCA(ctx context.Context) (*CachedCertificate, err
 	}
 
 	c.recordError(lastErr)
-	return nil, fmt.Errorf("failed to fetch root CA after %d attempts: %w",
-		c.config.RetryAttempts, lastErr)
+
+	// Fallback: Try to read from local file if Step-CA is unavailable
+	log.Printf("[StepCAClient] Step-CA unavailable, trying local file fallback: %s", LocalCertPath)
+	pemData, err := os.ReadFile(LocalCertPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch root CA from Step-CA and local file: %w (local: %v)", lastErr, err)
+	}
+
+	// Parse and cache the certificate from local file
+	cached, err := c.parseCertificate(pemData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse local certificate: %w", err)
+	}
+
+	// Update cache with local cert
+	c.mu.Lock()
+	c.rootCA = cached
+	c.rootCACached = time.Now()
+	c.lastError = nil
+	c.mu.Unlock()
+
+	log.Printf("[StepCAClient] ✅ Loaded root CA from local file: subject=%s, expires=%s",
+		cached.Subject, cached.ExpiresAt.Format("2006-01-02"))
+	return cached, nil
 }
 
 // parseCertificate parses PEM data and creates a CachedCertificate

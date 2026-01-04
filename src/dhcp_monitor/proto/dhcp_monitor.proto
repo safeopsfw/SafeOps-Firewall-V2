@@ -27,6 +27,12 @@ message Device {
     string first_seen = 12;      // ISO 8601 timestamp
     string last_seen = 13;       // ISO 8601 timestamp
     bool is_online = 14;         // Current online status
+    // Phase 3A: Portal tracking for ALLOW_ONCE policy
+    bool portal_shown = 15;      // Has device seen captive portal?
+    string portal_shown_at = 16; // ISO 8601 timestamp when portal was shown
+    // Phase 3B: CA certificate tracking
+    bool ca_cert_installed = 17; // Has device installed SafeOps CA certificate?
+    string ca_cert_installed_at = 18; // ISO 8601 timestamp when CA cert was installed
 }
 
 // IPRequest - Query device by IP address
@@ -48,6 +54,21 @@ message DeviceIDRequest {
 message TrustUpdateRequest {
     string device_id = 1;        // UUID of device to update
     string trust_status = 2;     // TRUSTED, UNTRUSTED, or BLOCKED
+}
+
+// MarkPortalShownRequest - Mark that device has seen captive portal
+// Phase 3A: For ALLOW_ONCE policy tracking
+message MarkPortalShownRequest {
+    string device_id = 1;        // UUID of device (or IP address)
+    string ip_address = 2;       // Alternative: device IP (for convenience)
+}
+
+// MarkCACertInstalledRequest - Mark that device has installed CA certificate
+// Phase 3B: For CA cert distribution tracking
+message MarkCACertInstalledRequest {
+    string device_id = 1;        // UUID of device
+    string ip_address = 2;       // Alternative: device IP (for convenience)
+    string mac_address = 3;      // Alternative: device MAC (for convenience)
 }
 
 // ListDevicesRequest - Paginated device list with filters
@@ -112,6 +133,16 @@ service DHCPMonitor {
     // Returns updated device record
     rpc UpdateTrustStatus(TrustUpdateRequest) returns (Device);
     
+    // MarkPortalShown - Mark that device has seen the captive portal
+    // Phase 3A: Called by Captive Portal when welcome page is loaded
+    // Used by TLS Proxy to skip redirect for ALLOW_ONCE policy
+    rpc MarkPortalShown(MarkPortalShownRequest) returns (Device);
+
+    // MarkCACertInstalled - Mark that device has installed CA certificate
+    // Phase 3B: Called by Captive Portal when CA cert is downloaded
+    // Enables MITM inspection for this device
+    rpc MarkCACertInstalled(MarkCACertInstalledRequest) returns (Device);
+
     // ListDevices - Get paginated, filtered device list
     // Used by admin dashboard and diagnostic tools
     rpc ListDevices(ListDevicesRequest) returns (DeviceList);

@@ -59,7 +59,7 @@ enabled = true
 
 # TLS Proxy gRPC endpoint address
 # Format: "hostname:port" (no https:// prefix)
-address = "localhost:50054"
+address = "localhost:50051"
 
 # gRPC request timeout in seconds
 # Recommended: 3-5 for production, 10-30 for debugging

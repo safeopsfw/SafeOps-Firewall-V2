@@ -180,6 +180,181 @@ func (c *DatabaseClient) UpdateTrustStatus(ctx context.Context, deviceID uuid.UU
 	return nil
 }
 
+// MarkPortalShown marks that device has seen the captive portal (Phase 3A ALLOW_ONCE)
+func (c *DatabaseClient) MarkPortalShown(ctx context.Context, deviceID uuid.UUID) (*Device, error) {
+	query := `UPDATE devices 
+              SET portal_shown = true, portal_shown_at = NOW(), last_seen = NOW()
+              WHERE device_id = $1
+              RETURNING *`
+
+	device := &Device{}
+	var currentIP, previousIP sql.NullString
+
+	err := c.DB.QueryRowContext(ctx, query, deviceID).Scan(
+		&device.DeviceID, &device.MACAddress, &currentIP, &previousIP,
+		&device.Hostname, &device.DeviceType, &device.Vendor, &device.TrustStatus,
+		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
+		&device.Status, &device.IsOnline, &device.DetectionMethod,
+		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
+		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("device not found: %s", deviceID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update error: %w", err)
+	}
+
+	if currentIP.Valid {
+		device.CurrentIP = net.ParseIP(currentIP.String)
+	}
+	device.PreviousIP = previousIP
+
+	return device, nil
+}
+
+// MarkPortalShownByIP marks portal shown using IP address (convenience method)
+func (c *DatabaseClient) MarkPortalShownByIP(ctx context.Context, ipAddress string) (*Device, error) {
+	query := `UPDATE devices 
+              SET portal_shown = true, portal_shown_at = NOW(), last_seen = NOW()
+              WHERE current_ip = $1
+              RETURNING *`
+
+	device := &Device{}
+	var currentIP, previousIP sql.NullString
+
+	err := c.DB.QueryRowContext(ctx, query, ipAddress).Scan(
+		&device.DeviceID, &device.MACAddress, &currentIP, &previousIP,
+		&device.Hostname, &device.DeviceType, &device.Vendor, &device.TrustStatus,
+		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
+		&device.Status, &device.IsOnline, &device.DetectionMethod,
+		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
+		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("device not found for IP: %s", ipAddress)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update error: %w", err)
+	}
+
+	if currentIP.Valid {
+		device.CurrentIP = net.ParseIP(currentIP.String)
+	}
+	device.PreviousIP = previousIP
+
+	return device, nil
+}
+
+// MarkCACertInstalled marks that device has installed CA certificate (Phase 3B)
+func (c *DatabaseClient) MarkCACertInstalled(ctx context.Context, deviceID uuid.UUID) (*Device, error) {
+	query := `UPDATE devices
+              SET ca_cert_installed = true, ca_cert_installed_at = NOW(), last_seen = NOW()
+              WHERE device_id = $1
+              RETURNING *`
+
+	device := &Device{}
+	var currentIP, previousIP sql.NullString
+
+	err := c.DB.QueryRowContext(ctx, query, deviceID).Scan(
+		&device.DeviceID, &device.MACAddress, &currentIP, &previousIP,
+		&device.Hostname, &device.DeviceType, &device.Vendor, &device.TrustStatus,
+		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
+		&device.Status, &device.IsOnline, &device.DetectionMethod,
+		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
+		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("device not found: %s", deviceID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update error: %w", err)
+	}
+
+	if currentIP.Valid {
+		device.CurrentIP = net.ParseIP(currentIP.String)
+	}
+	device.PreviousIP = previousIP
+
+	return device, nil
+}
+
+// MarkCACertInstalledByIP marks CA cert installed using IP address
+func (c *DatabaseClient) MarkCACertInstalledByIP(ctx context.Context, ipAddress string) (*Device, error) {
+	query := `UPDATE devices
+              SET ca_cert_installed = true, ca_cert_installed_at = NOW(), last_seen = NOW()
+              WHERE current_ip = $1
+              RETURNING *`
+
+	device := &Device{}
+	var currentIP, previousIP sql.NullString
+
+	err := c.DB.QueryRowContext(ctx, query, ipAddress).Scan(
+		&device.DeviceID, &device.MACAddress, &currentIP, &previousIP,
+		&device.Hostname, &device.DeviceType, &device.Vendor, &device.TrustStatus,
+		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
+		&device.Status, &device.IsOnline, &device.DetectionMethod,
+		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
+		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("device not found for IP: %s", ipAddress)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update error: %w", err)
+	}
+
+	if currentIP.Valid {
+		device.CurrentIP = net.ParseIP(currentIP.String)
+	}
+	device.PreviousIP = previousIP
+
+	return device, nil
+}
+
+// MarkCACertInstalledByMAC marks CA cert installed using MAC address
+func (c *DatabaseClient) MarkCACertInstalledByMAC(ctx context.Context, macAddress string) (*Device, error) {
+	query := `UPDATE devices
+              SET ca_cert_installed = true, ca_cert_installed_at = NOW(), last_seen = NOW()
+              WHERE mac_address = $1
+              RETURNING *`
+
+	device := &Device{}
+	var currentIP, previousIP sql.NullString
+
+	err := c.DB.QueryRowContext(ctx, query, macAddress).Scan(
+		&device.DeviceID, &device.MACAddress, &currentIP, &previousIP,
+		&device.Hostname, &device.DeviceType, &device.Vendor, &device.TrustStatus,
+		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
+		&device.Status, &device.IsOnline, &device.DetectionMethod,
+		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
+		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("device not found for MAC: %s", macAddress)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update error: %w", err)
+	}
+
+	if currentIP.Valid {
+		device.CurrentIP = net.ParseIP(currentIP.String)
+	}
+	device.PreviousIP = previousIP
+
+	return device, nil
+}
+
 // UpdateDeviceOnlineStatus marks device online/offline
 func (c *DatabaseClient) UpdateDeviceOnlineStatus(ctx context.Context, deviceID uuid.UUID, isOnline bool) error {
 	status := DeviceStatusActive

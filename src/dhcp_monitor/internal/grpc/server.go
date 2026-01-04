@@ -396,6 +396,79 @@ func (s *Server) UpdateTrustStatus(ctx context.Context, req *gen.TrustUpdateRequ
 	return device.ToProto(), nil
 }
 
+// MarkPortalShown implements DHCPMonitorServer
+// Phase 3A: Called by Captive Portal when welcome page is loaded
+// Used by TLS Proxy to skip redirect for ALLOW_ONCE policy
+func (s *Server) MarkPortalShown(ctx context.Context, req *gen.MarkPortalShownRequest) (*gen.Device, error) {
+	// Allow lookup by device_id or ip_address
+	deviceID := req.GetDeviceId()
+	ipAddress := req.GetIpAddress()
+
+	if deviceID == "" && ipAddress == "" {
+		return nil, status.Error(codes.InvalidArgument, "device_id or ip_address is required")
+	}
+
+	var device *database.Device
+	var err error
+
+	if deviceID != "" {
+		uid, parseErr := parseUUID(deviceID)
+		if parseErr != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid device ID format")
+		}
+		device, err = s.db.MarkPortalShown(ctx, uid)
+	} else {
+		device, err = s.db.MarkPortalShownByIP(ctx, ipAddress)
+	}
+
+	if err != nil {
+		log.Printf("[GRPC_SERVER] MarkPortalShown error: %v", err)
+		return nil, status.Error(codes.NotFound, "device not found")
+	}
+
+	log.Printf("[GRPC_SERVER] MarkPortalShown: device=%s IP=%s portal_shown=true",
+		device.DeviceID, device.CurrentIP)
+
+	return device.ToProto(), nil
+}
+
+// MarkCACertInstalled implements DHCPMonitorServer - Phase 3B CA cert tracking
+func (s *Server) MarkCACertInstalled(ctx context.Context, req *gen.MarkCACertInstalledRequest) (*gen.Device, error) {
+	// Allow lookup by device_id, ip_address, or mac_address
+	deviceID := req.GetDeviceId()
+	ipAddress := req.GetIpAddress()
+	macAddress := req.GetMacAddress()
+
+	if deviceID == "" && ipAddress == "" && macAddress == "" {
+		return nil, status.Error(codes.InvalidArgument, "device_id, ip_address, or mac_address is required")
+	}
+
+	var device *database.Device
+	var err error
+
+	if deviceID != "" {
+		uid, parseErr := parseUUID(deviceID)
+		if parseErr != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid device ID format")
+		}
+		device, err = s.db.MarkCACertInstalled(ctx, uid)
+	} else if ipAddress != "" {
+		device, err = s.db.MarkCACertInstalledByIP(ctx, ipAddress)
+	} else {
+		device, err = s.db.MarkCACertInstalledByMAC(ctx, macAddress)
+	}
+
+	if err != nil {
+		log.Printf("[GRPC_SERVER] MarkCACertInstalled error: %v", err)
+		return nil, status.Error(codes.NotFound, "device not found")
+	}
+
+	log.Printf("[GRPC_SERVER] ✅ MarkCACertInstalled: device=%s IP=%s MAC=%s ca_cert=true",
+		device.DeviceID, device.CurrentIP, device.MACAddress)
+
+	return device.ToProto(), nil
+}
+
 // ListDevices implements DHCPMonitorServer
 func (s *Server) ListDevices(ctx context.Context, req *gen.ListDevicesRequest) (*gen.DeviceList, error) {
 	filter := &database.DeviceFilter{

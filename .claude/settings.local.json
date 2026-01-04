@@ -69,7 +69,11 @@
       "Bash(Get-Content \"D:\\SafeOpsFV2\\logs\\step-ca.log\" -Tail 30 -ErrorAction SilentlyContinue)",
       "Bash(powershell -Command \"Get-Process | Where-Object { $_ProcessName -match ''step-ca|certificate|dhcp|dns|nic'' } | Select-Object Id, ProcessName, Path | Format-Table -AutoSize\")",
       "Bash(tree:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(cargo build:*)",
+      "Bash(protoc:*)",
+      "Bash(Select-String -Pattern \"Finished|error\")",
+      "Bash(Select-Object -First 5)"
     ]
   }
 }

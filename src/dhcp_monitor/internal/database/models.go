@@ -87,25 +87,43 @@ type Device struct {
 	CreatedAt       time.Time       `db:"created_at" json:"created_at"`
 	UpdatedAt       time.Time       `db:"updated_at" json:"updated_at"`
 	Notes           sql.NullString  `db:"notes" json:"notes,omitempty"`
+	// Phase 3A: Portal tracking for ALLOW_ONCE policy
+	PortalShown   bool         `db:"portal_shown" json:"portal_shown"`
+	PortalShownAt sql.NullTime `db:"portal_shown_at" json:"portal_shown_at,omitempty"`
+	// Phase 3B: CA certificate tracking
+	CACertInstalled   bool         `db:"ca_cert_installed" json:"ca_cert_installed"`
+	CACertInstalledAt sql.NullTime `db:"ca_cert_installed_at" json:"ca_cert_installed_at,omitempty"`
 }
 
 // ToProto converts Device to protobuf message
 func (d *Device) ToProto() *pb.Device {
+	portalShownAt := ""
+	if d.PortalShownAt.Valid {
+		portalShownAt = d.PortalShownAt.Time.Format(time.RFC3339)
+	}
+	caCertInstalledAt := ""
+	if d.CACertInstalledAt.Valid {
+		caCertInstalledAt = d.CACertInstalledAt.Time.Format(time.RFC3339)
+	}
 	return &pb.Device{
-		DeviceId:        d.DeviceID.String(),
-		MacAddress:      d.MACAddress,
-		CurrentIp:       d.CurrentIP.String(),
-		Hostname:        d.Hostname.String,
-		DeviceType:      d.DeviceType,
-		Vendor:          d.Vendor.String,
-		TrustStatus:     string(d.TrustStatus),
-		InterfaceName:   d.InterfaceName,
-		InterfaceIndex:  d.InterfaceIndex,
-		Status:          string(d.Status),
-		DetectionMethod: string(d.DetectionMethod),
-		FirstSeen:       d.FirstSeen.Format(time.RFC3339),
-		LastSeen:        d.LastSeen.Format(time.RFC3339),
-		IsOnline:        d.IsOnline,
+		DeviceId:           d.DeviceID.String(),
+		MacAddress:         d.MACAddress,
+		CurrentIp:          d.CurrentIP.String(),
+		Hostname:           d.Hostname.String,
+		DeviceType:         d.DeviceType,
+		Vendor:             d.Vendor.String,
+		TrustStatus:        string(d.TrustStatus),
+		InterfaceName:      d.InterfaceName,
+		InterfaceIndex:     d.InterfaceIndex,
+		Status:             string(d.Status),
+		DetectionMethod:    string(d.DetectionMethod),
+		FirstSeen:          d.FirstSeen.Format(time.RFC3339),
+		LastSeen:           d.LastSeen.Format(time.RFC3339),
+		IsOnline:           d.IsOnline,
+		PortalShown:        d.PortalShown,
+		PortalShownAt:      portalShownAt,
+		CaCertInstalled:    d.CACertInstalled,
+		CaCertInstalledAt:  caCertInstalledAt,
 	}
 }
 

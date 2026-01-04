@@ -28,6 +28,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -275,17 +276,40 @@ func (h *Handlers) HandleDownloadCA(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Handlers] Certificate download request: format=%s, client=%s", format, getClientIP(r))
 
-	// Get certificate from Step-CA
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
+	// Try to read Root CA from TLS Proxy's generated file first
+	rootCAPath := "D:/SafeOpsFV2/src/tls_proxy/certs/safeops-root-ca.crt"
+	certData, err := os.ReadFile(rootCAPath)
 
-	certData, mimeType, err := h.stepcaClient.GetCertificateInFormat(ctx, format)
 	if err != nil {
-		log.Printf("[Handlers] Certificate fetch error: %v", err)
-		sendJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": "Failed to fetch certificate",
-		})
-		return
+		log.Printf("[Handlers] Failed to read root CA from %s: %v", rootCAPath, err)
+
+		// Fallback to Step-CA client if available
+		if h.stepcaClient != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+
+			certData, _, err = h.stepcaClient.GetCertificateInFormat(ctx, format)
+			if err != nil {
+				log.Printf("[Handlers] Certificate fetch error: %v", err)
+			}
+		}
+
+		// If still no cert data, return error
+		if certData == nil || len(certData) == 0 {
+			log.Printf("[Handlers] No certificate available - TLS Proxy not running and Step-CA unavailable")
+			sendJSON(w, http.StatusInternalServerError, map[string]string{
+				"error": "Failed to fetch certificate - ensure TLS Proxy is running first",
+			})
+			return
+		}
+	}
+
+	// Determine MIME type based on format
+	mimeType := "application/x-pem-file"
+	if format == "der" {
+		mimeType = "application/x-x509-ca-cert"
+	} else if format == "p12" || format == "pkcs12" {
+		mimeType = "application/x-pkcs12"
 	}
 
 	// Set headers for download
@@ -294,6 +318,21 @@ func (h *Handlers) HandleDownloadCA(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(certData)))
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+
+	// Phase 3B: Mark that device has downloaded CA cert (only if dhcpClient available)
+	if h.dhcpClient != nil {
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			clientIP := getClientIP(r)
+			if err := h.dhcpClient.MarkCACertInstalled(bgCtx, clientIP); err != nil {
+				log.Printf("[Handlers] Failed to mark CA cert installed for %s: %v", clientIP, err)
+			} else {
+				log.Printf("[Handlers] ✅ Marked CA cert installed for %s", clientIP)
+			}
+		}()
+	}
 
 	w.Write(certData)
 }
