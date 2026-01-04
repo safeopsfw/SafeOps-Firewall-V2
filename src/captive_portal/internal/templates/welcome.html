@@ -286,6 +286,20 @@
             <button id="manual-verify-btn" class="btn btn-success" style="display: none;">
                 I've Installed the Certificate
             </button>
+
+            <!-- Skip Button (ALLOW_ONCE Policy - Internet without CA cert) -->
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center;">
+                <p style="color: #6c757d; margin-bottom: 15px;">
+                    <strong>Don't want to install the certificate?</strong><br>
+                    You can skip this step and browse the internet without enhanced security.
+                </p>
+                <button id="skip-btn" class="btn" style="background: #6c757d; color: white;">
+                    Skip - Give Me Internet Access
+                </button>
+                <p style="color: #6c757d; font-size: 12px; margin-top: 10px;">
+                    Note: Without the certificate, HTTPS traffic cannot be inspected for security threats.
+                </p>
+            </div>
         </div>
 
         <!-- Footer -->

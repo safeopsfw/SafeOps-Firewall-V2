@@ -12,8 +12,10 @@ import (
 	"syscall"
 
 	"tls_proxy/internal/brain"
+	"tls_proxy/internal/certcache"
 	"tls_proxy/internal/grpc"
 	"tls_proxy/internal/integration"
+	"tls_proxy/internal/transparent"
 )
 
 func main() {
@@ -73,8 +75,11 @@ func main() {
 	}
 	log.Printf("✓ Root CA ready at: %s", rootCAPath)
 
+	// Create certificate cache for MITM (if enabled)
+	var certCache *certcache.CertificateCache
 	if enableMITM {
 		log.Printf("✓ Step-CA client initialized for MITM: %s", stepCAAddr)
+		certCache = certcache.NewCertificateCache(stepCA, 24*3600000000000, 1000) // 24h TTL, 1000 certs max
 	}
 
 	// Create decision engine
@@ -114,6 +119,24 @@ func main() {
 	}
 	if err != nil {
 		log.Fatalf("Failed to create packet server: %v", err)
+	}
+
+	// Start transparent HTTPS proxy if MITM is enabled
+	if enableMITM && certCache != nil {
+		transparentProxyAddr := gatewayIP + ":443"
+		transparentProxy := transparent.NewTransparentProxy(
+			transparentProxyAddr,
+			certCache,
+			dhcpMonitor,
+			true, // Log HTTP traffic to console
+		)
+
+		go func() {
+			log.Printf("✓ Transparent HTTPS Proxy: %s (MITM Inspection)", transparentProxyAddr)
+			if err := transparentProxy.Start(); err != nil {
+				log.Fatalf("Transparent proxy error: %v", err)
+			}
+		}()
 	}
 
 	// Start servers

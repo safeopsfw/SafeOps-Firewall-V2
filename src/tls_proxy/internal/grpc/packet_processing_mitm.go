@@ -56,8 +56,7 @@ func NewMITMPacketProcessor(
 
 // ProcessPacket handles packet with MITM capabilities (HTTP + HTTPS inspection)
 func (p *MITMPacketProcessor) ProcessPacket(ctx context.Context, req *pb.PacketRequest) (*pb.PacketResponse, error) {
-	log.Printf("[MITM Processor] Packet: src=%s:%d dst=%s:%d proto=%s",
-		req.SourceIp, req.SourcePort, req.DestIp, req.DestPort, req.Protocol)
+	// Verbose packet logging removed to prevent terminal flooding
 
 	// Parse packet
 	info, err := packet.ParsePacket(
@@ -74,6 +73,45 @@ func (p *MITMPacketProcessor) ProcessPacket(ctx context.Context, req *pb.PacketR
 	}
 
 	packetType := packet.ClassifyPacket(info)
+
+	// ═══════════════════════════════════════════════════════════════════════
+	// CAPTIVE PORTAL AUTO-DETECTION (Same as regular processor)
+	// ═══════════════════════════════════════════════════════════════════════
+	if packet.IsCaptivePortalCheck(info.HTTPHost, info.HTTPPath) {
+		platform := packet.GetPlatformFromCaptiveURL(info.HTTPHost)
+		log.Printf("[MITM] Captive Portal detection from %s (%s)", req.SourceIp, platform)
+
+		// Check device trust status
+		if p.dhcpMonitor != nil {
+			deviceInfo, err := p.dhcpMonitor.GetDeviceByIP(ctx, req.SourceIp)
+			if err == nil {
+				if packet.ShouldInterceptCaptivePortalCheck(
+					info.HTTPHost,
+					info.HTTPPath,
+					deviceInfo.TrustStatus,
+					deviceInfo.PortalShown,
+					p.policyMode,
+				) {
+					log.Printf("[MITM] INTERCEPTING %s captive portal check → Redirect", platform)
+
+					redirectPacket, err := p.injector.BuildHTTP302Redirect(info)
+					if err == nil {
+						return &pb.PacketResponse{
+							Action:         pb.PacketAction_INJECT,
+							ModifiedPacket: redirectPacket,
+							Reason:         "Captive portal auto-open",
+						}, nil
+					}
+				}
+			}
+		}
+
+		// Forward captive portal checks for trusted devices
+		return &pb.PacketResponse{
+			Action: pb.PacketAction_FORWARD,
+			Reason: "Captive portal check - device trusted or portal shown",
+		}, nil
+	}
 
 	// Check if this is TLS ClientHello (for MITM)
 	if packetType == "TLS" && sni_parser.IsClientHello(req.RawPacket) {

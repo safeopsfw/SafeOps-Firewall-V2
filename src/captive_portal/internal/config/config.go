@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,6 +13,12 @@ var GlobalConfig *Config
 
 // LoadConfig loads configuration from YAML file
 func LoadConfig(configPath string) (*Config, error) {
+	// Check if file exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		fmt.Printf("[Config] File not found at %s, using hardcoded defaults\n", configPath)
+		return DefaultConfig(), nil
+	}
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -29,6 +36,69 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	GlobalConfig = &cfg
 	return &cfg, nil
+}
+
+// DefaultConfig returns the hardcoded default configuration
+func DefaultConfig() *Config {
+	return &Config{
+		Server: ServerConfig{
+			HTTPSPort:           8444,
+			HTTPSEnabled:        true,
+			CertFile:            "internal/certs/server.crt",
+			KeyFile:             "internal/certs/server.key",
+			HTTPPort:            8080,
+			HTTPRedirectToHTTPS: true,
+			ReadTimeout:         10 * time.Second,
+			WriteTimeout:        10 * time.Second,
+			IdleTimeout:         120 * time.Second,
+		},
+		Portal: PortalConfig{
+			Title:                 "SafeOps Captive Portal",
+			WelcomeMessage:        "Welcome to SafeOps Network",
+			CACertName:            "SafeOps Root CA",
+			CACertDescription:     "Install this certificate to access the secure network",
+			AutoVerifyEnabled:     true,
+			VerifyIntervalSeconds: 5,
+			VerifyTimeoutSeconds:  300,
+		},
+		Integrations: IntegrationsConfig{
+			DHCPMonitor: DHCPMonitorConfig{
+				GRPCAddress:   "localhost:50055",
+				Timeout:       5 * time.Second,
+				RetryAttempts: 3,
+				RetryDelay:    2 * time.Second,
+			},
+			StepCA: StepCAConfig{
+				APIURL:         "https://localhost:9000",
+				VerifySSL:      false,
+				RootCAEndpoint: "/roots.pem",
+				Timeout:        10 * time.Second,
+			},
+			Database: DatabaseConfig{
+				Enabled: false,
+			},
+		},
+		Templates: TemplatesConfig{
+			Path:           "internal/templates",
+			ReloadOnChange: false,
+		},
+		Static: StaticConfig{
+			CSSPath: "internal/static/css",
+			JSPath:  "internal/static/js",
+		},
+		Logging: LoggingConfig{
+			Level:  "INFO",
+			Format: "json",
+			Output: "stdout",
+		},
+		Security: SecurityConfig{
+			CORSEnabled:       true,
+			RateLimitEnabled:  true,
+			RateLimitRequests: 100,
+			RateLimitWindow:   "1m",
+			SessionTimeout:    "30m",
+		},
+	}
 }
 
 // validateConfig validates required configuration fields

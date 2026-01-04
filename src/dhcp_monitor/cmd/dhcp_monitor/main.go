@@ -169,6 +169,12 @@ func run() error {
 func loadConfiguration(path string) (*config.Config, error) {
 	log.Printf("[MAIN] Loading configuration from %s", path)
 
+	// Check if config file exists - use hardcoded defaults if not
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Printf("[MAIN] Config file not found at %s, using hardcoded defaults", path)
+		return createDefaultConfig(), nil
+	}
+
 	cfg, err := config.LoadConfig(path)
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
@@ -179,6 +185,87 @@ func loadConfiguration(path string) (*config.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// createDefaultConfig creates hardcoded default configuration
+// This allows the binary to run without external config files
+func createDefaultConfig() *config.Config {
+	return &config.Config{
+		Database: config.DatabaseConfig{
+			Host:     "localhost",
+			Port:     5432,
+			Name:     "safeops",
+			User:     "safeops",
+			Password: "safeops123",
+			SSLMode:  "disable",
+			Pool: config.PoolConfig{
+				MinConnections:    2,
+				MaxConnections:    10,
+				ConnectionTimeout: 30 * time.Second,
+				IdleTimeout:       5 * time.Minute,
+				MaxLifetime:       1 * time.Hour,
+			},
+			Migration: config.MigrationConfig{
+				AutoMigrate:    true,
+				ValidateSchema: true,
+			},
+		},
+		GRPC: config.GRPCConfig{
+			Host:           "0.0.0.0",
+			Port:           50055,
+			MaxMessageSize: 4 * 1024 * 1024, // 4MB
+			ConnTimeout:    10 * time.Second,
+			Keepalive: config.KeepaliveConfig{
+				Time:    30 * time.Second,
+				Timeout: 10 * time.Second,
+				MinTime: 10 * time.Second,
+			},
+		},
+		Monitoring: config.MonitoringConfig{
+			ARPTable: config.ARPTableConfig{
+				RefreshInterval: 30 * time.Second,
+				PollInterval:    30 * time.Second,
+				CacheDuration:   5 * time.Minute,
+			},
+			Detection: config.DetectionConfig{
+				PrimaryMethod:      "arp",
+				SecondaryMethod:    "dhcp_event_log",
+				DedupCacheDuration: 5 * time.Minute,
+				DedupCacheMaxSize:  1000,
+			},
+		},
+		DHCPEventLog: config.DHCPEventLogConfig{
+			Enabled:      true,
+			PollInterval: 30 * time.Second,
+		},
+		DeviceManagement: config.DeviceManagementConfig{
+			Status: config.StatusConfig{
+				InactiveTimeout: 10 * time.Minute,
+				ExpiredTimeout:  24 * time.Hour,
+			},
+			Cleanup: config.CleanupConfig{
+				Enabled:           true,
+				Interval:          1 * time.Hour,
+				PurgeExpiredAfter: 30 * 24 * time.Hour, // 30 days
+			},
+			UnknownDevices: config.UnknownDevicesConfig{
+				AutoCreate:         true,
+				DefaultTrustStatus: "UNTRUSTED",
+				DefaultDeviceType:  "unknown",
+			},
+		},
+		Logging: config.LoggingConfig{
+			Level:  "INFO",
+			Format: "json",
+		},
+		Service: config.ServiceConfig{
+			Name: "dhcp_monitor",
+			Shutdown: config.ShutdownConfig{
+				Timeout:          30 * time.Second,
+				DrainConnections: true,
+			},
+		},
+	}
 }
 
 // initializeDatabase creates and tests the database connection

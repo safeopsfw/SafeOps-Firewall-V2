@@ -20,32 +20,32 @@ import (
 // =============================================================================
 
 const (
-	defaultBindAddress      = ":53"
-	defaultCacheSize        = 50000
-	defaultCacheTTL         = 300
-	defaultUpstreamServers  = "8.8.8.8:53,1.1.1.1:53"
-	defaultUpstreamTimeout  = "3s"
-	defaultServerName       = "ns1.safeops.local"
-	defaultEnableEDNS       = true
+	defaultBindAddress     = ":5354" // Internal port - Packet Engine intercepts :53 and redirects here
+	defaultCacheSize       = 50000
+	defaultCacheTTL        = 300
+	defaultUpstreamServers = "8.8.8.8:53,1.1.1.1:53"
+	defaultUpstreamTimeout = "3s"
+	defaultServerName      = "ns1.safeops.local"
+	defaultEnableEDNS      = true
 	// Phase 3A: TLS Proxy integration
-	defaultTLSProxyAddress  = "localhost:50052"
-	defaultTLSProxyTimeout  = "2s"
-	defaultTLSProxyEnabled  = true
+	defaultTLSProxyAddress = "localhost:50052"
+	defaultTLSProxyTimeout = "2s"
+	defaultTLSProxyEnabled = true
 )
 
 // Config holds DNS Server configuration.
 type Config struct {
-	BindAddress      string
-	CacheSize        int
-	CacheTTL         uint32
-	UpstreamServers  []string
-	UpstreamTimeout  time.Duration
-	ServerName       string
-	EnableEDNS       bool
+	BindAddress     string
+	CacheSize       int
+	CacheTTL        uint32
+	UpstreamServers []string
+	UpstreamTimeout time.Duration
+	ServerName      string
+	EnableEDNS      bool
 	// Phase 3A: TLS Proxy settings
-	TLSProxyAddress  string
-	TLSProxyTimeout  time.Duration
-	TLSProxyEnabled  bool
+	TLSProxyAddress string
+	TLSProxyTimeout time.Duration
+	TLSProxyEnabled bool
 }
 
 // =============================================================================
@@ -112,17 +112,17 @@ func main() {
 
 func loadConfiguration() *Config {
 	cfg := &Config{
-		BindAddress:      getEnvOrDefault("DNS_BIND_ADDRESS", defaultBindAddress),
-		CacheSize:        getEnvIntOrDefault("DNS_CACHE_SIZE", defaultCacheSize),
-		CacheTTL:         uint32(getEnvIntOrDefault("DNS_DEFAULT_TTL", defaultCacheTTL)),
-		UpstreamServers:  getEnvSliceOrDefault("DNS_UPSTREAM_SERVERS", defaultUpstreamServers),
-		UpstreamTimeout:  getEnvDurationOrDefault("DNS_UPSTREAM_TIMEOUT", defaultUpstreamTimeout),
-		ServerName:       getEnvOrDefault("DNS_SERVER_NAME", defaultServerName),
-		EnableEDNS:       getEnvBoolOrDefault("DNS_ENABLE_EDNS", defaultEnableEDNS),
+		BindAddress:     getEnvOrDefault("DNS_BIND_ADDRESS", defaultBindAddress),
+		CacheSize:       getEnvIntOrDefault("DNS_CACHE_SIZE", defaultCacheSize),
+		CacheTTL:        uint32(getEnvIntOrDefault("DNS_DEFAULT_TTL", defaultCacheTTL)),
+		UpstreamServers: getEnvSliceOrDefault("DNS_UPSTREAM_SERVERS", defaultUpstreamServers),
+		UpstreamTimeout: getEnvDurationOrDefault("DNS_UPSTREAM_TIMEOUT", defaultUpstreamTimeout),
+		ServerName:      getEnvOrDefault("DNS_SERVER_NAME", defaultServerName),
+		EnableEDNS:      getEnvBoolOrDefault("DNS_ENABLE_EDNS", defaultEnableEDNS),
 		// Phase 3A
-		TLSProxyAddress:  getEnvOrDefault("DNS_TLS_PROXY_ADDRESS", defaultTLSProxyAddress),
-		TLSProxyTimeout:  getEnvDurationOrDefault("DNS_TLS_PROXY_TIMEOUT", defaultTLSProxyTimeout),
-		TLSProxyEnabled:  getEnvBoolOrDefault("DNS_TLS_PROXY_ENABLED", defaultTLSProxyEnabled),
+		TLSProxyAddress: getEnvOrDefault("DNS_TLS_PROXY_ADDRESS", defaultTLSProxyAddress),
+		TLSProxyTimeout: getEnvDurationOrDefault("DNS_TLS_PROXY_TIMEOUT", defaultTLSProxyTimeout),
+		TLSProxyEnabled: getEnvBoolOrDefault("DNS_TLS_PROXY_ENABLED", defaultTLSProxyEnabled),
 	}
 
 	// Validate configuration
@@ -162,7 +162,10 @@ func logConfiguration(cfg *Config) {
 // COMPONENT INITIALIZATION
 // =============================================================================
 
-func initializeComponents(cfg *Config) (interface{ Start() error; Shutdown() error }, *dns.TLSProxyResolver, error) {
+func initializeComponents(cfg *Config) (interface {
+	Start() error
+	Shutdown() error
+}, *dns.TLSProxyResolver, error) {
 	// Phase 3A: Create TLS Proxy resolver (optional)
 	var tlsProxyResolver *dns.TLSProxyResolver
 	var err error
@@ -204,7 +207,10 @@ func initializeComponents(cfg *Config) (interface{ Start() error; Shutdown() err
 	)
 
 	// Phase 3A: Wrap with TLS Proxy integration if enabled
-	var server interface{ Start() error; Shutdown() error }
+	var server interface {
+		Start() error
+		Shutdown() error
+	}
 	if tlsProxyResolver != nil && tlsProxyResolver.IsEnabled() {
 		server = dns.NewUDPServerWithTLSProxy(baseServer, tlsProxyResolver)
 		log.Println("Initialized UDP server WITH TLS Proxy integration")

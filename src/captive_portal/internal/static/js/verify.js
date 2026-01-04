@@ -499,6 +499,12 @@
             manualBtn.addEventListener('click', manualVerify);
         }
 
+        // Skip button (ALLOW_ONCE policy - internet without CA cert)
+        const skipBtn = document.getElementById('skip-btn');
+        if (skipBtn) {
+            skipBtn.addEventListener('click', skipCertInstallation);
+        }
+
         // Download buttons
         document.querySelectorAll('[data-download-format]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -506,6 +512,70 @@
                 downloadCertificate(format);
             });
         });
+    }
+
+    /**
+     * Handle skip button - allow internet access without CA cert (ALLOW_ONCE policy)
+     */
+    async function skipCertInstallation() {
+        console.log('[SafeOps] User clicked Skip - granting internet access without CA cert');
+
+        const skipBtn = document.getElementById('skip-btn');
+        if (skipBtn) {
+            skipBtn.disabled = true;
+            skipBtn.textContent = 'Processing...';
+        }
+
+        try {
+            // Call API to mark portal as shown (ALLOW_ONCE policy)
+            const response = await fetch('/api/skip', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('[SafeOps] Skip successful:', result);
+
+                // Show success message
+                showStatusMessage('success',
+                    'Internet Access Granted!',
+                    'You can now browse the internet. This page will close automatically...');
+
+                // Close window after 3 seconds
+                setTimeout(() => {
+                    window.close();
+                    // If window.close() doesn't work (some browsers block it), redirect
+                    setTimeout(() => {
+                        window.location.href = 'http://www.google.com';
+                    }, 500);
+                }, 3000);
+
+            } else {
+                const error = await response.text();
+                console.error('[SafeOps] Skip failed:', error);
+                showStatusMessage('error',
+                    'Error',
+                    'Failed to grant internet access. Please try again.');
+
+                if (skipBtn) {
+                    skipBtn.disabled = false;
+                    skipBtn.textContent = 'Skip - Give Me Internet Access';
+                }
+            }
+        } catch (error) {
+            console.error('[SafeOps] Skip request error:', error);
+            showStatusMessage('error',
+                'Network Error',
+                'Could not connect to server. Please try again.');
+
+            if (skipBtn) {
+                skipBtn.disabled = false;
+                skipBtn.textContent = 'Skip - Give Me Internet Access';
+            }
+        }
     }
 
     /**
