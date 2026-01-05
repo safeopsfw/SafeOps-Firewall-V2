@@ -44,7 +44,9 @@ func (c *DatabaseClient) CreateDevice(ctx context.Context, device *Device) error
 
 // GetDeviceByIP retrieves device by IP address
 func (c *DatabaseClient) GetDeviceByIP(ctx context.Context, ip string) (*Device, error) {
-	query := `SELECT * FROM devices WHERE current_ip = $1`
+	// PostgreSQL INET type - cast the input to INET for proper comparison
+	// The host(current_ip) function strips the /32 prefix for comparison
+	query := `SELECT * FROM devices WHERE host(current_ip) = $1`
 	device := &Device{}
 
 	var currentIP, previousIP sql.NullString
@@ -56,6 +58,8 @@ func (c *DatabaseClient) GetDeviceByIP(ctx context.Context, ip string) (*Device,
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 		&device.Notes,
+		&device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -87,6 +91,8 @@ func (c *DatabaseClient) GetDeviceByMAC(ctx context.Context, mac string) (*Devic
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 		&device.Notes,
+		&device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -118,6 +124,8 @@ func (c *DatabaseClient) GetDeviceByID(ctx context.Context, deviceID uuid.UUID) 
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 		&device.Notes,
+		&device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -217,9 +225,10 @@ func (c *DatabaseClient) MarkPortalShown(ctx context.Context, deviceID uuid.UUID
 
 // MarkPortalShownByIP marks portal shown using IP address (convenience method)
 func (c *DatabaseClient) MarkPortalShownByIP(ctx context.Context, ipAddress string) (*Device, error) {
+	// PostgreSQL INET type - use host() to strip /32 for comparison
 	query := `UPDATE devices 
               SET portal_shown = true, portal_shown_at = NOW(), last_seen = NOW()
-              WHERE current_ip = $1
+              WHERE host(current_ip) = $1
               RETURNING *`
 
 	device := &Device{}
@@ -287,9 +296,12 @@ func (c *DatabaseClient) MarkCACertInstalled(ctx context.Context, deviceID uuid.
 
 // MarkCACertInstalledByIP marks CA cert installed using IP address
 func (c *DatabaseClient) MarkCACertInstalledByIP(ctx context.Context, ipAddress string) (*Device, error) {
+	// PostgreSQL INET type - use host() to strip /32 for comparison
+	// Also set trust_status to TRUSTED when cert is installed
 	query := `UPDATE devices
-              SET ca_cert_installed = true, ca_cert_installed_at = NOW(), last_seen = NOW()
-              WHERE current_ip = $1
+              SET ca_cert_installed = true, ca_cert_installed_at = NOW(), 
+                  trust_status = 'TRUSTED', last_seen = NOW()
+              WHERE host(current_ip) = $1
               RETURNING *`
 
 	device := &Device{}
@@ -438,6 +450,8 @@ func (c *DatabaseClient) ListDevices(ctx context.Context, filter *DeviceFilter) 
 			&device.Status, &device.IsOnline, &device.DetectionMethod,
 			&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 			&device.Notes,
+			&device.PortalShown, &device.PortalShownAt,
+			&device.CACertInstalled, &device.CACertInstalledAt,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("scan error: %w", err)

@@ -43,10 +43,10 @@ router.get('/', async (req, res) => {
             trustStatus: row.trust_status,
             hasCertificate: row.trust_status === 'TRUSTED',
             nicInterfaceName: row.interface_name,
-            nicType: row.interface_name?.includes('Wi-Fi Direct') ? 'hotspot' 
-                   : row.interface_name?.includes('Ethernet') ? 'ethernet'
-                   : row.interface_name?.includes('Wi-Fi') ? 'wifi' 
-                   : 'other',
+            nicType: row.interface_name?.includes('Wi-Fi Direct') ? 'hotspot'
+                : row.interface_name?.includes('Ethernet') ? 'ethernet'
+                    : row.interface_name?.includes('Wi-Fi') ? 'wifi'
+                        : 'other',
             status: row.status,
             isOnline: row.is_online,
             detectionMethod: row.detection_method,
@@ -81,13 +81,13 @@ router.get('/stats', async (req, res) => {
         `);
 
         const stats = result.rows[0];
-        
+
         res.json({
             totalDevices: stats.total || 0,
             enrolledDevices: stats.enrolled || 0,
             unenrolledDevices: stats.unenrolled || 0,
             blockedDevices: stats.blocked || 0,
-            activeDevices: stats.active || 0,
+            activeDevices: stats.hotspot_devices || 0,
             hotspotDevices: stats.hotspot_devices || 0,
             ethernetDevices: stats.ethernet_devices || 0
         });
@@ -103,7 +103,7 @@ router.get('/stats', async (req, res) => {
 router.get('/:mac', async (req, res) => {
     try {
         const { mac } = req.params;
-        
+
         const result = await db.query(`
             SELECT * FROM devices WHERE mac_address = $1
         `, [mac.toUpperCase()]);
@@ -141,9 +141,9 @@ router.patch('/:id/trust', async (req, res) => {
         // Validate trust status
         const validStatuses = ['TRUSTED', 'UNTRUSTED', 'BLOCKED'];
         if (!validStatuses.includes(trustStatus)) {
-            return res.status(400).json({ 
-                error: 'Invalid trust status', 
-                valid: validStatuses 
+            return res.status(400).json({
+                error: 'Invalid trust status',
+                valid: validStatuses
             });
         }
 
@@ -159,7 +159,7 @@ router.patch('/:id/trust', async (req, res) => {
         }
 
         console.log(`[DEVICES] Trust updated: ${result.rows[0].mac_address} → ${trustStatus}`);
-        
+
         res.json({
             success: true,
             device: result.rows[0]
@@ -200,7 +200,7 @@ router.delete('/:id', async (req, res) => {
 router.get('/interface/:name', async (req, res) => {
     try {
         const { name } = req.params;
-        
+
         const result = await db.query(`
             SELECT * FROM devices 
             WHERE interface_name ILIKE $1

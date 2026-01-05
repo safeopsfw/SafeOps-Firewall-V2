@@ -3,6 +3,7 @@ package brain
 import (
 	"context"
 	"log"
+	"net"
 	"strings"
 
 	"tls_proxy/internal/integration"
@@ -20,7 +21,7 @@ type DecisionConfig struct {
 	// Internal domains that should resolve to gateway IP
 	InternalDomains []string
 
-	// Gateway IP to return for captive portal
+	// Default Gateway IP (fallback if client IP parsing fails)
 	GatewayIP string
 
 	// Policy mode: STRICT or PERMISSIVE
@@ -34,9 +35,9 @@ type DecisionConfig struct {
 func NewDecisionEngine(dhcpMonitor *integration.DHCPMonitorClient, config *DecisionConfig) *DecisionEngine {
 	if config == nil {
 		config = &DecisionConfig{
-			InternalDomains: []string{"captive.safeops.local", "safeops.local"},
-			GatewayIP:       "192.168.137.1",
-			PolicyMode:      "STRICT",
+			InternalDomains: []string{"portal.safeops.local", "captive.safeops.local", "safeops.local", "safeops.captiveportal.local"},
+			GatewayIP:       "192.168.137.1", // Fallback only
+			PolicyMode:      "PERMISSIVE",
 			DefaultTTL:      300,
 		}
 	}
@@ -47,96 +48,52 @@ func NewDecisionEngine(dhcpMonitor *integration.DHCPMonitorClient, config *Decis
 	}
 }
 
+// getGatewayForClient calculates the gateway IP based on client's subnet
+// This automatically works for ANY NIC - no config needed!
+// Example: Client 192.168.171.50 → Gateway 192.168.171.1
+func (e *DecisionEngine) getGatewayForClient(clientIP string) string {
+	ip := net.ParseIP(clientIP)
+	if ip == nil {
+		log.Printf("[Decision Engine] Failed to parse client IP %s, using fallback", clientIP)
+		return e.config.GatewayIP
+	}
+
+	// Get IPv4 representation
+	ip4 := ip.To4()
+	if ip4 == nil {
+		log.Printf("[Decision Engine] Client IP %s is not IPv4, using fallback", clientIP)
+		return e.config.GatewayIP
+	}
+
+	// Replace last octet with .1 to get gateway
+	gatewayIP := net.IPv4(ip4[0], ip4[1], ip4[2], 1).String()
+	log.Printf("[Decision Engine] Client %s → Gateway %s (auto-detected)", clientIP, gatewayIP)
+	return gatewayIP
+}
+
 // GetDNSDecision decides what DNS response to return
-// Phase 3A Logic:
-// 1. Check if domain is internal (captive.safeops.local) → Return gateway IP
-// 2. Query DHCP Monitor for device trust status
-// 3. If UNTRUSTED → Block or redirect (depending on policy)
-// 4. If TRUSTED → Forward to upstream DNS
+// DYNAMIC: portal.safeops.local returns gateway based on client's subnet
+// Works automatically for ANY NIC!
 func (e *DecisionEngine) GetDNSDecision(ctx context.Context, domain, clientIP, queryType string) (*pb.DNSDecisionResponse, error) {
-	log.Printf("[Decision Engine] DNS query: domain=%s, client=%s, type=%s", domain, clientIP, queryType)
-
-	// Step 1: Check if domain is internal
+	// Check if domain is internal (portal.safeops.local, captive.safeops.local)
 	if e.isInternalDomain(domain) {
-		log.Printf("[Decision Engine] Internal domain %s → Return gateway IP %s", domain, e.config.GatewayIP)
+		// DYNAMIC: Calculate gateway IP from client's subnet
+		gatewayIP := e.getGatewayForClient(clientIP)
+		log.Printf("[Decision Engine] Internal domain %s → Gateway %s (for client %s)", domain, gatewayIP, clientIP)
 		return &pb.DNSDecisionResponse{
-			Decision:   pb.DecisionType_RETURN_IP,
-			IpAddress:  e.config.GatewayIP,
-			Ttl:        e.config.DefaultTTL,
-			Reason:     "Internal domain - captive portal",
+			Decision:  pb.DecisionType_RETURN_IP,
+			IpAddress: gatewayIP,
+			Ttl:       e.config.DefaultTTL,
+			Reason:    "Internal domain - dynamic gateway for client subnet",
 		}, nil
 	}
 
-	// Step 2: Query DHCP Monitor for device trust status
-	deviceInfo, err := e.dhcpMonitor.GetDeviceByIP(ctx, clientIP)
-	if err != nil {
-		log.Printf("[Decision Engine] Failed to query DHCP Monitor for %s: %v", clientIP, err)
-		// On error, default to FORWARD_UPSTREAM (fail open for now)
-		return &pb.DNSDecisionResponse{
-			Decision: pb.DecisionType_FORWARD_UPSTREAM,
-			Ttl:      e.config.DefaultTTL,
-			Reason:   "DHCP Monitor query failed - fail open",
-		}, nil
-	}
-
-	log.Printf("[Decision Engine] Device %s trust status: %s", clientIP, deviceInfo.TrustStatus)
-
-	// Step 3: Make decision based on trust status
-	switch deviceInfo.TrustStatus {
-	case "TRUSTED":
-		// Device is trusted → Forward to upstream DNS
-		log.Printf("[Decision Engine] Device %s is TRUSTED → Forward to upstream", clientIP)
-		return &pb.DNSDecisionResponse{
-			Decision: pb.DecisionType_FORWARD_UPSTREAM,
-			Ttl:      e.config.DefaultTTL,
-			Reason:   "Device trusted",
-		}, nil
-
-	case "UNTRUSTED":
-		// Device is untrusted → Policy decision
-		if e.config.PolicyMode == "STRICT" {
-			// STRICT mode: Block all external DNS for untrusted devices
-			log.Printf("[Decision Engine] Device %s is UNTRUSTED (STRICT mode) → Block", clientIP)
-			return &pb.DNSDecisionResponse{
-				Decision: pb.DecisionType_BLOCK,
-				Ttl:      60, // Short TTL for blocked responses
-				Reason:   "Device untrusted - strict mode",
-			}, nil
-		} else {
-			// PERMISSIVE mode: Allow DNS but log
-			log.Printf("[Decision Engine] Device %s is UNTRUSTED (PERMISSIVE mode) → Allow", clientIP)
-			return &pb.DNSDecisionResponse{
-				Decision: pb.DecisionType_FORWARD_UPSTREAM,
-				Ttl:      e.config.DefaultTTL,
-				Reason:   "Device untrusted - permissive mode",
-			}, nil
-		}
-
-	case "BLOCKED":
-		// Device is blocked → Always block
-		log.Printf("[Decision Engine] Device %s is BLOCKED → Block", clientIP)
-		return &pb.DNSDecisionResponse{
-			Decision: pb.DecisionType_BLOCK,
-			Ttl:      60,
-			Reason:   "Device blocked",
-		}, nil
-
-	default:
-		// Unknown trust status → Fail safe (block in strict mode, allow in permissive)
-		log.Printf("[Decision Engine] Device %s has unknown trust status '%s'", clientIP, deviceInfo.TrustStatus)
-		if e.config.PolicyMode == "STRICT" {
-			return &pb.DNSDecisionResponse{
-				Decision: pb.DecisionType_BLOCK,
-				Ttl:      60,
-				Reason:   "Unknown trust status - fail safe",
-			}, nil
-		}
-		return &pb.DNSDecisionResponse{
-			Decision: pb.DecisionType_FORWARD_UPSTREAM,
-			Ttl:      e.config.DefaultTTL,
-			Reason:   "Unknown trust status - permissive mode",
-		}, nil
-	}
+	// All other domains → Forward upstream
+	return &pb.DNSDecisionResponse{
+		Decision: pb.DecisionType_FORWARD_UPSTREAM,
+		Ttl:      e.config.DefaultTTL,
+		Reason:   "Forward upstream - manual portal access",
+	}, nil
 }
 
 // isInternalDomain checks if a domain is internal (captive portal, etc.)

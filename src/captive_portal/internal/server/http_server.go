@@ -115,6 +115,7 @@ func (s *Server) setupRouter() http.Handler {
 	mux.HandleFunc("/api/download-ca/", s.handlers.HandleDownloadCA)
 	mux.HandleFunc("/api/verify-trust", s.handlers.HandleVerifyTrust)
 	mux.HandleFunc("/api/mark-trusted", s.handlers.HandleMarkTrusted)
+	mux.HandleFunc("/api/skip", s.handlers.HandleSkip)
 
 	// Health check
 	mux.HandleFunc("/health", s.handlers.HandleHealth)
@@ -208,8 +209,12 @@ func (s *Server) Start() error {
 		go s.startHTTPS(router)
 	}
 
-	// Start HTTP redirect server (optional)
-	if s.config.Server.HTTPRedirectToHTTPS {
+	// Start HTTP server that serves content (for CA cert download)
+	if s.config.Server.HTTPEnabled {
+		s.wg.Add(1)
+		go s.startHTTP(router)
+	} else if s.config.Server.HTTPRedirectToHTTPS {
+		// Fallback: Start HTTP redirect server (optional)
 		s.wg.Add(1)
 		go s.startHTTPRedirect()
 	}
@@ -219,7 +224,9 @@ func (s *Server) Start() error {
 
 	log.Printf("[Server] Captive Portal started")
 	log.Printf("[Server] HTTPS: https://localhost:%d", s.config.Server.HTTPSPort)
-	if s.config.Server.HTTPRedirectToHTTPS {
+	if s.config.Server.HTTPEnabled {
+		log.Printf("[Server] HTTP: http://localhost:%d (serving content for CA cert download)", s.config.Server.HTTPPort)
+	} else if s.config.Server.HTTPRedirectToHTTPS {
 		log.Printf("[Server] HTTP Redirect: http://localhost:%d -> HTTPS", s.config.Server.HTTPPort)
 	}
 
@@ -263,6 +270,29 @@ func (s *Server) startHTTPS(handler http.Handler) {
 	)
 	if err != nil && err != http.ErrServerClosed {
 		log.Printf("[Server] HTTPS server error: %v", err)
+	}
+}
+
+// startHTTP starts an HTTP server that serves portal content directly
+// This is needed for devices without CA cert to access portal and download certificate
+func (s *Server) startHTTP(handler http.Handler) {
+	defer s.wg.Done()
+
+	addr := fmt.Sprintf(":%d", s.config.Server.HTTPPort)
+
+	s.httpServer = &http.Server{
+		Addr:         addr,
+		Handler:      handler, // Serve same content as HTTPS
+		ReadTimeout:  s.config.Server.ReadTimeout,
+		WriteTimeout: s.config.Server.WriteTimeout,
+		IdleTimeout:  s.config.Server.IdleTimeout,
+	}
+
+	log.Printf("[Server] Starting HTTP server on %s (serving content for CA cert download)", addr)
+
+	err := s.httpServer.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		log.Printf("[Server] HTTP server error: %v", err)
 	}
 }
 

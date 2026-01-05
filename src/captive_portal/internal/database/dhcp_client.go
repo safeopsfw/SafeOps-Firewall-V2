@@ -1,19 +1,7 @@
 // ============================================================================
 // SafeOps Captive Portal - DHCP Monitor gRPC Client
 // ============================================================================
-// File: D:\SafeOpsFV2\src\captive_portal\internal\database\dhcp_client.go
-// Purpose: gRPC client for communicating with DHCP Monitor service
-//
-// The Captive Portal uses this client to:
-//   1. Look up device information by IP address (when user visits portal)
-//   2. Look up device information by MAC address (for certificate tracking)
-//   3. Update trust status to TRUSTED after CA certificate installation
-//   4. Check if a device is already trusted (trust verification)
-//
-// DHCP Monitor gRPC Service runs on port 50055 (Phase 2)
-//
-// Author: SafeOps Phase 3A
-// Date: 2026-01-03
+// REAL IMPLEMENTATION - Uses actual gRPC calls to DHCP Monitor service
 // ============================================================================
 
 package database
@@ -25,57 +13,44 @@ import (
 	"sync"
 	"time"
 
+	pb "captive_portal/proto/gen"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
-// ============================================================================
 // Trust Status Constants
-// ============================================================================
-
 const (
-	// TrustStatusUntrusted - Device has not installed the CA certificate
 	TrustStatusUntrusted = "UNTRUSTED"
-
-	// TrustStatusTrusted - Device has installed the CA certificate
-	TrustStatusTrusted = "TRUSTED"
-
-	// TrustStatusBlocked - Device is blocked from network access
-	TrustStatusBlocked = "BLOCKED"
+	TrustStatusTrusted   = "TRUSTED"
+	TrustStatusBlocked   = "BLOCKED"
 )
 
-// ============================================================================
-// Device Data Structures
-// ============================================================================
-
 // Device represents a network device from DHCP Monitor
-// This mirrors the proto Device message but as a Go-friendly struct
 type Device struct {
-	DeviceID        string    `json:"device_id"`
-	MACAddress      string    `json:"mac_address"`
-	CurrentIP       string    `json:"current_ip"`
-	Hostname        string    `json:"hostname"`
-	DeviceType      string    `json:"device_type"`
-	Vendor          string    `json:"vendor"`
-	TrustStatus     string    `json:"trust_status"`
-	InterfaceName   string    `json:"interface_name"`
-	InterfaceIndex  int32     `json:"interface_index"`
-	Status          string    `json:"status"`
-	DetectionMethod string    `json:"detection_method"`
-	FirstSeen       time.Time `json:"first_seen"`
-	LastSeen        time.Time `json:"last_seen"`
-	IsOnline        bool      `json:"is_online"`
-	// Phase 3A: Portal tracking for ALLOW_ONCE policy
-	PortalShown   bool      `json:"portal_shown"`
-	PortalShownAt time.Time `json:"portal_shown_at"`
-	// Phase 3B: CA certificate tracking
+	DeviceID          string    `json:"device_id"`
+	MACAddress        string    `json:"mac_address"`
+	CurrentIP         string    `json:"current_ip"`
+	Hostname          string    `json:"hostname"`
+	DeviceType        string    `json:"device_type"`
+	Vendor            string    `json:"vendor"`
+	TrustStatus       string    `json:"trust_status"`
+	InterfaceName     string    `json:"interface_name"`
+	InterfaceIndex    int32     `json:"interface_index"`
+	Status            string    `json:"status"`
+	DetectionMethod   string    `json:"detection_method"`
+	FirstSeen         time.Time `json:"first_seen"`
+	LastSeen          time.Time `json:"last_seen"`
+	IsOnline          bool      `json:"is_online"`
+	PortalShown       bool      `json:"portal_shown"`
+	PortalShownAt     time.Time `json:"portal_shown_at"`
 	CACertInstalled   bool      `json:"ca_cert_installed"`
 	CACertInstalledAt time.Time `json:"ca_cert_installed_at"`
 }
 
-// DeviceStats contains aggregate statistics from DHCP Monitor
+// DeviceStats contains aggregate statistics
 type DeviceStats struct {
 	TotalDevices     int32 `json:"total_devices"`
 	ActiveDevices    int32 `json:"active_devices"`
@@ -86,29 +61,16 @@ type DeviceStats struct {
 	OnlineDevices    int32 `json:"online_devices"`
 }
 
-// ============================================================================
-// DHCPClient Configuration
-// ============================================================================
-
-// DHCPClientConfig holds configuration for the DHCP Monitor client
+// DHCPClientConfig holds configuration
 type DHCPClientConfig struct {
-	// GRPCAddress is the address of the DHCP Monitor gRPC server (e.g., "localhost:50055")
-	GRPCAddress string
-
-	// Timeout is the default timeout for gRPC calls
-	Timeout time.Duration
-
-	// RetryAttempts is the number of times to retry failed calls
-	RetryAttempts int
-
-	// RetryDelay is the delay between retry attempts
-	RetryDelay time.Duration
-
-	// MaxConnectionAge is how long to keep the connection before reconnecting
+	GRPCAddress      string
+	Timeout          time.Duration
+	RetryAttempts    int
+	RetryDelay       time.Duration
 	MaxConnectionAge time.Duration
 }
 
-// DefaultDHCPClientConfig returns default configuration values
+// DefaultDHCPClientConfig returns default configuration
 func DefaultDHCPClientConfig() DHCPClientConfig {
 	return DHCPClientConfig{
 		GRPCAddress:      "localhost:50055",
@@ -119,28 +81,24 @@ func DefaultDHCPClientConfig() DHCPClientConfig {
 	}
 }
 
-// ============================================================================
-// DHCPClient Implementation
-// ============================================================================
-
-// DHCPClient is a gRPC client for the DHCP Monitor service
+// DHCPClient is the gRPC client for DHCP Monitor service
 type DHCPClient struct {
 	config     DHCPClientConfig
 	conn       *grpc.ClientConn
+	client     pb.DHCPMonitorClient // Real gRPC client!
 	mu         sync.RWMutex
 	connected  bool
 	lastError  error
 	queryCount int64
 }
 
-// NewDHCPClient creates a new DHCP Monitor client
+// NewDHCPClient creates a new DHCP Monitor client with real gRPC connection
 func NewDHCPClient(config DHCPClientConfig) (*DHCPClient, error) {
 	client := &DHCPClient{
 		config:    config,
 		connected: false,
 	}
 
-	// Establish initial connection
 	if err := client.connect(); err != nil {
 		return nil, fmt.Errorf("failed to connect to DHCP Monitor: %w", err)
 	}
@@ -153,18 +111,15 @@ func (c *DHCPClient) connect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Close existing connection if any
 	if c.conn != nil {
 		c.conn.Close()
 	}
 
-	// Create gRPC connection with options
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
 	}
 
-	// Use context with timeout for initial connection
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.Timeout)
 	defer cancel()
 
@@ -176,71 +131,53 @@ func (c *DHCPClient) connect() error {
 	}
 
 	c.conn = conn
+	c.client = pb.NewDHCPMonitorClient(conn) // Create real gRPC client!
 	c.connected = true
 	c.lastError = nil
 
-	log.Printf("[DHCPClient] Connected to DHCP Monitor at %s", c.config.GRPCAddress)
+	log.Printf("[DHCPClient] ✅ Connected to DHCP Monitor at %s", c.config.GRPCAddress)
 	return nil
 }
 
 // ensureConnected checks connection and reconnects if necessary
 func (c *DHCPClient) ensureConnected() error {
 	c.mu.RLock()
-	connected := c.connected && c.conn != nil
+	connected := c.connected && c.conn != nil && c.client != nil
 	c.mu.RUnlock()
 
 	if connected {
 		return nil
 	}
-
 	return c.connect()
 }
 
 // ============================================================================
-// Device Lookup Methods
+// Device Lookup Methods - REAL gRPC CALLS
 // ============================================================================
 
 // GetDeviceByIP retrieves device information by IP address
-// This is the PRIMARY lookup method used when a device visits the portal
-//
-// The portal extracts the client IP from the HTTP request and uses this
-// method to get the device's MAC address and current trust status.
-//
-// Returns:
-//   - Device info if found
-//   - ErrDeviceNotFound if IP not in DHCP Monitor database
-//   - Other errors for connection/service issues
 func (c *DHCPClient) GetDeviceByIP(ctx context.Context, ipAddress string) (*Device, error) {
 	if err := c.ensureConnected(); err != nil {
 		return nil, err
 	}
 
-	// Simulate gRPC call - in real implementation, use generated proto client
-	// For now, we'll return a placeholder that demonstrates the expected behavior
 	c.mu.Lock()
 	c.queryCount++
 	c.mu.Unlock()
 
-	log.Printf("[DHCPClient] GetDeviceByIP called for: %s", ipAddress)
+	log.Printf("[DHCPClient] GetDeviceByIP: %s", ipAddress)
 
-	// TODO: Replace with actual gRPC call when proto is generated
-	// request := &pb.IPRequest{IpAddress: ipAddress}
-	// response, err := c.client.GetDeviceByIP(ctx, request)
+	// REAL gRPC call!
+	request := &pb.IPRequest{IpAddress: ipAddress}
+	response, err := c.client.GetDeviceByIP(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("GetDeviceByIP failed: %w", err)
+	}
 
-	// For now, return error indicating gRPC client not yet implemented
-	// This will be replaced with actual gRPC calls
-	return nil, fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
+	return protoToDevice(response), nil
 }
 
 // GetDeviceByMAC retrieves device information by MAC address
-// Used for precise device identification after initial IP lookup
-//
-// Parameters:
-//   - macAddress: Hardware address in AA:BB:CC:DD:EE:FF format
-//
-// Returns:
-//   - Device info if found
-//   - ErrDeviceNotFound if MAC not in database
 func (c *DHCPClient) GetDeviceByMAC(ctx context.Context, macAddress string) (*Device, error) {
 	if err := c.ensureConnected(); err != nil {
 		return nil, err
@@ -250,69 +187,67 @@ func (c *DHCPClient) GetDeviceByMAC(ctx context.Context, macAddress string) (*De
 	c.queryCount++
 	c.mu.Unlock()
 
-	log.Printf("[DHCPClient] GetDeviceByMAC called for: %s", macAddress)
+	log.Printf("[DHCPClient] GetDeviceByMAC: %s", macAddress)
 
-	// TODO: Replace with actual gRPC call
-	return nil, fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
+	request := &pb.MACRequest{MacAddress: macAddress}
+	response, err := c.client.GetDeviceByMAC(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("GetDeviceByMAC failed: %w", err)
+	}
+
+	return protoToDevice(response), nil
 }
 
 // ============================================================================
-// Trust Management Methods
+// Trust Management Methods - REAL gRPC CALLS
 // ============================================================================
 
-// UpdateTrustStatus updates a device's trust status in the DHCP Monitor database
-// This is called AFTER a user confirms they've installed the CA certificate
-//
-// Parameters:
-//   - deviceID: UUID of the device to update
-//   - trustStatus: New status (TRUSTED, UNTRUSTED, BLOCKED)
-//
-// Returns:
-//   - Updated device info on success
-//   - Error on failure
+// UpdateTrustStatus updates a device's trust status
 func (c *DHCPClient) UpdateTrustStatus(ctx context.Context, deviceID string, trustStatus string) (*Device, error) {
 	if err := c.ensureConnected(); err != nil {
 		return nil, err
 	}
 
-	// Validate trust status
 	if trustStatus != TrustStatusTrusted &&
 		trustStatus != TrustStatusUntrusted &&
 		trustStatus != TrustStatusBlocked {
-		return nil, fmt.Errorf("invalid trust status: %s (must be TRUSTED, UNTRUSTED, or BLOCKED)", trustStatus)
+		return nil, fmt.Errorf("invalid trust status: %s", trustStatus)
 	}
 
 	c.mu.Lock()
 	c.queryCount++
 	c.mu.Unlock()
 
-	log.Printf("[DHCPClient] UpdateTrustStatus called: deviceID=%s, status=%s", deviceID, trustStatus)
+	log.Printf("[DHCPClient] UpdateTrustStatus: deviceID=%s, status=%s", deviceID, trustStatus)
 
-	// TODO: Replace with actual gRPC call
-	return nil, fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
+	request := &pb.TrustUpdateRequest{
+		DeviceId:    deviceID,
+		TrustStatus: trustStatus,
+	}
+	response, err := c.client.UpdateTrustStatus(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("UpdateTrustStatus failed: %w", err)
+	}
+
+	return protoToDevice(response), nil
 }
 
-// MarkDeviceTrusted is a convenience method to mark a device as TRUSTED
-// This is the primary method called by the Captive Portal after CA installation
+// MarkDeviceTrusted marks a device as TRUSTED
 func (c *DHCPClient) MarkDeviceTrusted(ctx context.Context, deviceID string) (*Device, error) {
 	return c.UpdateTrustStatus(ctx, deviceID, TrustStatusTrusted)
 }
 
-// MarkDeviceUntrusted is a convenience method to mark a device as UNTRUSTED
-// Used if a user needs to re-install the certificate
+// MarkDeviceUntrusted marks a device as UNTRUSTED
 func (c *DHCPClient) MarkDeviceUntrusted(ctx context.Context, deviceID string) (*Device, error) {
 	return c.UpdateTrustStatus(ctx, deviceID, TrustStatusUntrusted)
 }
 
-// MarkDeviceBlocked is a convenience method to block a device
-// Used by administrators to deny network access
+// MarkDeviceBlocked marks a device as BLOCKED
 func (c *DHCPClient) MarkDeviceBlocked(ctx context.Context, deviceID string) (*Device, error) {
 	return c.UpdateTrustStatus(ctx, deviceID, TrustStatusBlocked)
 }
 
 // MarkPortalShown marks that a device has seen the captive portal
-// Phase 3A: Called when welcome page loads - enables ALLOW_ONCE policy
-// This allows the device to access internet even if they reject the CA cert
 func (c *DHCPClient) MarkPortalShown(ctx context.Context, deviceID string) (*Device, error) {
 	if err := c.ensureConnected(); err != nil {
 		return nil, err
@@ -322,16 +257,19 @@ func (c *DHCPClient) MarkPortalShown(ctx context.Context, deviceID string) (*Dev
 	c.queryCount++
 	c.mu.Unlock()
 
-	log.Printf("[DHCPClient] MarkPortalShown called for device: %s", deviceID)
+	log.Printf("[DHCPClient] MarkPortalShown: deviceID=%s", deviceID)
 
-	// TODO: Replace with actual gRPC call when proto is integrated
-	// request := &pb.MarkPortalShownRequest{DeviceId: deviceID}
-	// response, err := c.client.MarkPortalShown(ctx, request)
+	request := &pb.MarkPortalShownRequest{DeviceId: deviceID}
+	response, err := c.client.MarkPortalShown(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("MarkPortalShown failed: %w", err)
+	}
 
-	return nil, fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
+	return protoToDevice(response), nil
 }
 
-// MarkCACertInstalled marks that device has installed CA certificate (Phase 3B)
+// MarkCACertInstalled marks that device has installed CA certificate
+// This is called when user downloads the CA certificate from the portal
 func (c *DHCPClient) MarkCACertInstalled(ctx context.Context, ipAddress string) error {
 	if err := c.ensureConnected(); err != nil {
 		return err
@@ -341,13 +279,18 @@ func (c *DHCPClient) MarkCACertInstalled(ctx context.Context, ipAddress string) 
 	c.queryCount++
 	c.mu.Unlock()
 
-	log.Printf("[DHCPClient] MarkCACertInstalled called for IP: %s", ipAddress)
+	log.Printf("[DHCPClient] ✅ MarkCACertInstalled: IP=%s", ipAddress)
 
-	// TODO: Replace with actual gRPC call when proto is integrated
-	// request := &pb.MarkCACertInstalledRequest{IpAddress: ipAddress}
-	// _, err := c.client.MarkCACertInstalled(ctx, request)
+	request := &pb.MarkCACertInstalledRequest{IpAddress: ipAddress}
+	response, err := c.client.MarkCACertInstalled(ctx, request)
+	if err != nil {
+		return fmt.Errorf("MarkCACertInstalled failed: %w", err)
+	}
 
-	return fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
+	log.Printf("[DHCPClient] ✅ Device marked as CA Cert Installed: %s (MAC: %s, Trust: %s)",
+		response.CurrentIp, response.MacAddress, response.TrustStatus)
+
+	return nil
 }
 
 // ============================================================================
@@ -355,17 +298,14 @@ func (c *DHCPClient) MarkCACertInstalled(ctx context.Context, ipAddress string) 
 // ============================================================================
 
 // IsTrusted checks if a device is currently marked as trusted
-// Used by the auto-verification JavaScript to poll for trust status changes
 func (c *DHCPClient) IsTrusted(ctx context.Context, ipAddress string) (bool, error) {
 	device, err := c.GetDeviceByIP(ctx, ipAddress)
 	if err != nil {
-		// If we can't find the device, assume untrusted
 		if isNotFoundError(err) {
 			return false, nil
 		}
 		return false, err
 	}
-
 	return device.TrustStatus == TrustStatusTrusted, nil
 }
 
@@ -378,7 +318,6 @@ func (c *DHCPClient) IsBlocked(ctx context.Context, ipAddress string) (bool, err
 		}
 		return false, err
 	}
-
 	return device.TrustStatus == TrustStatusBlocked, nil
 }
 
@@ -387,7 +326,6 @@ func (c *DHCPClient) IsBlocked(ctx context.Context, ipAddress string) (bool, err
 // ============================================================================
 
 // GetDeviceStats retrieves aggregate device statistics
-// Used for dashboard displays and monitoring
 func (c *DHCPClient) GetDeviceStats(ctx context.Context) (*DeviceStats, error) {
 	if err := c.ensureConnected(); err != nil {
 		return nil, err
@@ -397,10 +335,20 @@ func (c *DHCPClient) GetDeviceStats(ctx context.Context) (*DeviceStats, error) {
 	c.queryCount++
 	c.mu.Unlock()
 
-	log.Printf("[DHCPClient] GetDeviceStats called")
+	response, err := c.client.GetDeviceStats(ctx, &pb.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("GetDeviceStats failed: %w", err)
+	}
 
-	// TODO: Replace with actual gRPC call
-	return nil, fmt.Errorf("gRPC client not yet implemented - waiting for proto generation")
+	return &DeviceStats{
+		TotalDevices:     response.TotalDevices,
+		ActiveDevices:    response.ActiveDevices,
+		TrustedDevices:   response.TrustedDevices,
+		UntrustedDevices: response.UntrustedDevices,
+		BlockedDevices:   response.BlockedDevices,
+		OfflineDevices:   response.OfflineDevices,
+		OnlineDevices:    response.OnlineDevices,
+	}, nil
 }
 
 // HealthCheck verifies the DHCP Monitor service is healthy
@@ -409,43 +357,47 @@ func (c *DHCPClient) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("connection check failed: %w", err)
 	}
 
-	// TODO: Implement actual health check RPC
-	log.Printf("[DHCPClient] HealthCheck called - connection OK")
+	response, err := c.client.HealthCheck(ctx, &pb.Empty{})
+	if err != nil {
+		return fmt.Errorf("HealthCheck failed: %w", err)
+	}
+
+	if !response.Healthy {
+		return fmt.Errorf("DHCP Monitor unhealthy: %s", response.DatabaseStatus)
+	}
+
+	log.Printf("[DHCPClient] HealthCheck OK - uptime: %s, queries: %d",
+		response.Uptime, response.TotalQueries)
 	return nil
 }
 
 // ============================================================================
-// Connection Management Methods
+// Connection Management
 // ============================================================================
 
-// IsConnected returns the current connection status
 func (c *DHCPClient) IsConnected() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.connected
 }
 
-// GetLastError returns the last error encountered
 func (c *DHCPClient) GetLastError() error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.lastError
 }
 
-// GetQueryCount returns the total number of queries made
 func (c *DHCPClient) GetQueryCount() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.queryCount
 }
 
-// Reconnect forces a reconnection to the DHCP Monitor service
 func (c *DHCPClient) Reconnect() error {
-	log.Printf("[DHCPClient] Forcing reconnection to DHCP Monitor")
+	log.Printf("[DHCPClient] Forcing reconnection")
 	return c.connect()
 }
 
-// Close closes the gRPC connection
 func (c *DHCPClient) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -453,11 +405,11 @@ func (c *DHCPClient) Close() error {
 	if c.conn != nil {
 		err := c.conn.Close()
 		c.conn = nil
+		c.client = nil
 		c.connected = false
 		log.Printf("[DHCPClient] Connection closed")
 		return err
 	}
-
 	return nil
 }
 
@@ -465,44 +417,59 @@ func (c *DHCPClient) Close() error {
 // Helper Functions
 // ============================================================================
 
-// isNotFoundError checks if an error indicates "not found"
+// protoToDevice converts proto Device to local Device struct
+func protoToDevice(p *pb.Device) *Device {
+	if p == nil {
+		return nil
+	}
+	return &Device{
+		DeviceID:          p.DeviceId,
+		MACAddress:        p.MacAddress,
+		CurrentIP:         p.CurrentIp,
+		Hostname:          p.Hostname,
+		DeviceType:        p.DeviceType,
+		Vendor:            p.Vendor,
+		TrustStatus:       p.TrustStatus,
+		InterfaceName:     p.InterfaceName,
+		InterfaceIndex:    p.InterfaceIndex,
+		Status:            p.Status,
+		DetectionMethod:   p.DetectionMethod,
+		FirstSeen:         parseTimestamp(p.FirstSeen),
+		LastSeen:          parseTimestamp(p.LastSeen),
+		IsOnline:          p.IsOnline,
+		PortalShown:       p.PortalShown,
+		PortalShownAt:     parseTimestamp(p.PortalShownAt),
+		CACertInstalled:   p.CaCertInstalled,
+		CACertInstalledAt: parseTimestamp(p.CaCertInstalledAt),
+	}
+}
+
 func isNotFoundError(err error) bool {
 	if err == nil {
 		return false
 	}
-
-	// Check for gRPC NOT_FOUND status code
 	st, ok := status.FromError(err)
 	if ok && st.Code() == codes.NotFound {
 		return true
 	}
-
-	// Also check for common error messages
 	errMsg := err.Error()
-	return errMsg == "device not found" ||
-		errMsg == "not found" ||
-		errMsg == "no device found"
+	return errMsg == "device not found" || errMsg == "not found"
 }
 
-// parseTimestamp converts ISO 8601 string to time.Time
 func parseTimestamp(ts string) time.Time {
 	if ts == "" {
 		return time.Time{}
 	}
-
-	// Try common formats
 	formats := []string{
 		time.RFC3339,
 		time.RFC3339Nano,
 		"2006-01-02T15:04:05Z",
 		"2006-01-02 15:04:05",
 	}
-
 	for _, format := range formats {
 		if t, err := time.Parse(format, ts); err == nil {
 			return t
 		}
 	}
-
 	return time.Time{}
 }

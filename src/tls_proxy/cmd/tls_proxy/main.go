@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
@@ -123,20 +124,32 @@ func main() {
 
 	// Start transparent HTTPS proxy if MITM is enabled
 	if enableMITM && certCache != nil {
-		transparentProxyAddr := gatewayIP + ":443"
-		transparentProxy := transparent.NewTransparentProxy(
-			transparentProxyAddr,
-			certCache,
-			dhcpMonitor,
-			true, // Log HTTP traffic to console
-		)
+		// Get all private network gateway IPs (exclude public internet interface)
+		gatewayIPs := getPrivateGatewayIPs()
+		if len(gatewayIPs) == 0 {
+			log.Printf("⚠️  No private gateway IPs found, using configured gateway: %s", gatewayIP)
+			gatewayIPs = []string{gatewayIP}
+		}
 
-		go func() {
-			log.Printf("✓ Transparent HTTPS Proxy: %s (MITM Inspection)", transparentProxyAddr)
-			if err := transparentProxy.Start(); err != nil {
-				log.Fatalf("Transparent proxy error: %v", err)
-			}
-		}()
+		log.Printf("🔍 Detected %d private network interface(s): %v", len(gatewayIPs), gatewayIPs)
+
+		// Start transparent proxy on each gateway interface
+		for _, gwIP := range gatewayIPs {
+			transparentProxyAddr := gwIP + ":443"
+			transparentProxy := transparent.NewTransparentProxy(
+				transparentProxyAddr,
+				certCache,
+				dhcpMonitor,
+				true, // Log HTTP traffic to console
+			)
+
+			go func(addr string, proxy *transparent.TransparentProxy) {
+				log.Printf("✓ Transparent HTTPS Proxy: %s (MITM Inspection)", addr)
+				if err := proxy.Start(); err != nil {
+					log.Printf("⚠️  Transparent proxy error on %s: %v", addr, err)
+				}
+			}(transparentProxyAddr, transparentProxy)
+		}
 	}
 
 	// Start servers
@@ -213,4 +226,61 @@ func logConfig(dhcp, stepCA string, dnsPort, packetPort int, gw, policy, captive
 	log.Printf("  Show Once:        %v", once)
 	log.Printf("  MITM Enabled:     %v", mitm)
 	log.Println()
+}
+
+// getPrivateGatewayIPs detects all private network gateway IPs on this machine
+// Excludes public internet-facing interfaces
+func getPrivateGatewayIPs() []string {
+	var gatewayIPs []string
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		log.Printf("⚠️  Failed to get network interfaces: %v", err)
+		return gatewayIPs
+	}
+
+	for _, iface := range interfaces {
+		// Skip loopback and down interfaces
+		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok || ipNet.IP.To4() == nil {
+				continue // Skip non-IPv4
+			}
+
+			ip := ipNet.IP.To4()
+
+			// Check if this is a private network (RFC 1918)
+			if isPrivateIP(ip) {
+				gatewayIPs = append(gatewayIPs, ip.String())
+			}
+		}
+	}
+
+	return gatewayIPs
+}
+
+// isPrivateIP checks if an IP is in private ranges (RFC 1918)
+func isPrivateIP(ip net.IP) bool {
+	// 10.0.0.0/8
+	if ip[0] == 10 {
+		return true
+	}
+	// 172.16.0.0/12
+	if ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31 {
+		return true
+	}
+	// 192.168.0.0/16
+	if ip[0] == 192 && ip[1] == 168 {
+		return true
+	}
+	return false
 }

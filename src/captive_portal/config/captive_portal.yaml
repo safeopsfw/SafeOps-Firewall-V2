@@ -8,9 +8,10 @@ server:
   cert_file: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\certs\\server.crt"
   key_file: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\certs\\server.key"
 
-  # HTTP redirect server
+  # HTTP server configuration (for CA cert download - devices need HTTP access)
   http_port: 8080
-  http_redirect_to_https: true
+  http_enabled: true  # Serve content on HTTP (devices need this to download CA cert)
+  http_redirect_to_https: false  # Disabled - devices can't access HTTPS without CA cert
 
   # Timeouts
   read_timeout: "30s"

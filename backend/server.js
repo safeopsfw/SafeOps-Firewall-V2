@@ -18,10 +18,10 @@ app.use(cors()); // Enable CORS for frontend
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
-// Rate limiting
+// Rate limiting - increased for development
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    max: 1000, // Limit each IP to 1000 requests per windowMs (dev friendly)
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', limiter);

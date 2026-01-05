@@ -432,9 +432,39 @@
         }
     }
 
+    /**
+     * Show a generic status message (for skip action)
+     * @param {string} type - 'success', 'error', 'warning'
+     * @param {string} title - Alert title
+     * @param {string} message - Alert message
+     */
+    function showStatusMessage(type, title, message) {
+        const statusElement = document.getElementById('verify-status');
+        if (!statusElement) return;
+
+        const iconColors = {
+            success: '#10b981',
+            error: '#ef4444',
+            warning: '#f59e0b'
+        };
+
+        statusElement.innerHTML = `
+            <div class="alert alert-${type}" style="margin-top: 20px; padding: 20px; border-radius: 12px; background: ${type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'};">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 24px;">${type === 'success' ? '🎉' : '❌'}</span>
+                    <div>
+                        <div style="font-weight: bold; font-size: 1.1rem;">${title}</div>
+                        <div style="color: #94a3b8; margin-top: 4px;">${message}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     // ========================================================================
     // Manual Verification
     // ========================================================================
+
 
     /**
      * Handle manual "I've Installed" button click
@@ -505,9 +535,10 @@
             skipBtn.addEventListener('click', skipCertInstallation);
         }
 
-        // Download buttons
+        // Download buttons - intercept click to show alert after download
         document.querySelectorAll('[data-download-format]').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent default link behavior
                 const format = e.currentTarget.dataset.downloadFormat;
                 downloadCertificate(format);
             });
@@ -547,9 +578,9 @@
                 // Close window after 3 seconds
                 setTimeout(() => {
                     window.close();
-                    // If window.close() doesn't work (some browsers block it), redirect
+                    // If window.close() doesn't work, redirect to Google
                     setTimeout(() => {
-                        window.location.href = 'http://www.google.com';
+                        window.location.href = 'https://www.google.com';
                     }, 500);
                 }, 3000);
 
@@ -594,6 +625,14 @@
         document.body.removeChild(link);
 
         console.log('[SafeOps] Certificate download initiated:', format);
+
+        // Show alert reminding user to install the certificate
+        setTimeout(() => {
+            alert('✅ Certificate Downloaded!\n\n' +
+                'Please install the certificate on your device.\n\n' +
+                '📱 Go to Settings → Security → Install from storage\n\n' +
+                '🔒 IT Security will verify your device installation for security purposes.');
+        }, 500);
     }
 
     // ========================================================================

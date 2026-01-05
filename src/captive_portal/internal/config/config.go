@@ -47,7 +47,8 @@ func DefaultConfig() *Config {
 			CertFile:            "internal/certs/server.crt",
 			KeyFile:             "internal/certs/server.key",
 			HTTPPort:            8080,
-			HTTPRedirectToHTTPS: true,
+			HTTPEnabled:         true,  // Serve content on HTTP (for CA cert download)
+			HTTPRedirectToHTTPS: false, // Disabled - devices need HTTP access to download CA cert
 			ReadTimeout:         10 * time.Second,
 			WriteTimeout:        10 * time.Second,
 			IdleTimeout:         120 * time.Second,

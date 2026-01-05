@@ -20,6 +20,7 @@ type ServerConfig struct {
 	CertFile            string        `yaml:"cert_file"`
 	KeyFile             string        `yaml:"key_file"`
 	HTTPPort            int           `yaml:"http_port"`
+	HTTPEnabled         bool          `yaml:"http_enabled"` // NEW: Serve content on HTTP (for CA cert download)
 	HTTPRedirectToHTTPS bool          `yaml:"http_redirect_to_https"`
 	ReadTimeout         time.Duration `yaml:"read_timeout"`
 	WriteTimeout        time.Duration `yaml:"write_timeout"`

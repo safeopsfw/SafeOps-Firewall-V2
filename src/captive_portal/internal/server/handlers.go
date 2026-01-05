@@ -271,10 +271,19 @@ func (h *Handlers) HandleDownloadCA(w http.ResponseWriter, r *http.Request) {
 	// Extract format from path: /api/download-ca/{format}
 	format := strings.TrimPrefix(r.URL.Path, "/api/download-ca/")
 	if format == "" || format == r.URL.Path {
-		format = "pem" // Default to PEM
+		// Auto-detect format based on User-Agent for mobile compatibility
+		userAgent := strings.ToLower(r.Header.Get("User-Agent"))
+		if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") ||
+			strings.Contains(userAgent, "ipad") || strings.Contains(userAgent, "mobile") {
+			format = "crt" // Mobile devices need .crt (DER format works better)
+			log.Printf("[Handlers] Mobile device detected, using CRT format")
+		} else {
+			format = "pem" // Default to PEM for desktop
+		}
 	}
 
-	log.Printf("[Handlers] Certificate download request: format=%s, client=%s", format, getClientIP(r))
+	log.Printf("[Handlers] Certificate download request: format=%s, client=%s, UA=%s",
+		format, getClientIP(r), r.Header.Get("User-Agent"))
 
 	// Try to read Root CA from TLS Proxy's generated file first
 	rootCAPath := "D:/SafeOpsFV2/src/tls_proxy/certs/safeops-root-ca.crt"
@@ -304,20 +313,29 @@ func (h *Handlers) HandleDownloadCA(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Determine MIME type based on format
-	mimeType := "application/x-pem-file"
-	if format == "der" {
+	// Determine MIME type and filename based on format
+	// Android/iOS need specific settings for certificate installation
+	var mimeType, filename string
+	switch format {
+	case "der", "crt", "cer":
+		// Best for mobile devices (Android, iOS)
 		mimeType = "application/x-x509-ca-cert"
-	} else if format == "p12" || format == "pkcs12" {
+		filename = "SafeOps_Root_CA.crt"
+	case "p12", "pkcs12":
 		mimeType = "application/x-pkcs12"
+		filename = "SafeOps_Root_CA.p12"
+	default: // pem
+		mimeType = "application/x-pem-file"
+		filename = "SafeOps_Root_CA.pem"
 	}
 
-	// Set headers for download
-	filename := fmt.Sprintf("SafeOps_Root_CA%s", GetFileExtension(format))
+	// Set headers for download - mobile compatibility
 	w.Header().Set("Content-Type", mimeType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(certData)))
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	// iOS needs this to prompt certificate install
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 
 	// Phase 3B: Mark that device has downloaded CA cert (only if dhcpClient available)
 	if h.dhcpClient != nil {
@@ -326,8 +344,11 @@ func (h *Handlers) HandleDownloadCA(w http.ResponseWriter, r *http.Request) {
 			defer cancel()
 
 			clientIP := getClientIP(r)
+			log.Printf("[Handlers] 🔍 DEBUG: Certificate download - RemoteAddr=%s, X-Forwarded-For=%s, X-Real-IP=%s, Extracted=%s",
+				r.RemoteAddr, r.Header.Get("X-Forwarded-For"), r.Header.Get("X-Real-IP"), clientIP)
+
 			if err := h.dhcpClient.MarkCACertInstalled(bgCtx, clientIP); err != nil {
-				log.Printf("[Handlers] Failed to mark CA cert installed for %s: %v", clientIP, err)
+				log.Printf("[Handlers] ❌ Failed to mark CA cert installed for %s: %v", clientIP, err)
 			} else {
 				log.Printf("[Handlers] ✅ Marked CA cert installed for %s", clientIP)
 			}
@@ -416,6 +437,29 @@ func (h *Handlers) HandleMarkTrusted(w http.ResponseWriter, r *http.Request) {
 			"mac_address":  updatedDevice.MACAddress,
 			"trust_status": updatedDevice.TrustStatus,
 		},
+	})
+}
+
+// HandleSkip handles the skip button - allow internet without certificate (ALLOW_ONCE policy)
+func (h *Handlers) HandleSkip(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendJSON(w, http.StatusMethodNotAllowed, map[string]string{
+			"error": "Method not allowed",
+		})
+		return
+	}
+
+	clientIP := getClientIP(r)
+	log.Printf("[Handlers] Skip/ALLOW_ONCE request from %s", clientIP)
+
+	// For now, just return success - the device will have internet access
+	// In the full implementation, this would mark portal_shown=true in DHCP Monitor
+	// and the TLS Proxy would skip blocking for this device
+
+	sendJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Internet access granted. You can now browse the web.",
+		"ip":      clientIP,
 	})
 }
 

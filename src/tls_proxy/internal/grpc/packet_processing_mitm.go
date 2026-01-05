@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"tls_proxy/internal/certcache"
-	"tls_proxy/internal/injector"
 	"tls_proxy/internal/integration"
 	"tls_proxy/internal/mitm_handler"
 	"tls_proxy/internal/packet"
@@ -18,7 +17,6 @@ import (
 type MITMPacketProcessor struct {
 	pb.UnimplementedPacketProcessingServiceServer
 	dhcpMonitor *integration.DHCPMonitorClient
-	injector    *injector.HTTPRedirectInjector
 	mitmHandler *mitm_handler.DualTLSHandler
 	certCache   *certcache.CertificateCache
 	policyMode  string
@@ -27,12 +25,14 @@ type MITMPacketProcessor struct {
 }
 
 // NewMITMPacketProcessor creates MITM-enabled packet processor
+// SIMPLIFIED: No redirect logic, users manually access portal
 func NewMITMPacketProcessor(
 	dhcpMonitor *integration.DHCPMonitorClient,
 	stepCA *integration.StepCAClient,
 	redirectURL, policyMode string,
 	allowOnce, enableMITM bool,
 ) *MITMPacketProcessor {
+	_ = redirectURL // No longer used - manual portal access
 
 	// Create certificate cache
 	certCache := certcache.NewCertificateCache(stepCA, 24*3600000000000, 1000)
@@ -45,7 +45,6 @@ func NewMITMPacketProcessor(
 
 	return &MITMPacketProcessor{
 		dhcpMonitor: dhcpMonitor,
-		injector:    injector.NewHTTPRedirectInjector(redirectURL),
 		mitmHandler: mitmHandler,
 		certCache:   certCache,
 		policyMode:  policyMode,
@@ -54,10 +53,9 @@ func NewMITMPacketProcessor(
 	}
 }
 
-// ProcessPacket handles packet with MITM capabilities (HTTP + HTTPS inspection)
+// ProcessPacket handles packet with MITM capabilities
+// SIMPLIFIED: No captive portal auto-redirect, users manually access portal
 func (p *MITMPacketProcessor) ProcessPacket(ctx context.Context, req *pb.PacketRequest) (*pb.PacketResponse, error) {
-	// Verbose packet logging removed to prevent terminal flooding
-
 	// Parse packet
 	info, err := packet.ParsePacket(
 		req.RawPacket,
@@ -68,65 +66,20 @@ func (p *MITMPacketProcessor) ProcessPacket(ctx context.Context, req *pb.PacketR
 		req.Protocol,
 	)
 	if err != nil {
-		log.Printf("[MITM] Parse error: %v", err)
 		return &pb.PacketResponse{Action: pb.PacketAction_FORWARD, Reason: "Parse error"}, nil
 	}
 
 	packetType := packet.ClassifyPacket(info)
-
-	// ═══════════════════════════════════════════════════════════════════════
-	// CAPTIVE PORTAL AUTO-DETECTION (Same as regular processor)
-	// ═══════════════════════════════════════════════════════════════════════
-	if packet.IsCaptivePortalCheck(info.HTTPHost, info.HTTPPath) {
-		platform := packet.GetPlatformFromCaptiveURL(info.HTTPHost)
-		log.Printf("[MITM] Captive Portal detection from %s (%s)", req.SourceIp, platform)
-
-		// Check device trust status
-		if p.dhcpMonitor != nil {
-			deviceInfo, err := p.dhcpMonitor.GetDeviceByIP(ctx, req.SourceIp)
-			if err == nil {
-				if packet.ShouldInterceptCaptivePortalCheck(
-					info.HTTPHost,
-					info.HTTPPath,
-					deviceInfo.TrustStatus,
-					deviceInfo.PortalShown,
-					p.policyMode,
-				) {
-					log.Printf("[MITM] INTERCEPTING %s captive portal check → Redirect", platform)
-
-					redirectPacket, err := p.injector.BuildHTTP302Redirect(info)
-					if err == nil {
-						return &pb.PacketResponse{
-							Action:         pb.PacketAction_INJECT,
-							ModifiedPacket: redirectPacket,
-							Reason:         "Captive portal auto-open",
-						}, nil
-					}
-				}
-			}
-		}
-
-		// Forward captive portal checks for trusted devices
-		return &pb.PacketResponse{
-			Action: pb.PacketAction_FORWARD,
-			Reason: "Captive portal check - device trusted or portal shown",
-		}, nil
-	}
 
 	// Check if this is TLS ClientHello (for MITM)
 	if packetType == "TLS" && sni_parser.IsClientHello(req.RawPacket) {
 		return p.handleTLSClientHello(ctx, req, info)
 	}
 
-	// Handle HTTP
-	if packet.ShouldIntercept(info) {
-		return p.handleHTTP(ctx, req, info)
-	}
-
-	// Forward everything else
+	// Forward all other traffic - no redirect
 	return &pb.PacketResponse{
 		Action: pb.PacketAction_FORWARD,
-		Reason: "Not HTTP/HTTPS",
+		Reason: "Manual portal access - no redirect",
 	}, nil
 }
 
@@ -198,36 +151,11 @@ func (p *MITMPacketProcessor) handleTLSClientHello(ctx context.Context, req *pb.
 }
 
 // handleHTTP handles HTTP packets
+// SIMPLIFIED: No redirect, just forward. Users manually access portal.
 func (p *MITMPacketProcessor) handleHTTP(ctx context.Context, req *pb.PacketRequest, info *packet.PacketInfo) (*pb.PacketResponse, error) {
-	// Check device trust
-	deviceInfo, err := p.dhcpMonitor.GetDeviceByIP(ctx, req.SourceIp)
-	if err != nil {
-		return &pb.PacketResponse{Action: pb.PacketAction_FORWARD, Reason: "DHCP unavailable"}, nil
-	}
-
-	if deviceInfo.TrustStatus == "UNTRUSTED" && p.policyMode == "ALLOW_ONCE" && p.allowOnce {
-		// Phase 3A: Check if portal was already shown
-		if deviceInfo.PortalShown {
-			log.Printf("[MITM] ALLOW_ONCE: Portal already shown → FORWARD")
-			return &pb.PacketResponse{
-				Action: pb.PacketAction_FORWARD,
-				Reason: "Portal already shown (ALLOW_ONCE)",
-			}, nil
-		}
-
-		// First time → redirect to captive portal
-		log.Printf("[MITM] ALLOW_ONCE: First visit → Redirect to captive portal")
-		redirectPacket, err := p.injector.BuildHTTP302Redirect(info)
-		if err != nil {
-			return &pb.PacketResponse{Action: pb.PacketAction_FORWARD, Reason: "Redirect failed"}, nil
-		}
-
-		return &pb.PacketResponse{
-			Action:         pb.PacketAction_INJECT,
-			ModifiedPacket: redirectPacket,
-			Reason:         "Redirect to captive portal",
-		}, nil
-	}
-
-	return &pb.PacketResponse{Action: pb.PacketAction_FORWARD, Reason: "Device trusted"}, nil
+	_ = ctx  // Reserved
+	_ = req  // Reserved
+	_ = info // Reserved
+	// Forward all HTTP - no redirect logic
+	return &pb.PacketResponse{Action: pb.PacketAction_FORWARD, Reason: "Manual portal access - no redirect"}, nil
 }
