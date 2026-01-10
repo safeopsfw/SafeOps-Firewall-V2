@@ -126,5 +126,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=../../proto/grpc/network_manager.proto");
     println!("cargo:rerun-if-changed=../../proto/grpc/common.proto");
 
+    // ==========================================================================
+    // DHCP Monitor Proto Compilation (Client Only - for Packet Engine)
+    // ==========================================================================
+    // Packet Engine queries DHCP Monitor to get device info (trust status, MAC, etc.)
+    // This enables enriched logging with device context for FW/IDS/IPS.
+    //
+    let dhcp_monitor_proto = PathBuf::from("proto/dhcp_monitor.proto");
+    
+    if dhcp_monitor_proto.exists() {
+        tonic_build::configure()
+            .build_server(false) // Client only - Packet Engine calls DHCP Monitor
+            .build_client(true)
+            .compile(
+                &[dhcp_monitor_proto.to_str().unwrap()],
+                &["proto"],
+            )?;
+        eprintln!("Compiled dhcp_monitor.proto for Packet Engine device lookup");
+        println!("cargo:rerun-if-changed=proto/dhcp_monitor.proto");
+    } else {
+        eprintln!("Warning: dhcp_monitor.proto not found at {:?}", dhcp_monitor_proto);
+        eprintln!("Device info enrichment will not be available in packet logs");
+    }
+
     Ok(())
 }

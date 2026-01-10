@@ -109,6 +109,7 @@ tonic = "0.10"
 simple_logger = "4.3.0"
 prost = "0.12"
 tower = "0.4"
+tokio-stream = "0.1"
 
 # Payload encoding and timestamp formatting for DPI logs
 base64 = "0.21"

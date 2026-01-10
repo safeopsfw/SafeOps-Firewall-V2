@@ -8,10 +8,10 @@
 # DATABASE CONFIGURATION
 # =============================================================================
 database:
-  # PostgreSQL connection settings (same as threat_intel backend)
+  # PostgreSQL connection settings
   host: "${DB_HOST:-localhost}"
   port: ${DB_PORT:-5432}
-  name: "${DB_NAME:-threat_intel_db}"
+  name: "${DB_NAME:-safeops}"
   user: "${DB_USER:-postgres}"
   password: "${DB_PASSWORD:-postgres}"
   sslmode: "${DB_SSLMODE:-disable}"  # disable, require, verify-ca, verify-full

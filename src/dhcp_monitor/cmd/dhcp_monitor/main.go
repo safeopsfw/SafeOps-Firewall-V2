@@ -130,13 +130,21 @@ func run() error {
 		}
 	}()
 
-	// Wait briefly for server to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for gRPC server to start with retries
+	var startupErr error
+	for attempt := 1; attempt <= 5; attempt++ {
+		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		startupErr = validateStartup(db, server)
+		if startupErr == nil {
+			break
+		}
+		log.Printf("[MAIN] Startup validation attempt %d failed: %v", attempt, startupErr)
+	}
 
 	// Validate startup
-	if err := validateStartup(db, server); err != nil {
+	if startupErr != nil {
 		shutdown(server, arpMonitor, dhcpEnricher, deviceMgr, db)
-		return fmt.Errorf("startup validation: %w", err)
+		return fmt.Errorf("startup validation: %w", startupErr)
 	}
 
 	log.Println("[MAIN] ═══════════════════════════════════════")

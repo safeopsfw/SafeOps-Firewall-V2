@@ -222,6 +222,8 @@ func (m *ARPMonitor) runARPPolling() {
 		// Send DEVICE_DETECTED events for all existing devices at startup!
 		log.Printf("[ARP_MONITOR] Initial scan found %d ARP entries", len(entries))
 		for _, entry := range entries {
+			log.Printf("[ARP_MONITOR] Found: IP=%s MAC=%s State=%s Type=%s Interface=%s",
+				entry.IPAddress, entry.MACAddress, entry.State, entry.Type, entry.InterfaceName)
 			m.handleARPDetection(&entry, EventTypeDeviceDetected)
 		}
 	}

@@ -1,11 +1,10 @@
 // Protocol Buffers definition for DHCP Monitor gRPC Service
-// Compile with: protoc --go_out=. --go-grpc_out=. proto/dhcp_monitor.proto
+// Used by Packet Engine to query device information
+// Copied from src/dhcp_monitor/proto/dhcp_monitor.proto
 
 syntax = "proto3";
 
 package dhcp_monitor;
-
-option go_package = "dhcp_monitor/proto/gen";
 
 // =============================================================================
 // MESSAGE DEFINITIONS
@@ -57,14 +56,12 @@ message TrustUpdateRequest {
 }
 
 // MarkPortalShownRequest - Mark that device has seen captive portal
-// Phase 3A: For ALLOW_ONCE policy tracking
 message MarkPortalShownRequest {
     string device_id = 1;        // UUID of device (or IP address)
     string ip_address = 2;       // Alternative: device IP (for convenience)
 }
 
 // MarkCACertInstalledRequest - Mark that device has installed CA certificate
-// Phase 3B: For CA cert distribution tracking
 message MarkCACertInstalledRequest {
     string device_id = 1;        // UUID of device
     string ip_address = 2;       // Alternative: device IP (for convenience)
@@ -115,7 +112,6 @@ message HealthStatus {
 // =============================================================================
 
 // DhcpEvent - DHCP packet captured by Packet Engine
-// Sent to DHCP Monitor for device tracking and database storage
 message DhcpEvent {
     string mac_address = 1;      // Client MAC from chaddr field (AA:BB:CC:DD:EE:FF)
     string client_ip = 2;        // Assigned IP from yiaddr field
@@ -145,43 +141,31 @@ message DhcpEventResponse {
 
 // DHCPMonitor - gRPC service for device tracking and trust management
 service DHCPMonitor {
-    // GetDeviceByIP - Query device by IP address (PRIMARY lookup for TLS Proxy)
-    // Returns NOT_FOUND if IP not in database
+    // GetDeviceByIP - Query device by IP address (PRIMARY lookup for Packet Engine)
     rpc GetDeviceByIP(IPRequest) returns (Device);
     
     // GetDeviceByMAC - Query device by MAC address
-    // Used by Captive Portal for device identification
     rpc GetDeviceByMAC(MACRequest) returns (Device);
     
     // GetDeviceByID - Query device by UUID
-    // Direct lookup by primary key
     rpc GetDeviceByID(DeviceIDRequest) returns (Device);
     
     // UpdateTrustStatus - Change device trust status
-    // Called by Captive Portal after CA certificate installation
-    // Returns updated device record
     rpc UpdateTrustStatus(TrustUpdateRequest) returns (Device);
     
     // MarkPortalShown - Mark that device has seen the captive portal
-    // Phase 3A: Called by Captive Portal when welcome page is loaded
-    // Used by TLS Proxy to skip redirect for ALLOW_ONCE policy
     rpc MarkPortalShown(MarkPortalShownRequest) returns (Device);
 
     // MarkCACertInstalled - Mark that device has installed CA certificate
-    // Phase 3B: Called by Captive Portal when CA cert is downloaded
-    // Enables MITM inspection for this device
     rpc MarkCACertInstalled(MarkCACertInstalledRequest) returns (Device);
 
-    // ListDevices - Get paginated, filtered device list
-    // Used by admin dashboard and diagnostic tools
+    // ListDevices - Get paginated, filtered device list (used by Packet Engine for cache)
     rpc ListDevices(ListDevicesRequest) returns (DeviceList);
     
     // GetDeviceStats - Get aggregate device statistics
-    // Used by monitoring dashboards and Prometheus exporter
     rpc GetDeviceStats(Empty) returns (DeviceStats);
     
     // HealthCheck - Service health status
-    // Used by orchestrator and load balancers
     rpc HealthCheck(Empty) returns (HealthStatus);
     
     // ==========================================================================
@@ -193,4 +177,3 @@ service DHCPMonitor {
     // Creates or updates device in database with hostname, vendor, etc.
     rpc ReportDhcpEvent(DhcpEvent) returns (DhcpEventResponse);
 }
-

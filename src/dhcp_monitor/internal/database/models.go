@@ -93,6 +93,18 @@ type Device struct {
 	// Phase 3B: CA certificate tracking
 	CACertInstalled   bool         `db:"ca_cert_installed" json:"ca_cert_installed"`
 	CACertInstalledAt sql.NullTime `db:"ca_cert_installed_at" json:"ca_cert_installed_at,omitempty"`
+	// Device Fingerprint Fields
+	NetBIOSName      sql.NullString `db:"netbios_name" json:"netbios_name,omitempty"`
+	NetBIOSDomain    sql.NullString `db:"netbios_domain" json:"netbios_domain,omitempty"`
+	ResolvedHostname sql.NullString `db:"resolved_hostname" json:"resolved_hostname,omitempty"`
+	OSType           sql.NullString `db:"os_type" json:"os_type,omitempty"`
+	OSVersion        sql.NullString `db:"os_version" json:"os_version,omitempty"`
+	OSFingerprint    sql.NullString `db:"os_fingerprint" json:"os_fingerprint,omitempty"`
+	InitialTTL       sql.NullInt32  `db:"initial_ttl" json:"initial_ttl,omitempty"`
+	DHCPVendorClass  sql.NullString `db:"dhcp_vendor_class" json:"dhcp_vendor_class,omitempty"`
+	DeviceClass      sql.NullString `db:"device_class" json:"device_class,omitempty"`
+	Manufacturer     sql.NullString `db:"manufacturer" json:"manufacturer,omitempty"`
+	FingerprintedAt  sql.NullTime   `db:"fingerprinted_at" json:"fingerprinted_at,omitempty"`
 }
 
 // ToProto converts Device to protobuf message
@@ -106,24 +118,24 @@ func (d *Device) ToProto() *pb.Device {
 		caCertInstalledAt = d.CACertInstalledAt.Time.Format(time.RFC3339)
 	}
 	return &pb.Device{
-		DeviceId:           d.DeviceID.String(),
-		MacAddress:         d.MACAddress,
-		CurrentIp:          d.CurrentIP.String(),
-		Hostname:           d.Hostname.String,
-		DeviceType:         d.DeviceType,
-		Vendor:             d.Vendor.String,
-		TrustStatus:        string(d.TrustStatus),
-		InterfaceName:      d.InterfaceName,
-		InterfaceIndex:     d.InterfaceIndex,
-		Status:             string(d.Status),
-		DetectionMethod:    string(d.DetectionMethod),
-		FirstSeen:          d.FirstSeen.Format(time.RFC3339),
-		LastSeen:           d.LastSeen.Format(time.RFC3339),
-		IsOnline:           d.IsOnline,
-		PortalShown:        d.PortalShown,
-		PortalShownAt:      portalShownAt,
-		CaCertInstalled:    d.CACertInstalled,
-		CaCertInstalledAt:  caCertInstalledAt,
+		DeviceId:          d.DeviceID.String(),
+		MacAddress:        d.MACAddress,
+		CurrentIp:         d.CurrentIP.String(),
+		Hostname:          d.Hostname.String,
+		DeviceType:        d.DeviceType,
+		Vendor:            d.Vendor.String,
+		TrustStatus:       string(d.TrustStatus),
+		InterfaceName:     d.InterfaceName,
+		InterfaceIndex:    d.InterfaceIndex,
+		Status:            string(d.Status),
+		DetectionMethod:   string(d.DetectionMethod),
+		FirstSeen:         d.FirstSeen.Format(time.RFC3339),
+		LastSeen:          d.LastSeen.Format(time.RFC3339),
+		IsOnline:          d.IsOnline,
+		PortalShown:       d.PortalShown,
+		PortalShownAt:     portalShownAt,
+		CaCertInstalled:   d.CACertInstalled,
+		CaCertInstalledAt: caCertInstalledAt,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -283,8 +284,9 @@ func (t *ARPTable) InvalidateCache() {
 }
 
 // isValidARPState returns true for usable ARP states
+// Note: Windows returns states with capital letters (Permanent, Stale, Reachable)
 func isValidARPState(state string) bool {
-	switch state {
+	switch strings.ToLower(state) {
 	case "reachable", "permanent", "stale":
 		return true
 	default:

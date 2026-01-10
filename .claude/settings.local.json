@@ -73,7 +73,13 @@
       "Bash(cargo build:*)",
       "Bash(protoc:*)",
       "Bash(Select-String -Pattern \"Finished|error\")",
-      "Bash(Select-Object -First 5)"
+      "Bash(Select-Object -First 5)",
+      "Bash(more:*)",
+      "Bash(go version:*)",
+      "Bash(go work use:*)",
+      "Bash(./bin/safeops-logger.exe:*)",
+      "Bash(timeout 10 ./bin/safeops-logger.exe:*)",
+      "Bash(python3:*)"
     ]
   }
 }

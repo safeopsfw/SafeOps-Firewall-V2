@@ -38,9 +38,10 @@ type ManagerStatistics struct {
 
 // DeviceManager coordinates all device management operations
 type DeviceManager struct {
-	db             *database.DatabaseClient
-	eventChannel   watcher.EventChannel
-	unknownHandler *UnknownDeviceHandler
+	db                  *database.DatabaseClient
+	eventChannel        watcher.EventChannel
+	unknownHandler      *UnknownDeviceHandler
+	fingerprintEnricher *FingerprintEnricher // Background fingerprint collection
 
 	// Lifecycle
 	ctx       context.Context
@@ -73,13 +74,17 @@ func NewDeviceManager(db *database.DatabaseClient, eventChan watcher.EventChanne
 	// Create unknown device handler
 	unknownHandler := NewUnknownDeviceHandler(db, PolicyAutoCreate)
 
+	// Create fingerprint enricher for background device info collection
+	fingerprintEnricher := NewFingerprintEnricher(db)
+
 	return &DeviceManager{
-		db:              db,
-		eventChannel:    eventChan,
-		unknownHandler:  unknownHandler,
-		cleanupInterval: cleanupInterval,
-		inactiveTimeout: inactiveTimeout,
-		isRunning:       false,
+		db:                  db,
+		eventChannel:        eventChan,
+		unknownHandler:      unknownHandler,
+		fingerprintEnricher: fingerprintEnricher,
+		cleanupInterval:     cleanupInterval,
+		inactiveTimeout:     inactiveTimeout,
+		isRunning:           false,
 	}, nil
 }
 
@@ -106,6 +111,11 @@ func (m *DeviceManager) Start(ctx context.Context) error {
 	m.wg.Add(1)
 	go m.runCleanupJob()
 
+	// Start fingerprint enricher (background device info collection)
+	if err := m.fingerprintEnricher.Start(m.ctx); err != nil {
+		log.Printf("[DEVICE_MANAGER] Warning: fingerprint enricher failed to start: %v", err)
+	}
+
 	m.isRunning = true
 	log.Printf("[DEVICE_MANAGER] Started with cleanup_interval=%v inactive_timeout=%v",
 		m.cleanupInterval, m.inactiveTimeout)
@@ -120,6 +130,11 @@ func (m *DeviceManager) Stop() error {
 
 	if !m.isRunning {
 		return nil
+	}
+
+	// Stop fingerprint enricher
+	if m.fingerprintEnricher != nil {
+		m.fingerprintEnricher.Stop()
 	}
 
 	if m.cancel != nil {
@@ -248,6 +263,10 @@ func (m *DeviceManager) handleDeviceDetected(ctx context.Context, event *watcher
 		atomic.AddInt64(&m.stats.DevicesCreated, 1)
 		log.Printf("[DEVICE_MANAGER] New device: MAC=%s IP=%s Trust=%s",
 			newDevice.MACAddress, newDevice.CurrentIP.String(), newDevice.TrustStatus)
+
+		// Queue device for fingerprinting
+		m.fingerprintEnricher.EnrichDevice(newDevice)
+
 		return nil
 	}
 

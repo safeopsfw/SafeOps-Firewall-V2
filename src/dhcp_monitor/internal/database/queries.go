@@ -58,8 +58,11 @@ func (c *DatabaseClient) GetDeviceByIP(ctx context.Context, ip string) (*Device,
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 		&device.Notes,
-		&device.PortalShown, &device.PortalShownAt,
-		&device.CACertInstalled, &device.CACertInstalledAt,
+
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -91,8 +94,11 @@ func (c *DatabaseClient) GetDeviceByMAC(ctx context.Context, mac string) (*Devic
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 		&device.Notes,
-		&device.PortalShown, &device.PortalShownAt,
-		&device.CACertInstalled, &device.CACertInstalledAt,
+
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -124,8 +130,10 @@ func (c *DatabaseClient) GetDeviceByID(ctx context.Context, deviceID uuid.UUID) 
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 		&device.Notes,
-		&device.PortalShown, &device.PortalShownAt,
-		&device.CACertInstalled, &device.CACertInstalledAt,
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -450,8 +458,10 @@ func (c *DatabaseClient) ListDevices(ctx context.Context, filter *DeviceFilter) 
 			&device.Status, &device.IsOnline, &device.DetectionMethod,
 			&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
 			&device.Notes,
-			&device.PortalShown, &device.PortalShownAt,
-			&device.CACertInstalled, &device.CACertInstalledAt,
+			&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+			&device.OSType, &device.OSVersion, &device.OSFingerprint,
+			&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+			&device.Manufacturer, &device.FingerprintedAt,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("scan error: %w", err)
@@ -581,6 +591,78 @@ func (c *DatabaseClient) PurgeOldIPHistory(ctx context.Context, retentionDays in
 	}
 
 	return result.RowsAffected()
+}
+
+// =============================================================================
+// DEVICE FINGERPRINT QUERIES
+// =============================================================================
+
+// UpdateDeviceFingerprint updates device with fingerprint information
+func (c *DatabaseClient) UpdateDeviceFingerprint(ctx context.Context, deviceID uuid.UUID,
+	netbiosName, netbiosDomain, resolvedHostname, osType, osVersion, osFingerprint string,
+	initialTTL int, dhcpVendorClass, deviceClass, manufacturer string) error {
+
+	query := `
+		UPDATE devices SET
+			netbios_name = COALESCE(NULLIF($2, ''), netbios_name),
+			netbios_domain = COALESCE(NULLIF($3, ''), netbios_domain),
+			resolved_hostname = COALESCE(NULLIF($4, ''), resolved_hostname),
+			os_type = COALESCE(NULLIF($5, ''), os_type),
+			os_version = COALESCE(NULLIF($6, ''), os_version),
+			os_fingerprint = COALESCE(NULLIF($7, ''), os_fingerprint),
+			initial_ttl = CASE WHEN $8 > 0 THEN $8 ELSE initial_ttl END,
+			dhcp_vendor_class = COALESCE(NULLIF($9, ''), dhcp_vendor_class),
+			device_class = COALESCE(NULLIF($10, ''), device_class),
+			manufacturer = COALESCE(NULLIF($11, ''), manufacturer),
+			fingerprinted_at = NOW(),
+			updated_at = NOW()
+		WHERE device_id = $1`
+
+	result, err := c.DB.ExecContext(ctx, query,
+		deviceID, netbiosName, netbiosDomain, resolvedHostname,
+		osType, osVersion, osFingerprint, initialTTL,
+		dhcpVendorClass, deviceClass, manufacturer,
+	)
+	if err != nil {
+		return fmt.Errorf("fingerprint update error: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("device not found: %s", deviceID)
+	}
+
+	return nil
+}
+
+// GetDevicesNeedingFingerprint returns devices that haven't been fingerprinted yet
+func (c *DatabaseClient) GetDevicesNeedingFingerprint(ctx context.Context, limit int) ([]*Device, error) {
+	query := `
+		SELECT device_id, mac_address, host(current_ip) as current_ip
+		FROM devices 
+		WHERE fingerprinted_at IS NULL 
+		   OR fingerprinted_at < NOW() - INTERVAL '24 hours'
+		ORDER BY last_seen DESC
+		LIMIT $1`
+
+	rows, err := c.DB.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer rows.Close()
+
+	devices := []*Device{}
+	for rows.Next() {
+		device := &Device{}
+		var currentIP string
+		if err := rows.Scan(&device.DeviceID, &device.MACAddress, &currentIP); err != nil {
+			continue
+		}
+		device.CurrentIP = net.ParseIP(currentIP)
+		devices = append(devices, device)
+	}
+
+	return devices, nil
 }
 
 // Suppress unused import warning

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"database/sql"
 	"fmt"
 	"log"
 	"net"
@@ -522,6 +523,115 @@ func (s *Server) HealthCheck(ctx context.Context, req *gen.Empty) (*gen.HealthSt
 		Uptime:         time.Since(s.startTime).String(),
 		TotalQueries:   atomic.LoadInt64(&s.totalRPCs),
 	}, nil
+}
+
+// =============================================================================
+// DHCP EVENT REPORTING FROM PACKET ENGINE
+// =============================================================================
+
+// ReportDhcpEvent implements DHCPMonitorServer - receives DHCP packets from Packet Engine
+// This is the NEW method that enables Packet Engine to report captured DHCP traffic
+// for device detection and enrichment
+func (s *Server) ReportDhcpEvent(ctx context.Context, req *gen.DhcpEvent) (*gen.DhcpEventResponse, error) {
+	// Validate MAC address
+	if req.GetMacAddress() == "" {
+		return &gen.DhcpEventResponse{
+			Success: false,
+			Message: "MAC address is required",
+		}, nil
+	}
+
+	// Normalize MAC address
+	mac := NormalizeMACAddress(req.GetMacAddress())
+
+	log.Printf("[GRPC_SERVER] 📡 DHCP Event: type=%s MAC=%s IP=%s hostname=%s vendor=%s",
+		req.GetMessageType(), mac, req.GetClientIp(), req.GetHostname(), req.GetVendorClass())
+
+	// Create or update device in database
+	device, isNew, err := s.processDeviceFromDhcpEvent(ctx, req, mac)
+	if err != nil {
+		log.Printf("[GRPC_SERVER] ❌ DHCP Event failed: %v", err)
+		return &gen.DhcpEventResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	if isNew {
+		log.Printf("[GRPC_SERVER] ✅ New device created from DHCP: device_id=%s MAC=%s hostname=%s",
+			device.DeviceID, mac, req.GetHostname())
+	} else {
+		log.Printf("[GRPC_SERVER] ✅ Device updated from DHCP: device_id=%s MAC=%s hostname=%s",
+			device.DeviceID, mac, req.GetHostname())
+	}
+
+	return &gen.DhcpEventResponse{
+		Success:     true,
+		DeviceId:    device.DeviceID.String(),
+		Message:     "Device processed successfully",
+		IsNewDevice: isNew,
+	}, nil
+}
+
+// processDeviceFromDhcpEvent creates or updates a device from DHCP event data
+func (s *Server) processDeviceFromDhcpEvent(ctx context.Context, req *gen.DhcpEvent, mac string) (*database.Device, bool, error) {
+	// Try to find existing device by MAC
+	existingDevice, err := s.db.GetDeviceByMAC(ctx, mac)
+
+	if err == nil && existingDevice != nil {
+		// Device exists - update with new DHCP info
+		if req.GetClientIp() != "" && req.GetClientIp() != "0.0.0.0" {
+			existingDevice.CurrentIP = net.ParseIP(req.GetClientIp())
+		}
+		if req.GetHostname() != "" {
+			existingDevice.Hostname = sql.NullString{String: req.GetHostname(), Valid: true}
+		}
+		if req.GetVendorClass() != "" {
+			existingDevice.Vendor = sql.NullString{String: req.GetVendorClass(), Valid: true}
+		}
+		if req.GetInterfaceName() != "" {
+			existingDevice.InterfaceName = req.GetInterfaceName()
+		}
+
+		// Always update last_seen and detection method
+		existingDevice.LastSeen = time.Now()
+		existingDevice.IsOnline = true
+		existingDevice.DetectionMethod = database.DetectionMethod("PACKET_ENGINE_DHCP")
+
+		err := s.db.UpdateDevice(ctx, existingDevice)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to update device: %w", err)
+		}
+		return existingDevice, false, nil
+	}
+
+	// Device doesn't exist - create new device
+	newDevice := &database.Device{
+		DeviceID:        uuid.New(),
+		MACAddress:      mac,
+		CurrentIP:       net.ParseIP(req.GetClientIp()),
+		Hostname:        sql.NullString{String: req.GetHostname(), Valid: req.GetHostname() != ""},
+		DeviceType:      "Unknown",
+		Vendor:          sql.NullString{String: req.GetVendorClass(), Valid: req.GetVendorClass() != ""},
+		TrustStatus:     database.TrustStatusUntrusted,
+		InterfaceName:   req.GetInterfaceName(),
+		Status:          database.DeviceStatusActive,
+		DetectionMethod: database.DetectionMethod("PACKET_ENGINE_DHCP"),
+		FirstSeen:       time.Now(),
+		LastSeen:        time.Now(),
+		IsOnline:        true,
+	}
+
+	// Insert into database
+	err = s.db.CreateDevice(ctx, newDevice)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create device: %w", err)
+	}
+
+	// Audit log
+	LogDeviceCreated(newDevice.DeviceID, mac, req.GetClientIp(), req.GetInterfaceName())
+
+	return newDevice, true, nil
 }
 
 // =============================================================================
