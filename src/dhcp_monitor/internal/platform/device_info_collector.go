@@ -251,7 +251,7 @@ func (c *DeviceInfoCollector) CollectAll(ip, mac string) *DeviceFingerprint {
 // DNS/HOSTNAME RESOLUTION
 // =============================================================================
 
-func (c *DeviceInfoCollector) resolveHostname(ctx context.Context, ip string) (string, []string, error) {
+func (c *DeviceInfoCollector) resolveHostname(_ context.Context, ip string) (string, []string, error) {
 	names, err := net.LookupAddr(ip)
 	if err != nil {
 		return "", nil, err
@@ -380,7 +380,7 @@ func (c *DeviceInfoCollector) classifyOSByTTL(ttl int) (osType, osVersion string
 // DHCP FINGERPRINTING
 // =============================================================================
 
-func (c *DeviceInfoCollector) getDHCPInfoFromRegistry(ctx context.Context, mac string) (vendorClass, hostname, paramList string, err error) {
+func (c *DeviceInfoCollector) getDHCPInfoFromRegistry(_ context.Context, _ string) (vendorClass, hostname, paramList string, err error) {
 	// DHCP lease info is stored in registry under:
 	// HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{GUID}\
 
@@ -620,7 +620,7 @@ func lookupMACVendor(mac string) string {
 // mDNS RESOLUTION
 // =============================================================================
 
-func (c *DeviceInfoCollector) getMDNSInfo(ctx context.Context, ip string) (string, error) {
+func (c *DeviceInfoCollector) getMDNSInfo(_ context.Context, ip string) (string, error) {
 	// Simple mDNS Reverse Lookup: (reversed-ip).in-addr.arpa PTR -> hostname
 	// 5353 is mDNS port
 
