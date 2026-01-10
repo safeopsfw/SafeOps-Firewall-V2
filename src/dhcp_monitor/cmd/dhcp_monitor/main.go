@@ -16,6 +16,7 @@ import (
 	"dhcp_monitor/internal/database"
 	grpcserver "dhcp_monitor/internal/grpc"
 	"dhcp_monitor/internal/manager"
+	"dhcp_monitor/internal/platform"
 	"dhcp_monitor/internal/watcher"
 )
 
@@ -113,6 +114,19 @@ func run() error {
 		// Stop device manager on watcher init failure
 		deviceMgr.Stop()
 		return fmt.Errorf("initialize watchers: %w", err)
+	}
+
+	// Start mDNS Responder (for safeops-portal.local)
+	// Bind to All Interfaces - dynamic IP selection
+	mdnsResp, err := platform.NewMDNSResponder("safeops-portal.local")
+	if err != nil {
+		log.Printf("[MAIN] Warning: Failed to create mDNS responder: %v", err)
+	} else {
+		// Run in background
+		err = mdnsResp.Start(context.Background())
+		if err != nil {
+			log.Printf("[MAIN] Warning: Failed to start mDNS responder: %v", err)
+		}
 	}
 
 	// Initialize gRPC server

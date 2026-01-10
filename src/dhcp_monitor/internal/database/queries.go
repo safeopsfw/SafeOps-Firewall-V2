@@ -63,6 +63,8 @@ func (c *DatabaseClient) GetDeviceByIP(ctx context.Context, ip string) (*Device,
 		&device.OSType, &device.OSVersion, &device.OSFingerprint,
 		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
 		&device.Manufacturer, &device.FingerprintedAt,
+		&device.PortalShown, &device.PortalShownAt,
+		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -212,7 +214,12 @@ func (c *DatabaseClient) MarkPortalShown(ctx context.Context, deviceID uuid.UUID
 		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
-		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.Notes,
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
+		&device.PortalShown, &device.PortalShownAt,
 		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
@@ -248,7 +255,12 @@ func (c *DatabaseClient) MarkPortalShownByIP(ctx context.Context, ipAddress stri
 		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
-		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.Notes,
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
+		&device.PortalShown, &device.PortalShownAt,
 		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
@@ -283,7 +295,12 @@ func (c *DatabaseClient) MarkCACertInstalled(ctx context.Context, deviceID uuid.
 		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
-		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.Notes,
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
+		&device.PortalShown, &device.PortalShownAt,
 		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
@@ -321,7 +338,12 @@ func (c *DatabaseClient) MarkCACertInstalledByIP(ctx context.Context, ipAddress 
 		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
-		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.Notes,
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
+		&device.PortalShown, &device.PortalShownAt,
 		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 
@@ -356,7 +378,12 @@ func (c *DatabaseClient) MarkCACertInstalledByMAC(ctx context.Context, macAddres
 		&device.InterfaceName, &device.InterfaceIndex, &device.InterfaceGUID,
 		&device.Status, &device.IsOnline, &device.DetectionMethod,
 		&device.FirstSeen, &device.LastSeen, &device.CreatedAt, &device.UpdatedAt,
-		&device.Notes, &device.PortalShown, &device.PortalShownAt,
+		&device.Notes,
+		&device.NetBIOSName, &device.NetBIOSDomain, &device.ResolvedHostname,
+		&device.OSType, &device.OSVersion, &device.OSFingerprint,
+		&device.InitialTTL, &device.DHCPVendorClass, &device.DeviceClass,
+		&device.Manufacturer, &device.FingerprintedAt,
+		&device.PortalShown, &device.PortalShownAt,
 		&device.CACertInstalled, &device.CACertInstalledAt,
 	)
 

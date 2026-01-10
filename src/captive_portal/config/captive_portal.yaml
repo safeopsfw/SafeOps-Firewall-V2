@@ -3,13 +3,13 @@
 
 server:
   # HTTPS server configuration
-  https_port: 8444
+  https_port: 8445
   https_enabled: true
   cert_file: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\certs\\server.crt"
   key_file: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\certs\\server.key"
 
   # HTTP server configuration (for CA cert download - devices need HTTP access)
-  http_port: 8080
+  http_port: 8090
   http_enabled: true  # Serve content on HTTP (devices need this to download CA cert)
   http_redirect_to_https: false  # Disabled - devices can't access HTTPS without CA cert
 
@@ -49,7 +49,7 @@ integrations:
     enabled: true
     host: "localhost"
     port: 5432
-    database: "safeops_network"
+    database: "safeops"
     user: "postgres"
     password: "SafeOpsDB2025!"
     sslmode: "disable"
