@@ -110,6 +110,10 @@ simple_logger = "4.3.0"
 prost = "0.12"
 tower = "0.4"
 
+# Payload encoding and timestamp formatting for DPI logs
+base64 = "0.21"
+chrono = { version = "0.4", features = ["serde"] }
+
 
 # =============================================================================
 # DEV DEPENDENCIES
