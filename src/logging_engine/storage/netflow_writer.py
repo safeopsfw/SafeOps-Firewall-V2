@@ -3,8 +3,7 @@
 NetFlow Writer - FLOW AGGREGATION Edition (Space-Optimized)
 ============================================================
 
-PROBLEM: Old code logs EVERY packet → 1GB+ logs in minutes
-SOLUTION: Aggregate flows → 100x space reduction
+Uses centralized config from config/config.yaml via config_loader.
 
 Features:
 ✅ Flow aggregation by 5-tuple (not per-packet)
@@ -12,18 +11,9 @@ Features:
 ✅ All original features preserved (geo, caching, TLS tracking)
 ✅ Smart filtering (handshakes, ACKs)
 ✅ Batch writing for performance
-✅ Rotation support (3-min source)
+✅ Rotation support
 ✅ Separate east-west and north-south logs
-✅ Unknown geo tracking to CSV (NEW!)
-
-Space Savings:
-- OLD: 100,000 packets = 500MB logs
-- NEW: 100,000 packets = 5MB logs (100x reduction!)
-
-Flow Lifecycle:
-1. Packet arrives → Update existing flow OR create new
-2. Flow timeout (60s idle) OR TCP close → Write to log
-3. Result: 1 record per conversation (not per packet)
+✅ Unknown geo tracking to CSV
 """
 
 from __future__ import annotations
@@ -36,21 +26,28 @@ from threading import Lock, Thread, Event
 from queue import Queue, Empty
 from dataclasses import dataclass, field
 
-# ==================== PATHS ====================
-BASE_DIR = Path(__file__).resolve().parents[4]
-LOGS_DIR = BASE_DIR / 'logs'
-BACKEND_DIR = BASE_DIR / 'backend'
-GEO_DIR = BACKEND_DIR / 'modules' / 'Geo'
+# Import centralized config
+try:
+    from ..config.config_loader import config, get_path, get_setting
+except ImportError:
+    # Fallback for standalone execution
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from config.config_loader import config, get_path, get_setting
 
-IN_FILE = LOGS_DIR / 'network_packets.log'
-OUT_DIR = LOGS_DIR / 'netflow'
+# ==================== PATHS FROM CONFIG ====================
+BASE_DIR = get_path('paths.base_dir')
+LOGS_DIR = get_path('paths.logs_dir')
+
+IN_FILE = get_path('log_files.network_packets')
+NETFLOW_LOG = get_path('log_files.netflow', create_dir=True)
+
+OUT_DIR = NETFLOW_LOG.parent
 EW_FILE = OUT_DIR / 'east_west.log'
 NS_FILE = OUT_DIR / 'north_south.log'
 UNKNOWN_GEO_CSV = LOGS_DIR / 'unknown_geo_location.csv'
-GEO_CSV = GEO_DIR / 'geo_master_full.csv'
+GEO_CSV = Path(get_setting('geo.csv_path', ''))
 
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ==================== CONFIGURATION ====================
 DEVICE_ID = socket.gethostname()

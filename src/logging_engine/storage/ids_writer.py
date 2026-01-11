@@ -2,13 +2,7 @@
 """
 ids_writer.py — Enhanced Performance IDS/IPS Alert Logger
 
-NEW FEATURES:
-- Support for UPDATED network_packets.log JSON structure
-- 3-minute log rotation compatibility
-- Improved performance with batch processing
-- Enhanced memory management
-- Optimized for high-throughput scenarios
-- Advanced deduplication with configurable strategies
+Uses centralized config from config/config.yaml via config_loader.
 
 Processes network packets into IDS/IPS alerts with:
 - Essential network info (src, dst, ports, protocol)
@@ -18,9 +12,6 @@ Processes network packets into IDS/IPS alerts with:
 - IPv4 & IPv6 support
 - Packet ID retention for correlation
 - Timestamp in IST (Indian Standard Time)
-
-Input:  safeops/logs/network_packets.log (auto-rotates every 3 min)
-Output: safeops/logs/ids/ids.log
 """
 
 import os
@@ -40,19 +31,24 @@ from typing import Optional, Dict, Any, Tuple, Set
 from pathlib import Path
 from collections import defaultdict
 
-# ==================== PATHS ====================
-BASE_DIR = Path(__file__).resolve().parents[4]  # safeops/
-LOGS_DIR = BASE_DIR / 'logs'
-BACKEND_DIR = BASE_DIR / 'backend'
-MODULES_DIR = BACKEND_DIR / 'modules'
+# Import centralized config
+try:
+    from ..config.config_loader import config, get_path, get_setting
+except ImportError:
+    # Fallback for standalone execution
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from config.config_loader import config, get_path, get_setting
+
+# ==================== PATHS FROM CONFIG ====================
+BASE_DIR = get_path('paths.base_dir')
+LOGS_DIR = get_path('paths.logs_dir')
 
 # Input/Output
-INPUT_LOG = LOGS_DIR / 'network_packets.log'
-INPUT_IDS_LOG = LOGS_DIR / 'network_packets_ids.log'  # Previous 3-min window
-IDS_DIR = LOGS_DIR / 'ids'
-IDS_LOG = IDS_DIR / 'ids.log'
+INPUT_LOG = get_path('log_files.network_packets')
+IDS_LOG = get_path('log_files.ids', create_dir=True)
 
-IDS_DIR.mkdir(parents=True, exist_ok=True)
+# Ensure directories
+IDS_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 # ==================== ENHANCED CONFIGURATION ====================
 DEVICE_ID = socket.gethostname()

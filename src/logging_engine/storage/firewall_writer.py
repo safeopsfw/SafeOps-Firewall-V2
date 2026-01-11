@@ -2,12 +2,7 @@
 """
 firewall_writer.py — Enhanced Performance Enterprise Firewall Logger
 
-NEW FEATURES:
-- Support for updated network_packets.log JSON structure
-- 3-minute log rotation compatibility
-- Improved performance with batch processing
-- Enhanced memory management
-- Optimized for high-throughput scenarios
+Uses centralized config from config/config.yaml via config_loader.
 
 Processes network packet logs into concise firewall logs with:
 - Essential fields: action, reason, timestamp, IPs, ports, protocol
@@ -15,9 +10,6 @@ Processes network packet logs into concise firewall logs with:
 - Enhanced deduplication with configurable strategies
 - Timestamp in IST (Indian Standard Time)
 - Optimized for security analysis and incident response
-
-Input:  safeops/logs/network_packets.log (auto-rotates every 3 min)
-Output: safeops/logs/firewall/firewall.log
 """
 
 import os
@@ -40,26 +32,28 @@ from typing import Optional, Dict, Any, Tuple, List
 from pathlib import Path
 from collections import deque
 
-# ==================== PATHS ====================
-BASE_DIR = Path(__file__).resolve().parents[4]  # safeops/
-LOGS_DIR = BASE_DIR / 'logs'
-BACKEND_DIR = BASE_DIR / 'backend'
-MODULES_DIR = BACKEND_DIR / 'modules'
+# Import centralized config
+try:
+    from ..config.config_loader import config, get_path, get_setting
+except ImportError:
+    # Fallback for standalone execution
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from config.config_loader import config, get_path, get_setting
+
+# ==================== PATHS FROM CONFIG ====================
+BASE_DIR = get_path('paths.base_dir')
+LOGS_DIR = get_path('paths.logs_dir')
 
 # Input/Output
-INPUT_LOG = LOGS_DIR / 'network_packets.log'
-INPUT_IDS_LOG = LOGS_DIR / 'network_packets_ids.log'  # Previous 3-min window
-FIREWALL_DIR = LOGS_DIR / 'firewall'
-FIREWALL_LOG = FIREWALL_DIR / 'firewall.log'
+INPUT_LOG = get_path('log_files.network_packets')
+FIREWALL_LOG = get_path('log_files.firewall', create_dir=True)
 
-# Geo & Rules
-GEO_DIR = MODULES_DIR / 'Geo'
-GEO_CSV = GEO_DIR / 'geo_master_full.csv'
-NGFW_RULES = MODULES_DIR / 'firewall' / 'config' / 'firewall_engine_rules.json'
+# Geo & Rules (optional)
+GEO_CSV = Path(get_setting('geo.csv_path', ''))
+NGFW_RULES = Path(get_setting('firewall_rules.rules_path', ''))
 
 # Ensure directories
-FIREWALL_DIR.mkdir(exist_ok=True)
-GEO_DIR.mkdir(parents=True, exist_ok=True)
+FIREWALL_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 # ==================== ENHANCED CONFIGURATION ====================
 DEVICE_ID = socket.gethostname()
