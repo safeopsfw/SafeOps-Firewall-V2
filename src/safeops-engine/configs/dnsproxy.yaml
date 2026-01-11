@@ -1,0 +1,50 @@
+# dnsproxy configuration for SafeOps Engine
+
+# Listen on localhost only (WinpkFilter will redirect to us)
+listen-addrs:
+  - "127.0.0.1"
+
+# DNS port (will be overridden by command-line flag to 5353)
+listen-ports:
+  - 5353
+
+# Upstream DNS servers (use DoH for privacy)
+upstream:
+  - "https://dns.google/dns-query"  # Google DoH
+  - "https://cloudflare-dns.com/dns-query"  # Cloudflare DoH
+  - "1.1.1.1"  # Fallback
+
+# Bootstrap DNS for resolving upstream servers
+bootstrap:
+  - "1.1.1.1"
+  - "8.8.8.8"
+
+# Cache settings
+cache: true
+cache-size: 10000
+cache-min-ttl: 300   # 5 minutes
+cache-max-ttl: 3600  # 1 hour
+
+# Blocked response TTL
+blocked-response-ttl: 60
+
+# Rate limiting (0 = disabled)
+ratelimit: 0
+
+# Enable EDNS Client Subnet
+edns: true
+
+# Log level: debug, info, error
+verbose: false
+
+# Fastest upstream selection
+fastest-addr: true
+
+# Timeout for upstream queries
+timeout: 10s
+
+# Retry on servfail
+all-servers: false
+
+# Use IPv6 for upstream
+ipv6-disabled: false

@@ -1,0 +1,97 @@
+# Logging configuration for SafeOps pipeline
+# Defines Python logging handlers for splitting network_raw.log into firewall, netflow, and IDS/IPS logs
+# Supports time-based rotation (every 2 minutes) for real-time capture logs and size-based rotation for others
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  detailed:
+    format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+  simple:
+    format: "%(levelname)s: %(message)s"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: simple
+    stream: ext://sys.stdout
+
+  network_raw_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: safeops/logs/network_raw.log
+    when: S  # Rotate based on seconds
+    interval: 120  # Rotate every 2 minutes (120 seconds)
+    backupCount: 5
+
+  network_raw_error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: detailed
+    filename: safeops/logs/network_raw_errors.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+
+  firewall_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: safeops/logs/ngfw.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+
+  firewall_error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: detailed
+    filename: safeops/logs/ngfw_errors.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+
+  firewall_processed_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: detailed
+    filename: safeops/logs/ngfw_processed.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+
+  firewall_windows_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: safeops/logs/ngfw_windows.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+
+  ids_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: safeops/logs/ids_logs.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 5
+
+loggers:
+  netflow:
+    level: DEBUG
+    handlers: [console, network_raw_file, network_raw_error_file]
+    propagate: false
+
+  firewall:
+    level: DEBUG
+    handlers: [console, firewall_file, firewall_error_file, firewall_processed_file, firewall_windows_file]
+    propagate: false
+
+  ids:
+    level: DEBUG
+    handlers: [console, ids_file]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [console]

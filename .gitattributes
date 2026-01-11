@@ -1,0 +1,101 @@
+﻿# SafeOps v2.0 - Git Attributes Configuration
+
+# =====================================
+# Line Ending Normalization
+# =====================================
+* text=auto
+
+# Source code
+*.c text
+*.h text
+*.go text
+*.rs text
+*.js text
+*.ts text
+*.jsx text
+*.tsx text
+*.toml text
+*.yaml text
+*.yml text
+*.json text
+*.md text
+*.txt text
+
+# Scripts
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Proto files
+*.proto text
+
+# SQL files
+*.sql text
+
+# =====================================
+# Binary Files
+# =====================================
+*.exe binary
+*.dll binary
+*.sys binary
+*.lib binary
+*.obj binary
+*.o binary
+*.a binary
+*.so binary
+*.dylib binary
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bmp binary
+*.svg binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.tgz binary
+*.7z binary
+*.rar binary
+
+# Certificates and Keys
+*.pfx binary
+*.p12 binary
+*.cer binary
+*.crt binary
+*.pem binary
+*.key binary
+
+# Database
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# =====================================
+# Diff Settings
+# =====================================
+*.proto diff
+*.toml diff
+*.yaml diff
+*.json diff
+
+# =====================================
+# Merge Settings
+# =====================================
+Cargo.lock merge=binary
+package-lock.json merge=binary
+yarn.lock merge=binary
+
+# =====================================
+# Export Ignore (for git archive)
+# =====================================
+.gitattributes export-ignore
+.gitignore export-ignore
+.github/ export-ignore
+.vscode/ export-ignore
+tests/ export-ignore

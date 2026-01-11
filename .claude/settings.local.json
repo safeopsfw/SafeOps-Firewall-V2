@@ -79,7 +79,15 @@
       "Bash(go work use:*)",
       "Bash(./bin/safeops-logger.exe:*)",
       "Bash(timeout 10 ./bin/safeops-logger.exe:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(if not exist \"D:\\\\Plan\" mkdir \"D:\\\\Plan\")",
+      "Bash(powershell -Command \"Test-Path D:\\\\SafeOpsFV2\\\\scripts\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File D:SafeOpsFV2scriptsdownload_components.ps1)",
+      "Bash(powershell -Command \"Get-Service -Name ''ndisrd'' | Select-Object Name, Status, StartType\")",
+      "Bash(go mod init:*)",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_ProcessName -eq ''SafeOps-Engine''} | Select-Object Id, ProcessName\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)",
+      "Bash(powershell -Command \"Get-Process -Name mitmdump -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, StartTime\")"
     ]
   }
 }

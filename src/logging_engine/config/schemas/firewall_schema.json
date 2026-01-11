@@ -1,0 +1,253 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SAFEOPS Firewall Log Schema",
+  "description": "Master schema for firewall analysis logs with security intelligence",
+  "type": "object",
+  "required": [
+    "action",
+    "reason",
+    "timestamp_ist",
+    "event_id",
+    "src_ip",
+    "dst_ip",
+    "protocol"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["allow", "deny", "drop", "reject"],
+      "description": "Firewall action taken on the packet"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for the action (e.g., 'Rule: BlockMalicious', 'RST flag', 'Implicit allow')"
+    },
+    "timestamp_ist": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} IST$",
+      "description": "Timestamp in IST timezone (YYYY-MM-DD HH:MM:SS IST)"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier (from packet_id or generated)"
+    },
+    "src_ip": {
+      "type": "string",
+      "format": "ipv4",
+      "description": "Source IP address"
+    },
+    "dst_ip": {
+      "type": "string",
+      "format": "ipv4",
+      "description": "Destination IP address"
+    },
+    "src_port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Source port number (optional, omitted for ICMP)"
+    },
+    "dst_port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "Destination port number (optional, omitted for ICMP)"
+    },
+    "protocol": {
+      "type": "string",
+      "enum": ["TCP", "UDP", "ICMP", "UNKNOWN"],
+      "description": "Network protocol"
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["inbound", "outbound", "east-west", "north-south", "unknown"],
+      "description": "Traffic flow direction classification"
+    },
+    "src_country": {
+      "type": "string",
+      "description": "Source IP country (from geo intelligence)"
+    },
+    "dst_country": {
+      "type": "string",
+      "description": "Destination IP country (from geo intelligence)"
+    },
+    "src_isp": {
+      "type": "string",
+      "description": "Source ISP/organization (for external IPs only)"
+    },
+    "dst_isp": {
+      "type": "string",
+      "description": "Destination ISP/organization (for external IPs only)"
+    },
+    "bytes_sent": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bytes sent (forward direction)"
+    },
+    "bytes_recv": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bytes received (backward direction)"
+    },
+    "total_bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total bytes transferred (bidirectional)"
+    },
+    "packets_sent": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Packets sent (forward direction)"
+    },
+    "packets_recv": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Packets received (backward direction)"
+    },
+    "tcp_flags": {
+      "type": "string",
+      "pattern": "^[SAFRPU]+$",
+      "description": "TCP flags (S=SYN, A=ACK, F=FIN, R=RST, P=PSH, U=URG)"
+    },
+    "connection_state": {
+      "type": "string",
+      "description": "TCP connection state or flow state"
+    },
+    "duration_sec": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Flow duration in seconds (rounded to 3 decimals)"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session or flow identifier for correlation"
+    },
+    "rule_id": {
+      "type": "string",
+      "description": "Matched firewall rule ID"
+    },
+    "policy_name": {
+      "type": "string",
+      "description": "Firewall policy name"
+    },
+    "app_protocol": {
+      "type": "string",
+      "description": "Detected application protocol (e.g., HTTP, DNS, SSH)"
+    },
+    "tls_sni": {
+      "type": "string",
+      "description": "TLS Server Name Indication (SNI)"
+    },
+    "tls_alpn": {
+      "type": "string",
+      "description": "TLS Application-Layer Protocol Negotiation (comma-separated)"
+    },
+    "tls_decrypted": {
+      "type": "boolean",
+      "description": "Whether TLS traffic was decrypted"
+    },
+    "http_method": {
+      "type": "string",
+      "enum": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "CONNECT", "TRACE"],
+      "description": "HTTP request method"
+    },
+    "http_uri": {
+      "type": "string",
+      "description": "HTTP request URI"
+    },
+    "http_host": {
+      "type": "string",
+      "description": "HTTP Host header value"
+    },
+    "gaming_service": {
+      "type": "string",
+      "description": "Detected gaming service name"
+    },
+    "ttl": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255,
+      "description": "IP Time-To-Live value"
+    },
+    "process_name": {
+      "type": "string",
+      "description": "Process name that generated the traffic"
+    },
+    "process_pid": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Process ID that generated the traffic"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "action": "allow",
+      "reason": "Rule: AllowWeb",
+      "timestamp_ist": "2025-10-27 14:30:45 IST",
+      "event_id": "fw-a1b2c3d4e5f67890",
+      "src_ip": "192.168.1.100",
+      "dst_ip": "142.250.193.46",
+      "src_port": 52341,
+      "dst_port": 443,
+      "protocol": "TCP",
+      "direction": "outbound",
+      "src_country": "Private",
+      "dst_country": "United States",
+      "dst_isp": "Google LLC",
+      "bytes_sent": 1234,
+      "bytes_recv": 56789,
+      "total_bytes": 58023,
+      "packets_sent": 15,
+      "packets_recv": 42,
+      "tcp_flags": "SA",
+      "connection_state": "ESTABLISHED",
+      "duration_sec": 12.456,
+      "session_id": "session-xyz123",
+      "rule_id": "rule-001",
+      "policy_name": "Internet_Access",
+      "app_protocol": "HTTPS",
+      "tls_sni": "www.google.com",
+      "tls_alpn": "h2,http/1.1",
+      "ttl": 64
+    },
+    {
+      "action": "deny",
+      "reason": "Rule: BlockMalicious",
+      "timestamp_ist": "2025-10-27 14:31:12 IST",
+      "event_id": "fw-b2c3d4e5f6789012",
+      "src_ip": "203.0.113.25",
+      "dst_ip": "192.168.1.50",
+      "src_port": 1337,
+      "dst_port": 445,
+      "protocol": "TCP",
+      "direction": "inbound",
+      "src_country": "Unknown",
+      "dst_country": "Private",
+      "bytes_sent": 128,
+      "tcp_flags": "S",
+      "rule_id": "rule-999",
+      "policy_name": "Threat_Prevention"
+    },
+    {
+      "action": "allow",
+      "reason": "Implicit allow",
+      "timestamp_ist": "2025-10-27 14:32:00 IST",
+      "event_id": "fw-c3d4e5f678901234",
+      "src_ip": "192.168.1.200",
+      "dst_ip": "8.8.8.8",
+      "src_port": 54321,
+      "dst_port": 53,
+      "protocol": "UDP",
+      "direction": "outbound",
+      "dst_country": "United States",
+      "dst_isp": "Google LLC",
+      "bytes_sent": 64,
+      "bytes_recv": 128,
+      "total_bytes": 192,
+      "packets_sent": 1,
+      "packets_recv": 1,
+      "app_protocol": "DNS"
+    }
+  ]
+}
