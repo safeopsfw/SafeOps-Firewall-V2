@@ -1,0 +1,379 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.backup_restore;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/backup_restore";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// Backup and Restore Service - System backup and disaster recovery
+service BackupRestoreService {
+  // Backup Methods
+  rpc CreateBackup(CreateBackupRequest) returns (BackupResponse);
+  rpc ScheduleBackup(ScheduleBackupRequest) returns (ScheduleResponse);
+  rpc CancelScheduledBackup(CancelScheduledBackupRequest) returns (ScheduleResponse);
+  rpc ListBackups(ListBackupsRequest) returns (BackupListResponse);
+  rpc GetBackupDetails(GetBackupDetailsRequest) returns (BackupDetailResponse);
+  rpc DeleteBackup(DeleteBackupRequest) returns (BackupResponse);
+  
+  // Restore Methods
+  rpc RestoreBackup(RestoreBackupRequest) returns (RestoreResponse);
+  rpc ValidateBackup(ValidateBackupRequest) returns (ValidateBackupResponse);
+  rpc GetRestoreStatus(GetRestoreStatusRequest) returns (RestoreStatusResponse);
+  
+  // Configuration
+  rpc SetBackupPolicy(BackupPolicyRequest) returns (BackupPolicyResponse);
+  rpc GetBackupPolicy(GetBackupPolicyRequest) returns (BackupPolicyResponse);
+  rpc SetRetentionPolicy(RetentionPolicyRequest) returns (RetentionPolicyResponse);
+  rpc GetRetentionPolicy(GetRetentionPolicyRequest) returns (RetentionPolicyResponse);
+  
+  // Storage Methods
+  rpc ConfigureStorage(StorageConfigRequest) returns (StorageConfigResponse);
+  rpc TestStorageConnection(TestStorageConnectionRequest) returns (StorageConnectionTestResponse);
+  rpc GetStorageStatus(GetStorageStatusRequest) returns (StorageStatusResponse);
+  
+  // Statistics
+  rpc GetBackupStats(GetBackupStatsRequest) returns (BackupStatsResponse);
+  rpc GetStorageUtilization(GetStorageUtilizationRequest) returns (StorageUtilizationResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Backup component
+enum BackupComponent {
+  COMPONENT_UNKNOWN = 0;
+  COMPONENT_CONFIGS = 1;
+  COMPONENT_DATABASE = 2;
+  COMPONENT_LOGS = 3;
+  COMPONENT_CERTIFICATES = 4;
+  COMPONENT_USER_DATA = 5;
+  COMPONENT_FIREWALL_RULES = 6;
+  COMPONENT_DNS_ZONES = 7;
+  COMPONENT_DHCP_LEASES = 8;
+}
+
+// Backup type
+enum BackupType {
+  TYPE_UNKNOWN = 0;
+  TYPE_FULL = 1;
+  TYPE_INCREMENTAL = 2;
+  TYPE_DIFFERENTIAL = 3;
+}
+
+// Backup status
+enum BackupStatus {
+  STATUS_UNKNOWN = 0;
+  STATUS_PENDING = 1;
+  STATUS_IN_PROGRESS = 2;
+  STATUS_COMPLETED = 3;
+  STATUS_FAILED = 4;
+  STATUS_VALIDATING = 5;
+}
+
+// Restore status
+enum RestoreStatus {
+  RESTORE_UNKNOWN = 0;
+  RESTORE_PENDING = 1;
+  RESTORE_IN_PROGRESS = 2;
+  RESTORE_COMPLETED = 3;
+  RESTORE_FAILED = 4;
+  RESTORE_ROLLED_BACK = 5;
+}
+
+// Storage type
+enum StorageType {
+  STORAGE_UNKNOWN = 0;
+  STORAGE_LOCAL = 1;
+  STORAGE_S3 = 2;
+  STORAGE_AZURE_BLOB = 3;
+  STORAGE_GCS = 4;
+  STORAGE_FTP = 5;
+  STORAGE_SFTP = 6;
+  STORAGE_NFS = 7;
+  STORAGE_SMB = 8;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - BACKUP METHODS
+// ============================================================================
+
+// Create backup request
+message CreateBackupRequest {
+  string backup_name = 1;                        // Backup name
+  BackupType backup_type = 2;                    // Backup type
+  repeated BackupComponent components = 3;       // Components to backup
+  string description = 4;                        // Backup description
+  bool compression_enabled = 5;                  // Enable compression
+  bool encryption_enabled = 6;                   // Enable encryption
+}
+
+// Schedule backup request
+message ScheduleBackupRequest {
+  string backup_name = 1;                        // Backup name
+  string schedule_cron = 2;                      // Cron expression
+  BackupType backup_type = 3;                    // Backup type
+  repeated BackupComponent components = 4;       // Components to backup
+  uint32 retention_days = 5;                     // Retention period
+  bool enabled = 6;                              // Enable schedule
+}
+
+// Cancel scheduled backup request
+message CancelScheduledBackupRequest {
+  string schedule_id = 1;                        // Schedule ID to cancel
+}
+
+// List backups request
+message ListBackupsRequest {
+  BackupType backup_type = 1;                    // Filter by type
+  common.Timestamp start_date = 2;               // Start of date range
+  common.Timestamp end_date = 3;                 // End of date range
+  BackupComponent component = 4;                 // Filter by component
+  common.Pagination pagination = 5;              // Pagination
+}
+
+// Get backup details request
+message GetBackupDetailsRequest {
+  string backup_id = 1;                          // Backup ID
+}
+
+// Delete backup request
+message DeleteBackupRequest {
+  string backup_id = 1;                          // Backup ID to delete
+  bool delete_from_storage = 2;                  // Also delete from storage
+}
+
+// ============================================================================
+// REQUEST MESSAGES - RESTORE METHODS
+// ============================================================================
+
+// Restore backup request
+message RestoreBackupRequest {
+  string backup_id = 1;                          // Backup ID to restore
+  repeated BackupComponent components_to_restore = 2; // Components to restore
+  common.Timestamp restore_point_in_time = 3;    // Point-in-time restore
+  bool dry_run = 4;                              // Dry run (test only)
+}
+
+// Validate backup request
+message ValidateBackupRequest {
+  string backup_id = 1;                          // Backup ID to validate
+}
+
+// Get restore status request
+message GetRestoreStatusRequest {
+  string restore_id = 1;                         // Restore operation ID
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CONFIGURATION
+// ============================================================================
+
+// Backup policy request
+message BackupPolicyRequest {
+  bool auto_backup_enabled = 1;                  // Enable auto backups
+  string full_backup_frequency = 2;              // Full backup frequency (cron)
+  string incremental_frequency = 3;              // Incremental frequency (cron)
+  uint32 max_retention_days = 4;                 // Max retention days
+  uint32 max_backup_count = 5;                   // Max backup count
+}
+
+// Get backup policy request
+message GetBackupPolicyRequest {
+}
+
+// Retention policy request
+message RetentionPolicyRequest {
+  uint32 daily_backups_to_keep = 1;              // Daily backups to keep
+  uint32 weekly_backups_to_keep = 2;             // Weekly backups to keep
+  uint32 monthly_backups_to_keep = 3;            // Monthly backups to keep
+}
+
+// Get retention policy request
+message GetRetentionPolicyRequest {
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STORAGE & STATISTICS
+// ============================================================================
+
+// Storage config request
+message StorageConfigRequest {
+  StorageType storage_type = 1;                  // Storage type
+  string connection_string = 2;                  // Connection string
+  string credentials = 3;                        // Credentials (encrypted)
+  string bucket_name = 4;                        // Bucket/container name
+  string path_prefix = 5;                        // Path prefix
+}
+
+// Test storage connection request
+message TestStorageConnectionRequest {
+  StorageType storage_type = 1;                  // Storage type to test
+}
+
+// Get storage status request
+message GetStorageStatusRequest {
+}
+
+// Get backup stats request
+message GetBackupStatsRequest {
+  common.Timestamp start_time = 1;               // Start time
+  common.Timestamp end_time = 2;                 // End time
+}
+
+// Get storage utilization request
+message GetStorageUtilizationRequest {
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Backup response
+message BackupResponse {
+  string backup_id = 1;                          // Backup ID
+  BackupStatus status = 2;                       // Backup status
+  uint32 progress_percent = 3;                   // Progress percentage
+  common.Timestamp estimated_completion_time = 4; // ETA
+  string message = 5;                            // Status message
+}
+
+// Schedule response
+message ScheduleResponse {
+  string schedule_id = 1;                        // Schedule ID
+  common.Status status = 2;                      // Operation status
+  common.Timestamp next_run_time = 3;            // Next run time
+  string message = 4;                            // Status message
+}
+
+// Backup list response
+message BackupListResponse {
+  repeated Backup backups = 1;                   // List of backups
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Backup detail response
+message BackupDetailResponse {
+  Backup backup = 1;                             // Backup metadata
+  uint64 size_bytes = 2;                         // Backup size
+  string checksum = 3;                           // Checksum
+  bool encrypted = 4;                            // Is encrypted
+  bool compressed = 5;                           // Is compressed
+  string storage_location = 6;                   // Storage location
+}
+
+// Restore response
+message RestoreResponse {
+  string restore_id = 1;                         // Restore operation ID
+  RestoreStatus status = 2;                      // Restore status
+  uint32 progress_percent = 3;                   // Progress percentage
+  string message = 4;                            // Status message
+}
+
+// Restore status response
+message RestoreStatusResponse {
+  string restore_id = 1;                         // Restore operation ID
+  RestoreStatus status = 2;                      // Current status
+  uint32 progress_percent = 3;                   // Progress percentage
+  repeated string restored_components = 4;       // Completed components
+  repeated string pending_components = 5;        // Pending components
+  string error_message = 6;                      // Error if failed
+}
+
+// Validate backup response
+message ValidateBackupResponse {
+  bool is_valid = 1;                             // Is valid
+  bool checksum_match = 2;                       // Checksum matches
+  repeated string missing_components = 3;        // Missing components
+  repeated string corrupted_files = 4;           // Corrupted files
+  string validation_message = 5;                 // Validation details
+}
+
+// Backup policy response
+message BackupPolicyResponse {
+  bool auto_backup_enabled = 1;                  // Auto backup enabled
+  string full_backup_frequency = 2;              // Full backup frequency
+  string incremental_frequency = 3;              // Incremental frequency
+  uint32 max_retention_days = 4;                 // Max retention days
+  uint32 max_backup_count = 5;                   // Max backup count
+  common.Status status = 6;                      // Operation status
+}
+
+// Retention policy response
+message RetentionPolicyResponse {
+  uint32 daily_backups_to_keep = 1;              // Daily backups
+  uint32 weekly_backups_to_keep = 2;             // Weekly backups
+  uint32 monthly_backups_to_keep = 3;            // Monthly backups
+  common.Status status = 4;                      // Operation status
+}
+
+// Storage config response
+message StorageConfigResponse {
+  common.Status status = 1;                      // Operation status
+  string message = 2;                            // Status message
+}
+
+// Storage connection test response
+message StorageConnectionTestResponse {
+  bool connected = 1;                            // Connection successful
+  uint32 latency_ms = 2;                         // Connection latency
+  string error_message = 3;                      // Error if failed
+}
+
+// Storage status response
+message StorageStatusResponse {
+  StorageType storage_type = 1;                  // Storage type
+  bool connected = 2;                            // Is connected
+  uint64 total_space_bytes = 3;                  // Total space
+  uint64 used_space_bytes = 4;                   // Used space
+  uint64 available_space_bytes = 5;              // Available space
+  uint32 latency_ms = 6;                         // Storage latency
+}
+
+// Backup statistics response
+message BackupStatsResponse {
+  uint32 total_backups = 1;                      // Total backups
+  uint64 total_size_bytes = 2;                   // Total size
+  uint32 successful_backups_count = 3;           // Successful count
+  uint32 failed_backups_count = 4;               // Failed count
+  common.Timestamp last_backup_time = 5;         // Last backup time
+  common.Timestamp next_scheduled_backup = 6;    // Next scheduled
+  map<string, uint64> size_by_component = 7;     // Size breakdown
+}
+
+// Storage utilization response
+message StorageUtilizationResponse {
+  uint64 total_backup_size_bytes = 1;            // Total backup size
+  uint64 available_storage_bytes = 2;            // Available storage
+  double utilization_percent = 3;                // Utilization %
+  uint32 backup_count = 4;                       // Number of backups
+  common.Timestamp oldest_backup = 5;            // Oldest backup time
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Backup
+message Backup {
+  string id = 1;                                 // Backup ID
+  string name = 2;                               // Backup name
+  BackupType type = 3;                           // Backup type
+  repeated BackupComponent components = 4;       // Included components
+  uint64 size_bytes = 5;                         // Backup size
+  common.Timestamp created_at = 6;               // Creation time
+  common.Timestamp completed_at = 7;             // Completion time
+  string checksum = 8;                           // Checksum
+  bool encrypted = 9;                            // Is encrypted
+  bool compressed = 10;                          // Is compressed
+  string storage_location = 11;                  // Storage location
+  string description = 12;                       // Description
+  BackupStatus status = 13;                      // Current status
+}

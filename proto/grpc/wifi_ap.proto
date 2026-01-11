@@ -1,0 +1,492 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.wifi_ap;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/wifi_ap";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// WiFi AP Service - Wireless network management
+service WiFiAPService {
+  // SSID Management
+  rpc CreateSSID(CreateSSIDRequest) returns (SSIDResponse);
+  rpc UpdateSSID(UpdateSSIDRequest) returns (SSIDResponse);
+  rpc DeleteSSID(DeleteSSIDRequest) returns (SSIDResponse);
+  rpc ListSSIDs(ListSSIDsRequest) returns (SSIDListResponse);
+  rpc EnableSSID(EnableSSIDRequest) returns (SSIDResponse);
+  rpc DisableSSID(DisableSSIDRequest) returns (SSIDResponse);
+  
+  // Client Methods
+  rpc GetClients(GetClientsRequest) returns (ClientListResponse);
+  rpc GetClientDetails(GetClientDetailsRequest) returns (ClientDetailResponse);
+  rpc DisconnectClient(DisconnectClientRequest) returns (ClientActionResponse);
+  rpc BlockClient(BlockClientRequest) returns (ClientActionResponse);
+  rpc UnblockClient(UnblockClientRequest) returns (ClientActionResponse);
+  
+  // Radio Methods
+  rpc SetRadioSettings(RadioSettingsRequest) returns (RadioSettingsResponse);
+  rpc GetRadioSettings(GetRadioSettingsRequest) returns (RadioSettingsResponse);
+  rpc SetChannel(SetChannelRequest) returns (ChannelResponse);
+  rpc SetTxPower(SetTxPowerRequest) returns (TxPowerResponse);
+  
+  // Security Methods
+  rpc SetSecurityMode(SecurityModeRequest) returns (SecurityModeResponse);
+  rpc UpdatePSK(UpdatePSKRequest) returns (SecurityModeResponse);
+  rpc EnableWPS(EnableWPSRequest) returns (WPSStatusResponse);
+  rpc DisableWPS(DisableWPSRequest) returns (WPSStatusResponse);
+  rpc GetWPSStatus(GetWPSStatusRequest) returns (WPSStatusResponse);
+  
+  // Statistics Methods
+  rpc GetAPStats(GetAPStatsRequest) returns (APStatsResponse);
+  rpc GetClientStats(GetClientStatsRequest) returns (ClientStatsResponse);
+  rpc GetRadioStats(GetRadioStatsRequest) returns (RadioStatsResponse);
+  rpc StreamClientEvents(StreamClientEventsRequest) returns (stream ClientEvent);
+  
+  // Guest Network
+  rpc CreateGuestNetwork(CreateGuestNetworkRequest) returns (SSIDResponse);
+  rpc ConfigureCaptivePortal(CaptivePortalRequest) returns (CaptivePortalResponse);
+  rpc GetGuestClients(GetGuestClientsRequest) returns (GuestClientsResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Radio band
+enum RadioBand {
+  BAND_UNKNOWN = 0;
+  BAND_2_4GHZ = 1;
+  BAND_5GHZ = 2;
+  BAND_6GHZ = 3;
+}
+
+// Security mode
+enum SecurityMode {
+  SECURITY_UNKNOWN = 0;
+  SECURITY_OPEN = 1;
+  SECURITY_WPA2_PSK = 2;
+  SECURITY_WPA3_SAE = 3;
+  SECURITY_WPA2_WPA3_MIXED = 4;
+  SECURITY_WPA2_ENTERPRISE = 5;
+  SECURITY_WPA3_ENTERPRISE = 6;
+}
+
+// Channel width
+enum ChannelWidth {
+  WIDTH_UNKNOWN = 0;
+  WIDTH_20MHZ = 1;
+  WIDTH_40MHZ = 2;
+  WIDTH_80MHZ = 3;
+  WIDTH_160MHZ = 4;
+}
+
+// WiFi standard
+enum WifiStandard {
+  STANDARD_UNKNOWN = 0;
+  STANDARD_802_11N = 1;      // WiFi 4
+  STANDARD_802_11AC = 2;     // WiFi 5
+  STANDARD_802_11AX = 3;     // WiFi 6/6E
+}
+
+// Encryption type
+enum EncryptionType {
+  ENCRYPTION_UNKNOWN = 0;
+  ENCRYPTION_TKIP = 1;
+  ENCRYPTION_AES = 2;
+  ENCRYPTION_CCMP = 3;
+}
+
+// Captive portal authentication method
+enum CaptivePortalAuth {
+  AUTH_NONE = 0;
+  AUTH_EMAIL = 1;
+  AUTH_SMS = 2;
+  AUTH_VOUCHER = 3;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - SSID MANAGEMENT
+// ============================================================================
+
+// Create SSID request
+message CreateSSIDRequest {
+  string ssid_name = 1;                          // SSID name
+  RadioBand radio_band = 2;                      // Radio band
+  SecurityMode security_mode = 3;                // Security mode
+  string passphrase = 4;                         // Passphrase (if secured)
+  bool hidden = 5;                               // Hidden SSID
+  uint32 max_clients = 6;                        // Max clients
+  uint32 vlan_id = 7;                            // VLAN ID (0 = none)
+  bool guest_network = 8;                        // Is guest network
+}
+
+// Update SSID request
+message UpdateSSIDRequest {
+  string ssid_id = 1;                            // SSID ID to update
+  string ssid_name = 2;                          // Updated name
+  SecurityMode security_mode = 3;                // Updated security
+  string passphrase = 4;                         // Updated passphrase
+  bool hidden = 5;                               // Hidden flag
+  uint32 max_clients = 6;                        // Updated max clients
+}
+
+// Delete SSID request
+message DeleteSSIDRequest {
+  string ssid_id = 1;                            // SSID ID to delete
+  bool disconnect_clients = 2;                   // Disconnect clients first
+}
+
+// List SSIDs request
+message ListSSIDsRequest {
+  RadioBand radio_band = 1;                      // Filter by band
+  bool enabled_only = 2;                         // Only enabled SSIDs
+}
+
+// Enable SSID request
+message EnableSSIDRequest {
+  string ssid_id = 1;                            // SSID ID to enable
+}
+
+// Disable SSID request
+message DisableSSIDRequest {
+  string ssid_id = 1;                            // SSID ID to disable
+}
+
+// ============================================================================
+// REQUEST MESSAGES - CLIENT METHODS
+// ============================================================================
+
+// Get clients request
+message GetClientsRequest {
+  string ssid_id = 1;                            // Filter by SSID
+  bool connected_only = 2;                       // Only connected clients
+  common.Pagination pagination = 3;              // Pagination
+}
+
+// Get client details request
+message GetClientDetailsRequest {
+  common.MACAddress client_mac = 1;              // Client MAC (optional)
+  common.IPAddress client_ip = 2;                // Or client IP
+}
+
+// Disconnect client request
+message DisconnectClientRequest {
+  common.MACAddress client_mac = 1;              // Client MAC
+  uint32 reason_code = 2;                        // Disconnect reason code
+}
+
+// Block client request
+message BlockClientRequest {
+  common.MACAddress client_mac = 1;              // Client MAC to block
+  uint32 duration_seconds = 2;                   // Block duration (0 = permanent)
+  string reason = 3;                             // Reason for blocking
+}
+
+// Unblock client request
+message UnblockClientRequest {
+  common.MACAddress client_mac = 1;              // Client MAC to unblock
+}
+
+// ============================================================================
+// REQUEST MESSAGES - RADIO METHODS
+// ============================================================================
+
+// Radio settings request
+message RadioSettingsRequest {
+  RadioBand radio_band = 1;                      // Radio band
+  uint32 channel = 2;                            // Channel number
+  ChannelWidth channel_width = 3;                // Channel width
+  uint32 tx_power_dbm = 4;                       // TX power in dBm
+  WifiStandard mode = 5;                         // WiFi standard
+  uint32 beacon_interval_ms = 6;                 // Beacon interval
+}
+
+// Get radio settings request
+message GetRadioSettingsRequest {
+  RadioBand radio_band = 1;                      // Radio band to query
+}
+
+// Set channel request
+message SetChannelRequest {
+  RadioBand radio_band = 1;                      // Radio band
+  uint32 channel_number = 2;                     // Channel number
+  bool auto_select = 3;                          // Auto-select best channel
+}
+
+// Set TX power request
+message SetTxPowerRequest {
+  RadioBand radio_band = 1;                      // Radio band
+  uint32 power_dbm = 2;                          // Power in dBm
+  uint32 power_percent = 3;                      // Or power percentage
+}
+
+// ============================================================================
+// REQUEST MESSAGES - SECURITY METHODS
+// ============================================================================
+
+// Security mode request
+message SecurityModeRequest {
+  string ssid_id = 1;                            // SSID ID
+  SecurityMode mode = 2;                         // Security mode
+  string passphrase = 3;                         // Passphrase
+  EncryptionType encryption = 4;                 // Encryption type
+}
+
+// Update PSK request
+message UpdatePSKRequest {
+  string ssid_id = 1;                            // SSID ID
+  string new_passphrase = 2;                     // New passphrase
+}
+
+// Enable WPS request
+message EnableWPSRequest {
+  string ssid_id = 1;                            // SSID ID
+  string pin = 2;                                // WPS PIN (optional)
+}
+
+// Disable WPS request
+message DisableWPSRequest {
+  string ssid_id = 1;                            // SSID ID
+}
+
+// Get WPS status request
+message GetWPSStatusRequest {
+  string ssid_id = 1;                            // SSID ID
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATISTICS & GUEST NETWORK
+// ============================================================================
+
+// Get AP stats request
+message GetAPStatsRequest {
+  common.Timestamp start_time = 1;               // Start time
+  common.Timestamp end_time = 2;                 // End time
+}
+
+// Get client stats request
+message GetClientStatsRequest {
+  common.MACAddress client_mac = 1;              // Client MAC
+}
+
+// Get radio stats request
+message GetRadioStatsRequest {
+  RadioBand radio_band = 1;                      // Radio band
+}
+
+// Stream client events request
+message StreamClientEventsRequest {
+  string ssid_id = 1;                            // Filter by SSID (optional)
+}
+
+// Create guest network request
+message CreateGuestNetworkRequest {
+  string ssid_name = 1;                          // Guest SSID name
+  RadioBand radio_band = 2;                      // Radio band
+  string passphrase = 3;                         // Guest passphrase (optional)
+  uint32 session_timeout_minutes = 4;            // Session timeout
+  bool captive_portal_enabled = 5;               // Enable captive portal
+}
+
+// Captive portal request
+message CaptivePortalRequest {
+  string ssid_id = 1;                            // SSID ID
+  bool enabled = 2;                              // Enable portal
+  string redirect_url = 3;                       // Redirect URL
+  CaptivePortalAuth authentication_method = 4;   // Auth method
+  uint32 session_timeout_minutes = 5;            // Session timeout
+}
+
+// Get guest clients request
+message GetGuestClientsRequest {
+  string ssid_id = 1;                            // Guest SSID ID
+  bool authorized_only = 2;                      // Only authorized clients
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// SSID response
+message SSIDResponse {
+  string ssid_id = 1;                            // SSID ID
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// SSID list response
+message SSIDListResponse {
+  repeated SSID ssids = 1;                       // List of SSIDs
+  uint32 total_count = 2;                        // Total count
+}
+
+// Client list response
+message ClientListResponse {
+  repeated Client clients = 1;                   // List of clients
+  uint32 total_count = 2;                        // Total count
+  common.Pagination pagination = 3;              // Pagination info
+}
+
+// Client detail response
+message ClientDetailResponse {
+  Client client = 1;                             // Client details
+  int32 signal_strength_dbm = 2;                 // Signal strength
+  double tx_rate_mbps = 3;                       // TX rate
+  double rx_rate_mbps = 4;                       // RX rate
+  common.Timestamp connected_time = 5;           // Connection time
+  uint64 data_usage_bytes = 6;                   // Data usage
+}
+
+// Client action response
+message ClientActionResponse {
+  common.Status status = 1;                      // Operation status
+  string message = 2;                            // Status message
+}
+
+// Radio settings response
+message RadioSettingsResponse {
+  RadioBand radio_band = 1;                      // Radio band
+  uint32 current_channel = 2;                    // Current channel
+  ChannelWidth channel_width = 3;                // Channel width
+  uint32 tx_power_dbm = 4;                       // TX power
+  WifiStandard mode = 5;                         // WiFi standard
+  uint32 beacon_interval_ms = 6;                 // Beacon interval
+  common.Status status = 7;                      // Operation status
+}
+
+// Channel response
+message ChannelResponse {
+  RadioBand radio_band = 1;                      // Radio band
+  uint32 channel = 2;                            // Selected channel
+  common.Status status = 3;                      // Operation status
+}
+
+// TX power response
+message TxPowerResponse {
+  RadioBand radio_band = 1;                      // Radio band
+  uint32 power_dbm = 2;                          // Power in dBm
+  common.Status status = 3;                      // Operation status
+}
+
+// Security mode response
+message SecurityModeResponse {
+  common.Status status = 1;                      // Operation status
+  string message = 2;                            // Status message
+}
+
+// WPS status response
+message WPSStatusResponse {
+  bool enabled = 1;                              // WPS enabled
+  string pin = 2;                                // WPS PIN
+  common.Timestamp last_connection_attempt = 3;  // Last attempt
+  common.Status status = 4;                      // Operation status
+}
+
+// AP statistics response
+message APStatsResponse {
+  uint32 total_clients = 1;                      // Total clients
+  map<string, uint32> clients_by_ssid = 2;       // Clients per SSID
+  map<string, uint32> clients_by_band = 3;       // Clients per band
+  uint64 total_data_transferred = 4;             // Total data
+  uint64 uptime_seconds = 5;                     // Uptime
+  common.Timestamp timestamp = 6;                // Stats timestamp
+}
+
+// Client statistics response
+message ClientStatsResponse {
+  common.MACAddress client_mac = 1;              // Client MAC
+  int32 signal_strength_dbm = 2;                 // Signal strength
+  double tx_rate_mbps = 3;                       // TX rate
+  double rx_rate_mbps = 4;                       // RX rate
+  uint64 packets_sent = 5;                       // Packets sent
+  uint64 packets_received = 6;                   // Packets received
+  uint64 bytes_sent = 7;                         // Bytes sent
+  uint64 bytes_received = 8;                     // Bytes received
+  uint32 retries = 9;                            // Retry count
+  uint32 roam_count = 10;                        // Roam count
+}
+
+// Radio statistics response
+message RadioStatsResponse {
+  RadioBand radio_band = 1;                      // Radio band
+  uint32 current_channel = 2;                    // Current channel
+  double channel_utilization_percent = 3;        // Channel utilization
+  int32 noise_floor_dbm = 4;                     // Noise floor
+  bool interference_detected = 5;                // Interference flag
+  common.Timestamp timestamp = 6;                // Stats timestamp
+}
+
+// Captive portal response
+message CaptivePortalResponse {
+  common.Status status = 1;                      // Operation status
+  string portal_url = 2;                         // Portal URL
+  string message = 3;                            // Status message
+}
+
+// Guest clients response
+message GuestClientsResponse {
+  repeated GuestClient clients = 1;              // Guest clients
+  uint32 total_count = 2;                        // Total count
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// SSID
+message SSID {
+  string id = 1;                                 // SSID ID
+  string name = 2;                               // SSID name
+  RadioBand radio_band = 3;                      // Radio band
+  SecurityMode security_mode = 4;                // Security mode
+  bool enabled = 5;                              // Is enabled
+  bool hidden = 6;                               // Is hidden
+  uint32 max_clients = 7;                        // Max clients
+  uint32 current_clients = 8;                    // Current clients
+  uint32 vlan_id = 9;                            // VLAN ID
+  bool guest_network = 10;                       // Is guest network
+  bool captive_portal_enabled = 11;              // Captive portal
+}
+
+// Client
+message Client {
+  common.MACAddress mac_address = 1;             // Client MAC
+  common.IPAddress ip_address = 2;               // Client IP
+  string hostname = 3;                           // Hostname
+  string ssid_id = 4;                            // Associated SSID
+  int32 signal_strength_dbm = 5;                 // Signal strength
+  double tx_rate_mbps = 6;                       // TX rate
+  double rx_rate_mbps = 7;                       // RX rate
+  common.Timestamp connected_at = 8;             // Connection time
+  common.Timestamp last_seen = 9;                // Last seen
+  uint64 data_usage_bytes = 10;                  // Data usage
+  bool blocked = 11;                             // Is blocked
+}
+
+// Guest client
+message GuestClient {
+  common.MACAddress mac_address = 1;             // Client MAC
+  bool authorized = 2;                           // Is authorized
+  common.Timestamp authorized_until = 3;         // Authorization expiry
+  string voucher_code = 4;                       // Voucher code
+  string email = 5;                              // Email (if email auth)
+}
+
+// Client event (for streaming)
+message ClientEvent {
+  enum EventType {
+    EVENT_UNKNOWN = 0;
+    EVENT_CONNECTED = 1;
+    EVENT_DISCONNECTED = 2;
+    EVENT_ROAMED = 3;
+    EVENT_BLOCKED = 4;
+  }
+  EventType event_type = 1;                      // Event type
+  Client client = 2;                             // Client info
+  common.Timestamp timestamp = 3;                // Event timestamp
+}

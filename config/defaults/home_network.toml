@@ -1,0 +1,602 @@
+# ============================================================================
+# SafeOps Home Network Configuration Preset
+# ============================================================================
+# DEPLOYMENT PROFILE: Home/Residential Network
+#
+# PURPOSE:
+#   Optimized configuration for home users emphasizing ease of use, automatic
+#   configuration, and minimal administrative overhead while providing essential
+#   security features for family protection.
+#
+# TARGET ENVIRONMENT:
+#   • 1-20 devices (family home)
+#   • Mix of computers, phones, tablets, smart home devices
+#   • Non-technical users
+#   • Minimal IT knowledge/support
+#
+# TARGET HARDWARE:
+#   CPU: Intel Core i3/i5 or AMD Ryzen 3/5 (2-4 cores)
+#   RAM: 8GB minimum (16GB recommended)
+#   Storage: 128GB SSD
+#   Network: 2x Gigabit NICs (WAN from ISP, LAN to home network)
+#
+# KEY FEATURES:
+#   ✓ Plug and Play - Minimal configuration required
+#   ✓ Family Friendly - No TLS interception respects privacy
+#   ✓ Ad Blocking - DNS-based blocking of ads and tracking
+#   ✓ Parental Controls - Optional content filtering
+#   ✓ Low Maintenance - Automatic updates and backups
+#   ✓ Resource Efficient - Runs on consumer hardware
+#
+# USE CASES:
+#   • Family home network protection
+#   • Home office security
+#   • Smart home device management
+#   • Children internet safety (with parental controls)
+#   • Guest WiFi isolation (if using SafeOps WiFi)
+#
+# ============================================================================
+
+[profile]
+name = "home_network"
+description = "Home network with family-friendly security and privacy"
+complexity = "simple"
+version = "2.0.0"
+deployment_type = "HOME"
+enforcement_level = "BASIC"
+
+# ============================================================================
+# SYSTEM CONFIGURATION
+# ============================================================================
+
+[system]
+hostname = "safeops-home"
+timezone = "America/New_York"  # Adjust for your timezone
+admin_email = ""  # Optional
+description = "SafeOps Home Network Security Gateway"
+
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+backup_directory = "C:\\SafeOps_Backups"
+
+[system.resources]
+# Optimized for consumer hardware (8GB RAM)
+max_cpu_cores = 4
+max_memory_mb = 6144  # 6GB (leaving 2GB for OS)
+max_disk_gb = 100  # Logs and data
+
+# ============================================================================
+# NETWORK CONFIGURATION - SIMPLE 2-NIC SETUP
+# ============================================================================
+
+[network]
+topology = "2-nic"
+description = "WAN (Internet) and LAN (Home Network)"
+
+[network.interfaces]
+wan = "Ethernet 0"  # Internet connection from ISP modem/router
+lan = "Ethernet 1"  # Home network switch
+
+[network.addressing]
+# WAN typically gets IP from ISP via DHCP
+wan_mode = "dhcp"
+
+# LAN - Standard home network range
+lan_ip = "192.168.1.1"
+lan_netmask = "255.255.255.0"
+lan_network = "192.168.1.0/24"
+
+# Enable basic routing and NAT
+enable_ip_forwarding = true
+enable_nat = true
+enable_ipv6 = false  # Disabled for simplicity
+
+# ============================================================================
+# SERVICE CONFIGURATION - SIMPLIFIED STACK
+# ============================================================================
+
+[services]
+# Core network services
+kernel_driver = true
+network_logger = false  # Disabled to save resources
+firewall_engine = true
+ids_ips = true
+dns_server = true
+dhcp_server = true
+
+# Security services (minimal for home use)
+tls_proxy = false  # DISABLED - Privacy for family browsing
+certificate_manager = false  # Not needed without TLS proxy
+threat_intel = true  # Free feeds only
+
+# WiFi (if using SafeOps as WiFi AP)
+wifi_ap = false  # Usually using ISP's WiFi router
+
+# Management services
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# ============================================================================
+# FIREWALL - SAFE DEFAULTS
+# ============================================================================
+
+[firewall]
+enabled = true
+enforcement_mode = "SIMPLE"
+default_action = "DENY"  # Block inbound, allow outbound
+
+# Logging (minimal to save storage)
+log_denied = true
+log_allowed = false
+log_detail_level = "MINIMAL"
+
+# Connection tracking
+connection_tracking = true
+stateful_inspection = true
+max_connections = 100000  # Plenty for home use
+
+# Home-friendly features
+allow_upnp = true  # For gaming consoles, Plex, etc.
+allow_multicast = true  # For Chromecast, Apple TV, etc.
+
+# Basic DDoS protection
+[firewall.ddos_protection]
+enabled = true
+syn_flood_protection = true
+icmp_flood_protection = true
+rate_limiting = false  # Not needed for home
+
+# ============================================================================
+# IDS/IPS - DETECTION ONLY (NO BLOCKING)
+# ============================================================================
+
+[ids_ips]
+enabled = true
+operating_mode = "IDS"  # Detection only (avoid false positives)
+signature_engine = "SURICATA"
+
+# Detection methods (basic only)
+[ids_ips.detection]
+signature_based = true
+anomaly_based = false  # Disabled to reduce false positives
+behavioral_analysis = false  # Too complex for home
+heuristic_detection = false
+
+# Signature management
+signature_updates_enabled = true
+update_interval_hours = 6  # Every 6 hours
+auto_reload_signatures = true
+
+# Low sensitivity for home use
+sensitivity = "LOW"  # Reduce noise
+
+# Focused categories (home threats)
+enabled_categories = [
+    "malware", "trojan", "ransomware",
+    "phishing", "c2-communication"
+]
+
+# Prevention (DISABLED for home)
+[ids_ips.prevention]
+ips_mode = false  # No blocking (IDS only)
+auto_block = false
+
+# Alerts
+[ids_ips.alerts]
+alert_all_detections = true
+minimum_severity = "MEDIUM"  # Only medium and above
+rate_limiting = true  # Suppress alert spam
+
+# ============================================================================
+# DNS SERVER - AD BLOCKING & MALWARE PROTECTION
+# ============================================================================
+
+[dns]
+enabled = true
+listen_port = 53
+
+# Upstream forwarders (fast and privacy-respecting)
+upstream_servers = [
+    "1.1.1.1",  # Cloudflare (fast, private)
+    "1.0.0.1",  # Cloudflare backup
+    "8.8.8.8",  # Google (reliable)
+    "8.8.4.4"   # Google backup
+]
+
+# Caching (good for home use)
+cache_enabled = true
+cache_size_mb = 128
+cache_ttl_min = 300
+cache_ttl_max = 86400
+
+# Local zone for home devices
+local_zone_enabled = true
+local_zone_name = "home.local"
+
+# DNS Security
+dnssec_enabled = true
+dns_over_tls_enabled = false  # Disabled for simplicity
+
+# Filtering - Family Protection
+[dns.filtering]
+enabled = true
+
+# Security filtering (always on)
+block_malware_domains = true
+block_phishing_domains = true
+block_ransomware_domains = true
+block_c2_domains = true
+
+# Privacy filtering (optional)
+block_advertising = true  # Block ads network-wide
+block_tracking = true  # Block trackers
+
+# Parental controls (OPTIONAL - uncomment to enable)
+# block_adult_content = true
+# block_gambling = true
+# block_social_media = false  # Usually keep social media allowed
+# block_gaming = false
+# block_streaming = false
+
+# Time-based restrictions (parental control example)
+# [[dns.filtering.schedules]]
+# name = "School Nights"
+# days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+# start_time = "21:00"  # 9 PM
+# end_time = "07:00"  # 7 AM
+# block_categories = ["gaming", "streaming", "social-media"]
+
+# Threat intel integration
+threat_intel_integration = true
+
+# ============================================================================
+# DHCP SERVER - AUTOMATIC IP ASSIGNMENT
+# ============================================================================
+
+[dhcp]
+enabled = true
+
+# Single pool for home LAN
+[[dhcp.pools]]
+name = "Home"
+interface = "Ethernet 1"
+network = "192.168.1.0/24"
+range_start = "192.168.1.100"
+range_end = "192.168.1.200"
+lease_time = 86400  # 24 hours
+gateway = "192.168.1.1"
+dns_servers = ["192.168.1.1"]  # Use SafeOps DNS for filtering
+domain_name = "home.local"
+
+# Static reservations for important devices (optional examples)
+# [[dhcp.pools.reservations]]
+# mac = "AA:BB:CC:DD:EE:FF"
+# ip = "192.168.1.10"
+# hostname = "home-nas"
+#
+# [[dhcp.pools.reservations]]
+# mac = "11:22:33:44:55:66"
+# ip = "192.168.1.20"
+# hostname = "smart-tv"
+
+# Dynamic DNS (for local zones)
+ddns_enabled = true
+ddns_domain = "home.local"
+
+# ============================================================================
+# WIFI ACCESS POINT (OPTIONAL)
+# ============================================================================
+
+[wifi]
+enabled = false  # Most homes use ISP router WiFi
+
+# If enabling SafeOps WiFi, uncomment below:
+# [[wifi.ssids]]
+# ssid = "Home-Network"
+# security = "WPA3-PSK"  # WPA3 for modern devices
+# encryption = "AES-CCMP"
+# passphrase = "${WIFI_PASSWORD}"  # Set in environment variable
+# channel = "auto"
+# bandwidth = "80MHz"
+# max_clients = 20
+# client_isolation = false  # Allow devices to communicate
+
+# ============================================================================
+# THREAT INTELLIGENCE - FREE FEEDS ONLY
+# ============================================================================
+
+[threat_intel]
+enabled = true
+
+# Feed sources (FREE only for home use)
+auto_update_feeds = true
+update_interval_hours = 12  # Twice daily
+feeds = ["free"]
+
+# Free feed sources
+free_feeds = [
+    "Abuse.ch-Feodo",
+    "Abuse.ch-URLhaus",
+    "Emerging-Threats-Open",
+    "Spamhaus-DROP"
+]
+
+# Simple matching (alert only, no auto-block)
+auto_block_enabled = false  # Manual review for home
+
+# ============================================================================
+# BACKUP AND RESTORE
+# ============================================================================
+
+[backup]
+enabled = true
+
+# Backup schedule (weekly on Sunday early morning)
+schedule = "0 3 * * 0"  # Sunday at 3 AM
+
+# Backup scope (minimal for home)
+backup_configs = true
+backup_database = true
+backup_certificates = false  # Not needed
+backup_threat_intel_data = false  # Can be re-downloaded
+
+# No encryption (home use, local storage only)
+encryption_enabled = false
+
+# Backup destination (local only)
+primary_destination = "C:\\SafeOps_Backups"
+
+# Simple retention (keep last 4 weeks)
+retention_days = 28
+max_backups = 4
+
+# ============================================================================
+# UPDATE MANAGEMENT - AUTOMATIC
+# ============================================================================
+
+[updates]
+# Update checking
+auto_check = true
+check_interval_hours = 24  # Daily
+
+# Automatic updates (set and forget)
+auto_install_signatures = true  # Always update threat signatures
+auto_install_security = true  # Auto-install security patches
+auto_install_software = true  # Auto-install all updates for home
+
+# Update channel
+channel = "stable"
+
+# Maintenance window (early morning when family is asleep)
+[[updates.maintenance_windows]]
+day = "Daily"
+start_time = "03:00"
+end_time = "05:00"
+timezone = "America/New_York"
+
+# Automatic reboot if needed
+auto_reboot_if_required = true
+reboot_delay_minutes = 5
+
+# ============================================================================
+# WEB UI - SIMPLE ACCESS
+# ============================================================================
+
+[web_ui]
+enabled = true
+
+# Access configuration
+https_enabled = true
+https_port = 8443
+http_redirect = true
+
+# Simple authentication
+require_authentication = true
+authentication_method = "LOCAL"
+
+# Single admin user (family administrator)
+[[web_ui.users]]
+username = "admin"
+password_hash = "$2a$10$..."  # CHANGE ON FIRST LOGIN
+role = "admin"
+force_password_change = true
+
+# Session management (relaxed for home)
+session_timeout_minutes = 480  # 8 hours
+concurrent_sessions_per_user = 3  # Multiple devices
+
+# No MFA required for home
+mfa_enabled = false
+
+# Simple dashboard
+dashboard_mode = "SIMPLE"
+show_technical_details = false  # Hide complexity
+
+# ============================================================================
+# LOGGING - MINIMAL (SAVE STORAGE)
+# ============================================================================
+
+[logging]
+# Logging level
+log_level = "WARN"  # Only warnings and errors
+log_format = "JSON"
+
+# Log rotation
+log_rotation_enabled = true
+log_max_size_mb = 50  # Small log files
+compress_rotated_logs = true
+
+# Short retention (save disk space)
+log_retention_days = 7  # 1 week only
+
+# Minimal logging categories
+[logging.categories]
+firewall_logs = true
+ids_alerts = true
+threat_intel_matches = true
+authentication_events = false
+configuration_changes = true
+system_events = true
+dns_queries = false  # Too verbose
+dhcp_events = false
+
+# No packet capture (saves space)
+packet_capture_enabled = false
+
+# ============================================================================
+# MONITORING AND ALERTS - EMAIL ONLY
+# ============================================================================
+
+[monitoring]
+enabled = true
+
+# Simple health monitoring
+health_check_interval_seconds = 120  # Every 2 minutes
+service_monitoring = true
+
+# Email alerts (optional)
+email_alerts_enabled = false  # Disabled by default
+# alert_email = "your-email@example.com"
+
+# Simple alert conditions
+alert_on_service_failure = true
+alert_on_critical_threat = true
+alert_on_disk_full = true
+
+# No external monitoring
+prometheus_enabled = false
+siem_enabled = false
+
+# ============================================================================
+# PERFORMANCE TUNING - RESOURCE EFFICIENT
+# ============================================================================
+
+[performance]
+# Minimal threading for low resource usage
+worker_threads = 2
+capture_threads = 1
+analysis_threads = 1
+
+# Small buffers
+packet_buffer_size = 10000
+analysis_buffer_size = 5000
+
+# Memory management
+max_memory_usage_percent = 75  # Leave room for OS
+
+# Simple priority
+cpu_priority = "NORMAL"
+io_priority = "NORMAL"
+
+# ============================================================================
+# RESOURCE LIMITS - OPTIMIZED FOR 8GB RAM
+# ============================================================================
+
+[resource_limits]
+# CPU allocation (don't hog the system)
+max_cpu_percent = 50  # Use max 50% of CPU
+
+# Memory allocation (optimized for 8GB system)
+max_memory_mb = 4096  # 4GB max (leave 4GB for OS/apps)
+
+# Disk usage
+max_disk_gb = 80
+disk_usage_warning_percent = 85
+disk_usage_critical_percent = 95
+
+# ============================================================================
+# PARENTAL CONTROLS (OPTIONAL)
+# ============================================================================
+
+[parental_controls]
+enabled = false  # Enable if desired
+
+# Screen time management (example)
+# [[parental_controls.schedules]]
+# name = "Kids Bedtime"
+# devices = ["192.168.1.105", "192.168.1.106"]  # Kids' devices by IP
+# days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+# block_start = "21:00"  # 9 PM bedtime
+# block_end = "07:00"  # 7 AM wake up
+# allow_emergency = true  # Can still make emergency calls
+
+# Content filtering per device
+# [[parental_controls.devices]]
+# name = "Kids Tablet"
+# mac = "AA:BB:CC:DD:EE:FF"
+# filter_level = "STRICT"  # STRICT, MODERATE, or MINIMAL
+# allowed_sites = ["homework-site.edu", "school-portal.edu"]
+
+# ============================================================================
+# SMART HOME INTEGRATION (OPTIONAL)
+# ============================================================================
+
+[smart_home]
+enabled = false  # Enable if you have smart home devices
+
+# Allow smart home protocols
+# allow_mdns = true  # For device discovery (Chromecast, etc.)
+# allow_upnp = true  # For media streaming
+# allow_iot_cloud = true  # For cloud-connected devices
+
+# IoT device recommendations
+# create_iot_vlan = false  # Simple homes don't need VLANs
+# isolate_iot_devices = false  # Allow smart home to talk to phones
+
+# ============================================================================
+# GUEST NETWORK (OPTIONAL)
+# ============================================================================
+
+[guest_network]
+enabled = false  # Enable if you want a separate guest network
+
+# Guest WiFi settings (if wifi_ap is enabled)
+# guest_ssid = "Guest-WiFi"
+# guest_password = "${GUEST_WIFI_PASSWORD}"
+# guest_isolation = true  # Isolate from main network
+# guest_bandwidth_limit = 10mbps  # Limit guest bandwidth
+# guest_time_limit = 8h  # Auto-disconnect after 8 hours
+
+# ============================================================================
+# SIMPLIFIED SETUP WIZARD
+# ============================================================================
+
+[setup_wizard]
+# First-time setup wizard
+run_on_first_boot = true
+skip_technical_questions = true  # Use safe defaults
+auto_detect_network = true
+
+# Wizard steps (simplified)
+configure_wan = true  # DHCP from ISP
+configure_lan = true  # 192.168.1.1/24
+configure_wifi = false  # Skip if using ISP router
+configure_dns = true  # Enable ad blocking
+configure_updates = true  # Enable automatic
+
+# ============================================================================
+# SELF-CHECK VALIDATIONS
+# ============================================================================
+# Before deploying this configuration, verify:
+#
+# [✓] WAN interface connected to ISP modem/router
+# [✓] LAN interface connected to home network switch
+# [✓] SafeOps Web UI accessible at https://192.168.1.1:8443
+# [✓] Devices getting DHCP addresses (192.168.1.100-200)
+# [✓] Internet connectivity working through SafeOps
+# [✓] DNS ad-blocking working (test: ads.example.com blocked)
+# [✓] Admin password changed from default
+# [✓] Backup directory has sufficient space (10GB+)
+# [✓] Automatic updates scheduled during low-usage hours
+# [✓] Family knows not to power off SafeOps during updates
+#
+# OPTIONAL:
+# [✓] Parental controls configured (if desired)
+# [✓] Guest network enabled (if desired)
+# [✓] Static IPs assigned to important devices (NAS, printer, etc.)
+#
+# ============================================================================

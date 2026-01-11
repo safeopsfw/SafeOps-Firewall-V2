@@ -1,0 +1,728 @@
+# SafeOps IDS/IPS Rule Categories Configuration
+# Defines rule categories, priorities, default actions, and severity mappings
+#
+# Maps Suricata classification types to SafeOps alert severities and actions.
+# This file controls how different types of detections are handled.
+
+# ============================================================================
+# Category Definitions
+# ============================================================================
+
+# ============================================================================
+# CRITICAL THREATS - Immediate Response Required
+# ============================================================================
+
+[[categories]]
+category_name = "malware-cnc"
+category_id = 1
+description = "Malware Command and Control communication"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "malware.c2"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "trojan-activity"
+category_id = 2
+description = "Trojan horse activity detected"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "malware.trojan"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "ransomware"
+category_id = 3
+description = "Ransomware activity detected"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "malware.ransomware"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "backdoor"
+category_id = 4
+description = "Backdoor installation or communication"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "malware.backdoor"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "worm-activity"
+category_id = 5
+description = "Self-replicating worm detected"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "malware.worm"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "botnet-activity"
+category_id = 6
+description = "Botnet command and control communication"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "malware.botnet"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "cryptomining"
+category_id = 7
+description = "Unauthorized cryptocurrency mining activity"
+default_action = "DROP"
+priority = 2
+alert_severity = "HIGH"
+logging_verbosity = "STANDARD"
+siem_tag = "malware.cryptomining"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 300
+
+# ============================================================================
+# HIGH SEVERITY - Exploitation Attempts
+# ============================================================================
+
+[[categories]]
+category_name = "attempted-admin"
+category_id = 10
+description = "Attempted administrator privilege gain"
+default_action = "DROP"
+priority = 2
+alert_severity = "HIGH"
+logging_verbosity = "VERBOSE"
+siem_tag = "exploit.admin"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 60
+
+[[categories]]
+category_name = "attempted-user"
+category_id = 11
+description = "Attempted user privilege gain"
+default_action = "ALERT"
+priority = 3
+alert_severity = "HIGH"
+logging_verbosity = "STANDARD"
+siem_tag = "exploit.user"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 60
+
+[[categories]]
+category_name = "shellcode-detect"
+category_id = 12
+description = "Executable code detected in network traffic"
+default_action = "DROP"
+priority = 2
+alert_severity = "HIGH"
+logging_verbosity = "VERBOSE"
+siem_tag = "exploit.shellcode"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "successful-admin"
+category_id = 13
+description = "Successful administrator privilege gain"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "exploit.admin.success"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "exploit-kit"
+category_id = 14
+description = "Exploit kit activity detected"
+default_action = "DROP"
+priority = 2
+alert_severity = "HIGH"
+logging_verbosity = "VERBOSE"
+siem_tag = "exploit.kit"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 300
+
+# ============================================================================
+# HIGH SEVERITY - Web Application Attacks
+# ============================================================================
+
+[[categories]]
+category_name = "web-application-attack"
+category_id = 20
+description = "Web application attack detected"
+default_action = "ALERT"
+priority = 3
+alert_severity = "HIGH"
+logging_verbosity = "STANDARD"
+siem_tag = "web.attack"
+rate_limit_enabled = true
+rate_limit_threshold = 100
+alert_aggregation = true
+aggregation_window = 300
+
+[[categories]]
+category_name = "sql-injection"
+category_id = 21
+description = "SQL injection attack attempt"
+default_action = "DROP"
+priority = 2
+alert_severity = "HIGH"
+logging_verbosity = "VERBOSE"
+siem_tag = "web.sqli"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 60
+
+[[categories]]
+category_name = "xss-attack"
+category_id = 22
+description = "Cross-site scripting attack"
+default_action = "ALERT"
+priority = 4
+alert_severity = "HIGH"
+logging_verbosity = "STANDARD"
+siem_tag = "web.xss"
+rate_limit_enabled = true
+rate_limit_threshold = 50
+alert_aggregation = true
+aggregation_window = 300
+
+[[categories]]
+category_name = "lfi-rfi"
+category_id = 23
+description = "Local or remote file inclusion attack"
+default_action = "DROP"
+priority = 3
+alert_severity = "HIGH"
+logging_verbosity = "VERBOSE"
+siem_tag = "web.lfi-rfi"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 60
+
+[[categories]]
+category_name = "command-injection"
+category_id = 24
+description = "OS command injection attempt"
+default_action = "DROP"
+priority = 2
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "web.command-injection"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 60
+
+[[categories]]
+category_name = "path-traversal"
+category_id = 25
+description = "Directory/path traversal attack"
+default_action = "ALERT"
+priority = 3
+alert_severity = "HIGH"
+logging_verbosity = "STANDARD"
+siem_tag = "web.path-traversal"
+rate_limit_enabled = true
+rate_limit_threshold = 30
+alert_aggregation = true
+aggregation_window = 300
+
+[[categories]]
+category_name = "xxe-attack"
+category_id = 26
+description = "XML External Entity injection attack"
+default_action = "DROP"
+priority = 2
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "web.xxe"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "ssrf-attack"
+category_id = 27
+description = "Server-side request forgery attempt"
+default_action = "DROP"
+priority = 2
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "web.ssrf"
+rate_limit_enabled = false
+alert_aggregation = false
+
+# ============================================================================
+# MEDIUM SEVERITY - Network Attacks
+# ============================================================================
+
+[[categories]]
+category_name = "denial-of-service"
+category_id = 30
+description = "Denial of service attack"
+default_action = "DROP"
+priority = 5
+alert_severity = "MEDIUM"
+logging_verbosity = "STANDARD"
+siem_tag = "network.dos"
+rate_limit_enabled = true
+rate_limit_threshold = 1000
+alert_aggregation = true
+aggregation_window = 60
+
+[[categories]]
+category_name = "attempted-dos"
+category_id = 31
+description = "Attempted denial of service"
+default_action = "ALERT"
+priority = 6
+alert_severity = "MEDIUM"
+logging_verbosity = "MINIMAL"
+siem_tag = "network.dos.attempt"
+rate_limit_enabled = true
+rate_limit_threshold = 500
+alert_aggregation = true
+aggregation_window = 300
+
+[[categories]]
+category_name = "scan-detection"
+category_id = 32
+description = "Network scanning activity"
+default_action = "ALERT"
+priority = 7
+alert_severity = "MEDIUM"
+logging_verbosity = "MINIMAL"
+siem_tag = "network.scan"
+rate_limit_enabled = true
+rate_limit_threshold = 100
+alert_aggregation = true
+aggregation_window = 600
+
+[[categories]]
+category_name = "brute-force"
+category_id = 33
+description = "Brute force authentication attempt"
+default_action = "ALERT"
+priority = 5
+alert_severity = "MEDIUM"
+logging_verbosity = "STANDARD"
+siem_tag = "network.brute-force"
+rate_limit_enabled = true
+rate_limit_threshold = 50
+alert_aggregation = true
+aggregation_window = 300
+
+[[categories]]
+category_name = "arp-spoofing"
+category_id = 34
+description = "ARP spoofing or poisoning detected"
+default_action = "DROP"
+priority = 2
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "network.arp-spoofing"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 60
+
+[[categories]]
+category_name = "mitm-attack"
+category_id = 35
+description = "Man-in-the-middle attack detected"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "network.mitm"
+rate_limit_enabled = false
+alert_aggregation = false
+
+# ============================================================================
+# MEDIUM SEVERITY - Reconnaissance
+# ============================================================================
+
+[[categories]]
+category_name = "network-scan"
+category_id = 40
+description = "Network reconnaissance scanning"
+default_action = "ALERT"
+priority = 8
+alert_severity = "MEDIUM"
+logging_verbosity = "MINIMAL"
+siem_tag = "recon.network-scan"
+rate_limit_enabled = true
+rate_limit_threshold = 200
+alert_aggregation = true
+aggregation_window = 600
+
+[[categories]]
+category_name = "web-application-activity"
+category_id = 41
+description = "Suspicious web application activity"
+default_action = "ALERT"
+priority = 9
+alert_severity = "LOW"
+logging_verbosity = "MINIMAL"
+siem_tag = "recon.web-activity"
+rate_limit_enabled = true
+rate_limit_threshold = 500
+alert_aggregation = true
+aggregation_window = 600
+
+[[categories]]
+category_name = "attempted-recon"
+category_id = 42
+description = "Attempted information gathering"
+default_action = "ALERT"
+priority = 10
+alert_severity = "LOW"
+logging_verbosity = "MINIMAL"
+siem_tag = "recon.attempt"
+rate_limit_enabled = true
+rate_limit_threshold = 300
+alert_aggregation = true
+aggregation_window = 600
+
+# ============================================================================
+# MEDIUM SEVERITY - Data Security
+# ============================================================================
+
+[[categories]]
+category_name = "data-exfiltration"
+category_id = 50
+description = "Potential data exfiltration detected"
+default_action = "ALERT"
+priority = 4
+alert_severity = "HIGH"
+logging_verbosity = "VERBOSE"
+siem_tag = "data.exfiltration"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 120
+
+[[categories]]
+category_name = "suspicious-traffic"
+category_id = 51
+description = "Suspicious network traffic pattern"
+default_action = "ALERT"
+priority = 7
+alert_severity = "MEDIUM"
+logging_verbosity = "STANDARD"
+siem_tag = "data.suspicious"
+rate_limit_enabled = true
+rate_limit_threshold = 100
+alert_aggregation = true
+aggregation_window = 300
+
+[[categories]]
+category_name = "dns-tunneling"
+category_id = 52
+description = "DNS tunneling for data exfiltration"
+default_action = "DROP"
+priority = 2
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "data.dns-tunnel"
+rate_limit_enabled = false
+alert_aggregation = false
+
+[[categories]]
+category_name = "covert-channel"
+category_id = 53
+description = "Covert communication channel detected"
+default_action = "DROP"
+priority = 1
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "data.covert-channel"
+rate_limit_enabled = false
+alert_aggregation = false
+
+# ============================================================================
+# LOW SEVERITY - Policy Violations
+# ============================================================================
+
+[[categories]]
+category_name = "policy-violation"
+category_id = 60
+description = "Network policy violation"
+default_action = "ALERT"
+priority = 11
+alert_severity = "LOW"
+logging_verbosity = "MINIMAL"
+siem_tag = "policy.violation"
+rate_limit_enabled = true
+rate_limit_threshold = 100
+alert_aggregation = true
+aggregation_window = 600
+
+[[categories]]
+category_name = "protocol-command-decode"
+category_id = 61
+description = "Protocol command decoding issue"
+default_action = "ALERT"
+priority = 12
+alert_severity = "LOW"
+logging_verbosity = "MINIMAL"
+siem_tag = "policy.protocol"
+rate_limit_enabled = true
+rate_limit_threshold = 200
+alert_aggregation = true
+aggregation_window = 600
+
+[[categories]]
+category_name = "inappropriate-content"
+category_id = 62
+description = "Inappropriate content access"
+default_action = "ALERT"
+priority = 13
+alert_severity = "LOW"
+logging_verbosity = "MINIMAL"
+siem_tag = "policy.content"
+rate_limit_enabled = true
+rate_limit_threshold = 50
+alert_aggregation = true
+aggregation_window = 3600
+
+[[categories]]
+category_name = "phishing"
+category_id = 63
+description = "Phishing attack or credential harvesting"
+default_action = "DROP"
+priority = 2
+alert_severity = "CRITICAL"
+logging_verbosity = "VERBOSE"
+siem_tag = "social.phishing"
+rate_limit_enabled = false
+alert_aggregation = true
+aggregation_window = 300
+
+[[categories]]
+category_name = "spam"
+category_id = 64
+description = "Spam or unsolicited message distribution"
+default_action = "ALERT"
+priority = 10
+alert_severity = "LOW"
+logging_verbosity = "MINIMAL"
+siem_tag = "social.spam"
+rate_limit_enabled = true
+rate_limit_threshold = 100
+alert_aggregation = true
+aggregation_window = 3600
+
+# ============================================================================
+# INFORMATIONAL - Monitoring and Detection
+# ============================================================================
+
+[[categories]]
+category_name = "misc-activity"
+category_id = 70
+description = "Miscellaneous network activity"
+default_action = "ALERT"
+priority = 14
+alert_severity = "INFO"
+logging_verbosity = "MINIMAL"
+siem_tag = "info.misc"
+rate_limit_enabled = true
+rate_limit_threshold = 1000
+alert_aggregation = true
+aggregation_window = 3600
+
+[[categories]]
+category_name = "not-suspicious"
+category_id = 71
+description = "Traffic flagged for review but likely benign"
+default_action = "PASS"
+priority = 15
+alert_severity = "INFO"
+logging_verbosity = "MINIMAL"
+siem_tag = "info.benign"
+rate_limit_enabled = true
+rate_limit_threshold = 5000
+alert_aggregation = true
+aggregation_window = 3600
+
+[[categories]]
+category_name = "unknown-traffic"
+category_id = 72
+description = "Unknown or unclassified traffic"
+default_action = "ALERT"
+priority = 14
+alert_severity = "INFO"
+logging_verbosity = "MINIMAL"
+siem_tag = "info.unknown"
+rate_limit_enabled = true
+rate_limit_threshold = 500
+alert_aggregation = true
+aggregation_window = 3600
+
+# ============================================================================
+# Action Override Rules
+# ============================================================================
+
+[action_overrides]
+# Override default actions for specific scenarios
+
+# During maintenance windows, reduce aggressive blocking
+maintenance_mode = false
+maintenance_action_override = "ALERT"  # Convert all DROP to ALERT
+
+# False positive suppression (signature IDs to suppress)
+suppressed_signatures = []
+
+# Source IP whitelist (never block these IPs)
+whitelisted_sources = [
+    "192.168.1.0/24",
+    "192.168.2.0/24"
+]
+
+# Destination IP whitelist (never block traffic to these)
+whitelisted_destinations = []
+
+# ============================================================================
+# Alert Severity Mapping
+# ============================================================================
+
+[severity_mapping]
+# Maps priority ranges to alert severities for SIEM integration
+
+CRITICAL = [1, 2]      # Priority 1-2
+HIGH = [3, 4, 5]       # Priority 3-5
+MEDIUM = [6, 7, 8, 9]  # Priority 6-9
+LOW = [10, 11, 12, 13] # Priority 10-13
+INFO = [14, 15]        # Priority 14-15
+
+# ============================================================================
+# Category Groups
+# ============================================================================
+
+[category_groups]
+# Logical grouping of categories for bulk management
+
+malware = [
+    "malware-cnc",
+    "trojan-activity",
+    "ransomware",
+    "backdoor",
+    "worm-activity",
+    "botnet-activity",
+    "cryptomining"
+]
+
+exploits = [
+    "attempted-admin",
+    "attempted-user",
+    "shellcode-detect",
+    "successful-admin",
+    "exploit-kit"
+]
+
+web_attacks = [
+    "web-application-attack",
+    "sql-injection",
+    "xss-attack",
+    "lfi-rfi",
+    "command-injection",
+    "path-traversal",
+    "xxe-attack",
+    "ssrf-attack"
+]
+
+network_attacks = [
+    "denial-of-service",
+    "attempted-dos",
+    "scan-detection",
+    "brute-force",
+    "arp-spoofing",
+    "mitm-attack"
+]
+
+reconnaissance = [
+    "network-scan",
+    "web-application-activity",
+    "attempted-recon"
+]
+
+data_security = [
+    "data-exfiltration",
+    "suspicious-traffic",
+    "dns-tunneling",
+    "covert-channel"
+]
+
+policy = [
+    "policy-violation",
+    "protocol-command-decode",
+    "inappropriate-content",
+    "phishing",
+    "spam"
+]
+
+informational = [
+    "misc-activity",
+    "not-suspicious",
+    "unknown-traffic"
+]
+
+# ============================================================================
+# Integration Settings
+# ============================================================================
+
+[integration]
+# SIEM integration settings
+
+# Enable SIEM forwarding
+siem_enabled = true
+
+# SIEM format (CEF, LEEF, JSON)
+siem_format = "JSON"
+
+# Include full packet payload in SIEM events
+include_payload = false
+
+# Maximum payload size to include (bytes)
+max_payload_size = 4096
+
+# Include related flow information
+include_flow_info = true
+
+# ============================================================================
+# Performance Settings
+# ============================================================================
+
+[performance]
+# Category-based performance tuning
+
+# Enable category-based rule optimization
+optimize_by_category = true
+
+# Maximum alerts per category per second
+max_alerts_per_category = 1000
+
+# Alert queue size per category
+category_queue_size = 10000
+
+# Alert processing priority queue
+use_priority_queue = true

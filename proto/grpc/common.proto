@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+// Package Declaration
+package safeops.common;
+
+option go_package = "safeops/build/proto/go/common";
+option csharp_namespace = "SafeOps.Proto.Common";
+
+// ============================================================================
+// COMMON ENUMERATIONS
+// ============================================================================
+
+// Generic operation status codes
+enum Status {
+  STATUS_UNKNOWN = 0;
+  STATUS_SUCCESS = 1;
+  STATUS_FAILURE = 2;
+  STATUS_PENDING = 3;
+}
+
+// Service lifecycle states
+enum ServiceState {
+  SERVICE_STATE_UNKNOWN = 0;
+  SERVICE_STATE_STOPPED = 1;
+  SERVICE_STATE_STARTING = 2;
+  SERVICE_STATE_RUNNING = 3;
+  SERVICE_STATE_STOPPING = 4;
+  SERVICE_STATE_ERROR = 5;
+}
+
+// Logging severity levels
+enum LogLevel {
+  LOG_LEVEL_UNKNOWN = 0;
+  LOG_LEVEL_TRACE = 1;
+  LOG_LEVEL_DEBUG = 2;
+  LOG_LEVEL_INFO = 3;
+  LOG_LEVEL_WARN = 4;
+  LOG_LEVEL_ERROR = 5;
+  LOG_LEVEL_FATAL = 6;
+}
+
+// Network protocols
+enum Protocol {
+  PROTOCOL_UNKNOWN = 0;
+  PROTOCOL_TCP = 1;
+  PROTOCOL_UDP = 2;
+  PROTOCOL_ICMP = 3;
+  PROTOCOL_ICMPv6 = 4;
+}
+
+// IP address versions
+enum IPVersion {
+  IP_VERSION_UNKNOWN = 0;
+  IP_VERSION_IPV4 = 1;
+  IP_VERSION_IPV6 = 2;
+}
+
+// Network interface classifications
+enum NICTag {
+  NIC_TAG_UNKNOWN = 0;
+  NIC_TAG_WAN = 1;
+  NIC_TAG_LAN = 2;
+  NIC_TAG_WIFI = 3;
+}
+
+// Firewall action types
+enum ActionType {
+  ACTION_UNKNOWN = 0;
+  ACTION_ALLOW = 1;
+  ACTION_DENY = 2;
+  ACTION_DROP = 3;
+  ACTION_REJECT = 4;
+  ACTION_LOG = 5;
+}
+
+// ============================================================================
+// COMMON MESSAGES
+// ============================================================================
+
+// Empty message for requests/responses with no data
+message Empty {}
+
+// Standard timestamp representation
+message Timestamp {
+  int64 seconds = 1;      // Seconds since Unix epoch
+  int32 nanos = 2;        // Nanoseconds (0-999,999,999)
+}
+
+// IP address with version indicator
+message IPAddress {
+  IPVersion version = 1;
+  string address = 2;     // String representation (e.g., "192.168.1.1" or "2001:db8::1")
+}
+
+// Hardware (MAC) address
+message MACAddress {
+  string address = 1;     // String representation (e.g., "00:11:22:33:44:55")
+}
+
+// Network interface details
+message NetworkInterface {
+  string name = 1;              // Interface name (e.g., "eth0", "wlan0")
+  MACAddress mac_address = 2;   // Hardware address
+  repeated IPAddress ip_addresses = 3;  // Assigned IP addresses
+  NICTag tag = 4;               // Interface classification
+  bool is_enabled = 5;          // Interface enabled state
+  uint32 mtu = 6;               // Maximum transmission unit
+  string description = 7;       // Human-readable description
+}
+
+// TCP/UDP port range
+message PortRange {
+  uint32 start = 1;   // Start port (1-65535)
+  uint32 end = 2;     // End port (1-65535)
+}
+
+// Standardized error structure
+message ErrorResponse {
+  string code = 1;            // Error code (e.g., "AUTH_FAILED", "RESOURCE_NOT_FOUND")
+  string message = 2;         // Human-readable error message
+  map<string, string> details = 3;  // Additional context
+  Timestamp timestamp = 4;    // When the error occurred
+}
+
+// Service health information
+message HealthStatus {
+  ServiceState state = 1;           // Current service state
+  uint64 uptime_seconds = 2;        // Time since service started
+  string version = 3;               // Service version
+  map<string, string> metadata = 4; // Additional health info
+  Timestamp last_updated = 5;       // Last health check time
+}
+
+// List pagination parameters
+message Pagination {
+  uint32 page = 1;          // Current page number (1-based)
+  uint32 page_size = 2;     // Items per page
+  uint32 total = 3;         // Total number of items
+}
+
+// ============================================================================
+// UTILITY MESSAGES
+// ============================================================================
+
+// Generic response wrapper
+message Response {
+  Status status = 1;
+  string message = 2;
+  Timestamp timestamp = 3;
+  map<string, string> metadata = 4;
+}
+
+// Health check request
+message HealthCheckRequest {
+  string service_name = 1;
+}
+
+// Health check response
+message HealthCheckResponse {
+  HealthStatus health = 1;
+}
+
+// Network statistics
+message NetworkStats {
+  uint64 bytes_sent = 1;
+  uint64 bytes_received = 2;
+  uint64 packets_sent = 3;
+  uint64 packets_received = 4;
+  uint64 errors_in = 5;
+  uint64 errors_out = 6;
+  uint64 drops_in = 7;
+  uint64 drops_out = 8;
+  Timestamp collected_at = 9;
+}
+
+// Configuration update
+message ConfigUpdate {
+  string config_key = 1;
+  string config_value = 2;
+  Timestamp applied_at = 3;
+  string applied_by = 4;
+}
+
+// Filter criteria for queries
+message Filter {
+  string field = 1;
+  string operator = 2;  // e.g., "eq", "gt", "lt", "contains"
+  string value = 3;
+}
+
+// Query request with filtering and pagination
+message QueryRequest {
+  repeated Filter filters = 1;
+  Pagination pagination = 2;
+  repeated string sort_by = 3;
+  bool descending = 4;
+}
+
+// Log entry
+message LogEntry {
+  Timestamp timestamp = 1;
+  LogLevel level = 2;
+  string service = 3;
+  string message = 4;
+  map<string, string> metadata = 5;
+}
+
+// Network port with protocol
+message Port {
+  uint32 port_number = 1;
+  Protocol protocol = 2;
+}

@@ -1,0 +1,331 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.threat_intel;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/threat_intel";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// Threat Intelligence Service - Reputation databases and threat feed management
+service ThreatIntelService {
+  // Reputation Lookups
+  rpc LookupIP(IPLookupRequest) returns (ReputationResponse);
+  rpc LookupDomain(DomainLookupRequest) returns (ReputationResponse);
+  rpc LookupHash(HashLookupRequest) returns (ReputationResponse);
+  rpc BulkLookup(BulkLookupRequest) returns (BulkLookupResponse);
+  
+  // Feed Management
+  rpc ListFeeds(ListFeedsRequest) returns (FeedListResponse);
+  rpc EnableFeed(FeedRequest) returns (FeedStatusResponse);
+  rpc DisableFeed(FeedRequest) returns (FeedStatusResponse);
+  rpc UpdateFeed(FeedRequest) returns (FeedStatusResponse);
+  rpc GetFeedStatus(FeedRequest) returns (FeedStatusResponse);
+  
+  // IOC Management
+  rpc AddIOC(IOCRequest) returns (IOCResponse);
+  rpc RemoveIOC(RemoveIOCRequest) returns (IOCResponse);
+  rpc SearchIOCs(IOCSearchRequest) returns (IOCListResponse);
+  rpc ListIOCs(ListIOCsRequest) returns (IOCListResponse);
+  
+  // Statistics
+  rpc GetThreatStats(ThreatStatsRequest) returns (ThreatStatsResponse);
+  rpc GetFeedStats(FeedStatsRequest) returns (FeedStatsResponse);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// IOC (Indicator of Compromise) type
+enum IOCType {
+  IOC_TYPE_UNKNOWN = 0;
+  IOC_TYPE_IP = 1;
+  IOC_TYPE_DOMAIN = 2;
+  IOC_TYPE_HASH = 3;
+  IOC_TYPE_URL = 4;
+  IOC_TYPE_EMAIL = 5;
+}
+
+// Hash type
+enum HashType {
+  HASH_TYPE_UNKNOWN = 0;
+  HASH_TYPE_MD5 = 1;
+  HASH_TYPE_SHA1 = 2;
+  HASH_TYPE_SHA256 = 3;
+}
+
+// Threat category
+enum ThreatCategory {
+  CATEGORY_UNKNOWN = 0;
+  CATEGORY_MALWARE = 1;
+  CATEGORY_PHISHING = 2;
+  CATEGORY_C2 = 3;
+  CATEGORY_SCANNER = 4;
+  CATEGORY_BOTNET = 5;
+  CATEGORY_TOR_EXIT = 6;
+  CATEGORY_PROXY = 7;
+  CATEGORY_VPN = 8;
+}
+
+// Reputation category
+enum ReputationCategory {
+  REPUTATION_UNKNOWN = 0;
+  REPUTATION_CLEAN = 1;
+  REPUTATION_SUSPICIOUS = 2;
+  REPUTATION_MALICIOUS = 3;
+}
+
+// Severity level
+enum Severity {
+  SEVERITY_UNKNOWN = 0;
+  SEVERITY_LOW = 1;
+  SEVERITY_MEDIUM = 2;
+  SEVERITY_HIGH = 3;
+  SEVERITY_CRITICAL = 4;
+}
+
+// Feed source type
+enum FeedSourceType {
+  SOURCE_UNKNOWN = 0;
+  SOURCE_OSINT = 1;       // Open Source Intelligence
+  SOURCE_COMMERCIAL = 2;  // Commercial/Paid feeds
+}
+
+// Feed data type
+enum FeedDataType {
+  FEED_DATA_UNKNOWN = 0;
+  FEED_DATA_IP = 1;
+  FEED_DATA_DOMAIN = 2;
+  FEED_DATA_HASH = 3;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - REPUTATION LOOKUPS
+// ============================================================================
+
+// IP lookup request
+message IPLookupRequest {
+  common.IPAddress ip_address = 1;       // IP address to lookup
+  bool include_historical = 2;           // Include historical data
+}
+
+// Domain lookup request
+message DomainLookupRequest {
+  string domain = 1;                     // Domain to lookup
+  bool include_subdomains = 2;           // Include subdomain reputation
+}
+
+// Hash lookup request
+message HashLookupRequest {
+  string hash_value = 1;                 // Hash value to lookup
+  HashType hash_type = 2;                // Hash type
+}
+
+// Bulk lookup request
+message BulkLookupRequest {
+  repeated string ip_addresses = 1;      // IP addresses (up to 1000)
+  repeated string domains = 2;           // Domains (up to 1000)
+}
+
+// ============================================================================
+// REQUEST MESSAGES - FEED MANAGEMENT
+// ============================================================================
+
+// Feed request
+message FeedRequest {
+  string feed_id = 1;                    // Feed ID
+  string feed_name = 2;                  // Feed name (alternative identifier)
+}
+
+// List feeds request
+message ListFeedsRequest {
+  FeedSourceType source_type = 1;        // Filter by source type
+  FeedDataType data_type = 2;            // Filter by data type
+  bool enabled_only = 3;                 // Only enabled feeds
+}
+
+// ============================================================================
+// REQUEST MESSAGES - IOC MANAGEMENT
+// ============================================================================
+
+// IOC request
+message IOCRequest {
+  string ioc_value = 1;                  // IOC value (IP, domain, hash, etc.)
+  IOCType ioc_type = 2;                  // Type of IOC
+  Severity severity = 3;                 // Severity level
+  string source = 4;                     // Source of IOC
+  common.Timestamp expiration = 5;       // When IOC expires
+  repeated string tags = 6;              // Tags for categorization
+  string description = 7;                // Description
+}
+
+// Remove IOC request
+message RemoveIOCRequest {
+  string ioc_id = 1;                     // IOC ID to remove
+}
+
+// IOC search request
+message IOCSearchRequest {
+  string search_term = 1;                // Search term
+  IOCType ioc_type = 2;                  // Filter by IOC type
+  Severity severity = 3;                 // Filter by severity
+  common.Pagination pagination = 4;      // Pagination
+}
+
+// List IOCs request
+message ListIOCsRequest {
+  IOCType ioc_type = 1;                  // Filter by type
+  Severity min_severity = 2;             // Minimum severity
+  bool active_only = 3;                  // Only non-expired IOCs
+  common.Pagination pagination = 4;      // Pagination
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATISTICS
+// ============================================================================
+
+// Threat stats request
+message ThreatStatsRequest {
+  common.Timestamp start_time = 1;       // Start time for stats
+  common.Timestamp end_time = 2;         // End time for stats
+}
+
+// Feed stats request
+message FeedStatsRequest {
+  string feed_id = 1;                    // Specific feed ID (empty for all)
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Reputation response
+message ReputationResponse {
+  uint32 score = 1;                      // Reputation score (0-100, 0=clean, 100=malicious)
+  ReputationCategory category = 2;       // Category
+  uint32 confidence = 3;                 // Confidence score (0-100)
+  common.Timestamp last_seen = 4;        // Last seen timestamp
+  repeated string source_feeds = 5;      // Which feeds reported this
+  repeated string tags = 6;              // Associated tags
+  map<string, string> additional_info = 7; // Additional context
+  repeated ThreatCategory threat_categories = 8; // Threat categories
+}
+
+// Bulk lookup response
+message BulkLookupResponse {
+  map<string, ReputationResponse> results = 1;  // Map of query to reputation
+  uint32 total_queries = 2;              // Total queries processed
+  uint32 cache_hits = 3;                 // Queries served from cache
+}
+
+// Feed list response
+message FeedListResponse {
+  repeated ThreatFeed feeds = 1;         // List of feeds
+  uint32 total_count = 2;                // Total feed count
+}
+
+// Feed status response
+message FeedStatusResponse {
+  common.Status status = 1;              // Operation status
+  string feed_id = 2;                    // Feed ID
+  string name = 3;                       // Feed name
+  bool enabled = 4;                      // Is feed enabled
+  common.Timestamp last_update = 5;      // Last successful update
+  common.Timestamp next_update = 6;      // Scheduled next update
+  uint64 total_entries = 7;              // Total entries in feed
+  string status_message = 8;             // Status message
+}
+
+// IOC response
+message IOCResponse {
+  common.Status status = 1;              // Operation status
+  string ioc_id = 2;                     // IOC ID
+  string message = 3;                    // Status message
+}
+
+// IOC list response
+message IOCListResponse {
+  repeated IOC iocs = 1;                 // List of IOCs
+  uint32 total_count = 2;                // Total count
+  common.Pagination pagination = 3;      // Pagination info
+}
+
+// Threat statistics response
+message ThreatStatsResponse {
+  uint64 total_lookups = 1;              // Total lookups performed
+  uint64 threat_hits = 2;                // Lookups that found threats
+  uint64 cache_hits = 3;                 // Lookups served from cache
+  map<string, uint64> by_category = 4;   // Breakdown by threat category
+  map<string, uint64> by_severity = 5;   // Breakdown by severity
+  repeated TopThreat top_threats = 6;    // Most queried threats
+  common.Timestamp timestamp = 7;        // When stats collected
+}
+
+// Feed statistics response
+message FeedStatsResponse {
+  uint64 total_feeds = 1;                // Total feeds configured
+  uint64 active_feeds = 2;               // Currently active feeds
+  uint64 total_indicators = 3;           // Total indicators across all feeds
+  map<string, uint64> indicators_by_feed = 4; // Breakdown by feed
+  repeated FeedHealth feed_health = 5;   // Health status per feed
+  common.Timestamp timestamp = 6;        // When stats collected
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Threat feed
+message ThreatFeed {
+  string id = 1;                         // Unique feed ID
+  string name = 2;                       // Feed name
+  FeedDataType type = 3;                 // Type of data (IP/DOMAIN/HASH)
+  FeedSourceType source = 4;             // Source type (OSINT/COMMERCIAL)
+  string url = 5;                        // Feed URL
+  uint32 update_frequency = 6;           // Update frequency in hours
+  bool enabled = 7;                      // Is feed enabled
+  common.Timestamp last_update = 8;      // Last update time
+  uint64 entry_count = 9;                // Number of entries
+  string description = 10;               // Description
+}
+
+// IOC (Indicator of Compromise)
+message IOC {
+  string id = 1;                         // Unique IOC ID
+  string value = 2;                      // IOC value (IP, domain, hash, etc.)
+  IOCType type = 3;                      // IOC type
+  Severity severity = 4;                 // Severity level
+  uint32 confidence = 5;                 // Confidence score (0-100)
+  common.Timestamp first_seen = 6;       // First seen timestamp
+  common.Timestamp last_seen = 7;        // Last seen timestamp
+  string source = 8;                     // Source of IOC
+  repeated string tags = 9;              // Tags
+  string description = 10;               // Description
+  repeated string references = 11;       // External references/URLs
+  common.Timestamp expiration = 12;      // Expiration timestamp
+  repeated ThreatCategory categories = 13; // Threat categories
+}
+
+// Top threat
+message TopThreat {
+  string value = 1;                      // Threat indicator value
+  IOCType type = 2;                      // Type
+  uint64 lookup_count = 3;               // Number of lookups
+  Severity severity = 4;                 // Severity
+  common.Timestamp last_seen = 5;        // Last lookup time
+}
+
+// Feed health
+message FeedHealth {
+  string feed_id = 1;                    // Feed ID
+  string feed_name = 2;                  // Feed name
+  bool is_healthy = 3;                   // Health status
+  common.Timestamp last_success = 4;     // Last successful update
+  string last_error = 5;                 // Last error message
+  uint64 consecutive_failures = 6;       // Consecutive failure count
+}

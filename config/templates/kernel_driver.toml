@@ -1,0 +1,388 @@
+# SafeOps Kernel Driver Configuration
+# Windows NDIS Filter and WFP Callout Driver Settings
+#
+# This configuration controls the lowest level of the SafeOps networking stack.
+# Changes to these settings require driver reload or system reboot.
+#
+# IMPORTANT: Test configuration changes in a VM before deploying to production.
+
+# ============================================================================
+# NDIS Filter Configuration
+# ============================================================================
+[ndis_filter]
+# Registered filter name in Windows networking stack
+filter_name = "SafeOpsFilter"
+
+# Human-readable description shown in Network Connections properties
+filter_description = "SafeOps Firewall Network Filter Driver"
+
+# NDIS filter class determines position in filter stack
+# Valid values: "Compression", "Encryption", "Monitoring", "Failover"
+filter_class = "Monitoring"
+
+# Filter priority (0-15, higher runs first)
+# Monitoring filters typically use 8-10
+filter_priority = 9
+
+# Automatically attach to all network adapters
+attach_to_all_adapters = true
+
+# Explicit adapter list (GUIDs) - only used if attach_to_all_adapters = false
+# Example: ["{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"]
+explicit_adapter_list = []
+
+# NDIS filter capability flags
+# Valid flags: "mandatory", "optional", "modifying"
+filter_flags = ["optional", "modifying"]
+
+# Pause filtering during adapter state changes (recommended for stability)
+pause_on_adapter_change = true
+
+# ============================================================================
+# Windows Filtering Platform (WFP) Callout Registration
+# ============================================================================
+[wfp_callouts]
+# Enable WFP callout drivers for deep packet inspection
+wfp_enabled = true
+
+# WFP layers to register callouts on
+# Each layer intercepts packets at different points in the network stack
+registered_layers = [
+    "FWPM_LAYER_INBOUND_IPPACKET_V4",
+    "FWPM_LAYER_OUTBOUND_IPPACKET_V4",
+    "FWPM_LAYER_INBOUND_IPPACKET_V6",
+    "FWPM_LAYER_OUTBOUND_IPPACKET_V6",
+    "FWPM_LAYER_STREAM_V4",
+    "FWPM_LAYER_STREAM_V6",
+    "FWPM_LAYER_ALE_AUTH_CONNECT_V4",
+    "FWPM_LAYER_ALE_AUTH_CONNECT_V6",
+    "FWPM_LAYER_ALE_FLOW_ESTABLISHED_V4",
+    "FWPM_LAYER_ALE_FLOW_ESTABLISHED_V6"
+]
+
+# Callout priority for each layer (0-15, higher priority = earlier execution)
+callout_priority = 10
+
+# Default action when no explicit filter matches
+# Valid values: "PERMIT", "BLOCK", "CALLOUT"
+action_type = "CALLOUT"
+
+# WFP sublayer GUID for filter organization
+# This GUID groups all SafeOps filters together
+sublayer_guid = "{A5E2E7B3-8C4D-4F9A-B1C3-D5E6F7A8B9C0}"
+
+# ============================================================================
+# Ring Buffer Settings
+# ============================================================================
+[ring_buffer]
+# Enable shared memory ring buffer for kernel-to-userspace packet transfer
+ring_buffer_enabled = true
+
+# Total ring buffer size in bytes (must be power of 2)
+# Default: 2GB for high-traffic environments
+# Minimum: 64MB (67108864 bytes)
+# Maximum: 4GB (4294967296 bytes) on 64-bit systems
+ring_buffer_size = 2147483648  # 2 GB
+
+# Named shared memory section identifier
+ring_buffer_name = "SafeOpsRingBuffer"
+
+# Number of packet slots in the ring buffer
+# More slots = smaller max packet size per slot
+# Typical: 65536 slots for ~32KB per slot with 2GB buffer
+packet_slots = 65536
+
+# Size of each packet slot in bytes
+# Must satisfy: packet_slots * slot_size <= ring_buffer_size
+# Typical value: 32768 (32KB) for jumbo frame support
+slot_size = 32768
+
+# Overflow strategy when ring buffer is full
+# Valid values: "DROP_OLDEST", "DROP_NEWEST", "BLOCK"
+# Production: "DROP_OLDEST" (don't block kernel processing)
+# Debug: "BLOCK" (wait for userspace to catch up)
+overflow_strategy = "DROP_OLDEST"
+
+# Timeout for userspace consumer (seconds)
+# If no userspace reader for this duration, assume consumer dead
+consumer_timeout = 30
+
+# Enable ring buffer performance statistics
+# Tracks overflow events, read/write rates, latency
+statistics_enabled = true
+
+# ============================================================================
+# NIC Tagging and Classification
+# ============================================================================
+[nic_tagging]
+# Automatically classify network interfaces by traffic patterns
+auto_tagging_enabled = true
+
+# Rules for automatic NIC classification
+# Rules are evaluated in order; first match wins
+[[nic_tagging.tag_rules]]
+tag_name = "WAN"
+detection_method = "DEFAULT_GATEWAY"
+criteria = "has_internet_gateway"
+
+[[nic_tagging.tag_rules]]
+tag_name = "WIFI"
+detection_method = "ADAPTER_TYPE"
+criteria = "wireless"
+
+[[nic_tagging.tag_rules]]
+tag_name = "DMZ"
+detection_method = "IP_RANGE"
+criteria = "192.168.100.0/24"
+
+[[nic_tagging.tag_rules]]
+tag_name = "LAN"
+detection_method = "IP_RANGE"
+criteria = "192.168.0.0/16,10.0.0.0/8,172.16.0.0/12"
+
+# Manual NIC to tag overrides (by adapter GUID)
+# These take precedence over auto-tagging rules
+[nic_tagging.manual_overrides]
+# Example: "{12345678-1234-1234-1234-123456789012}" = "WAN"
+
+# How often to re-evaluate NIC classifications (seconds)
+# Set to 0 to disable automatic reclassification
+reclassification_interval = 300  # 5 minutes
+
+# ============================================================================
+# Packet Capture Filters
+# ============================================================================
+[packet_capture]
+# Capture ALL packets (warning: very high overhead)
+# Only enable for debugging or low-traffic scenarios
+capture_all_packets = false
+
+# Packet sampling rate (0.0 to 1.0)
+# 1.0 = capture every packet
+# 0.1 = capture 10% of packets
+# 0.0 = capture no packets (use explicit filters only)
+sampling_rate = 1.0
+
+# Maximum packet size to capture (bytes)
+# Packets larger than this are truncated
+# Set to 65535 to capture full packets
+max_packet_size = 1600  # Capture headers + some payload
+
+# Capture filter rules (applied in kernel for efficiency)
+[[packet_capture.capture_filters]]
+protocol = 6  # TCP
+direction = "BOTH"
+port_ranges = [[20, 21], [22, 22], [80, 80], [443, 443], [3389, 3389]]
+exclude_ports = []
+ip_ranges = []
+
+[[packet_capture.capture_filters]]
+protocol = 17  # UDP
+direction = "BOTH"
+port_ranges = [[53, 53], [67, 68], [123, 123], [500, 500], [4500, 4500]]
+exclude_ports = []
+ip_ranges = []
+
+[[packet_capture.capture_filters]]
+protocol = 1  # ICMP
+direction = "BOTH"
+port_ranges = []
+exclude_ports = []
+ip_ranges = []
+
+# Exclude local loopback traffic from capture
+exclude_loopback = true
+
+# Exclude broadcast/multicast traffic from capture
+exclude_broadcast = false
+
+# ============================================================================
+# Performance Optimization
+# ============================================================================
+[performance]
+# Direct Memory Access (DMA) for packet transfers
+# Reduces CPU overhead for large packet transfers
+dma_enabled = true
+
+# Receive Side Scaling (RSS) for multi-core packet processing
+# Distributes incoming packets across CPU cores
+rss_enabled = true
+
+# CPU affinity mask for RSS queues (hexadecimal bitmask)
+# Example: 0xFF = use first 8 cores, 0xFFFF = use first 16 cores
+# Leave empty to use all available cores
+rss_cpu_mask = ""
+
+# NUMA-aware memory allocation
+# Allocates memory on the same NUMA node as processing CPU
+numa_aware = true
+
+# Interrupt moderation settings
+[performance.interrupt_moderation]
+enabled = true
+# Minimum interval between interrupts (microseconds)
+min_interval = 50
+# Maximum packets before forcing an interrupt
+max_packets = 32
+
+# CPU cache prefetching for packet headers
+# Improves performance on modern CPUs
+prefetch_enabled = true
+
+# Lock-free data structures for high concurrency
+lockfree_queues = true
+
+# Batch packet processing count
+# Process this many packets before returning to network stack
+batch_size = 16
+
+# ============================================================================
+# Driver Lifecycle Settings
+# ============================================================================
+[driver_lifecycle]
+# Driver load order group
+# "Network" for network drivers loaded during boot
+load_order_group = "Network"
+
+# Service start type
+# Valid values: "SERVICE_BOOT_START", "SERVICE_SYSTEM_START", "SERVICE_DEMAND_START"
+# Production: SERVICE_SYSTEM_START
+start_type = "SERVICE_SYSTEM_START"
+
+# Error control behavior
+# Valid values: "SERVICE_ERROR_IGNORE", "SERVICE_ERROR_NORMAL", "SERVICE_ERROR_SEVERE", "SERVICE_ERROR_CRITICAL"
+# NORMAL: Log error and continue boot
+# SEVERE: Fallback to LastKnownGood config
+# CRITICAL: Trigger BSOD if driver fails (debug only)
+error_control = "SERVICE_ERROR_NORMAL"
+
+# Maximum wait for clean driver unload (seconds)
+unload_timeout = 30
+
+# Trigger BSOD on critical errors (DEBUG ONLY - never in production)
+crash_on_error = false
+
+# Graceful degradation on initialization failure
+# If true, driver loads with reduced functionality instead of failing
+graceful_degradation = true
+
+# ============================================================================
+# Logging and Diagnostics
+# ============================================================================
+[logging]
+# Event Tracing for Windows (ETW) logging
+etw_logging_enabled = true
+
+# ETW session name for SafeOps kernel driver
+etw_session_name = "SafeOpsKernelTrace"
+
+# ETW log level
+# Valid values: "ERROR", "WARNING", "INFO", "VERBOSE"
+# Production: "WARNING" or "INFO"
+# Debug: "VERBOSE"
+etw_log_level = "INFO"
+
+# Enable DbgPrint output (only in debug builds)
+# Warning: High overhead, only for kernel debugging
+debug_print_enabled = false
+
+# Enable performance counter tracking
+# Exposes driver metrics via Windows Performance Monitor
+performance_counters = true
+
+# Dump full packet contents to ETW (VERY VERBOSE)
+# Only enable for debugging specific packet issues
+packet_dump_enabled = false
+
+# Maximum log file size (MB) before rotation
+# Only applies to file-based logging (not ETW)
+max_log_size_mb = 100
+
+# Number of rotated log files to keep
+log_rotation_count = 5
+
+# ============================================================================
+# Security and Validation
+# ============================================================================
+[security]
+# Validate all IOCTL commands from userspace
+# Critical for preventing malicious userspace exploitation
+ioctl_validation_enabled = true
+
+# Require signed userspace service executable
+# Verifies digital signature before accepting IOCTL commands
+require_signed_userspace = true
+
+# Maximum IOCTL command size (bytes)
+# Prevents buffer overflow attacks via malformed IOCTLs
+max_ioctl_size = 65536
+
+# Rate limit IOCTLs from userspace (commands per second)
+# Prevents DoS via IOCTL flooding
+ioctl_rate_limit = 1000
+
+# Enable memory bounds checking (debug builds only)
+bounds_checking = false
+
+# ============================================================================
+# Advanced Settings (Expert Users Only)
+# ============================================================================
+[advanced]
+# Use timer-based packet batching instead of interrupt-driven
+# Can reduce CPU usage on high-traffic systems
+timer_driven_batching = false
+
+# Timer interval for batching (milliseconds)
+timer_interval_ms = 10
+
+# Enable experimental zero-copy packet forwarding
+# Requires NDIS 6.30+ and compatible NICs
+zero_copy_forwarding = false
+
+# Maximum driver memory allocation (bytes)
+# Prevents runaway memory consumption
+# 0 = no limit (use system defaults)
+max_memory_bytes = 4294967296  # 4 GB
+
+# Enable hardware offload features (checksum, TSO, etc.)
+hardware_offload_enabled = true
+
+# Bypass network stack for specific protocols (advanced)
+# Allows driver to handle packets without OS network stack
+# Empty array = no bypass (recommended)
+bypass_protocols = []
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# RING_BUFFER_SIZE - Override ring_buffer_size
+#   Example: set RING_BUFFER_SIZE=1073741824  (1 GB)
+#
+# ETW_SESSION_NAME - Override etw_session_name
+#   Example: set ETW_SESSION_NAME=SafeOpsDebugTrace
+#
+# NIC_TAG_OVERRIDES - JSON object with adapter GUID to tag mappings
+#   Example: set NIC_TAG_OVERRIDES={"guid1":"WAN","guid2":"LAN"}
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The driver validates this configuration on load and will fail to start
+# if any of the following conditions are not met:
+#
+# 1. ring_buffer_size must be a power of 2
+# 2. ring_buffer_size must be page-aligned (multiple of 4096)
+# 3. packet_slots * slot_size must be <= ring_buffer_size
+# 4. ring_buffer_size must be >= 67108864 (64 MB minimum)
+# 5. callout_priority must be between 0 and 15
+# 6. filter_priority must be between 0 and 15
+# 7. All GUIDs must be in standard format
+# 8. All IP ranges must be valid CIDR notation
+#
+# The userspace service performs these validations before sending
+# the configuration to the driver via IOCTL.
+# ============================================================================

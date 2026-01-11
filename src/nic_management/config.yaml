@@ -1,0 +1,200 @@
+# NIC Management Service Configuration
+# Auto-Generated from detected network interfaces
+# Edit 'alias' fields to rename interfaces as you like!
+
+# =============================================================================
+# YOUR DETECTED NETWORK INTERFACES
+# =============================================================================
+# INDEX  NAME                           TYPE      STATUS  IPv4                MAC
+# ─────  ────                           ────      ──────  ────                ───
+# 1      Loopback Pseudo-Interface 1    LOOPBACK  UP      127.0.0.1/8         -
+# 10     VMware Network Adapter VMnet8  VIRTUAL   UP      192.168.171.1/24    00:50:56:c0:00:08
+# 11     Ethernet 3                     LAN       DOWN    169.254.80.206/16   f8:e4:3b:5a:65:f1
+# 12     Ethernet 2                     LAN       UP      192.168.56.1/24     0a:00:27:00:00:0c
+# 16     Wi-Fi                          LAN       UP      192.168.1.3/24      f4:26:79:73:6f:7c  <-- YOUR MAIN INTERNET
+# 19     Local Area Connection* 9       VIRTUAL   DOWN    169.254.194.218/16  f4:26:79:73:6f:7d
+# 20     VMware Network Adapter VMnet1  VIRTUAL   UP      192.168.65.1/24     00:50:56:c0:00:01
+# 22     Local Area Connection* 10      VIRTUAL   DOWN    169.254.30.205/16   f6:26:79:73:6f:7c
+# 24     Ethernet                       LAN       DOWN    192.168.1.2/24      58:11:22:86:fd:c4
+# 43     vEthernet (Default Switch)     VIRTUAL   UP      172.19.192.1/20     00:15:5d:b5:eb:f2
+# =============================================================================
+
+# Service Metadata
+service:
+  name: "nic_management"
+  version: "1.0.0"
+  log_level: "info"
+  log_format: "json"
+  log_output: "stdout"
+  environment: "development"
+
+# =============================================================================
+# WAN INTERFACES (Internet-facing)
+# =============================================================================
+# Your main internet connection is Wi-Fi (192.168.1.3)
+# You can rename it by changing the 'alias' field!
+
+wan_interfaces:
+  - name: "Wi-Fi" # <-- System name (don't change)
+    alias: "Primary Internet (Wi-Fi)" # <-- YOUR CUSTOM NAME (change this!)
+    priority: 1 # Lower = higher priority
+    weight: 100 # Traffic weight (0-100)
+    enabled: true
+    health_check:
+      targets:
+        - "8.8.8.8" # Google DNS
+        - "1.1.1.1" # Cloudflare DNS
+      check_gateway: true
+
+  # Uncomment if you have a secondary internet connection (e.g., USB tethering)
+  # - name: "Ethernet"
+  #   alias: "Backup Internet (Ethernet)"
+  #   priority: 2
+  #   weight: 50
+  #   enabled: true
+  #   health_check:
+  #     targets:
+  #       - "8.8.8.8"
+  #     check_gateway: true
+
+# =============================================================================
+# LAN INTERFACES (Internal network)
+# =============================================================================
+# These are your internal/private network interfaces
+
+lan_interfaces:
+  - name: "Ethernet 2" # VirtualBox Host-Only
+    alias: "VirtualBox Network" # <-- YOUR CUSTOM NAME
+    enabled: true
+    network:
+      subnet: "192.168.56.0/24"
+      gateway: "192.168.56.1"
+    dhcp_server:
+      enabled: false # VirtualBox handles DHCP
+
+  # Uncomment to use a dedicated LAN interface for local devices
+  # - name: "Ethernet 3"
+  #   alias: "Home LAN"
+  #   enabled: true
+  #   network:
+  #     subnet: "192.168.1.0/24"
+  #     gateway: "192.168.1.1"
+  #   dhcp_server:
+  #     enabled: true
+  #     range_start: "192.168.1.100"
+  #     range_end: "192.168.1.200"
+  #     lease_time: "24h"
+  #     dns_servers:
+  #       - "8.8.8.8"
+  #       - "8.8.4.4"
+
+# =============================================================================
+# gRPC Server Settings
+# =============================================================================
+grpc:
+  listen_address: "0.0.0.0:50054"
+  max_connections: 1000
+  keepalive_time: 30s
+  keepalive_timeout: 10s
+
+# =============================================================================
+# TLS Proxy Integration (Phase 1 - NEW)
+# =============================================================================
+# Configuration for sending packets to TLS Proxy for SNI extraction and
+# DNS-based destination verification. Enables transparent HTTPS inspection.
+tls_proxy:
+  # Master switch for TLS Proxy integration
+  # true: Send packets to TLS Proxy for inspection (Phase 1 mode)
+  # false: Skip TLS Proxy entirely, forward directly (bypass mode)
+  enabled: true
+
+  # TLS Proxy gRPC endpoint address
+  # Format: "hostname:port" - TLS Proxy listens on port 50054 by default
+  # Must match TLS Proxy's grpc.listen_address setting
+  address: "localhost:50054"
+
+  # gRPC request timeout in seconds
+  # Maximum time to wait for TLS Proxy InterceptPacket response
+  # Recommended: 3-5 seconds for production, 10-30 for debugging
+  timeout_secs: 5
+
+  # Fail-open behavior when TLS Proxy is unavailable
+  # true: Forward packets unchanged when TLS Proxy fails (Phase 1 default)
+  # false: Drop packets when TLS Proxy fails (Phase 2 security mode)
+  # Failure scenarios: connection refused, timeout, invalid response
+  fail_open: true
+
+  # Connection pool size for high-throughput scenarios (optional, Phase 2+)
+  # connection_pool_size: 10
+
+  # Retry attempts before fail-open (optional, Phase 2+)
+  # retry_attempts: 3
+
+# =============================================================================
+# Load Balancing (Multi-WAN)
+# =============================================================================
+load_balancing:
+  mode: "round_robin" # round_robin, weighted, least_connections, hash
+  health_check_interval: 5s
+  health_check_timeout: 2s
+  failure_threshold: 3 # Mark WAN down after 3 failed pings
+  recovery_threshold: 5 # Mark WAN up after 5 successful pings
+
+# =============================================================================
+# Failover Configuration
+# =============================================================================
+failover:
+  enabled: true
+  recovery_delay: 60s # Wait before switching back to primary
+  flap_prevention_time: 30s # Prevent rapid switching
+
+# =============================================================================
+# NAT Configuration
+# =============================================================================
+nat:
+  enabled: true
+  port_range_start: 10000
+  port_range_end: 65535
+  tcp_established_timeout: 5h
+  tcp_syn_timeout: 30s
+  tcp_fin_timeout: 2m
+  udp_timeout: 3m
+  icmp_timeout: 30s
+  max_mappings: 1000000
+
+# =============================================================================
+# Connection Tracking
+# =============================================================================
+connection_tracking:
+  enabled: true
+  max_entries: 262144
+  hash_size: 16384
+  expect_max: 1024
+  cleanup:
+    interval: 10s
+    batch_size: 1000
+
+# =============================================================================
+# Monitoring
+# =============================================================================
+monitoring:
+  enabled: true
+  metrics_port: 9154
+  metrics_path: "/metrics"
+
+# =============================================================================
+# Database (optional - for session persistence)
+# =============================================================================
+database:
+  host: "localhost"
+  port: 5432
+  username: "safeops"
+  password: "safeops"
+  database: "nic_management"
+  pool:
+    max_connections: 10
+    min_connections: 2
+    max_idle_time: 30m
+  ssl:
+    enabled: false
+    mode: "disable"

@@ -1,0 +1,550 @@
+syntax = "proto3";
+
+// Package and Imports
+package safeops.network_manager;
+
+import "common.proto";
+
+option go_package = "safeops/build/proto/go/network_manager";
+
+// ============================================================================
+// SERVICE DEFINITION
+// ============================================================================
+
+// Network Manager Service - Central control plane for network configuration
+service NetworkManagerService {
+  // Interface Management
+  rpc ConfigureInterface(ConfigureInterfaceRequest) returns (OperationResponse);
+  rpc ListInterfaces(InterfaceFilterRequest) returns (InterfaceListResponse);
+  rpc GetInterfaceStatus(InterfaceStatusRequest) returns (InterfaceStatusResponse);
+  rpc SetInterfaceState(SetInterfaceStateRequest) returns (OperationResponse);
+  
+  // Routing Management
+  rpc AddRoute(RouteRequest) returns (OperationResponse);
+  rpc DeleteRoute(DeleteRouteRequest) returns (OperationResponse);
+  rpc ListRoutes(ListRoutesRequest) returns (RouteListResponse);
+  rpc SetDefaultGateway(SetDefaultGatewayRequest) returns (OperationResponse);
+  
+  // VLAN Management
+  rpc CreateVLAN(VLANConfigRequest) returns (VLANResponse);
+  rpc DeleteVLAN(DeleteVLANRequest) returns (VLANResponse);
+  rpc ListVLANs(ListVLANsRequest) returns (VLANListResponse);
+  
+  // Bridge Management
+  rpc ConfigureBridge(BridgeConfigRequest) returns (BridgeResponse);
+  rpc DeleteBridge(DeleteBridgeRequest) returns (BridgeResponse);
+  rpc ListBridges(ListBridgesRequest) returns (BridgeListResponse);
+  
+  // Network Policy
+  rpc SetNetworkPolicy(NetworkPolicyRequest) returns (NetworkPolicyResponse);
+  rpc GetNetworkPolicy(GetNetworkPolicyRequest) returns (NetworkPolicyResponse);
+  
+  // Topology and Discovery
+  rpc GetNetworkTopology(GetNetworkTopologyRequest) returns (TopologyResponse);
+  rpc DiscoverDevices(DiscoverDevicesRequest) returns (DiscoveryResponse);
+  
+  // Statistics and Monitoring
+  rpc GetInterfaceStatistics(GetInterfaceStatisticsRequest) returns (InterfaceStatisticsResponse);
+  rpc GetBandwidthUsage(GetBandwidthUsageRequest) returns (BandwidthUsageResponse);
+  
+  // Streaming Operations
+  rpc StreamInterfaceStats(StreamInterfaceStatsRequest) returns (stream InterfaceStatsEvent);
+  rpc MonitorLinkState(MonitorLinkStateRequest) returns (stream LinkStateEvent);
+  rpc StreamTopologyChanges(StreamTopologyChangesRequest) returns (stream TopologyChangeEvent);
+}
+
+// ============================================================================
+// ENUMERATIONS
+// ============================================================================
+
+// Interface type
+enum InterfaceType {
+  IFACE_TYPE_UNKNOWN = 0;
+  IFACE_TYPE_ETHERNET = 1;
+  IFACE_TYPE_WIRELESS = 2;
+  IFACE_TYPE_BRIDGE = 3;
+  IFACE_TYPE_VLAN = 4;
+  IFACE_TYPE_LOOPBACK = 5;
+  IFACE_TYPE_VIRTUAL = 6;
+}
+
+// Interface state
+enum InterfaceState {
+  STATE_UNKNOWN = 0;
+  STATE_UP = 1;
+  STATE_DOWN = 2;
+  STATE_DORMANT = 3;
+  STATE_NOT_PRESENT = 4;
+}
+
+// Address family
+enum AddressFamily {
+  FAMILY_UNKNOWN = 0;
+  FAMILY_IPV4 = 1;
+  FAMILY_IPV6 = 2;
+}
+
+// Route protocol
+enum RouteProtocol {
+  PROTOCOL_UNSPEC = 0;
+  PROTOCOL_STATIC = 1;
+  PROTOCOL_KERNEL = 2;
+  PROTOCOL_BOOT = 3;
+  PROTOCOL_DHCP = 4;
+  PROTOCOL_BGP = 5;
+  PROTOCOL_OSPF = 6;
+}
+
+// Network policy type
+enum NetworkPolicyType {
+  POLICY_UNKNOWN = 0;
+  POLICY_QOS = 1;
+  POLICY_BANDWIDTH_LIMIT = 2;
+  POLICY_ACCESS_CONTROL = 3;
+  POLICY_TRAFFIC_SHAPING = 4;
+}
+
+// Link duplex
+enum LinkDuplex {
+  DUPLEX_UNKNOWN = 0;
+  DUPLEX_HALF = 1;
+  DUPLEX_FULL = 2;
+}
+
+// ============================================================================
+// REQUEST MESSAGES - INTERFACE MANAGEMENT
+// ============================================================================
+
+// Configure interface request
+message ConfigureInterfaceRequest {
+  string interface_name = 1;                     // Interface name
+  repeated IPConfig ip_addresses = 2;            // IP configurations
+  uint32 mtu = 3;                                // MTU size
+  bool enabled = 4;                              // Enable interface
+  string description = 5;                        // Description
+}
+
+// Interface filter request
+message InterfaceFilterRequest {
+  string name_pattern = 1;                       // Name pattern filter
+  InterfaceType type = 2;                        // Filter by type
+  InterfaceState state = 3;                      // Filter by state
+}
+
+// Interface status request
+message InterfaceStatusRequest {
+  string interface_name = 1;                     // Interface name
+}
+
+// Set interface state request
+message SetInterfaceStateRequest {
+  string interface_name = 1;                     // Interface name
+  bool enabled = 2;                              // Enabled state
+}
+
+// ============================================================================
+// REQUEST MESSAGES - ROUTING MANAGEMENT
+// ============================================================================
+
+// Route request
+message RouteRequest {
+  string destination = 1;                        // Destination network (CIDR)
+  string gateway = 2;                            // Gateway IP
+  uint32 metric = 3;                             // Route metric
+  string interface_name = 4;                     // Outbound interface
+  RouteProtocol protocol = 5;                    // Route protocol
+  uint32 table_id = 6;                           // Routing table ID
+}
+
+// Delete route request
+message DeleteRouteRequest {
+  string destination = 1;                        // Destination network
+  string gateway = 2;                            // Gateway IP
+  uint32 table_id = 3;                           // Routing table ID
+}
+
+// List routes request
+message ListRoutesRequest {
+  uint32 table_id = 1;                           // Filter by table ID
+  RouteProtocol protocol = 2;                    // Filter by protocol
+}
+
+// Set default gateway request
+message SetDefaultGatewayRequest {
+  string gateway = 1;                            // Gateway IP
+  string interface_name = 2;                     // Interface name
+  uint32 metric = 3;                             // Route metric
+}
+
+// ============================================================================
+// REQUEST MESSAGES - VLAN MANAGEMENT
+// ============================================================================
+
+// VLAN config request
+message VLANConfigRequest {
+  uint32 vlan_id = 1;                            // VLAN ID (1-4094)
+  string parent_interface = 2;                   // Parent interface
+  string vlan_name = 3;                          // VLAN name
+  uint32 priority = 4;                           // 802.1p priority
+  repeated IPConfig ip_addresses = 5;            // IP configurations
+}
+
+// Delete VLAN request
+message DeleteVLANRequest {
+  string vlan_name = 1;                          // VLAN name to delete
+}
+
+// List VLANs request
+message ListVLANsRequest {
+  string parent_interface = 1;                   // Filter by parent
+}
+
+// ============================================================================
+// REQUEST MESSAGES - BRIDGE MANAGEMENT
+// ============================================================================
+
+// Bridge config request
+message BridgeConfigRequest {
+  string bridge_name = 1;                        // Bridge name
+  repeated string member_interfaces = 2;         // Member interfaces
+  bool stp_enabled = 3;                          // Spanning Tree Protocol
+  uint32 forward_delay = 4;                      // Forward delay (seconds)
+  uint32 hello_time = 5;                         // Hello time (seconds)
+  uint32 max_age = 6;                            // Max age (seconds)
+  repeated IPConfig ip_addresses = 7;            // IP configurations
+}
+
+// Delete bridge request
+message DeleteBridgeRequest {
+  string bridge_name = 1;                        // Bridge name to delete
+}
+
+// List bridges request
+message ListBridgesRequest {
+}
+
+// ============================================================================
+// REQUEST MESSAGES - NETWORK POLICY & TOPOLOGY
+// ============================================================================
+
+// Network policy request
+message NetworkPolicyRequest {
+  NetworkPolicyType policy_type = 1;             // Policy type
+  string scope = 2;                              // Scope (interface/VLAN/global)
+  map<string, string> enforcement_rules = 3;     // Enforcement rules
+  bool enabled = 4;                              // Enable policy
+}
+
+// Get network policy request
+message GetNetworkPolicyRequest {
+  NetworkPolicyType policy_type = 1;             // Policy type to query
+}
+
+// Get network topology request
+message GetNetworkTopologyRequest {
+  bool include_devices = 1;                      // Include discovered devices
+  bool include_inactive = 2;                     // Include inactive interfaces
+}
+
+// Discover devices request
+message DiscoverDevicesRequest {
+  string scan_interface = 1;                     // Interface to scan on
+  uint32 timeout_seconds = 2;                    // Scan timeout
+}
+
+// ============================================================================
+// REQUEST MESSAGES - STATISTICS & STREAMING
+// ============================================================================
+
+// Get interface statistics request
+message GetInterfaceStatisticsRequest {
+  string interface_name = 1;                     // Interface name
+}
+
+// Get bandwidth usage request
+message GetBandwidthUsageRequest {
+  string interface_name = 1;                     // Interface name
+  uint32 time_window_seconds = 2;                // Time window
+}
+
+// Stream interface stats request
+message StreamInterfaceStatsRequest {
+  string interface_name = 1;                     // Interface to monitor
+  uint32 interval_seconds = 2;                   // Update interval
+}
+
+// Monitor link state request
+message MonitorLinkStateRequest {
+  repeated string interface_names = 1;           // Interfaces to monitor
+}
+
+// Stream topology changes request
+message StreamTopologyChangesRequest {
+}
+
+// ============================================================================
+// RESPONSE MESSAGES
+// ============================================================================
+
+// Operation response
+message OperationResponse {
+  common.Status status = 1;                      // Operation status
+  string message = 2;                            // Status message
+}
+
+// Interface list response
+message InterfaceListResponse {
+  repeated NetworkInterface interfaces = 1;      // List of interfaces
+  uint32 total_count = 2;                        // Total count
+}
+
+// Interface status response
+message InterfaceStatusResponse {
+  NetworkInterface interface = 1;                // Interface details
+  InterfaceStatistics statistics = 2;            // Interface statistics
+  LinkDuplex duplex = 3;                         // Link duplex
+  uint32 speed_mbps = 4;                         // Link speed
+  common.Timestamp last_change = 5;              // Last state change
+}
+
+// Route list response
+message RouteListResponse {
+  repeated Route routes = 1;                     // List of routes
+  uint32 total_count = 2;                        // Total count
+}
+
+// VLAN response
+message VLANResponse {
+  string vlan_name = 1;                          // VLAN name
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// VLAN list response
+message VLANListResponse {
+  repeated VLAN vlans = 1;                       // List of VLANs
+  uint32 total_count = 2;                        // Total count
+}
+
+// Bridge response
+message BridgeResponse {
+  string bridge_name = 1;                        // Bridge name
+  common.Status status = 2;                      // Operation status
+  string message = 3;                            // Status message
+}
+
+// Bridge list response
+message BridgeListResponse {
+  repeated Bridge bridges = 1;                   // List of bridges
+  uint32 total_count = 2;                        // Total count
+}
+
+// Network policy response
+message NetworkPolicyResponse {
+  NetworkPolicyType policy_type = 1;             // Policy type
+  map<string, string> enforcement_rules = 2;     // Enforcement rules
+  bool enabled = 3;                              // Is enabled
+  common.Status status = 4;                      // Operation status
+}
+
+// Topology response
+message TopologyResponse {
+  repeated TopologyNode nodes = 1;               // Network nodes
+  repeated TopologyEdge edges = 2;               // Node connections
+  common.Timestamp discovered_at = 3;            // Discovery timestamp
+}
+
+// Discovery response
+message DiscoveryResponse {
+  repeated DeviceInfo devices = 1;               // Discovered devices
+  uint32 total_discovered = 2;                   // Total count
+  common.Timestamp scan_time = 3;                // Scan timestamp
+}
+
+// Interface statistics response
+message InterfaceStatisticsResponse {
+  InterfaceStatistics statistics = 1;            // Interface statistics
+  common.Timestamp timestamp = 2;                // Query timestamp
+}
+
+// Bandwidth usage response
+message BandwidthUsageResponse {
+  uint64 current_rx_bps = 1;                     // Current RX (bits/sec)
+  uint64 current_tx_bps = 2;                     // Current TX (bits/sec)
+  uint64 average_rx_bps = 3;                     // Average RX
+  uint64 average_tx_bps = 4;                     // Average TX
+  uint64 peak_rx_bps = 5;                        // Peak RX
+  uint64 peak_tx_bps = 6;                        // Peak TX
+  common.Timestamp timestamp = 7;                // Query timestamp
+}
+
+// ============================================================================
+// STREAMING RESPONSE MESSAGES
+// ============================================================================
+
+// Interface stats event
+message InterfaceStatsEvent {
+  string interface_name = 1;                     // Interface name
+  InterfaceStatistics statistics = 2;            // Statistics snapshot
+  common.Timestamp timestamp = 3;                // Event timestamp
+}
+
+// Link state event
+message LinkStateEvent {
+  string interface_name = 1;                     // Interface name
+  InterfaceState state = 2;                      // New state
+  InterfaceState previous_state = 3;             // Previous state
+  common.Timestamp timestamp = 4;                // Event timestamp
+}
+
+// Topology change event
+message TopologyChangeEvent {
+  enum ChangeType {
+    CHANGE_UNKNOWN = 0;
+    NODE_ADDED = 1;
+    NODE_REMOVED = 2;
+    EDGE_ADDED = 3;
+    EDGE_REMOVED = 4;
+  }
+  ChangeType change_type = 1;                    // Change type
+  TopologyNode node = 2;                         // Affected node
+  TopologyEdge edge = 3;                         // Affected edge
+  common.Timestamp timestamp = 4;                // Event timestamp
+}
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+// Network interface
+message NetworkInterface {
+  string name = 1;                               // Interface name
+  common.MACAddress mac_address = 2;             // MAC address
+  repeated IPConfig ip_addresses = 3;            // IP configurations
+  uint32 mtu = 4;                                // MTU size
+  InterfaceType type = 5;                        // Interface type
+  InterfaceState state = 6;                      // Interface state
+  string description = 7;                        // Description
+  uint32 index = 8;                              // Interface index
+}
+
+// IP configuration
+message IPConfig {
+  string address = 1;                            // IP address
+  uint32 prefix_length = 2;                      // Prefix length (CIDR)
+  AddressFamily family = 3;                      // Address family
+  bool is_primary = 4;                           // Is primary address
+}
+
+// Route
+message Route {
+  string destination = 1;                        // Destination network
+  string gateway = 2;                            // Gateway IP
+  uint32 metric = 3;                             // Route metric
+  string interface_name = 4;                     // Outbound interface
+  RouteProtocol protocol = 5;                    // Route protocol
+  uint32 table_id = 6;                           // Routing table ID
+}
+
+// VLAN
+message VLAN {
+  uint32 vlan_id = 1;                            // VLAN ID
+  string name = 2;                               // VLAN name
+  string parent_interface = 3;                   // Parent interface
+  uint32 priority = 4;                           // 802.1p priority
+  repeated IPConfig ip_addresses = 5;            // IP configurations
+  InterfaceState state = 6;                      // VLAN state
+}
+
+// Bridge
+message Bridge {
+  string name = 1;                               // Bridge name
+  repeated string member_interfaces = 2;         // Member interfaces
+  bool stp_enabled = 3;                          // STP enabled
+  uint32 forward_delay = 4;                      // Forward delay
+  repeated IPConfig ip_addresses = 5;            // IP configurations
+  InterfaceState state = 6;                      // Bridge state
+  common.MACAddress mac_address = 7;             // Bridge MAC
+}
+
+// Interface statistics
+message InterfaceStatistics {
+  // =========================================================================
+  // Standard Network Statistics (Fields 1-9)
+  // =========================================================================
+  uint64 rx_bytes = 1;                           // Received bytes
+  uint64 tx_bytes = 2;                           // Transmitted bytes
+  uint64 rx_packets = 3;                         // Received packets
+  uint64 tx_packets = 4;                         // Transmitted packets
+  uint64 rx_errors = 5;                          // RX errors
+  uint64 tx_errors = 6;                          // TX errors
+  uint64 rx_dropped = 7;                         // RX dropped
+  uint64 tx_dropped = 8;                         // TX dropped
+  uint64 collisions = 9;                         // Collisions
+
+  // =========================================================================
+  // TLS Proxy Integration Statistics (Phase 1 - Fields 10-16)
+  // =========================================================================
+  // These fields track packet inspection pipeline performance and health.
+  // All counters are monotonically increasing since last reset.
+  
+  // Total packets sent to TLS Proxy for inspection
+  // Increments on every InterceptPacket gRPC call
+  uint64 packets_sent_to_tls_proxy = 10;
+  
+  // Packets with destination port 443 (HTTPS traffic)
+  // Subset of packets_sent_to_tls_proxy that require SNI extraction
+  uint64 https_packets_detected = 11;
+  
+  // Successful SNI extractions from TLS ClientHello messages
+  // Should be <= https_packets_detected (extraction can fail)
+  uint64 sni_extractions_successful = 12;
+  
+  // DNS queries sent to DNS Server for SNI hostname resolution
+  // One query per successful SNI extraction (equals sni_extractions_successful)
+  uint64 dns_resolutions_performed = 13;
+  
+  // TLS Proxy failures (timeouts, connection errors, invalid responses)
+  // High values indicate TLS Proxy availability issues
+  uint64 tls_proxy_errors = 14;
+  
+  // Packets forwarded unchanged after inspection (Phase 1: all packets)
+  // Phase 1: equals packets_sent_to_tls_proxy (pass-through mode)
+  uint64 packets_forwarded_unchanged = 15;
+  
+  // Average TLS Proxy processing latency in milliseconds
+  // Target: <10ms for Phase 1 to avoid noticeable delay
+  uint64 tls_proxy_average_latency_ms = 16;
+}
+
+// Topology node
+message TopologyNode {
+  string id = 1;                                 // Node ID
+  string name = 2;                               // Node name
+  string type = 3;                               // Node type (switch/router/host)
+  common.MACAddress mac_address = 4;             // MAC address
+  repeated string ip_addresses = 5;              // IP addresses
+  string vendor = 6;                             // Device vendor
+  map<string, string> attributes = 7;            // Additional attributes
+}
+
+// Topology edge
+message TopologyEdge {
+  string source_node_id = 1;                     // Source node ID
+  string target_node_id = 2;                     // Target node ID
+  string source_interface = 3;                   // Source interface
+  string target_interface = 4;                   // Target interface
+  uint32 bandwidth_mbps = 5;                     // Link bandwidth
+  uint32 latency_ms = 6;                         // Link latency
+}
+
+// Device info
+message DeviceInfo {
+  common.MACAddress mac_address = 1;             // MAC address
+  string ip_address = 2;                         // IP address
+  string hostname = 3;                           // Hostname
+  string vendor = 4;                             // Vendor
+  string model = 5;                              // Model
+  repeated string capabilities = 6;              // Capabilities
+  string location = 7;                           // Physical location
+}

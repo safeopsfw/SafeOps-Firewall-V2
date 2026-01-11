@@ -1,0 +1,515 @@
+# SafeOps Network Logger Configuration
+# Receives packets from kernel driver, performs protocol analysis, enriches data,
+# and writes structured logs for security monitoring and forensic analysis.
+#
+# This service is the central logging point for all network traffic.
+
+# ============================================================================
+# Service Configuration
+# ============================================================================
+[service]
+# Service identifier for orchestrator registration
+service_name = "network_logger"
+
+# gRPC address for receiving packets from other services
+grpc_listen_address = "127.0.0.1:50052"
+
+# Maximum concurrent packet sender connections
+grpc_max_connections = 50
+
+# Self-health check frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+
+# HTTP port for /metrics endpoint
+metrics_port = 9092
+
+# ============================================================================
+# Packet Source Configuration
+# ============================================================================
+# Sources of packets for logging
+
+[[packet_sources]]
+source_name = "userspace_service"
+source_type = "GRPC"
+grpc_address = "127.0.0.1:50064"
+enabled = true
+priority = 1
+description = "Primary packet source from kernel driver userspace service"
+
+[[packet_sources]]
+source_name = "firewall_engine"
+source_type = "GRPC"
+grpc_address = "127.0.0.1:50053"
+enabled = true
+priority = 2
+description = "Blocked packets from firewall engine"
+
+[[packet_sources]]
+source_name = "ids_ips"
+source_type = "GRPC"
+grpc_address = "127.0.0.1:50055"
+enabled = true
+priority = 1
+description = "Alerted packets from IDS/IPS"
+
+# ============================================================================
+# Log Output Configuration
+# ============================================================================
+# Where and how to write packet logs
+
+[[output_destinations]]
+destination_name = "primary_file_log"
+destination_type = "FILE"
+enabled = true
+format = "JSON"
+file_path = "D:\\SafeOpsFV2\\logs\\network\\packets.json"
+buffer_size = 1000
+flush_interval = 10
+description = "Primary JSON packet log file"
+
+[[output_destinations]]
+destination_name = "csv_export"
+destination_type = "FILE"
+enabled = false
+format = "CSV"
+file_path = "D:\\SafeOpsFV2\\logs\\network\\packets.csv"
+buffer_size = 1000
+flush_interval = 10
+description = "CSV format for spreadsheet analysis"
+
+[[output_destinations]]
+destination_name = "pcap_capture"
+destination_type = "FILE"
+enabled = false
+format = "PCAP"
+file_path = "D:\\SafeOpsFV2\\logs\\network\\capture.pcap"
+buffer_size = 500
+flush_interval = 5
+description = "PCAP format for Wireshark analysis"
+
+# PostgreSQL destination
+[[output_destinations]]
+destination_name = "postgresql_db"
+destination_type = "POSTGRESQL"
+enabled = false
+server_address = "localhost:5432"
+database_name = "safeops"
+table_name = "packet_logs"
+buffer_size = 5000
+flush_interval = 30
+description = "PostgreSQL database for queryable packet logs"
+
+# Elasticsearch destination
+[[output_destinations]]
+destination_name = "elasticsearch"
+destination_type = "ELASTICSEARCH"
+enabled = false
+server_address = "http://localhost:9200"
+index_pattern = "safeops-packets-{date}"
+buffer_size = 1000
+flush_interval = 10
+description = "Elasticsearch for log aggregation and search"
+
+# ============================================================================
+# Log Formatting
+# ============================================================================
+[log_formatting]
+# Primary log format
+# Valid values: "JSON", "CSV", "PCAP", "CEF", "LEEF"
+log_format = "JSON"
+
+# Timestamp representation
+# Valid values: "RFC3339", "UNIX", "ISO8601"
+timestamp_format = "RFC3339"
+
+# Packet fields to include in logs
+include_fields = [
+    "timestamp",
+    "src_ip",
+    "dst_ip",
+    "src_port",
+    "dst_port",
+    "protocol",
+    "packet_length",
+    "ttl",
+    "flags",
+    "interface",
+    "direction",
+    "firewall_action",
+    "ids_verdict"
+]
+
+# Fields to exclude (reduces log size)
+exclude_fields = []
+
+# Nest related fields for readability
+nested_format = true
+
+# Pretty print JSON (larger file size but human-readable)
+json_pretty_print = false
+
+# Include packet payload preview
+include_payload_preview = true
+payload_preview_bytes = 64
+
+# ============================================================================
+# Packet Sampling and Filtering
+# ============================================================================
+[sampling]
+# Enable packet sampling to reduce log volume
+sampling_enabled = false
+
+# Percentage of packets to log (0.0 to 1.0)
+# 1.0 = log all, 0.1 = log 10%, 0.01 = log 1%
+sampling_rate = 1.0
+
+# Sampling strategy
+# Valid values: "RANDOM", "HASH_BASED", "EVERY_NTH"
+# HASH_BASED: Sample based on connection 5-tuple hash (preserves conversations)
+# RANDOM: Random sampling
+# EVERY_NTH: Sample every Nth packet
+sampling_strategy = "HASH_BASED"
+
+# Packet filter rules
+[[filter_rules]]
+rule_name = "log_denied_packets"
+enabled = true
+action = "LOG"
+firewall_action = "DENY"
+sample_rate_override = 1.0
+description = "Always log packets blocked by firewall"
+
+[[filter_rules]]
+rule_name = "log_ids_alerts"
+enabled = true
+action = "LOG"
+ids_verdict = "ALERT"
+sample_rate_override = 1.0
+description = "Always log IDS/IPS alerts"
+
+[[filter_rules]]
+rule_name = "sample_http_traffic"
+enabled = false
+action = "SAMPLE"
+protocol = "TCP"
+port_ranges = [[80, 80], [8080, 8080]]
+sample_rate_override = 0.1
+description = "Sample 10% of HTTP traffic"
+
+[[filter_rules]]
+rule_name = "drop_icmp_pings"
+enabled = false
+action = "DROP"
+protocol = "ICMP"
+description = "Don't log ICMP ping packets"
+
+# ============================================================================
+# Log Rotation
+# ============================================================================
+[rotation]
+# Enable automatic log rotation
+rotation_enabled = true
+
+# Rotation trigger strategy
+# Valid values: "SIZE", "TIME", "BOTH"
+rotation_strategy = "BOTH"
+
+# Maximum log file size before rotation (MB)
+rotation_size = 100
+
+# Time-based rotation interval
+# Valid values: "HOURLY", "DAILY", "WEEKLY"
+rotation_interval = "DAILY"
+
+# Specific time for daily rotations (HH:MM format, 24-hour)
+rotation_time = "00:00"
+
+# Maximum rotated files to retain
+max_log_files = 30
+
+# Maximum log age before deletion (days)
+max_retention_days = 30
+
+# Compress rotated logs
+compression_enabled = true
+
+# Wait before compressing (hours)
+# Allows immediate access to recent logs
+compression_delay = 24
+
+# Compression format
+# Valid values: "GZIP", "BZIP2", "XZ"
+compression_format = "GZIP"
+
+# ============================================================================
+# Protocol Analysis
+# ============================================================================
+[protocol_analysis]
+# Enable deep packet inspection and protocol parsing
+protocol_analysis_enabled = true
+
+# Protocols to parse and extract metadata
+analyzed_protocols = [
+    "HTTP",
+    "HTTPS",
+    "DNS",
+    "DHCP",
+    "FTP",
+    "SSH",
+    "SMB",
+    "RDP",
+    "SMTP"
+]
+
+# HTTP-specific analysis
+extract_http_headers = true
+extract_http_url = true
+extract_http_user_agent = true
+extract_http_method = true
+extract_http_status_code = true
+
+# DNS-specific analysis
+extract_dns_queries = true
+extract_dns_responses = true
+extract_dns_record_types = true
+
+# TLS/HTTPS metadata extraction
+extract_tls_metadata = true
+extract_tls_version = true
+extract_tls_cipher = true
+extract_tls_sni = true
+extract_tls_certificate_cn = false  # Can be verbose
+
+# Payload inspection depth (bytes)
+# 0 = disabled, higher values = more inspection
+# Typical: 256-1024 bytes
+payload_inspection_depth = 256
+
+# Payload encoding in logs
+# Valid values: "HEX", "BASE64", "ASCII", "NONE"
+payload_encoding = "BASE64"
+
+# ============================================================================
+# Privacy and PII Protection
+# ============================================================================
+[privacy]
+# Enable privacy protection features
+# Critical for GDPR/CCPA compliance
+privacy_mode_enabled = true
+
+# Redact last octet of IP addresses
+# Example: 192.168.1.100 → 192.168.1.XXX
+redact_ip_addresses = false
+
+# Redact MAC addresses
+redact_mac_addresses = true
+
+# Redact extracted usernames
+redact_usernames = true
+
+# Redact email addresses in payloads
+redact_emails = true
+
+# Redact credit card numbers
+redact_credit_cards = true
+
+# Custom regex patterns to redact
+redact_patterns = [
+    # Social Security Numbers
+    "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+    # Phone numbers
+    "\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b",
+    # API keys (generic pattern)
+    "(?i)(api[_-]?key|token)[\"']?\\s*[:=]\\s*[\"']?([A-Za-z0-9_\\-]{20,})"
+]
+
+# String to replace sensitive data
+redaction_replacement = "[REDACTED]"
+
+# ============================================================================
+# Enrichment
+# ============================================================================
+[enrichment]
+# Enable packet enrichment with contextual data
+enrichment_enabled = true
+
+# GeoIP location data
+geoip_enabled = true
+geoip_database_path = "D:\\SafeOpsFV2\\data\\GeoLite2-City.mmdb"
+
+# ASN (Autonomous System Number) lookup
+asn_lookup_enabled = true
+
+# Threat intelligence reputation scores
+threat_intel_enabled = true
+threat_intel_grpc_address = "127.0.0.1:50054"
+
+# Reverse DNS lookups
+reverse_dns_enabled = false  # Can add latency
+reverse_dns_timeout = 500    # milliseconds
+reverse_dns_cache_ttl = 3600 # seconds
+
+# Custom static enrichment fields
+[enrichment.custom_fields]
+deployment = "production"
+location = "datacenter_01"
+version = "2.0.0"
+
+# ============================================================================
+# Performance Optimization
+# ============================================================================
+[performance]
+# Number of packet processing worker threads
+# 0 = auto-detect (typically CPU cores / 2)
+worker_threads = 0
+
+# Input queue size per thread
+packet_queue_size = 10000
+
+# Process packets in batches for efficiency
+batch_processing_enabled = true
+
+# Packets per batch
+batch_size = 100
+
+# Use asynchronous I/O for file writes
+async_io_enabled = true
+
+# Pre-allocate buffer pool
+buffer_pool_enabled = true
+
+# Number of buffers in pool
+buffer_pool_size = 10000
+
+# Lock-free queues for inter-thread communication
+lockfree_queues = true
+
+# ============================================================================
+# SIEM Integration
+# ============================================================================
+[siem]
+# Forward logs to SIEM platform
+siem_forwarding_enabled = false
+
+# SIEM platform type
+# Valid values: "SPLUNK", "QRADAR", "ARCSIGHT", "ELASTIC", "SENTINEL"
+siem_type = "SPLUNK"
+
+# SIEM ingestion endpoint URL
+# Can be overridden with ${SIEM_ENDPOINT}
+siem_endpoint = "https://splunk.example.com:8088/services/collector"
+
+# Required format for SIEM
+# Valid values: "CEF", "LEEF", "JSON"
+siem_format = "CEF"
+
+# Use TLS for SIEM connection
+siem_tls_enabled = true
+
+# Verify TLS certificate
+siem_tls_verify = true
+
+# Authentication token for SIEM API
+# Can be overridden with ${SIEM_TOKEN}
+siem_auth_token = ""
+
+# Batch size for SIEM forwarding
+siem_batch_size = 100
+
+# Flush interval for SIEM batches (seconds)
+siem_flush_interval = 10
+
+# Retry attempts on SIEM connection failure
+siem_max_retries = 3
+
+# ============================================================================
+# Statistics and Monitoring
+# ============================================================================
+[statistics]
+# Track logging service statistics
+statistics_enabled = true
+
+# Statistics calculation interval (seconds)
+stats_interval = 60
+
+# Metrics to track
+track_metrics = [
+    "packets_logged",
+    "packets_dropped",
+    "bytes_logged",
+    "log_writes_per_second",
+    "enrichment_latency",
+    "queue_depth",
+    "buffer_utilization"
+]
+
+# Send alerts when packets dropped
+alert_on_drops = true
+
+# Alert threshold (dropped packets per second)
+drop_alert_threshold = 100
+
+# Export statistics via Prometheus metrics
+export_to_prometheus = true
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Maximum packet size to log (bytes)
+# Packets larger than this are truncated
+max_packet_size = 65535
+
+# Deduplicate identical packets
+deduplication_enabled = false
+deduplication_window = 60  # seconds
+
+# Packet checksum validation
+validate_checksums = false
+
+# Fragment reassembly
+reassemble_fragments = false
+
+# Flow tracking for conversation logging
+flow_tracking_enabled = true
+flow_timeout = 300  # seconds
+
+# Maximum flows to track concurrently
+max_concurrent_flows = 100000
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# PACKET_LOG_DIR - Override log file directory
+# GEOIP_DATABASE - Override geoip_database_path
+# ELASTICSEARCH_URL - Override Elasticsearch server_address
+# KAFKA_BROKERS - Kafka broker list (if using Kafka destination)
+# SIEM_ENDPOINT - Override SIEM endpoint
+# SIEM_TOKEN - Override SIEM authentication token
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The network logger validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. At least one output_destination must be enabled
+# 2. output file paths must exist and be writable
+# 3. grpc_listen_address must be valid IP:port format
+# 4. sampling_rate must be between 0.0 and 1.0
+# 5. worker_threads must be > 0 (after auto-detection)
+# 6. GeoIP database must exist if geoip_enabled
+# 7. threat_intel_grpc_address must be reachable if threat_intel_enabled
+# 8. SIEM endpoint must be valid URL if siem_forwarding_enabled
+# 9. Protocol names in analyzed_protocols must be valid
+# 10. Redact patterns must be valid regex
+#
+# Use the validator: safeops-cli config validate network_logger.toml
+# ============================================================================

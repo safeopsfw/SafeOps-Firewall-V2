@@ -1,0 +1,503 @@
+# SafeOps DHCP Server Configuration
+# Automatic IP address assignment and network configuration distribution
+#
+# This file configures IP pools, lease management, DHCP options, static
+# reservations, and dynamic DNS integration for the SafeOps network.
+
+# ============================================================================
+# Service Configuration
+# ============================================================================
+[service]
+# Service identifier for orchestrator registration
+service_name = "dhcp_server"
+
+# Network interface to listen on for DHCP requests
+# Must match interface name from safeops.toml
+listen_interface = "Ethernet 2"  # LAN interface
+
+# Specific IP to bind to (must be interface's IP)
+# Use "0.0.0.0" to listen on all interfaces
+listen_address = "192.168.1.1"
+
+# DHCP server port (standard is 67)
+listen_port = 67
+
+# gRPC management API address
+grpc_listen_address = "127.0.0.1:50057"
+
+# Act as authoritative DHCP server
+# true: Reject offers from other DHCP servers (recommended)
+# false: Coexist with other DHCP servers
+authoritative = true
+
+# Self-health check frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+metrics_port = 9097
+
+# ============================================================================
+# IP Address Pools
+# ============================================================================
+# LAN Pool
+[[address_pools]]
+pool_name = "LAN_POOL"
+network = "192.168.1.0/24"
+range_start = "192.168.1.100"
+range_end = "192.168.1.200"
+enabled = true
+interface = "Ethernet 2"
+description = "Primary LAN DHCP pool"
+
+# Excluded addresses within range (for static assignments or other purposes)
+excluded_addresses = [
+    "192.168.1.150",  # Reserved for future server
+    "192.168.1.151"
+]
+
+# WiFi Pool
+[[address_pools]]
+pool_name = "WIFI_POOL"
+network = "192.168.2.0/24"
+range_start = "192.168.2.100"
+range_end = "192.168.2.250"
+enabled = true
+interface = "Wi-Fi"
+description = "WiFi guest network DHCP pool"
+
+excluded_addresses = []
+
+# DMZ Pool (optional, disabled by default)
+# [[address_pools]]
+# pool_name = "DMZ_POOL"
+# network = "192.168.100.0/24"
+# range_start = "192.168.100.10"
+# range_end = "192.168.100.50"
+# enabled = false
+# interface = "Ethernet 3"
+# description = "DMZ network DHCP pool"
+# excluded_addresses = []
+
+# ============================================================================
+# Lease Management
+# ============================================================================
+[lease_management]
+# Default lease duration (seconds)
+# Production: 86400 (24 hours) for office, 3600 (1 hour) for guest WiFi
+# Can be overridden with ${DHCP_LEASE_TIME}
+default_lease_time = 86400  # 24 hours
+
+# Maximum allowed lease duration (seconds)
+max_lease_time = 604800  # 7 days
+
+# Minimum allowed lease duration (seconds)
+min_lease_time = 600  # 10 minutes
+
+# T1 timer for lease renewal (seconds)
+# Client attempts to renew lease after this time
+# Typically 50% of lease time
+lease_renewal_time = 43200  # 12 hours
+
+# T2 timer for lease rebinding (seconds)
+# Client broadcasts renewal request after this time
+# Typically 87.5% of lease time
+lease_rebinding_time = 75600  # 21 hours
+
+# How long to hold an offered address (seconds)
+# Address reserved for client after DHCPOFFER
+offer_timeout = 120  # 2 minutes
+
+# Action when client declines offer
+# Valid values: "MARK_BAD", "IGNORE", "LOG"
+# MARK_BAD: Mark address as bad and exclude from pool
+# IGNORE: Return address to pool immediately
+# LOG: Log event and return to pool
+decline_handling = "LOG"
+
+# ============================================================================
+# DHCP Options
+# ============================================================================
+[dhcp_options]
+# Standard DHCP options sent to clients
+# Option numbers are per RFC 2132
+
+# LAN network options
+[dhcp_options.LAN_POOL]
+# Option 1: Subnet Mask
+subnet_mask = "255.255.255.0"
+
+# Option 3: Router (Default Gateway)
+# Can be overridden with ${DEFAULT_GATEWAY}
+router = ["192.168.1.1"]
+
+# Option 6: DNS Server
+# Can be overridden with ${DNS_SERVER}
+dns_servers = ["192.168.1.1", "8.8.8.8"]
+
+# Option 15: Domain Name
+domain_name = "lan.local"
+
+# Option 42: NTP Server
+ntp_servers = ["192.168.1.1", "pool.ntp.org"]
+
+# Option 119: Domain Search List
+domain_search = ["lan.local", "local"]
+
+# Option 28: Broadcast Address
+broadcast_address = "192.168.1.255"
+
+# WiFi network options
+[dhcp_options.WIFI_POOL]
+subnet_mask = "255.255.255.0"
+router = ["192.168.2.1"]
+dns_servers = ["192.168.2.1", "1.1.1.1"]
+domain_name = "wifi.local"
+ntp_servers = ["192.168.2.1"]
+domain_search = ["wifi.local"]
+broadcast_address = "192.168.2.255"
+
+# ============================================================================
+# Static Reservations
+# ============================================================================
+# Fixed IP address assignments based on MAC address
+
+[[reservations]]
+hostname = "nas-server"
+mac_address = "AA:BB:CC:DD:EE:01"
+ip_address = "192.168.1.10"
+description = "Network Attached Storage"
+
+[[reservations]]
+hostname = "printer"
+mac_address = "AA:BB:CC:DD:EE:02"
+ip_address = "192.168.1.20"
+description = "Office Network Printer"
+
+[[reservations]]
+hostname = "iot-hub"
+mac_address = "AA:BB:CC:DD:EE:03"
+ip_address = "192.168.1.30"
+description = "IoT Hub Controller"
+
+# Example with custom DHCP options
+# [[reservations]]
+# hostname = "special-device"
+# mac_address = "AA:BB:CC:DD:EE:FF"
+# ip_address = "192.168.1.50"
+# description = "Device with custom DNS"
+# [reservations.options_override]
+# dns_servers = ["8.8.8.8", "8.8.4.4"]  # Use Google DNS instead of local
+
+# ============================================================================
+# Dynamic DNS Integration
+# ============================================================================
+[dynamic_dns]
+# Enable dynamic DNS updates
+ddns_enabled = true
+
+# DNS server to update (typically dns_server service)
+ddns_server_address = "127.0.0.1:50056"
+
+# DNS zone to update
+ddns_zone = "dhcp.lan.local"
+
+# TTL for dynamic DNS records (seconds)
+ddns_ttl = 3600  # 1 hour
+
+# Create A/AAAA records for clients
+ddns_forward_updates = true
+
+# Create PTR records for reverse lookup
+ddns_reverse_updates = true
+
+# Behavior on hostname conflict
+# Valid values: "OVERWRITE", "REJECT", "APPEND"
+# OVERWRITE: Replace existing record
+# REJECT: Refuse DHCP lease
+# APPEND: Add number suffix (hostname-2, hostname-3, etc.)
+ddns_conflict_resolution = "OVERWRITE"
+
+# Update interval for lease renewals (seconds)
+# 0 = update on every renewal (high overhead)
+# Higher values reduce DNS update frequency
+ddns_update_interval = 3600
+
+# ============================================================================
+# Certificate Manager Integration ⭐
+# ============================================================================
+# CA certificate distribution via custom DHCP options (224, 225, 252)
+# Enables zero-touch CA certificate URL injection for TLS interception
+
+[certificate_manager]
+# Enable CA certificate distribution via DHCP
+enabled = true
+
+# Certificate Manager gRPC endpoint
+grpc_address = "localhost:50060"
+
+# gRPC call timeout
+grpc_timeout = "5s"
+
+# Cache TTL for CA URLs (reduces gRPC calls)
+cache_ttl = "1h"
+
+# Enable TLS for gRPC connection to Certificate Manager
+tls_enabled = false
+tls_cert_path = ""
+
+# Retry configuration for failed gRPC calls
+retry_attempts = 3
+retry_delay = "2s"
+
+# Custom DHCP options for CA distribution
+[certificate_manager.options]
+# Option 224: CA Certificate URL
+# Clients can download CA from this URL
+option_224_enabled = true
+option_224_description = "SafeOps Root CA Certificate URL"
+
+# Option 225: CA Install Script URLs
+# Platform-specific installation scripts
+option_225_enabled = true
+option_225_description = "CA Certificate Installation Scripts"
+
+# Option 252: WPAD (Web Proxy Auto-Discovery) URL
+# Automatic proxy configuration for clients
+option_252_enabled = true
+option_252_description = "WPAD Proxy Auto-Config URL"
+
+# ============================================================================
+# Lease Database
+# ============================================================================
+[lease_database]
+# Storage backend for lease persistence
+# Valid values: "FILE", "POSTGRESQL", "MEMORY_ONLY"
+# Production: "FILE" or "POSTGRESQL"
+# Testing: "MEMORY_ONLY" (leases lost on restart)
+lease_database_type = "FILE"
+
+# File path if using FILE backend
+lease_database_path = "D:\\SafeOpsFV2\\data\\dhcp_leases.db"
+
+# PostgreSQL configuration (if using POSTGRESQL backend)
+# lease_database_host = "localhost"
+# lease_database_port = 5432
+# lease_database_name = "safeops"
+# lease_database_user = "safeops"
+# lease_database_password = "${POSTGRES_PASSWORD}"
+
+# How often to persist lease state to disk/database (seconds)
+lease_sync_interval = 60
+
+# How often to purge expired leases from database (seconds)
+lease_cleanup_interval = 3600
+
+# Backup lease database
+backup_enabled = true
+backup_interval = 86400  # Daily
+backup_retention = 7  # Keep 7 days of backups
+
+# ============================================================================
+# Relay Agent Support
+# ============================================================================
+[relay_agent]
+# Act as DHCP relay agent for multi-subnet networks
+relay_enabled = false
+
+# Interfaces to relay DHCP requests from
+relay_interfaces = []
+
+# Upstream DHCP servers to relay requests to
+relay_servers = []
+
+# Maximum relay hops (prevent loops)
+# RFC 1542 recommendation: 4
+relay_hop_limit = 4
+
+# Add relay agent information option (Option 82)
+# Includes circuit ID and agent remote ID
+relay_agent_info = true
+
+# ============================================================================
+# Failover and High Availability
+# ============================================================================
+[failover]
+# Enable DHCP failover for redundancy
+failover_enabled = false
+
+# Failover mode
+# Valid values: "PRIMARY", "SECONDARY", "LOAD_BALANCE"
+# PRIMARY: This server is primary, peer is backup
+# SECONDARY: This server is backup, peer is primary
+# LOAD_BALANCE: Both servers serve clients equally
+failover_mode = "PRIMARY"
+
+# Partner DHCP server address
+failover_peer_address = "192.168.1.2"
+
+# Partner DHCP failover port
+failover_peer_port = 647
+
+# Maximum time to wait for peer response (seconds)
+failover_max_response_delay = 60
+
+# Automatically recover from partner failure
+# After this timeout, take over all pools
+failover_auto_recovery = true
+failover_auto_recovery_timeout = 300  # 5 minutes
+
+# Load balance split (only for LOAD_BALANCE mode)
+# 128 = 50/50 split
+load_balance_split = 128
+
+# ============================================================================
+# Security Settings
+# ============================================================================
+[security]
+# Only serve clients with static reservations
+# true: Deny DHCP to unknown MAC addresses
+# false: Serve any client
+ignore_unknown_clients = false
+
+# Reject BOOTP requests (only serve DHCP)
+ignore_bootp = true
+
+# Maximum leases per MAC address
+# Prevents single client from exhausting pool
+max_leases_per_mac = 3
+
+# Detect unauthorized DHCP servers on network
+rogue_dhcp_detection = true
+
+# Action when rogue DHCP detected
+# Valid values: "ALERT", "BLOCK", "LOG"
+rogue_dhcp_action = "ALERT"
+
+# Client class filtering
+# Filter clients based on vendor class identifier
+client_class_filtering_enabled = false
+
+# Allowed vendor class identifiers (empty = all allowed)
+allowed_vendor_classes = []
+
+# MAC address validation
+validate_mac_addresses = true
+
+# Minimum lease time enforcement
+# Reject requests for leases shorter than min_lease_time
+enforce_min_lease_time = true
+
+# ============================================================================
+# Logging and Monitoring
+# ============================================================================
+[logging]
+# Log all DHCP transactions
+transaction_logging_enabled = true
+
+# DHCP-specific log level
+# Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR"
+log_level = "INFO"
+
+# Log specific DHCP message types
+log_discoveries = true   # DHCPDISCOVER
+log_offers = true        # DHCPOFFER
+log_requests = true      # DHCPREQUEST
+log_acks = true          # DHCPACK
+log_naks = true          # DHCPNAK
+log_releases = true      # DHCPRELEASE
+log_declines = true      # DHCPDECLINE
+log_informs = true       # DHCPINFORM
+
+# Log lease state changes
+log_lease_allocations = true
+log_lease_renewals = false  # Can be very verbose
+log_lease_expirations = true
+
+# Separate log file for DHCP transactions
+transaction_log_file = "D:\\SafeOpsFV2\\logs\\dhcp_transactions.log"
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# DHCP packet queue size
+packet_queue_size = 1000
+
+# Number of worker threads for request processing
+worker_threads = 4
+
+# Enable IPv6 DHCP (DHCPv6)
+ipv6_enabled = false
+
+# Ping check before offering IP
+# Send ICMP ping to verify IP is not in use
+ping_check_enabled = true
+ping_check_timeout = 1000  # milliseconds
+
+# ARP check before offering IP
+# Check ARP table to verify IP is not in use
+arp_check_enabled = true
+
+# Gratuitous ARP after lease
+# Client sends gratuitous ARP to announce IP
+gratuitous_arp_enabled = true
+
+# Maximum outstanding offers
+# Limit number of concurrent DHCPOFFER messages
+max_outstanding_offers = 100
+
+# Lease conflict detection
+# Detect and handle IP address conflicts
+conflict_detection_enabled = true
+
+# ============================================================================
+# Pool Statistics and Alerts
+# ============================================================================
+[pool_monitoring]
+# Enable pool utilization monitoring
+monitoring_enabled = true
+
+# Alert thresholds (percentage of pool used)
+warning_threshold = 80   # Log warning
+critical_threshold = 95  # Send alert
+
+# Check interval for pool utilization (seconds)
+monitoring_interval = 300  # 5 minutes
+
+# Enable automatic pool expansion
+# Automatically expand pool when threshold reached
+auto_expansion_enabled = false
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# DHCP_POOL_START - Override pool range_start
+# DHCP_POOL_END - Override pool range_end
+# DEFAULT_GATEWAY - Override router option
+# DNS_SERVER - Override DNS server option
+# DHCP_LEASE_TIME - Override default_lease_time
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The DHCP server validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. Pool ranges must be within network CIDR
+# 2. Pool ranges must not overlap
+# 3. Static reservations must be outside pool ranges
+# 4. listen_address must exist on listen_interface
+# 5. Subnet mask must match network CIDR
+# 6. Router address must be within subnet
+# 7. DNS servers must be valid IP addresses
+# 8. lease_database_path directory must exist and be writable
+# 9. Failover peer must be reachable if enabled
+# 10. MAC addresses must be valid format (AA:BB:CC:DD:EE:FF)
+#
+# Use the validator: safeops-cli config validate dhcp_server.toml
+# ============================================================================

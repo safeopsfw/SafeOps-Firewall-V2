@@ -1,0 +1,504 @@
+# ============================================================================
+# SafeOps Threat Intelligence Feed Sources - Comprehensive Examples
+# ============================================================================
+# This file provides examples of threat intelligence feeds from various sources
+# including free community feeds and commercial subscriptions.
+#
+# Feed Types:
+#   • IP Reputation - Malicious IP addresses
+#   • Domain/URL - Malicious domains and URLs
+#   • File Hash - Malware file signatures (MD5, SHA1, SHA256)
+#   • IOC - Indicators of Compromise (mixed)
+#   • SSL/TLS - Certificate fingerprints
+#   • Email - Malicious email addresses
+#
+# Update Intervals: Hourly, Daily, Weekly
+# Priorities: CRITICAL > HIGH > MEDIUM > LOW
+# ============================================================================
+
+# ============================================================================
+# FREE Community Threat Feeds
+# ============================================================================
+
+threat_feeds:
+  # ---------------------------------------------------------------------------
+  # IP REPUTATION FEEDS (Free)
+  # ---------------------------------------------------------------------------
+  ip_feeds:
+    - name: "Abuse.ch Feodo Tracker"
+      url: "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.txt"
+      type: IP
+      format: TXT
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      cost: FREE
+      description: "Botnet C2 IPs (Emotet, TrickBot, QakBot, etc.)"
+      categories: [c2, botnet, malware]
+      confidence_threshold: 80
+
+    - name: "Firehol Level 1"
+      url: "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset"
+      type: IP
+      format: TXT
+      update_interval: 6h
+      priority: HIGH
+      enabled: true
+      cost: FREE
+      description: "High confidence malicious IPs"
+      categories: [malware, botnet, scanner, bruteforce]
+      confidence_threshold: 85
+
+    - name: "Emerging Threats Compromised IPs"
+      url: "https://rules.emergingthreats.net/blockrules/compromised-ips.txt"
+      type: IP
+      format: TXT
+      update_interval: 24h
+      priority: HIGH
+      enabled: true
+      cost: FREE
+      description: "Known compromised hosts"
+      categories: [compromised, botnet]
+      confidence_threshold: 75
+
+    - name: "Spamhaus DROP (Don't Route Or Peer)"
+      url: "https://www.spamhaus.org/drop/drop.txt"
+      type: IP_CIDR
+      format: TXT
+      update_interval: 24h
+      priority: HIGH
+      enabled: true
+      cost: FREE
+      description: "Netblocks controlled by spam operations"
+      categories: [spam, malware]
+      confidence_threshold: 90
+
+    - name: "Spamhaus EDROP (Extended DROP)"
+      url: "https://www.spamhaus.org/drop/edrop.txt"
+      type: IP_CIDR
+      format: TXT
+      update_interval: 24h
+      priority: MEDIUM
+      enabled: true
+      cost: FREE
+      description: "Additional suspicious netblocks"
+      categories: [spam]
+      confidence_threshold: 75
+
+    - name: "CINS Army Malicious IPs"
+      url: "http://cinsscore.com/list/ci-badguys.txt"
+      type: IP
+      format: TXT
+      update_interval: 12h
+      priority: MEDIUM
+      enabled: true
+      cost: FREE
+      description: "IPs with poor CINS scores"
+      categories: [scanner, attack]
+      confidence_threshold: 70
+
+  # ---------------------------------------------------------------------------
+  # DOMAIN/URL REPUTATION FEEDS (Free)
+  # ---------------------------------------------------------------------------
+  domain_feeds:
+    - name: "Abuse.ch URLhaus"
+      url: "https://urlhaus.abuse.ch/downloads/text/"
+      type: URL
+      format: TXT
+      update_interval: 6h
+      priority: CRITICAL
+      enabled: true
+      cost: FREE
+      description: "URLs hosting malware"
+      categories: [malware, hosting]
+      confidence_threshold: 85
+
+    - name: "OpenPhish Feed"
+      url: "https://openphish.com/feed.txt"
+      type: URL
+      format: TXT
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      cost: FREE
+      description: "Active phishing URLs"
+      categories: [phishing]
+      confidence_threshold: 90
+
+    - name: "Phishing Army"
+      url: "https://phishing.army/download/phishing_army_blocklist_extended.txt"
+      type: DOMAIN
+      format: TXT
+      update_interval: 6h
+      priority: HIGH
+      enabled: true
+      cost: FREE
+      description: "Phishing domains database"
+      categories: [phishing]
+      confidence_threshold: 80
+
+    - name: "MalwareDomainList"
+      url: "http://www.malwaredomainlist.com/hostslist/hosts.txt"
+      type: DOMAIN
+      format: HOSTS
+      update_interval: 24h
+      priority: MEDIUM
+      enabled: true
+      cost: FREE
+      description: "Known malware distribution domains"
+      categories: [malware, c2]
+      confidence_threshold: 75
+
+    - name: "ZeuS Tracker"
+      url: "https://zeustracker.abuse.ch/blocklist.php?download=domainblocklist"
+      type: DOMAIN
+      format: TXT
+      update_interval: 6h
+      priority: HIGH
+      enabled: false  # ZeuS tracker has been discontinued
+      cost: FREE
+      description: "ZeuS trojan C2 domains (historical)"
+      categories: [malware, c2, zeus]
+      confidence_threshold: 85
+
+  # ---------------------------------------------------------------------------
+  # HASH REPUTATION FEEDS (Free)
+  # ---------------------------------------------------------------------------
+  hash_feeds:
+    - name: "MalwareBazaar Recent Samples"
+      url: "https://bazaar.abuse.ch/export/csv/recent/"
+      type: HASH
+      format: CSV
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      cost: FREE
+      description: "Recently uploaded malware samples (hashes)"
+      categories: [malware, hash, sha256]
+      hash_types: [MD5, SHA1, SHA256]
+      confidence_threshold: 90
+
+    - name: "Malc0de Hash Database"
+      url: "http://malc0de.com/database/index.php?all"
+      type: HASH
+      format: HTML
+      update_interval: 24h
+      priority: MEDIUM
+      enabled: false  # Complex parsing required
+      cost: FREE
+      description: "Malware hash repository"
+      categories: [malware, hash]
+      confidence_threshold: 70
+
+  # ---------------------------------------------------------------------------
+  # ANONYMIZER/PROXY FEEDS (Free)
+  # ---------------------------------------------------------------------------
+  anonymizer_feeds:
+    - name: "Tor Project Exit Nodes"
+      url: "https://check.torproject.org/torbulkexitlist"
+      type: IP
+      format: TXT
+      update_interval: 1h
+      priority: MEDIUM
+      enabled: true
+      cost: FREE
+      description: "Current Tor exit node IPs"
+      categories: [tor, anonymizer, exit-node]
+      confidence_threshold: 100  # Official Tor list
+      action: LOG  # Log but don't block (privacy tool)
+
+    - name: "VPN Gate Public VPN Servers"
+      url: "https://www.vpngate.net/api/iphone/"
+      type: IP
+      format: CSV
+      update_interval: 12h
+      priority: LOW
+      enabled: false
+      cost: FREE
+      description: "Public VPN server IPs"
+      categories: [vpn, proxy, anonymizer]
+      confidence_threshold: 90
+      action: LOG
+
+  # ---------------------------------------------------------------------------
+  # MIXED IOC FEEDS (Free)
+  # ---------------------------------------------------------------------------
+  ioc_feeds:
+    - name: "Abuse.ch ThreatFox"
+      url: "https://threatfox.abuse.ch/export/csv/recent/"
+      type: IOC
+      format: CSV
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: true
+      cost: FREE
+      description: "Recent IOCs (IPs, domains, URLs, hashes)"
+      categories: [ioc, mixed, malware, c2]
+      confidence_threshold: 85
+
+    - name: "Abuse.ch SSL Blacklist"
+      url: "https://sslbl.abuse.ch/blacklist/sslblacklist.csv"
+      type: SSL_CERT
+      format: CSV
+      update_interval: 6h
+      priority: HIGH
+      enabled: true
+      cost: FREE
+      description: "Malicious SSL certificate fingerprints"
+      categories: [c2, malware, ssl]
+      confidence_threshold: 90
+
+# ============================================================================
+# COMMERCIAL/API-BASED Threat Feeds
+# ============================================================================
+
+  # ---------------------------------------------------------------------------
+  # COMMERCIAL FEEDS (Require API Key/Subscription)
+  # ---------------------------------------------------------------------------
+  commercial_feeds:
+    - name: "AlienVault OTX"
+      url: "https://otx.alienvault.com/api/v1/pulses/subscribed"
+      type: IOC
+      format: JSON
+      update_interval: 6h
+      priority: HIGH
+      enabled: false  # Requires API key
+      requires_api_key: true
+      api_key_env: "ALIENVAULT_API_KEY"
+      cost: FREEMIUM  # Free tier available
+      description: "Open Threat Exchange community intelligence"
+      categories: [ioc, threat-intel, mixed]
+      confidence_threshold: 70
+
+    - name: "AbuseIPDB"
+      url: "https://api.abuseipdb.com/api/v2/blacklist"
+      type: IP
+      format: JSON
+      update_interval: 12h
+      priority: HIGH
+      enabled: false
+      requires_api_key: true
+      api_key_env: "ABUSEIPDB_API_KEY"
+      cost: FREEMIUM
+      description: "Community-driven IP abuse database"
+      categories: [abuse, scanner, attacker]
+      confidence_threshold: 80
+
+    - name: "VirusTotal Intelligence"
+      url: "https://www.virustotal.com/api/v3/intelligence/hunting_notifications"
+      type: IOC
+      format: JSON
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: false
+      requires_api_key: true
+      api_key_env: "VIRUSTOTAL_API_KEY"
+      cost: PAID
+      description: "Premium threat intelligence from VirusTotal"
+      categories: [malware, hash, domain, url]
+      confidence_threshold: 85
+
+    - name: "Emerging Threats Pro"
+      url: "https://rules.emergingthreatspro.com/"
+      type: SIGNATURE
+      format: SURICATA
+      update_interval: 1h
+      priority: CRITICAL
+      enabled: false
+      requires_api_key: true
+      api_key_env: "ET_PRO_API_KEY"
+      cost: PAID
+      description: "Commercial IDS/IPS signature feed"
+      categories: [signatures, ids, malware]
+      confidence_threshold: 90
+
+    - name: "Cisco Talos Intelligence"
+      url: "https://talosintelligence.com/feeds"
+      type: IOC
+      format: CUSTOM
+      update_interval: 6h
+      priority: HIGH
+      enabled: false
+      requires_api_key: true
+      cost: FREEMIUM
+      description: "Cisco Talos threat intelligence"
+      categories: [threat-intel, reputation]
+      confidence_threshold: 85
+
+# ============================================================================
+# FEED PROCESSING CONFIGURATION
+# ============================================================================
+
+processing:
+  # Data quality controls
+  deduplication: true
+  normalization: true
+  validation: true
+  enrichment: true
+
+  # Format parsers
+  parsers:
+    txt: enabled
+    csv: enabled
+    json: enabled
+    xml: enabled
+    stix: enabled
+    taxii: enabled
+
+  # Whitelisting (exclude from blocking)
+  whitelist:
+    - 1.1.1.1  # Cloudflare DNS
+    - 8.8.8.8  # Google DNS
+    - "*.microsoft.com"
+    - "*.google.com"
+    - "*.apple.com"
+
+# ============================================================================
+# STORAGE AND CACHING
+# ============================================================================
+
+storage:
+  database: postgresql
+  table_prefix: "threat_intel_"
+  
+  # Caching
+  cache_enabled: true
+  cache_backend: "redis"
+  cache_ttl: 3600  # 1 hour
+  
+  # Retention
+  retention_days:
+    ip_reputation: 90
+    domain_reputation: 180
+    hash_reputation: 365
+    ioc: 180
+
+# ============================================================================
+# ERROR HANDLING AND RELIABILITY
+# ============================================================================
+
+error_handling:
+  # Retry settings
+  retry_attempts: 3
+  retry_delay: 60  # seconds
+  retry_backoff: EXPONENTIAL
+  
+  # Timeouts
+  connect_timeout: 10
+  read_timeout: 30
+  
+  # Failure handling
+  skip_on_error: false
+  fallback_enabled: true
+  alert_on_failure: true
+
+# ============================================================================
+# RATE LIMITING (for API feeds)
+# ============================================================================
+
+rate_limiting:
+  enabled: true
+  global_limit: 1000  # requests per hour
+  
+  # Per-feed limits
+  per_feed_limits:
+    AlienVault_OTX: 100/hour
+    AbuseIPDB: 100/day
+    VirusTotal: 500/day
+
+# ============================================================================
+# NOTIFICATIONS AND ALERTING
+# ============================================================================
+
+notifications:
+  on_update: false
+  on_new_threat: true
+  on_error: true
+  on_feed_stale: true
+  
+  # Notification channels
+  email_enabled: true
+  email_to: "security@example.com"
+  webhook_enabled: false
+  webhook_url: ""
+  syslog_enabled: true
+
+# ============================================================================
+# INTEGRATION WITH SafeOps COMPONENTS
+# ============================================================================
+
+integration:
+  # Firewall integration
+  firewall_auto_block: true
+  firewall_block_threshold: 80  # Confidence score
+  
+  # DNS integration
+  dns_sinkhole_enabled: true
+  dns_sinkhole_ip: "0.0.0.0"
+  
+  # IDS/IPS integration
+  ids_alert_enabled: true
+  ids_signature_generation: false
+  
+  # Threat intel service
+  threat_intel_service: "127.0.0.1:50054"
+  auto_publish_updates: true
+
+# ============================================================================
+# PERFORMANCE TUNING
+# ============================================================================
+
+performance:
+  worker_threads: 4
+  batch_size: 1000
+  parallel_downloads: 5
+  compression: true
+  memory_limit_mb: 512
+
+# ============================================================================
+# CUSTOM/PRIVATE FEEDS
+# ============================================================================
+
+custom_feeds:
+  # Internal threat intelligence
+  - name: "Internal Incident Response Feed"
+    url: "file:///D:/SafeOpsFV2/data/custom-iocs.json"
+    type: IOC
+    format: JSON
+    update_interval: 5m
+    priority: CRITICAL
+    enabled: true
+    cost: INTERNAL
+    description: "IOCs from internal incident response"
+    categories: [internal, incident-response]
+    confidence_threshold: 95
+
+  # Partner intelligence sharing
+  - name: "ISAC Threat Feed"
+    url: "https://isac.example.com/feed.stix"
+    type: IOC
+    format: STIX
+    update_interval: 1h
+    priority: HIGH
+    enabled: false
+    requires_api_key: true
+    cost: MEMBERSHIP
+    description: "Industry ISAC threat sharing"
+    categories: [isac, industry-specific]
+    confidence_threshold: 80
+
+# ============================================================================
+# FEED TESTING AND VALIDATION
+# ============================================================================
+
+testing:
+  # Test mode (don't apply to production)
+  test_mode_enabled: false
+  
+  # Validation
+  validate_on_import: true
+  check_duplicates: true
+  verify_checksums: true
+  
+  # Dry run
+  dry_run_before_apply: false

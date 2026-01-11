@@ -1,0 +1,592 @@
+# ============================================================================
+# SafeOps Monitoring-Only Configuration Preset
+# ============================================================================
+# DEPLOYMENT PROFILE: Passive Monitoring & Traffic Analysis
+#
+# PURPOSE:
+#   Capture and analyze all network traffic without enforcing security policies.
+#   Ideal for network visibility, compliance monitoring, security research, or
+#   deployment in environments where blocking is not permitted.
+#
+# TARGET HARDWARE:
+#   CPU: Intel Core i5/i7 (4-8 cores minimum)
+#   RAM: 16GB minimum (32GB recommended for large networks)
+#   Storage: 2TB+ SSD/HDD for packet captures and logs
+#   Network: Mirror/SPAN port or passive network TAP
+#
+# KEY FEATURES:
+#   ✓ Non-invasive - Zero impact on live traffic
+#   ✓ Full visibility - Captures all packets for analysis
+#   ✓ Compliance ready - Meets audit requirements without enforcement
+#   ✓ Forensics capable - Detailed logs for incident investigation
+#   ✓ Threat detection - IDS alerts without blocking
+#   ✓ Protocol analysis - Deep packet inspection and metadata extraction
+#
+# USE CASES:
+#   • Initial deployment and network discovery
+#   • Security posture assessment
+#   • Compliance monitoring (PCI-DSS, HIPAA, SOX)
+#   • Incident response and forensic analysis
+#   • Network traffic analysis and troubleshooting
+#   • Threat hunting and security research
+#
+# ============================================================================
+
+[profile]
+name = "monitoring_only"
+description = "Passive traffic monitoring without policy enforcement"
+complexity = "moderate"
+version = "2.0.0"
+deployment_type = "PASSIVE_MONITORING"
+enforcement_level = "NONE"
+
+# ============================================================================
+# SYSTEM CONFIGURATION
+# ============================================================================
+
+[system]
+hostname = "safeops-monitor"
+timezone = "UTC"
+admin_email = "security@example.com"
+description = "SafeOps Monitoring Appliance - Passive Mode"
+
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "D:\\SafeOps\\Data"  # Large storage volume
+log_directory = "D:\\SafeOps\\Logs"
+pcap_directory = "D:\\SafeOps\\Captures"  # Packet capture storage
+
+[system.resources]
+# Resource allocation for monitoring workload
+max_cpu_cores = 8
+max_memory_mb = 16384  # 16GB
+max_disk_gb = 2000  # 2TB storage
+
+# ============================================================================
+# OPERATIONAL MODE - PASSIVE MONITORING
+# ============================================================================
+
+[mode]
+# Passive mode - no traffic modification or blocking
+passive = true
+learning = true
+blocking_disabled = true
+enforcement_disabled = true
+forensics_mode = true
+
+# Baseline learning period
+baseline_learning_enabled = true
+baseline_learning_days = 30  # Extended for accurate profiling
+auto_tune_thresholds = true
+
+# ============================================================================
+# NETWORK CONFIGURATION - SPAN/TAP MODE
+# ============================================================================
+
+[network]
+# Monitor-only topology (no routing/forwarding)
+topology = "monitor"
+mode = "PASSIVE_TAP"
+
+[network.interfaces]
+# Mirror/SPAN port configuration
+monitor_interface = "Ethernet 3"  # SPAN/mirror port
+management_interface = "Ethernet 1"  # Out-of-band management
+
+[network.monitoring]
+# SPAN port configuration
+span_port_enabled = true
+promiscuous_mode = true
+capture_all_traffic = true
+
+# Passive TAP support (if using network TAP)
+tap_mode_supported = true
+tap_interface = "Ethernet 3"
+
+# No routing or forwarding
+ip_forwarding_disabled = true
+nat_disabled = true
+routing_disabled = true
+
+# ============================================================================
+# SERVICE TOGGLES - MONITORING FOCUS
+# ============================================================================
+
+[services]
+# Core monitoring services
+kernel_driver = true  # For packet capture
+network_logger = true  # Full traffic logging
+ids_ips = true  # Detection only (no prevention)
+threat_intel = true  # Enrichment and correlation
+orchestrator = true  # Service coordination
+web_ui = true  # Monitoring dashboard
+
+# Security enforcement services (DISABLED)
+firewall_engine = false  # No blocking
+tls_proxy = false  # No interception
+dns_server = false  # Not serving DNS
+dhcp_server = false  # Not serving DHCP
+wifi_ap = false  # Not providing WiFi
+
+# Management services
+certificate_manager = false  # Not needed for monitoring
+backup_restore = true  # Backup monitoring configs
+update_manager = true  # Keep signatures current
+
+# ============================================================================
+# FIREWALL - LOG-ONLY MODE (NO BLOCKING)
+# ============================================================================
+
+[firewall]
+enabled = false  # Completely disabled
+log_only_mode = true  # If enabled, only log
+
+# Would log all traffic if enabled
+log_all_traffic = true
+log_denied = true
+log_allowed = true
+log_detail_level = "VERBOSE"
+
+# No enforcement
+default_action = "LOG"
+auto_block_disabled = true
+
+# ============================================================================
+# IDS/IPS - DETECTION-ONLY MODE
+# ============================================================================
+
+[ids_ips]
+enabled = true
+operating_mode = "IDS"  # Detection only, NEVER drop packets
+signature_engine = "SURICATA"
+
+# Detection engines
+[ids_ips.detection]
+signature_based = true
+anomaly_based = true
+behavioral_analysis = true
+heuristic_detection = true
+machine_learning_detection = false  # Optional, resource intensive
+
+# Signature management
+signature_updates_enabled = true
+update_interval_hours = 1
+auto_reload_signatures = true
+
+# Maximum detection coverage
+all_signatures_enabled = true
+all_categories_enabled = true
+sensitivity = "HIGH"  # Maximum sensitivity
+
+# Signature categories (all enabled)
+enabled_categories = [
+    "malware", "exploit", "trojan", "backdoor", "ransomware",
+    "web-attack", "sql-injection", "xss", "lfi-rfi",
+    "dos", "ddos", "scan", "recon", "brute-force",
+    "policy-violation", "data-exfiltration", "c2-communication",
+    "phishing", "suspicious-traffic"
+]
+
+# Prevention (DISABLED - monitoring only)
+[ids_ips.prevention]
+ips_mode = false
+auto_block = false
+firewall_integration = false
+
+# Alerts (ALL enabled)
+[ids_ips.alerts]
+alert_all_detections = true
+minimum_severity = "LOW"  # Alert on everything
+rate_limiting = false  # Don't suppress alerts
+suppress_duplicates = false  # See all occurrences
+
+# ============================================================================
+# THREAT INTELLIGENCE - ENRICHMENT ONLY
+# ============================================================================
+
+[threat_intel]
+enabled = true
+mode = "ENRICHMENT"  # Enrich alerts, don't block
+
+# Feed configuration
+auto_update_feeds = true
+update_interval_hours = 2
+feeds = ["free", "community", "commercial"]  # All available feeds
+
+# Matching behavior
+matching_enabled = true
+matching_mode = "ALERT_ONLY"  # Alert when matched, don't block
+auto_block = false
+
+# Enrichment
+enrich_alerts = true
+enrich_logs = true
+add_reputation_scores = true
+add_geolocation = true
+add_asn_info = true
+
+# ============================================================================
+# NETWORK LOGGER - MAXIMUM DETAIL
+# ============================================================================
+
+[network_logger]
+enabled = true
+capture_mode = "FULL"  # Capture everything
+
+# Protocol analysis
+protocol_analysis_enabled = true
+analyzed_protocols = [
+    "HTTP", "HTTPS", "DNS", "DHCP", "FTP", "SSH", "SMB", "RDP",
+    "SMTP", "IMAP", "POP3", "SIP", "SQL", "LDAP", "Kerberos"
+]
+
+# Metadata extraction
+extract_metadata = true
+extract_files = false  # Disabled for storage
+extract_certificates = true
+extract_dns_queries = true
+extract_http_headers = true
+
+# Flow tracking
+flow_tracking_enabled = true
+connection_tracking = true
+session_reconstruction = true
+
+# ============================================================================
+# PACKET CAPTURE - FULL FORENSICS
+# ============================================================================
+
+[packet_capture]
+enabled = true
+mode = "FULL"  # Capture all packets
+
+# Capture settings
+[packet_capture.settings]
+pcap_enabled = true
+pcap_format = "PCAP_NG"  # Modern format with metadata
+pcap_path = "D:\\SafeOps\\Captures"
+
+# Sampling (optional, for high-traffic networks)
+sampling_enabled = false  # Capture everything
+sampling_rate = 1  # 1:1 (no sampling)
+
+# Storage management
+pcap_max_size_gb = 500  # Per file
+pcap_max_total_gb = 1500  # Total storage
+pcap_retention_days = 30  # Keep 30 days
+pcap_compression = true  # LZMA compression
+pcap_rotation_enabled = true
+
+# Full packet vs metadata-only
+capture_full_packets = true
+max_packet_size = 65535  # Capture entire packet
+
+# ============================================================================
+# LOGGING - COMPREHENSIVE
+# ============================================================================
+
+[logging]
+# Logging level
+log_level = "DEBUG"  # Maximum detail
+log_format = "JSON"  # Structured logging
+
+# Log destinations
+[logging.destinations]
+log_to_file = true
+log_to_database = true
+log_to_siem = true  # Forward to external SIEM
+
+# Log rotation and retention
+log_rotation_enabled = true
+log_max_size_mb = 1000  # 1GB per file
+log_retention_days = 180  # 6 months
+log_compression = true
+
+# Detailed logging categories
+[logging.categories]
+network_traffic = true
+protocol_analysis = true
+ids_alerts = true
+threat_intel_matches = true
+connection_logs = true
+dns_queries = true
+http_transactions = true
+tls_handshakes = true
+file_transfers = true
+authentication_events = true
+system_events = true
+
+# ============================================================================
+# TRAFFIC ANALYSIS
+# ============================================================================
+
+[traffic_analysis]
+enabled = true
+
+# Analysis types
+flow_analysis = true
+protocol_decode = true
+session_tracking = true
+behavioral_profiling = true
+application_identification = true
+bandwidth_monitoring = true
+latency_monitoring = true
+
+# Statistical analysis
+statistical_analysis = true
+baseline_comparison = true
+anomaly_detection = true
+trend_analysis = true
+
+# Top talkers and conversations
+track_top_talkers = true
+track_top_conversations = true
+top_n_items = 100
+
+# ============================================================================
+# STATISTICS AND METRICS
+# ============================================================================
+
+[statistics]
+enabled = true
+
+# Real-time metrics
+real_time_stats = true
+stats_interval_seconds = 10
+
+# Historical data
+historical_data_enabled = true
+historical_retention_days = 365  # 1 year
+
+# Metrics collection
+[statistics.metrics]
+bandwidth_usage = true
+packet_rates = true
+protocol_distribution = true
+application_mix = true
+geolocation_stats = true
+threat_statistics = true
+connection_states = true
+error_rates = true
+
+# Export formats
+export_prometheus = true
+export_influxdb = false
+export_csv = true
+
+# ============================================================================
+# ALERTS AND NOTIFICATIONS
+# ============================================================================
+
+[alerts]
+enabled = true
+
+# Alert on all severities
+severity_threshold = "INFO"  # Lowest threshold
+alert_all_categories = true
+
+# Notification channels
+[alerts.notifications]
+email_enabled = true
+email_to = ["security@example.com", "soc@example.com"]
+webhook_enabled = false
+syslog_enabled = true
+syslog_server = "siem.example.com:514"
+
+# Alert enrichment
+add_context = true
+include_pcap_snippet = true
+include_threat_intel = true
+
+# ============================================================================
+# SIEM INTEGRATION
+# ============================================================================
+
+[siem]
+enabled = true
+
+# SIEM platforms
+[siem.splunk]
+enabled = false
+server = "splunk.example.com:8088"
+hec_token = "${SPLUNK_HEC_TOKEN}"
+index = "safeops"
+
+[siem.elastic]
+enabled = false
+hosts = ["elasticsearch.example.com:9200"]
+index_prefix = "safeops-"
+
+[siem.syslog]
+enabled = true
+server = "siem.example.com:514"
+protocol = "UDP"
+format = "CEF"  # Common Event Format
+
+# Log forwarding
+forward_all_logs = true
+forward_alerts = true
+forward_traffic_logs = true
+forward_threat_intel = true
+
+# ============================================================================
+# WEB UI - MONITORING DASHBOARD
+# ============================================================================
+
+[web_ui]
+enabled = true
+
+# Access configuration
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 480  # 8 hours
+
+# Dashboard configuration
+dashboard_focus = "ANALYTICS"
+default_view = "network_overview"
+
+# Widgets enabled
+[web_ui.widgets]
+real_time_traffic = true
+threat_dashboard = true
+protocol_breakdown = true
+top_talkers = true
+geographic_map = true
+alert_timeline = true
+bandwidth_graphs = true
+connection_table = true
+
+# Theme
+default_theme = "dark"
+
+# ============================================================================
+# DATA RETENTION
+# ============================================================================
+
+[retention]
+# Extended retention for compliance and forensics
+network_traffic_logs_days = 180  # 6 months
+packet_captures_days = 30
+ids_alerts_days = 365  # 1 year
+threat_intel_matches_days = 365
+flow_data_days = 90
+dns_logs_days = 90
+http_logs_days = 90
+system_logs_days = 90
+
+# Archive to cold storage
+archive_enabled = true
+archive_path = "D:\\SafeOps\\Archive"
+archive_compression = "LZMA"
+
+# ============================================================================
+# BACKUP AND RESTORE
+# ============================================================================
+
+[backup]
+enabled = true
+
+# Backup schedule
+schedule = "0 2 * * *"  # Daily at 2 AM
+backup_logs = true
+backup_captures = false  # Too large
+backup_configs = true
+backup_database = true
+
+# Backup destination
+destination = "D:\\SafeOps\\Backups"
+retention_days = 90
+compression = true
+
+# ============================================================================
+# UPDATES
+# ============================================================================
+
+[updates]
+# Keep signatures and software current
+auto_check = true
+check_interval_hours = 6
+
+# Automatic updates
+auto_install_security = true
+auto_install_signatures = true  # Critical for detection
+auto_install_software = false  # Manual for stability
+channel = "stable"
+
+# Signature updates
+signature_update_priority = "HIGH"
+signature_update_interval = 1  # Hours
+
+# ============================================================================
+# PERFORMANCE TUNING
+# ============================================================================
+
+[performance]
+# Worker threads
+capture_threads = 4
+analysis_threads = 4
+logging_threads = 2
+
+# Buffer sizes
+packet_buffer_size = 100000
+analysis_buffer_size = 50000
+log_buffer_size = 10000
+
+# Memory limits
+max_memory_usage_percent = 75
+max_disk_usage_percent = 80
+
+# Monitoring overhead
+cpu_priority = "NORMAL"
+io_priority = "NORMAL"
+
+# ============================================================================
+# COMPLIANCE AND AUDIT
+# ============================================================================
+
+[compliance]
+# Compliance monitoring mode
+compliance_mode = true
+
+# Standards
+pci_dss_monitoring = false
+hipaa_monitoring = false
+sox_monitoring = false
+gdpr_monitoring = false
+
+# Audit trail
+audit_trail_enabled = true
+audit_retention_years = 7
+tamper_proof_logs = true
+
+# ============================================================================
+# INTEGRATION
+# ============================================================================
+
+[integration]
+# API access for external tools
+api_enabled = true
+api_port = 8090
+api_authentication = "TOKEN"
+
+# Export formats
+export_pcap = true
+export_json = true
+export_csv = true
+
+# ============================================================================
+# SELF-CHECK VALIDATIONS
+# ============================================================================
+# Before deploying this configuration, verify:
+#
+# [✓] Mirror/SPAN port configured on network switch
+# [✓] Sufficient storage for packet captures (2TB+ recommended)
+# [✓] Adequate RAM for packet processing (16GB+ required)
+# [✓] Out-of-band management network configured
+# [✓] SIEM integration configured if using
+# [✓] Compliance requirements documented
+# [✓] Backup destination has sufficient space
+# [✓] Alert notification channels tested
+#
+# ============================================================================

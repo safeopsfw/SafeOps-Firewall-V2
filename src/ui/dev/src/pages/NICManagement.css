@@ -1,0 +1,1038 @@
+/* NIC Management - Premium Styles */
+/* Better than enterprise firewall UIs */
+
+/* ============================================
+   CSS Variables
+   ============================================ */
+:root {
+  --nic-primary: #6366f1;
+  --nic-primary-dark: #4f46e5;
+  --nic-success: #10b981;
+  --nic-danger: #ef4444;
+  --nic-warning: #f59e0b;
+  --nic-wan: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --nic-lan: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  --nic-virtual: linear-gradient(135deg, #8360c3 0%, #2ebf91 100%);
+  --nic-card-bg: rgba(255, 255, 255, 0.08);
+  --nic-card-border: rgba(255, 255, 255, 0.1);
+  --nic-text: #f1f5f9;
+  --nic-text-muted: #94a3b8;
+  --nic-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   Main Container
+   ============================================ */
+.nic-management {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  color: var(--nic-text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ============================================
+   Header
+   ============================================ */
+.nic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nic-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nic-subtitle {
+  color: var(--nic-text-muted);
+  margin: 0.5rem 0 0 0;
+  font-size: 0.95rem;
+}
+
+.nic-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nic-last-refresh {
+  color: var(--nic-text-muted);
+  font-size: 0.85rem;
+}
+
+.nic-refresh-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--nic-primary);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.nic-refresh-btn:hover {
+  background: var(--nic-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+
+/* ============================================
+   Error Banner
+   ============================================ */
+.nic-error-banner {
+  padding: 1rem 1.5rem;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 12px;
+  color: #fbbf24;
+  margin-bottom: 1.5rem;
+  backdrop-filter: blur(10px);
+}
+
+/* ============================================
+   Section Titles
+   ============================================ */
+.nic-section {
+  margin-bottom: 2.5rem;
+}
+
+.nic-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nic-count {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   NIC Grid
+   ============================================ */
+.nic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+/* ============================================
+   NIC Card - Glassmorphism
+   ============================================ */
+.nic-card {
+  position: relative;
+  background: var(--nic-card-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--nic-card-border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  overflow: hidden;
+}
+
+.nic-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 20px 20px 0 0;
+}
+
+.nic-card.wan::before {
+  background: var(--nic-wan);
+}
+
+.nic-card.lan::before {
+  background: var(--nic-lan);
+}
+
+.nic-card.virtual::before {
+  background: var(--nic-virtual);
+}
+
+.nic-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--nic-shadow);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.nic-card.online {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.1);
+}
+
+.nic-card.offline {
+  opacity: 0.7;
+}
+
+.nic-card.offline:hover {
+  opacity: 1;
+}
+
+/* Priority Badge */
+.nic-priority-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.35rem 0.75rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1f2937;
+  box-shadow: 0 2px 10px rgba(251, 191, 36, 0.3);
+}
+
+/* Card Header */
+.nic-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.nic-card-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.nic-card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.nic-card-title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nic-system-name {
+  display: block;
+  color: var(--nic-text-muted);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+/* Status Indicator */
+.nic-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nic-status-indicator.online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.nic-status-indicator.offline {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.nic-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.nic-status-indicator.online .nic-status-dot {
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
+.nic-status-indicator.offline .nic-status-dot {
+  background: #ef4444;
+  animation: none;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
+/* Card Body */
+.nic-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nic-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nic-label {
+  color: var(--nic-text-muted);
+  font-size: 0.85rem;
+}
+
+.nic-value {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.nic-mac {
+  font-family: "Fira Code", "Consolas", monospace;
+  font-size: 0.8rem;
+  color: var(--nic-text-muted);
+}
+
+/* Card Footer */
+.nic-card-footer {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.nic-type-select {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--nic-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nic-type-select:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--nic-primary);
+}
+
+.nic-type-select option {
+  background: #1e293b;
+  color: var(--nic-text);
+}
+
+.nic-rename-btn {
+  padding: 0.6rem 1rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  color: var(--nic-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nic-rename-btn:hover {
+  background: var(--nic-primary);
+  border-color: var(--nic-primary);
+}
+
+/* Traffic Indicator - Now shows live speed */
+.nic-traffic-indicator {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: "Fira Code", monospace;
+}
+
+.nic-traffic-rx,
+.nic-traffic-tx {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.nic-traffic-rx {
+  color: #22c55e;
+}
+.nic-traffic-tx {
+  color: #3b82f6;
+}
+
+/* Live Badge */
+.nic-live-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #10b981;
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Primary Card Glow */
+.nic-card.primary {
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.2);
+}
+
+.nic-card.primary::before {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  height: 5px;
+}
+
+/* Primary Badge Enhancement */
+.nic-priority-badge.primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  animation: primaryGlow 2s ease-in-out infinite;
+}
+
+@keyframes primaryGlow {
+  0%,
+  100% {
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(16, 185, 129, 0.6);
+  }
+}
+
+/* NIC Added Animation */
+@keyframes nicAdded {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.nic-card {
+  animation: nicAdded 0.4s ease-out;
+}
+
+/* ============================================
+   Modal
+   ============================================ */
+.nic-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.nic-modal {
+  width: 90%;
+  max-width: 450px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nic-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nic-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.nic-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--nic-text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nic-modal-close:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.nic-modal-body {
+  padding: 1.5rem;
+}
+
+.nic-modal-info {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.nic-modal-info .label {
+  color: var(--nic-text-muted);
+}
+
+.nic-modal-info .value {
+  font-family: "Fira Code", monospace;
+  color: #a5b4fc;
+}
+
+.nic-modal-input {
+  margin-bottom: 1rem;
+}
+
+.nic-modal-input label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--nic-text-muted);
+  font-size: 0.9rem;
+}
+
+.nic-modal-input input {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: var(--nic-text);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.nic-modal-input input:focus {
+  outline: none;
+  border-color: var(--nic-primary);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+}
+
+.nic-modal-hint {
+  color: var(--nic-text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.nic-modal-footer {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nic-btn-cancel,
+.nic-btn-save {
+  flex: 1;
+  padding: 0.875rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nic-btn-cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--nic-text-muted);
+}
+
+.nic-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--nic-text);
+}
+
+.nic-btn-save {
+  background: var(--nic-primary);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.nic-btn-save:hover:not(:disabled) {
+  background: var(--nic-primary-dark);
+  transform: translateY(-2px);
+}
+
+.nic-btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   Notification Toast
+   ============================================ */
+.nic-notification {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 500;
+  z-index: 2000;
+  animation: slideInRight 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.nic-notification.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.nic-notification.warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #1f2937;
+}
+
+/* ============================================
+   Loading State
+   ============================================ */
+.nic-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: var(--nic-text);
+}
+
+.nic-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--nic-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   Keyboard Hints
+   ============================================ */
+.nic-keyboard-hints {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  color: var(--nic-text-muted);
+  font-size: 0.8rem;
+}
+
+.nic-keyboard-hints kbd {
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-family: inherit;
+  margin-right: 0.25rem;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 768px) {
+  .nic-management {
+    padding: 1rem;
+  }
+
+  .nic-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .nic-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .nic-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nic-keyboard-hints {
+    display: none;
+  }
+}
+
+/* ============================================
+   WiFi Toggle Switch
+   ============================================ */
+.nic-wifi-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.nic-wifi-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(148, 163, 184, 0.3);
+  transition: 0.3s;
+  border-radius: 26px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+}
+
+.toggle-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--nic-text);
+  min-width: 70px;
+}
+
+/* ============================================
+   NIC Control Buttons (Enable/Disable)
+   ============================================ */
+.nic-control-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nic-control-btn.enable {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.nic-control-btn.enable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.nic-control-btn.disable {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.nic-control-btn.disable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.nic-control-btn:active {
+  transform: translateY(0);
+}
+
+/* Update card footer to handle new controls */
+.nic-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nic-card-footer > * {
+  flex: 1;
+  min-width: fit-content;
+}
+
+/* Hotspot Section Styles */
+.hotspot-section {
+  margin: 2rem 0;
+}
+
+.hotspot-card {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(30, 58, 138, 0.3);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.hotspot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.hotspot-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hotspot-icon {
+  font-size: 2rem;
+}
+
+.hotspot-title h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.hotspot-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.active {
+  background: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
+.status-dot.inactive {
+  background: #6b7280;
+}
+
+.status-text {
+  font-weight: 600;
+  color: white;
+  font-size: 0.875rem;
+}
+
+.hotspot-info {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+}
+
+.info-value {
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.hotspot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hotspot-btn {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hotspot-btn.start {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+
+.hotspot-btn.start:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+.hotspot-btn.stop {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+}
+
+.hotspot-btn.stop:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+}
+
+.hotspot-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hotspot-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+

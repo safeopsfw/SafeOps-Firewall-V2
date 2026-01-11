@@ -1,0 +1,11 @@
+go 1.24.0
+
+use (
+	./src/captive_portal
+	./src/dhcp_monitor
+	./src/network_logger
+	./src/nic_management
+	./src/orchestrator
+	./src/shared/go
+	./src/threat_intel
+)

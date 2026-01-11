@@ -1,0 +1,500 @@
+# SafeOps Update Manager Configuration
+# Manages system updates, component updates, signature updates, and threat feeds
+#
+# This service downloads updates, verifies integrity, orchestrates installation,
+# provides rollback capabilities, and manages update scheduling.
+
+# ============================================================================
+# Service Configuration
+# ============================================================================
+[service]
+# Service identifier for orchestrator registration
+service_name = "update_manager"
+
+# gRPC management API address
+grpc_listen_address = "127.0.0.1:50062"
+
+# Self-health check frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+
+# HTTP port for /metrics endpoint
+metrics_port = 9102
+
+# ============================================================================
+# Update Sources
+# ============================================================================
+# Where to check for and download updates
+
+[[update_sources]]
+source_name = "safeops_official"
+source_type = "HTTPS"
+source_url = "https://updates.safeops.example.com"
+enabled = true
+priority = 1
+authentication_required = false
+# api_key = "${UPDATE_SOURCE_API_KEY}"
+update_categories = ["SYSTEM", "SERVICES", "FIRMWARE"]
+description = "Official SafeOps update repository"
+
+[[update_sources]]
+source_name = "threat_intelligence"
+source_type = "HTTPS"
+source_url = "https://threat-feeds.safeops.example.com"
+enabled = true
+priority = 2
+authentication_required = true
+api_key = "${THREAT_FEED_API_KEY}"
+update_categories = ["THREAT_FEEDS", "SIGNATURES"]
+description = "Threat intelligence and IDS signature feeds"
+
+# Local update source (for air-gapped deployments)
+# [[update_sources]]
+# source_name = "local_repository"
+# source_type = "LOCAL"
+# source_url = "file:///D:/SafeOpsFV2/updates"
+# enabled = false
+# priority = 10
+# update_categories = ["SYSTEM", "SERVICES", "SIGNATURES", "THREAT_FEEDS"]
+
+# ============================================================================
+# Update Scheduling
+# ============================================================================
+[update_scheduling]
+# Enable automatic updates
+auto_update_enabled = true
+
+# Update check configuration
+[update_scheduling.check_schedule]
+# How often to check for updates (hours)
+check_interval = 24
+
+# Preferred check time (HH:MM, 24-hour format)
+check_time = "01:00"
+
+# Days to check
+# Valid values: "DAILY", "WEEKDAYS", "WEEKENDS", "SPECIFIC"
+check_days = "DAILY"
+
+# Specific days if check_days = "SPECIFIC"
+# specific_days = ["monday", "wednesday", "friday"]
+
+# Installation timing
+[update_scheduling.install_schedule]
+# Installation mode
+# Valid values: "IMMEDIATE", "SCHEDULED", "MANUAL"
+# IMMEDIATE: Install as soon as downloaded
+# SCHEDULED: Install during maintenance windows
+# MANUAL: Require manual approval
+install_mode = "SCHEDULED"
+
+# Defer installation if system under load
+defer_on_high_load = true
+
+# CPU threshold to defer (percentage)
+cpu_threshold = 80
+
+# Memory threshold to defer (percentage)
+memory_threshold = 85
+
+# Maintenance windows (when auto-install is allowed)
+[[update_scheduling.install_schedule.maintenance_windows]]
+day_of_week = "sunday"
+start_time = "02:00"
+end_time = "06:00"
+description = "Sunday early morning maintenance"
+
+[[update_scheduling.install_schedule.maintenance_windows]]
+day_of_week = "wednesday"
+start_time = "23:00"
+end_time = "23:59"
+description = "Wednesday late night maintenance (start)"
+
+[[update_scheduling.install_schedule.maintenance_windows]]
+day_of_week = "thursday"
+start_time = "00:00"
+end_time = "04:00"
+description = "Thursday early morning maintenance (continuation)"
+
+# ============================================================================
+# Update Categories
+# ============================================================================
+# Configure behavior for different update types
+
+# System updates (core SafeOps system)
+[update_categories.system_updates]
+enabled = true
+auto_install = false  # Require manual approval for system updates
+pre_install_backup = true
+
+# Reboot required handling
+# Valid values: "PROMPT", "AUTO", "DEFER"
+# PROMPT: Ask for user approval
+# AUTO: Automatic reboot during maintenance window
+# DEFER: Defer reboot until manual action
+reboot_required_handling = "DEFER"
+
+# Service updates (individual microservices)
+[update_categories.service_updates]
+enabled = true
+auto_install = true
+pre_install_backup = true
+
+# Rolling updates (update services one at a time)
+rolling_updates = true
+
+# Health check after each service update
+health_check_after_update = true
+
+# Maximum wait for health check (seconds)
+health_check_timeout = 60
+
+# IDS/IPS signature updates
+[update_categories.signature_updates]
+enabled = true
+auto_install = true
+
+# Check interval (hours)
+update_interval = 4
+
+# Reload IDS/IPS services after update
+reload_services = true
+
+# Reload timeout (seconds)
+reload_timeout = 30
+
+# Threat intelligence feed updates
+[update_categories.threat_feed_updates]
+enabled = true
+auto_install = true
+
+# Check interval (hours)
+update_interval = 6
+
+# Reload threat_intel service after update
+reload_services = true
+
+# ============================================================================
+# Update Verification
+# ============================================================================
+[verification]
+# Verify update packages before installation
+verification_enabled = true
+
+# Verification methods
+signature_verification = true
+checksum_verification = true
+certificate_validation = true
+
+# Reject unsigned updates
+reject_unsigned_updates = true
+
+# Checksum algorithm
+# Valid values: "SHA256", "SHA512", "BLAKE2"
+checksum_algorithm = "SHA256"
+
+# Trusted update publishers
+[[verification.trusted_publishers]]
+publisher_name = "SafeOps Official"
+public_key_path = "D:\\SafeOpsFV2\\certs\\update-signing\\safeops-public.pem"
+certificate_path = "D:\\SafeOpsFV2\\certs\\update-signing\\safeops-cert.pem"
+
+# ============================================================================
+# Backup and Rollback
+# ============================================================================
+[backup_rollback]
+# Create backup before updates
+pre_update_backup_enabled = true
+
+# Number of backup versions to keep
+backup_retention_count = 3
+
+# Enable update rollback
+rollback_enabled = true
+
+# Auto-rollback if services don't start (minutes)
+# 0 = disabled (manual rollback only)
+rollback_timeout = 10
+
+# Auto-rollback on update failure
+rollback_on_failure = true
+
+# Required health percentage to avoid rollback
+# If health < this threshold, rollback
+health_check_threshold = 90
+
+# Create system snapshot before major updates
+snapshot_enabled = false
+
+# Snapshot provider
+# Valid values: "FILESYSTEM", "WINDOWS_VSS", "HYPER_V"
+snapshot_provider = "WINDOWS_VSS"
+
+# ============================================================================
+# Orchestration Integration
+# ============================================================================
+[orchestration]
+# Coordinate with orchestrator during updates
+enabled = true
+
+# Orchestrator service endpoint
+# Can be overridden with ${ORCHESTRATOR_ENDPOINT}
+orchestrator_grpc_address = "127.0.0.1:50051"
+
+# Stop affected services during update
+stop_services_during_update = true
+
+# Restart updated services after installation
+restart_services_after_update = true
+
+# Verify service health after restart
+verify_service_health = true
+
+# Maximum acceptable downtime (minutes)
+max_downtime_minutes = 15
+
+# Graceful shutdown timeout (seconds)
+graceful_shutdown_timeout = 30
+
+# ============================================================================
+# Update Notification
+# ============================================================================
+[notification]
+# Send update notifications
+notification_enabled = true
+
+# Email notifications
+[[notification.methods]]
+method = "EMAIL"
+enabled = false
+smtp_server = "smtp.example.com"
+smtp_port = 587
+smtp_tls = true
+smtp_username = "updates@example.com"
+smtp_password = "${SMTP_PASSWORD}"
+from_address = "safeops-updates@example.com"
+to_addresses = ["admin@example.com"]
+events = ["AVAILABLE", "FAILED"]
+
+# Webhook notifications
+[[notification.methods]]
+method = "WEBHOOK"
+enabled = false
+webhook_url = "${NOTIFICATION_WEBHOOK}"
+webhook_secret = "${WEBHOOK_SECRET}"
+events = ["AVAILABLE", "DOWNLOADING", "INSTALLING", "COMPLETED", "FAILED"]
+
+# UI banner notifications
+[[notification.methods]]
+method = "UI_BANNER"
+enabled = true
+events = ["AVAILABLE", "INSTALLING", "COMPLETED", "FAILED"]
+
+# Require manual approval for updates (per category)
+user_approval_required = false
+
+# Auto-approve after timeout (hours, 0=never auto-approve)
+approval_timeout = 0
+
+# ============================================================================
+# Update Logging
+# ============================================================================
+[logging]
+# Log all update operations
+update_logging_enabled = true
+
+# Update-specific log level
+# Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR"
+log_level = "INFO"
+
+# Detailed audit trail
+audit_log_enabled = true
+
+# Audit log file path
+audit_log_path = "D:\\SafeOpsFV2\\logs\\update_audit.log"
+
+# Log specific operations
+log_downloads = true
+log_verifications = true
+log_installations = true
+log_rollbacks = true
+
+# Separate update log file
+update_log_file = "D:\\SafeOpsFV2\\logs\\update_manager.log"
+
+# ============================================================================
+# Bandwidth and Resource Management
+# ============================================================================
+[resource_management]
+# Maximum download bandwidth (MB/s, 0=unlimited)
+bandwidth_limit = 10
+
+# Retry failed downloads
+download_retry_attempts = 3
+
+# Delay between retries (seconds)
+download_retry_delay = 60
+
+# Maximum simultaneous downloads
+concurrent_downloads = 2
+
+# Minimum free disk space before download (GB)
+disk_space_threshold = 10
+
+# Maximum CPU usage during installation (percentage)
+cpu_limit = 50
+
+# Maximum memory usage (MB)
+memory_limit = 1024
+
+# Download timeout (seconds)
+download_timeout = 3600
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Download updates without installing (staged updates)
+staged_updates_enabled = true
+
+# Use delta/diff updates to reduce download size
+delta_updates_enabled = true
+
+# Use peer-to-peer for update distribution (enterprise)
+peer_to_peer_enabled = false
+
+# P2P listen port
+# p2p_listen_port = 9103
+
+# Cache downloaded updates
+update_cache_enabled = true
+
+# Maximum cache size (GB)
+cache_size_limit = 50
+
+# Cache directory
+cache_directory = "D:\\SafeOpsFV2\\cache\\updates"
+
+# Automatic cache cleanup
+cache_cleanup_enabled = true
+
+# Cache cleanup threshold (percentage of cache_size_limit)
+cache_cleanup_threshold = 90
+
+# Use HTTP/HTTPS proxy for downloads
+proxy_enabled = false
+
+# Proxy server address
+# Can be overridden with ${PROXY_ADDRESS}
+# proxy_address = "http://proxy.example.com:8080"
+
+# Proxy authentication
+# proxy_username = ""
+# proxy_password = ""
+
+# Verify TLS certificates for HTTPS sources
+tls_verification_enabled = true
+
+# Custom CA bundle for HTTPS sources
+# tls_ca_bundle_path = "D:\\SafeOpsFV2\\certs\\ca-bundle.crt"
+
+# Update metadata refresh interval (hours)
+metadata_refresh_interval = 6
+
+# Update history retention (days)
+history_retention_days = 90
+
+# ============================================================================
+# Update Pre-Checks
+# ============================================================================
+[pre_checks]
+# Run pre-installation checks before updates
+pre_checks_enabled = true
+
+# Check disk space before download
+check_disk_space = true
+
+# Check system requirements
+check_system_requirements = true
+
+# Check service dependencies
+check_dependencies = true
+
+# Check for conflicting processes
+check_conflicts = true
+
+# Fail update if pre-checks fail
+fail_on_pre_check_failure = true
+
+# ============================================================================
+# Post-Update Actions
+# ============================================================================
+[post_update]
+# Run post-update verification
+verification_enabled = true
+
+# Verification timeout (seconds)
+verification_timeout = 300
+
+# Clean up temporary files after update
+cleanup_temp_files = true
+
+# Send completion notification
+send_completion_notification = true
+
+# Log system state after update
+log_system_state = true
+
+# ============================================================================
+# Emergency Updates
+# ============================================================================
+[emergency_updates]
+# Allow emergency updates outside maintenance windows
+emergency_updates_enabled = true
+
+# Emergency update markers (update tags that bypass scheduling)
+emergency_tags = ["CRITICAL", "SECURITY", "EMERGENCY"]
+
+# Automatically install emergency updates
+auto_install_emergency = true
+
+# Send immediate notification for emergency updates
+immediate_notification = true
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# UPDATE_SOURCE_URL - Override update repository URL
+# UPDATE_SOURCE_API_KEY - Authentication for update source
+# THREAT_FEED_API_KEY - Authentication for threat feed source
+# ORCHESTRATOR_ENDPOINT - Orchestrator service address
+# PROXY_ADDRESS - HTTP proxy for update downloads
+# NOTIFICATION_WEBHOOK - Webhook URL for update notifications
+# SMTP_PASSWORD - SMTP server password
+# WEBHOOK_SECRET - Webhook authentication secret
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The update_manager service validates this configuration at startup and
+# will fail to start if validation fails. Common checks:
+#
+# 1. At least one update_source must be enabled
+# 2. Update source URLs must be valid and reachable
+# 3. Maintenance windows must not overlap
+# 4. Trusted publisher certificates/keys must exist
+# 5. orchestrator_grpc_address must be reachable if enabled
+# 6. Cache directory must be writable
+# 7. Sufficient disk space for cache_size_limit
+# 8. backup_retention_count must be > 0
+# 9. Bandwidth limits must be positive or 0
+# 10. Notification email settings must be valid
+#
+# Use the validator: safeops-cli config validate update_manager.toml
+# ============================================================================

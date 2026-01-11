@@ -1,0 +1,388 @@
+# SafeOps Suricata Variables Configuration
+# Suricata-specific variables for network definitions and rule references
+#
+# These variables are referenced in Suricata IDS/IPS rules and must match
+# your actual network topology defined in network_topology.yaml
+
+# ============================================================================
+# Network Variables
+# ============================================================================
+vars:
+  # Address groups define which IP ranges belong to your network
+  address-groups:
+    # HOME_NET: Your internal protected network
+    # Include all RFC1918 private addresses and any custom internal networks
+    HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+    
+    # EXTERNAL_NET: Everything outside your network
+    # Usually defined as "not HOME_NET"
+    EXTERNAL_NET: "!$HOME_NET"
+    
+    # DMZ_NET: Demilitarized zone (servers accessible from Internet)
+    DMZ_NET: "[192.168.30.0/24]"
+    
+    # Specific subnet definitions for precise rule matching
+    LAN_NET: "[192.168.1.0/24]"
+    WIFI_NET: "[192.168.2.0/24]"
+    GUEST_NET: "[192.168.10.0/24]"
+    IOT_NET: "[192.168.20.0/24]"
+    SERVER_NET: "[192.168.30.0/24]"
+    MGMT_NET: "[192.168.99.0/24]"
+    
+    # HTTP_SERVERS: Internal web servers
+    HTTP_SERVERS: "$HOME_NET"
+    
+    # SMTP_SERVERS: Mail servers in your network
+    SMTP_SERVERS: "$HOME_NET"
+    
+    # SQL_SERVERS: Database servers
+    SQL_SERVERS: "[192.168.30.11/32]"
+    
+    # DNS_SERVERS: Internal DNS servers
+    DNS_SERVERS: "[192.168.1.1/32,192.168.2.1/32]"
+    
+    # FTP_SERVERS: FTP servers
+    FTP_SERVERS: "$HOME_NET"
+    
+    # SSH_SERVERS: SSH/Jump hosts
+    SSH_SERVERS: "$HOME_NET"
+    
+    # RDP_SERVERS: Remote Desktop Protocol servers
+    RDP_SERVERS: "[192.168.30.0/24]"
+    
+    # FILE_SERVERS: File/NAS servers
+    FILE_SERVERS: "[192.168.30.20/32]"
+    
+    # VOIP_SERVERS: VoIP/SIP servers
+    VOIP_SERVERS: "$HOME_NET"
+    
+    # BACKUP_SERVERS: Backup servers
+    BACKUP_SERVERS: "$HOME_NET"
+    
+    # IRC_SERVERS: IRC servers (typically external)
+    IRC_SERVERS: "any"
+    
+    # TELNET_SERVERS: Telnet servers (should be empty/disabled)
+    TELNET_SERVERS: "!$HOME_NET"
+    
+    # AIM_SERVERS: AOL Instant Messenger servers (external)
+    AIM_SERVERS: "64.12.24.0/23,64.12.28.0/23,64.12.161.0/24,64.12.163.0/24,64.12.200.0/24,205.188.3.0/24,205.188.5.0/24,205.188.7.0/24,205.188.9.0/24,205.188.153.0/24,205.188.179.0/24,205.188.248.0/24"
+    
+    # DC_SERVERS: Domain controllers
+    DC_SERVERS: "$HOME_NET"
+    
+    # DNP3_SERVER: SCADA/ICS DNP3 servers
+    DNP3_SERVER: "$HOME_NET"
+    
+    # DNP3_CLIENT: SCADA/ICS DNP3 clients
+    DNP3_CLIENT: "$HOME_NET"
+    
+    # MODBUS_CLIENT: SCADA/ICS Modbus clients
+    MODBUS_CLIENT: "$HOME_NET"
+    
+    # MODBUS_SERVER: SCADA/ICS Modbus servers
+    MODBUS_SERVER: "$HOME_NET"
+    
+    # ENIP_CLIENT: SCADA/ICS EtherNet/IP clients
+    ENIP_CLIENT: "$HOME_NET"
+    
+    # ENIP_SERVER: SCADA/ICS EtherNet/IP servers
+    ENIP_SERVER: "$HOME_NET"
+
+  # ============================================================================
+  # Port Variables
+  # ============================================================================
+  port-groups:
+    # HTTP_PORTS: Standard and alternative HTTP ports
+    HTTP_PORTS: "[80,81,311,383,591,593,901,1220,1414,1741,1830,2301,2381,2809,3037,3128,3702,4343,4848,5250,6988,7000,7001,7144,7145,7510,7777,7779,8000,8008,8014,8028,8080,8085,8088,8090,8118,8123,8180,8181,8243,8280,8300,8800,8888,8899,9000,9060,9080,9090,9091,9443,9999,11371,34443,34444,41080,50002,55555]"
+    
+    # HTTPS_PORTS: HTTPS and SSL ports
+    HTTPS_PORTS: "[443,8443,9443]"
+    
+    # SHELLCODE_PORTS: Ports commonly targeted for shellcode attacks
+    SHELLCODE_PORTS: "!80"
+    
+    # ORACLE_PORTS: Oracle database ports
+    ORACLE_PORTS: "[1521,1526,1527,1528,1529]"
+    
+    # MYSQL_PORTS: MySQL/MariaDB ports
+    MYSQL_PORTS: "[3306,3307]"
+    
+    # POSTGRESQL_PORTS: PostgreSQL database ports
+    POSTGRESQL_PORTS: "[5432,5433]"
+    
+    # MSSQL_PORTS: Microsoft SQL Server ports
+    MSSQL_PORTS: "[1433,1434]"
+    
+    # SSH_PORTS: SSH service ports
+    SSH_PORTS: "[22,222,2222]"
+    
+    # FTP_PORTS: FTP service ports
+    FTP_PORTS: "[21,2100,3535]"
+    
+    # TELNET_PORTS: Telnet ports
+    TELNET_PORTS: "[23,2323]"
+    
+    # SMB_PORTS: SMB/CIFS file sharing ports
+    SMB_PORTS: "[139,445]"
+    
+    # RDP_PORTS: Remote Desktop Protocol ports
+    RDP_PORTS: "[3389]"
+    
+    # SIP_PORTS: SIP/VoIP ports
+    SIP_PORTS: "[5060,5061,5600]"
+    
+    # LDAP_PORTS: LDAP/LDAPS directory service ports
+    LDAP_PORTS: "[389,636,3268,3269]"
+    
+    # SNMP_PORTS: SNMP management ports
+    SNMP_PORTS: "[161,162]"
+    
+    # NTP_PORTS: Network Time Protocol ports
+    NTP_PORTS: "[123]"
+    
+    # VPN_PORTS: VPN service ports (IPsec, OpenVPN, WireGuard)
+    VPN_PORTS: "[500,1194,1701,4500,51820]"
+    
+    # FILE_DATA_PORTS: Ports to perform file extraction on
+    FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+    
+    # DNP3_PORTS: SCADA/ICS DNP3 protocol ports
+    DNP3_PORTS: "[20000]"
+    
+    # MODBUS_PORTS: SCADA/ICS Modbus protocol ports
+    MODBUS_PORTS: "[502]"
+    
+    # ENIP_PORTS: SCADA/ICS EtherNet/IP ports
+    ENIP_PORTS: "[2222,44818]"
+
+# ============================================================================
+# Stream Reassembly Settings
+# ============================================================================
+stream:
+  memcap: 256mb
+  checksum-validation: yes
+  inline: auto
+  reassembly:
+    memcap: 256mb
+    depth: 1mb
+    toserver-chunk-size: 2560
+    toclient-chunk-size: 2560
+
+# ============================================================================
+# Application Layer Protocol Settings
+# ============================================================================
+app-layer:
+  protocols:
+    # TLS/SSL protocol detection and parsing
+    tls:
+      enabled: yes
+      detection-ports:
+        dp: 443
+      ja3-fingerprints: auto
+      
+    # HTTP protocol
+    http:
+      enabled: yes
+      memcap: 128mb
+      
+    # DNS protocol
+    dns:
+      tcp:
+        enabled: yes
+        detection-ports:
+          dp: 53
+      udp:
+        enabled: yes
+        detection-ports:
+          dp: 53
+          
+    # FTP protocol
+    ftp:
+      enabled: yes
+      
+    # SSH protocol
+    ssh:
+      enabled: yes
+      
+    # SMB protocol
+    smb:
+      enabled: yes
+      detection-ports:
+        dp: 139, 445
+        
+    # SMTP protocol
+    smtp:
+      enabled: yes
+      raw-extraction: no
+      
+    # IMAP protocol
+    imap:
+      enabled: yes
+      
+    # RDP protocol
+    rdp:
+      enabled: yes
+      
+    # Modbus (SCADA/ICS)
+    modbus:
+      enabled: no
+      detection-ports:
+        dp: 502
+        
+    # DNP3 (SCADA/ICS)
+    dnp3:
+      enabled: no
+      detection-ports:
+        dp: 20000
+        
+    # EtherNet/IP (SCADA/ICS)
+    enip:
+      enabled: no
+      detection-ports:
+        dp: 44818
+
+# ============================================================================
+# Rule File Paths
+# ============================================================================
+# Paths to Suricata rule files
+# These should match your actual rule file locations
+rule-files:
+  - D:\SafeOpsFV2\feeds\signatures\emerging-threats.rules
+  - D:\SafeOpsFV2\feeds\signatures\exploit-kit.rules
+  - D:\SafeOpsFV2\feeds\signatures\web-attacks.rules
+  - D:\SafeOpsFV2\feeds\signatures\malware.rules
+  - D:\SafeOpsFV2\feeds\signatures\botnet.rules
+  - D:\SafeOpsFV2\feeds\signatures\dos.rules
+  - D:\SafeOpsFV2\feeds\signatures\policy-violations.rules
+  - D:\SafeOpsFV2\feeds\signatures\custom\*.rules
+
+# ============================================================================
+# Default Rules Directory
+# ============================================================================
+default-rule-path: D:\SafeOpsFV2\feeds\signatures
+
+# ============================================================================
+# Classification Configuration
+# ============================================================================
+# Reference files for rule classification and external references
+classification-file: D:\SafeOpsFV2\config\ids_ips\classification.config
+reference-config-file: D:\SafeOpsFV2\config\ids_ips\reference.config
+threshold-file: D:\SafeOpsFV2\config\ids_ips\threshold.config
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+outputs:
+  # EVE JSON log (primary log format)
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: D:\SafeOpsFV2\logs\ids_alerts.log
+      types:
+        - alert:
+            payload: yes
+            payload-buffer-size: 4kb
+            payload-printable: yes
+            packet: yes
+            metadata: yes
+        - http:
+            extended: yes
+        - dns:
+            query: yes
+            answer: yes
+        - tls:
+            extended: yes
+        - files:
+            force-magic: no
+            force-hash: [md5, sha256]
+        - smtp:
+            extended: yes
+        - ssh
+        - stats:
+            totals: yes
+            threads: yes
+            
+  # Fast log format (for compatibility)
+  - fast:
+      enabled: no
+      filename: D:\SafeOpsFV2\logs\fast.log
+      append: yes
+      
+  # PCAP logging (full packet capture for alerts)
+  - pcap-log:
+      enabled: yes
+      filename: D:\SafeOpsFV2\logs\ids_packets.pcap
+      limit: 1000mb
+      max-files: 10
+      compression: none
+      mode: normal
+      use-stream-depth: no
+      honor-pass-rules: no
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+# Detection engine settings
+detect:
+  profile: medium
+  custom-values:
+    toclient-groups: 3
+    toserver-groups: 25
+    
+# Threading
+threading:
+  set-cpu-affinity: no
+  cpu-affinity:
+    - management-cpu-set:
+        cpu: [ 0 ]
+    - receive-cpu-set:
+        cpu: [ 0 ]
+    - worker-cpu-set:
+        cpu: [ "all" ]
+  detect-thread-ratio: 1.0
+
+# ============================================================================
+# Host OS Policy (for stream reassembly and defragmentation)
+# ============================================================================
+host-os-policy:
+  # Choose which OS policies to use for specific networks
+  windows: [192.168.1.0/24, 192.168.2.0/24, 192.168.10.0/24]
+  linux: [192.168.30.0/24]
+  bsd: []
+  old-linux: []
+  solaris: []
+  hpux: []
+  irix: []
+  macos: []
+  vista: []
+
+# ============================================================================
+# Defragmentation Settings
+# ============================================================================
+defrag:
+  memcap: 32mb
+  hash-size: 65536
+  trackers: 65535
+  max-frags: 65535
+  prealloc: yes
+  timeout: 60
+
+# ============================================================================
+# Flow Settings
+# ============================================================================
+flow:
+  memcap: 128mb
+  hash-size: 65536
+  prealloc: 10000
+  emergency-recovery: 30
+
+# ============================================================================
+# Statistics Settings
+# ============================================================================
+stats:
+  enabled: yes
+  interval: 60
+  decoder-events: true
+  decoder-events-prefix: "decoder.event"
+  stream-events: true

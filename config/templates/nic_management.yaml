@@ -1,0 +1,578 @@
+# =============================================================================
+# NIC Management Service Configuration
+# =============================================================================
+# This configuration template defines all runtime settings for the NIC Management
+# service including WAN/LAN interface assignments, load balancing modes, failover
+# policies, NAT pool sizes, connection tracking limits, and integration endpoints.
+#
+# Environment Variable Substitution:
+#   Use ${VAR_NAME} syntax for sensitive values (e.g., ${DB_PASSWORD})
+#   Use ${VAR_NAME:-default} for values with defaults
+#
+# Duration Format:
+#   Use Go duration format: "5s" (seconds), "5m" (minutes), "1h" (hours)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Section 1: Service Metadata
+# -----------------------------------------------------------------------------
+service:
+  name: "nic_management"
+  version: "1.0.0"
+  description: "Network Interface Card Management and Multi-WAN Load Balancing Service"
+
+  # Logging configuration
+  log_level: "${LOG_LEVEL:-info}" # debug, info, warn, error
+  log_format: "json" # json, text
+  log_output: "stdout" # stdout, file, both
+  log_file: "/var/log/safeops/nic_management.log"
+
+  # Deployment environment
+  environment: "production" # development, staging, production
+
+# -----------------------------------------------------------------------------
+# Section 2: Network Interface Configuration
+# -----------------------------------------------------------------------------
+# Define WAN and LAN interfaces with friendly names for easy identification.
+# The 'alias' field allows you to give human-readable names to interfaces.
+# -----------------------------------------------------------------------------
+
+wan_interfaces:
+  # Primary WAN - typically your main internet connection
+  - name: "eth0" # System interface name (Linux)
+    # name: "Ethernet 1"                 # Windows alternative
+    alias: "Primary Internet" # Friendly name for UI/logs
+    description: "Main fiber connection from ISP"
+    priority: 1 # Failover priority (1 = highest)
+    weight: 70 # Load balancing weight (1-100)
+    enabled: true
+
+    # Optional: Static IP configuration (if not using DHCP)
+    static_config:
+      enabled: false
+      ip_address: ""
+      netmask: ""
+      gateway: ""
+      dns_servers: []
+
+    # Health check targets for this specific WAN
+    health_check:
+      targets: ["8.8.8.8", "1.1.1.1"]
+      check_gateway: true
+      custom_url: "" # Optional: HTTP health check URL
+
+  # Secondary WAN - backup or load balancing partner
+  - name: "eth1"
+    alias: "Backup DSL" # Friendly name
+    description: "Backup DSL connection for failover"
+    priority: 2
+    weight: 30
+    enabled: true
+    health_check:
+      targets: ["8.8.4.4", "1.0.0.1"]
+      check_gateway: true
+
+  # Example: Third WAN for enterprise deployments
+  # - name: "eth2"
+  #   alias: "LTE Failover"
+  #   description: "4G/LTE backup for emergencies"
+  #   priority: 3
+  #   weight: 0                          # Weight 0 = failover only, no load balancing
+  #   enabled: true
+
+lan_interfaces:
+  # Main LAN network
+  - name: "eth2"
+    alias: "Office Network" # Friendly name for this network
+    description: "Main office LAN for employee devices"
+    enabled: true
+
+    # VLAN configuration (optional)
+    vlan:
+      enabled: false
+      id: 10
+      name: "VLAN_OFFICE"
+
+    # IP range assignment for this LAN segment
+    network:
+      subnet: "192.168.1.0/24"
+      gateway: "192.168.1.1" # This interface's IP on the LAN
+
+    # DHCP server for this interface
+    dhcp_server:
+      enabled: true
+      range_start: "192.168.1.100"
+      range_end: "192.168.1.200"
+      lease_time: "24h"
+      dns_servers: ["192.168.1.1"] # DNS server(s) to advertise
+      domain: "office.local"
+
+  # Guest network (isolated)
+  - name: "eth3"
+    alias: "Guest WiFi"
+    description: "Isolated guest network with internet-only access"
+    enabled: true
+
+    vlan:
+      enabled: true
+      id: 20
+      name: "VLAN_GUEST"
+
+    network:
+      subnet: "192.168.10.0/24"
+      gateway: "192.168.10.1"
+
+    dhcp_server:
+      enabled: true
+      range_start: "192.168.10.50"
+      range_end: "192.168.10.150"
+      lease_time: "4h"
+      dns_servers: ["8.8.8.8", "8.8.4.4"] # Use public DNS for guests
+
+    # Guest network isolation settings
+    isolation:
+      block_lan_access: true # Prevent guests from accessing office LAN
+      block_management: true # Prevent access to router management
+      bandwidth_limit_mbps: 50 # Limit guest bandwidth
+
+  # IoT network (separate for security)
+  - name: "eth4"
+    alias: "Smart Home / IoT"
+    description: "Isolated network for IoT devices"
+    enabled: false # Disabled by default
+
+    vlan:
+      enabled: true
+      id: 30
+      name: "VLAN_IOT"
+
+    network:
+      subnet: "192.168.20.0/24"
+      gateway: "192.168.20.1"
+
+    dhcp_server:
+      enabled: true
+      range_start: "192.168.20.10"
+      range_end: "192.168.20.254"
+      lease_time: "168h" # 1 week for IoT devices
+
+# WiFi interfaces (if applicable)
+wifi_interfaces:
+  - name: "wlan0"
+    alias: "Office WiFi AP"
+    description: "Main WiFi access point"
+    enabled: false # Enable if WiFi AP is used
+    linked_lan: "eth2" # Bridge to this LAN interface
+
+    access_point:
+      ssid: "SafeOps-Office"
+      security: "WPA3"
+      band: "dual" # 2.4ghz, 5ghz, dual
+
+# -----------------------------------------------------------------------------
+# Section 3: Interface Discovery Settings
+# -----------------------------------------------------------------------------
+interface_discovery:
+  auto_detect: true # Automatically detect new interfaces
+  classification_mode: "automatic" # automatic, manual, hybrid
+  monitor_hotplug: true # Detect USB/Thunderbolt NICs
+  scan_interval: "60s" # How often to rescan for changes
+
+  # Auto-classification rules based on interface properties
+  classification_rules:
+    # Interfaces matching these patterns will be classified as WAN
+    wan_patterns:
+      - "ppp*" # PPPoE connections
+      - "wwan*" # Mobile broadband
+      - "usb*" # USB tethering
+
+    # Interfaces matching these patterns will be classified as LAN
+    lan_patterns:
+      - "br*" # Bridge interfaces
+      - "virbr*" # Virtual bridges
+
+    # Interfaces to ignore completely
+    ignore_patterns:
+      - "lo" # Loopback
+      - "docker*" # Docker networks
+      - "veth*" # Virtual ethernet pairs
+
+# -----------------------------------------------------------------------------
+# Section 4: Load Balancing Configuration
+# -----------------------------------------------------------------------------
+load_balancing:
+  enabled: true
+  mode: "weighted" # disabled, round_robin, weighted, least_connections, hash_based, bandwidth_based
+
+  # Session affinity (sticky sessions)
+  session_affinity:
+    enabled: true
+    mode: "src_ip" # src_ip, src_ip_dst_ip, cookie
+    timeout: "1h" # How long to maintain affinity
+
+  # Hash-based load balancing settings (when mode = "hash_based")
+  hash_settings:
+    algorithm: "5tuple" # src_ip, dst_ip, 5tuple, src_port
+    consistent_hashing: true # Use consistent hashing for stability
+
+  # Rebalancing settings
+  rebalance:
+    enabled: true
+    interval: "5m" # How often to check for rebalancing
+    threshold_percent: 20 # Rebalance if deviation exceeds this %
+
+  # Bandwidth-based settings (when mode = "bandwidth_based")
+  bandwidth_settings:
+    measure_interval: "10s"
+    saturation_threshold_percent: 80 # Consider WAN saturated above this
+
+# -----------------------------------------------------------------------------
+# Section 5: Failover Configuration
+# -----------------------------------------------------------------------------
+failover:
+  enabled: true
+
+  # Health check settings
+  health_check:
+    interval: "5s" # How often to check WAN health
+    timeout: "2s" # Timeout for each check
+    method: "icmp" # icmp, http, dns, tcp
+
+    # Default ping targets (can be overridden per-interface)
+    ping_targets:
+      - "8.8.8.8" # Google DNS
+      - "1.1.1.1" # Cloudflare DNS
+      - "208.67.222.222" # OpenDNS
+
+    # HTTP health check settings (when method = "http")
+    http_settings:
+      url: "http://www.gstatic.com/generate_204"
+      expected_status: 204
+      expected_body: ""
+
+    # DNS health check settings (when method = "dns")
+    dns_settings:
+      query: "google.com"
+      server: "8.8.8.8"
+
+  # Failure thresholds
+  thresholds:
+    failure_count: 3 # Consecutive failures before marking DOWN
+    recovery_count: 5 # Consecutive successes before marking UP
+    latency_warning_ms: 100 # Log warning if latency exceeds this
+    latency_critical_ms: 500 # Mark degraded if latency exceeds this
+    packet_loss_warning_percent: 5 # Log warning if packet loss exceeds this
+    packet_loss_critical_percent: 20 # Mark failing if packet loss exceeds this
+
+  # Recovery behavior
+  recovery:
+    delay: "60s" # Wait before failback to recovered WAN
+    mode: "automatic" # automatic, manual, scheduled
+    notify_on_failover: true # Send notifications on failover events
+    notify_on_recovery: true
+
+  # Failover priority groups (for more complex setups)
+  priority_groups:
+    - name: "primary"
+      interfaces: ["eth0"]
+      mode: "active"
+    - name: "secondary"
+      interfaces: ["eth1"]
+      mode: "standby"
+
+# -----------------------------------------------------------------------------
+# Section 6: NAT/NAPT Configuration
+# -----------------------------------------------------------------------------
+nat:
+  enabled: true
+  mode: "masquerade" # masquerade, snat, disabled
+
+  # Dynamic port allocation
+  port_allocation:
+    start: 10000 # Start of dynamic port range
+    end: 65535 # End of dynamic port range
+    pool_size: 55000 # Maximum concurrent NAT mappings
+    reuse_delay: "30s" # Delay before reusing freed ports
+
+  # Session timeouts by protocol
+  timeouts:
+    tcp_established: "7200s" # 2 hours for established TCP
+    tcp_transitory: "120s" # 2 minutes for TCP in transition
+    tcp_syn_sent: "120s"
+    tcp_syn_recv: "60s"
+    tcp_fin_wait: "120s"
+    tcp_close_wait: "60s"
+    tcp_time_wait: "120s"
+    udp: "180s" # 3 minutes for UDP
+    udp_stream: "180s" # For recognized UDP "streams"
+    icmp: "30s"
+    generic: "600s" # For other protocols (GRE, etc.)
+
+  # Port forwarding / DNAT rules
+  # These mappings create static port forwards from WAN to internal hosts
+  port_forwards:
+    - name: "Web Server"
+      alias: "Company Website" # Friendly name
+      external_port: 443
+      internal_ip: "192.168.1.10"
+      internal_port: 443
+      protocol: "tcp"
+      wan_interface: "eth0" # Or use alias: "Primary Internet"
+      enabled: true
+
+    - name: "SSH Access"
+      alias: "Remote Admin SSH"
+      external_port: 2222
+      internal_ip: "192.168.1.5"
+      internal_port: 22
+      protocol: "tcp"
+      wan_interface: "eth0"
+      enabled: false # Disabled by default for security
+
+  # UPnP/NAT-PMP settings
+  upnp:
+    enabled: false # Generally not recommended for security
+    allow_from_subnets: ["192.168.1.0/24"]
+    deny_from_subnets: ["192.168.10.0/24"] # Block from guest network
+    max_port_forwards: 50
+    lease_time: "86400s" # 24 hours
+
+# -----------------------------------------------------------------------------
+# Section 7: Connection Tracking Configuration
+# -----------------------------------------------------------------------------
+connection_tracking:
+  enabled: true
+
+  # Table size limits
+  max_entries: 1000000 # Maximum tracked connections
+  hash_size: 262144 # Hash table size (power of 2)
+  expect_max: 1024 # Maximum expected connections (for helpers)
+
+  # Cleanup settings
+  cleanup:
+    interval: "60s" # How often to purge expired entries
+    batch_size: 1000 # Entries to process per cleanup cycle
+
+  # Persistence settings
+  persistence:
+    enabled: true # Save connections to database
+    sync_interval: "30s" # How often to sync to database
+    persist_on_shutdown: true # Save all connections on service stop
+    restore_on_startup: true # Restore connections on service start
+
+  # Protocol-specific timeouts (overrides NAT timeouts for tracking)
+  timeouts:
+    tcp_established: "432000s" # 5 days for established TCP
+    tcp_close: "10s"
+    tcp_close_wait: "60s"
+    tcp_fin_wait: "120s"
+    tcp_time_wait: "120s"
+    udp: "30s"
+    udp_stream: "180s"
+    icmp: "30s"
+    generic: "600s"
+
+# -----------------------------------------------------------------------------
+# Section 8: Packet Forwarding Configuration
+# -----------------------------------------------------------------------------
+packet_forwarding:
+  enabled: true
+  mode: "zero_copy" # standard, zero_copy, kernel_bypass
+
+  # Queue settings
+  queues:
+    depth: 4096 # Packets per queue
+    count: 8 # Number of queues (typically = CPU cores)
+
+  # Worker thread settings
+  workers:
+    count: 8 # Packet processing threads
+    cpu_affinity: true # Pin workers to specific CPUs
+    priority: "realtime" # normal, high, realtime
+
+  # Batch processing
+  batch:
+    size: 64 # Packets per batch
+    timeout_us: 100 # Max microseconds to wait for full batch
+
+  # Hardware offload features
+  offload:
+    checksum: true # Use hardware checksum offload
+    tso: true # TCP Segmentation Offload
+    gro: true # Generic Receive Offload
+    lro: false # Large Receive Offload (can cause issues)
+
+  # Ring buffer settings (for kernel bypass mode)
+  ring_buffer:
+    size: 4096 # Ring buffer size
+    burst: 32 # Burst size for ring operations
+
+# -----------------------------------------------------------------------------
+# Section 9: Performance Monitoring Configuration
+# -----------------------------------------------------------------------------
+monitoring:
+  enabled: true
+
+  # Statistics collection
+  statistics:
+    interval: "1s" # Collection interval
+    detailed_per_connection: false # Per-connection stats (high overhead)
+
+  # Prometheus metrics
+  prometheus:
+    enabled: true
+    port: 9091
+    path: "/metrics"
+    namespace: "safeops"
+    subsystem: "nic_management"
+
+  # gRPC streaming metrics
+  streaming:
+    enabled: true
+    default_interval: "1s"
+    max_subscribers: 100
+
+  # Data retention
+  retention:
+    statistics_days: 30 # Keep detailed stats for 30 days
+    health_history_days: 90 # Keep health history for 90 days
+    failover_events_days: 365 # Keep failover events for 1 year
+
+# -----------------------------------------------------------------------------
+# Section 10: Database Configuration
+# -----------------------------------------------------------------------------
+database:
+  # PostgreSQL connection
+  host: "${DB_HOST:-localhost}"
+  port: ${DB_PORT:-5432}
+  database: "${DB_NAME:-safeops}"
+  username: "${DB_USERNAME:-postgres}"
+  password: "${DB_PASSWORD:-postgres}" # Default: postgres (set DB_PASSWORD env var for production)
+
+  # Connection pool
+  pool:
+    max_connections: 25
+    min_connections: 5
+    max_idle_time: "15m"
+    connection_timeout: "10s"
+    health_check_interval: "30s"
+
+  # SSL/TLS settings
+  ssl:
+    enabled: false
+    mode: "prefer" # disable, prefer, require, verify-ca, verify-full
+    ca_cert: ""
+    client_cert: ""
+    client_key: ""
+
+# -----------------------------------------------------------------------------
+# Section 11: gRPC Server Configuration
+# -----------------------------------------------------------------------------
+grpc:
+  # Server binding
+  listen_address: "0.0.0.0:50054"
+
+  # Connection limits
+  max_concurrent_streams: 100
+  max_connection_idle: "15m"
+  max_connection_age: "30m"
+  max_recv_msg_size: 16777216 # 16 MB
+  max_send_msg_size: 16777216 # 16 MB
+
+  # Keepalive settings
+  keepalive:
+    time: "30s"
+    timeout: "10s"
+    permit_without_stream: true
+
+  # TLS configuration
+  tls:
+    enabled: false
+    cert_file: "${GRPC_TLS_CERT:-}"
+    key_file: "${GRPC_TLS_KEY:-}"
+    ca_file: "" # For mutual TLS
+    client_auth: "none" # none, request, require
+
+# -----------------------------------------------------------------------------
+# Section 12: Integration Configuration
+# -----------------------------------------------------------------------------
+integrations:
+  # Other SafeOps services
+  firewall_engine:
+    endpoint: "localhost:50051"
+    enabled: true
+    timeout: "5s"
+    retry_attempts: 3
+
+  dhcp_server:
+    endpoint: "localhost:50052"
+    enabled: true
+    timeout: "5s"
+
+  dns_server:
+    endpoint: "localhost:50053"
+    enabled: true
+    timeout: "5s"
+
+  network_logger:
+    endpoint: "localhost:50055"
+    enabled: true
+    timeout: "5s"
+    # What to send to network logger
+    log_events:
+      - connection_new
+      - connection_closed
+      - nat_mapping_created
+      - failover_triggered
+
+  ids_ips:
+    endpoint: "localhost:50057"
+    enabled: true
+    timeout: "5s"
+    # Send packet metadata to IDS/IPS for analysis
+    send_metadata: true
+
+  threat_intel:
+    endpoint: "localhost:50058"
+    enabled: false
+    timeout: "5s"
+
+# -----------------------------------------------------------------------------
+# Section 13: Rust Library Configuration
+# -----------------------------------------------------------------------------
+rust_engine:
+  # Path to compiled Rust library
+  library_path: "${RUST_LIB_PATH:-./lib/libnic_rust.so}"
+  # library_path: "${RUST_LIB_PATH:-./lib/nic_rust.dll}"  # Windows
+
+  # Enable Rust-based packet processing
+  enabled: true
+
+  # Worker configuration (passed to Rust engine)
+  workers: 8
+  queue_depth: 4096
+  batch_size: 64
+
+# -----------------------------------------------------------------------------
+# Section 14: Advanced Settings
+# -----------------------------------------------------------------------------
+advanced:
+  # Experimental features
+  experimental:
+    kernel_bypass: false # DPDK/AF_XDP kernel bypass
+    hardware_timestamping: false # NIC hardware timestamps
+    busy_polling: false # Reduce latency with busy polling
+
+  # Tuning parameters
+  tuning:
+    socket_buffer_size: 8388608 # 8 MB socket buffers
+    netdev_budget: 300 # Packets per NAPI poll
+    rps_enabled: true # Receive Packet Steering
+    xps_enabled: true # Transmit Packet Steering
+
+  # Debug settings
+  debug:
+    packet_capture: false # Capture packets for debugging
+    capture_path: "/tmp/nic_capture"
+    capture_max_size_mb: 100
+    trace_connections: false # Verbose connection tracking logs

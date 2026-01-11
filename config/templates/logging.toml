@@ -1,0 +1,427 @@
+# SafeOps Global Logging Configuration
+# Centralized logging framework for all SafeOps services
+#
+# This configuration controls log output destinations, formatting, rotation,
+# and integration with external log aggregation systems.
+#
+# Hot-reload supported: Changes to log levels take effect without restart
+
+# ============================================================================
+# Global Logging Settings
+# ============================================================================
+[global]
+# Baseline verbosity for all services
+# Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
+# Production: "INFO", Development: "DEBUG"
+default_log_level = "INFO"
+
+# Output format for log messages
+# Valid values: "JSON", "TEXT", "LOGFMT"
+# Production: "JSON" (easier parsing), Development: "TEXT" (human-readable)
+log_format = "JSON"
+
+# Timestamp format in log entries
+# Valid values: "RFC3339", "Unix", "ISO8601"
+timestamp_format = "RFC3339"
+
+# Include source file and line number in log entries
+# Useful for debugging but adds overhead
+include_caller = true
+
+# Include stack traces for ERROR and FATAL log levels
+# Essential for debugging but verbose
+include_stacktrace = true
+
+# Enable ANSI color codes for console output
+# Development: true, Production: false (breaks log parsing)
+colored_output = false
+
+# ============================================================================
+# Console Output Configuration
+# ============================================================================
+[output.console]
+# Enable logging to stdout/stderr
+enabled = true
+
+# Override log level for console (can differ from file logging)
+# Leave empty to use global default_log_level
+log_level_override = ""
+
+# Override format for console readability
+# Leave empty to use global log_format
+# Consider "TEXT" for development, "JSON" for production
+format_override = ""
+
+# Use stderr for ERROR and FATAL, stdout for others
+split_streams = true
+
+# ============================================================================
+# File Output Configuration
+# ============================================================================
+[output.file]
+# Enable file-based logging
+enabled = true
+
+# Root directory for all log files
+# Can be overridden with ${SAFEOPS_LOG_DIR} environment variable
+base_directory = "D:\\SafeOpsFV2\\logs"
+
+# Filename pattern with variables
+# Available: {service}, {date}, {time}, {level}
+# Example: "safeops-{service}-{date}.log" → "safeops-firewall-2025-12-16.log"
+filename_pattern = "safeops-{service}-{date}.log"
+
+# Maximum size of a single log file before rotation (MB)
+# 0 = no size-based rotation
+max_file_size = 100
+
+# Maximum age of log files before deletion (days)
+# 0 = keep forever (not recommended)
+max_file_age = 30
+
+# Number of rotated log files to retain
+# Older files are deleted
+max_backups = 10
+
+# Compress rotated log files with gzip
+# Reduces disk usage significantly
+compress_rotated = true
+
+# Create separate log files per log level
+# If true: safeops-firewall-info.log, safeops-firewall-error.log
+# If false: All levels in same file
+split_by_level = false
+
+# ============================================================================
+# Syslog Output Configuration
+# ============================================================================
+[output.syslog]
+# Enable syslog forwarding
+# Requires accessible syslog server
+enabled = false
+
+# Transport protocol for syslog
+# Valid values: "UDP", "TCP", "TLS"
+# UDP: Fast but unreliable, TCP: Reliable, TLS: Encrypted
+protocol = "UDP"
+
+# Syslog server address (hostname:port)
+# Can be overridden with ${SYSLOG_SERVER}
+server_address = "localhost:514"
+
+# Syslog facility code
+# Valid values: "LOCAL0" through "LOCAL7", "USER", "DAEMON"
+facility = "LOCAL0"
+
+# Prefix for all syslog messages
+# Helps filter SafeOps logs in syslog server
+tag_prefix = "safeops"
+
+# Syslog severity mapping
+# Maps SafeOps log levels to syslog severities
+[output.syslog.severity_mapping]
+TRACE = "DEBUG"
+DEBUG = "DEBUG"
+INFO = "INFO"
+WARN = "WARNING"
+ERROR = "ERR"
+FATAL = "CRIT"
+
+# ============================================================================
+# Per-Service Log Level Overrides
+# ============================================================================
+[service_overrides]
+# Override default log level for specific services
+# Useful for debugging individual services without flooding logs
+
+# Core services
+orchestrator = "INFO"
+firewall_engine = "INFO"
+
+# Security services (higher verbosity for security events)
+ids_ips = "INFO"
+threat_intel = "INFO"
+
+# Network services
+network_logger = "WARN"  # Very high volume, reduce noise
+dns_server = "INFO"
+dhcp_server = "INFO"
+tls_proxy = "INFO"
+wifi_ap = "INFO"
+
+# Management services
+backup_restore = "INFO"
+certificate_manager = "INFO"
+update_manager = "INFO"
+network_manager = "INFO"
+
+# Infrastructure
+userspace_service = "INFO"
+
+# Development override (uncomment for debugging specific service)
+# firewall_engine = "DEBUG"
+# ids_ips = "TRACE"
+
+# ============================================================================
+# Log Rotation Policy
+# ============================================================================
+[rotation]
+# Enable automatic log rotation
+rotation_enabled = true
+
+# Rotation schedule
+# Valid values: "DAILY", "HOURLY", "SIZE_BASED"
+rotation_schedule = "DAILY"
+
+# Specific time for daily rotations (24-hour format)
+# Only used if rotation_schedule = "DAILY"
+rotation_time = "00:00"
+
+# Wait period before compressing rotated files (hours)
+# Allows time for log analysis before compression
+compression_delay = 24
+
+# Cleanup schedule for old log deletion
+# Valid values: "DAILY", "WEEKLY"
+cleanup_schedule = "DAILY"
+
+# Trigger cleanup if free disk space below threshold (GB)
+# Prevents disk space exhaustion
+minimum_free_space = 10
+
+# ============================================================================
+# Structured Logging Fields
+# ============================================================================
+[structured_fields]
+# Common fields added to every log entry
+# Provides consistent context across all services
+
+[structured_fields.common_fields]
+# Deployment environment
+deployment = "production"
+
+# Server hostname (auto-populated at runtime)
+hostname = "${HOSTNAME}"
+
+# Unique instance identifier (auto-populated)
+instance_id = "${INSTANCE_ID}"
+
+# SafeOps version number
+version = "2.0.0"
+
+# Deployment region or datacenter
+region = "default"
+
+# ============================================================================
+# External Log Aggregation - Elasticsearch
+# ============================================================================
+[aggregation.elasticsearch]
+# Send logs to Elasticsearch/OpenSearch cluster
+enabled = false
+
+# Array of Elasticsearch node URLs
+# Can be overridden with ${ELASTICSEARCH_URL}
+cluster_urls = [
+    "http://localhost:9200"
+]
+
+# Elasticsearch index naming pattern
+# Variables: {date}, {service}
+# Example: safeops-logs-2025.12.16
+index_pattern = "safeops-logs-{date}"
+
+# Authentication (if required)
+username = ""  # Override with ${ELASTICSEARCH_USER}
+password = ""  # Override with ${ELASTICSEARCH_PASSWORD}
+
+# Bulk indexing settings
+bulk_size = 500          # Number of documents per bulk request
+flush_interval = 5       # Flush batch after interval (seconds)
+
+# Connection settings
+timeout_seconds = 30
+max_retries = 3
+
+# TLS settings
+tls_enabled = false
+tls_verify_certificate = true
+tls_ca_cert_path = ""
+
+# ============================================================================
+# External Log Aggregation - Grafana Loki
+# ============================================================================
+[aggregation.loki]
+# Send logs to Grafana Loki
+enabled = false
+
+# Loki push API endpoint
+# Can be overridden with ${LOKI_URL}
+push_url = "http://localhost:3100/loki/api/v1/push"
+
+# Batch size (number of log lines per batch)
+batch_size = 100
+
+# Maximum wait time before sending batch (seconds)
+batch_wait = 1
+
+# Static labels attached to all log streams
+# Used for filtering and routing in Loki
+[aggregation.loki.labels]
+job = "safeops"
+environment = "production"
+
+# Authentication (if required)
+username = ""
+password = ""
+
+# TLS settings
+tls_enabled = false
+
+# ============================================================================
+# Performance Settings
+# ============================================================================
+[performance]
+# Use asynchronous logging to avoid blocking service threads
+# Highly recommended for production
+async_logging = true
+
+# Size of async logging buffer (number of messages)
+# If buffer fills, behavior depends on drop_on_overflow
+buffer_size = 10000
+
+# Force flush buffer after interval (milliseconds)
+# Ensures logs aren't delayed too long
+flush_interval = 1000
+
+# Drop messages if async buffer is full
+# true: Drop and continue (prevents blocking)
+# false: Block until space available (ensures no log loss)
+drop_on_overflow = true
+
+# Sample rate for high-volume log messages (0.0 to 1.0)
+# 1.0 = log all, 0.5 = log 50%, 0.1 = log 10%
+# Apply to specific log statements in code via sampling API
+sampling_rate = 1.0
+
+# Number of goroutines for async log processing
+# More goroutines = higher throughput, more resources
+async_workers = 4
+
+# ============================================================================
+# Sensitive Data Handling
+# ============================================================================
+[security]
+# Enable automatic redaction of sensitive data
+# Critical for compliance (GDPR, PCI-DSS, HIPAA)
+redaction_enabled = true
+
+# Regex patterns to match and redact
+# Applied to all log message strings
+redact_patterns = [
+    # IPv4 addresses
+    "\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b",
+    # Email addresses
+    "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b",
+    # Credit card numbers (basic pattern)
+    "\\b(?:\\d{4}[- ]?){3}\\d{4}\\b",
+    # Passwords in URLs
+    "(?i)password=([^&\\s]+)",
+    # Bearer tokens
+    "(?i)bearer\\s+([A-Za-z0-9\\-._~+/]+=*)",
+    # API keys
+    "(?i)api[_-]?key=([^&\\s]+)"
+]
+
+# String to replace sensitive data with
+redaction_replacement = "[REDACTED]"
+
+# Allow personally identifiable information in logs
+# false: Redact PII, true: Allow PII (ensure compliance approval)
+pii_logging_enabled = false
+
+# Log security-related events at higher priority
+# Security events bypass sampling and always log
+security_events_always_log = true
+
+# ============================================================================
+# Debug and Development Settings
+# ============================================================================
+[debug]
+# Enable verbose logging framework diagnostics
+# Shows logging system internals (buffer usage, flush events, etc.)
+debug_logging_framework = false
+
+# Log all redacted fields to separate debug file
+# Useful for testing redaction patterns
+# WARNING: Creates logs with sensitive data
+log_redacted_values = false
+
+# Profile logging performance
+# Adds timing metrics to understand logging overhead
+profile_logging = false
+
+# ============================================================================
+# Log Viewing and Analysis
+# ============================================================================
+[viewing]
+# Enable built-in log viewer API
+# Allows querying logs via HTTP API
+api_enabled = true
+
+# Log viewer API listening address
+api_listen_address = "127.0.0.1:9100"
+
+# Maximum number of log lines to return per query
+max_query_results = 1000
+
+# Enable log tailing via API (streaming logs)
+tail_enabled = true
+
+# Authentication required for log viewer API
+api_auth_required = true
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# SAFEOPS_LOG_DIR - Override base_directory for file output
+#   Example: set SAFEOPS_LOG_DIR=E:\Logs\SafeOps
+#
+# SAFEOPS_LOG_LEVEL - Override default_log_level globally
+#   Example: set SAFEOPS_LOG_LEVEL=DEBUG
+#
+# ELASTICSEARCH_URL - Override Elasticsearch cluster_urls
+#   Example: set ELASTICSEARCH_URL=https://elastic.example.com:9200
+#
+# ELASTICSEARCH_USER - Elasticsearch authentication username
+# ELASTICSEARCH_PASSWORD - Elasticsearch authentication password
+#
+# LOKI_URL - Override Grafana Loki push_url
+#   Example: set LOKI_URL=http://loki.example.com:3100/loki/api/v1/push
+#
+# SYSLOG_SERVER - Override syslog server_address
+#   Example: set SYSLOG_SERVER=syslog.example.com:514
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The logging framework validates this configuration at startup and will
+# fail to initialize if any of the following conditions are not met:
+#
+# 1. base_directory must exist and be writable
+# 2. default_log_level must be valid enum value
+# 3. log_format must be "JSON", "TEXT", or "LOGFMT"
+# 4. max_file_size must be > 0 if file rotation enabled
+# 5. Service names in service_overrides must match actual services
+# 6. Elasticsearch cluster_urls must be valid HTTP(S) URLs
+# 7. Loki push_url must be valid HTTP(S) URL
+# 8. Syslog server_address must be valid hostname:port
+# 9. All regex patterns in redact_patterns must compile
+# 10. buffer_size must be > 0 if async_logging enabled
+#
+# The orchestrator validates this file against config/schemas/config_schema.json
+# before distributing to services.
+# ============================================================================

@@ -1,0 +1,996 @@
+# ============================================================================
+# SafeOps Enterprise Configuration Preset
+# ============================================================================
+# DEPLOYMENT PROFILE: Enterprise/Data Center
+#
+# PURPOSE:
+#   Comprehensive configuration for large organizations requiring maximum
+#   security, high availability, compliance, and extensive logging capabilities.
+#
+# TARGET ENVIRONMENT:
+#   • 100-10,000+ devices
+#   • Data center or cloud infrastructure
+#   • Multi-site deployments
+#   • Mission-critical applications
+#   • Regulated industries (Finance, Healthcare, Government)
+#
+# TARGET HARDWARE:
+#   CPU: Intel Xeon Scalable or AMD EPYC (8-16 cores minimum, 16-32 recommended)
+#   RAM: 32GB minimum (64GB+ recommended)
+#   Storage: 512GB NVMe SSD (OS/logs) + 4TB Enterprise HDD (archives/backups)
+#   Network: Multiple 10GbE NICs with LACP bonding
+#   Optional: Hardware Security Module (HSM) for cryptographic operations
+#
+# KEY FEATURES:
+#   ✓ Maximum Security - Zero-trust architecture, all features enabled
+#   ✓ High Availability - Active-passive clustering, automatic failover
+#   ✓ Compliance Ready - SOC 2, ISO 27001, PCI-DSS, HIPAA logging
+#   ✓ Enterprise Scale - Supports thousands of concurrent connections
+#   ✓ Advanced Threat Protection - Commercial feeds, STIX/TAXII integration
+#   ✓ Full Visibility - Comprehensive logging and auditing
+#
+# COMPLIANCE FRAMEWORKS:
+#   • SOC 2 Type II
+#   • ISO 27001/27002
+#   • PCI-DSS v4.0
+#   • HIPAA/HITECH
+#   • GDPR
+#   • NIST Cybersecurity Framework
+#
+# ============================================================================
+
+[profile]
+name = "enterprise"
+description = "Enterprise deployment with maximum security and high availability"
+complexity = "advanced"
+version = "2.0.0"
+deployment_type = "ENTERPRISE"
+enforcement_level = "MAXIMUM"
+
+# ============================================================================
+# SYSTEM CONFIGURATION
+# ============================================================================
+
+[system]
+hostname = "safeops-enterprise-01"
+timezone = "UTC"
+admin_email = "security-team@corp.example.com"
+description = "SafeOps Enterprise Security Gateway - Primary Node"
+
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "D:\\SafeOps\\Data"
+log_directory = "D:\\SafeOps\\Logs"
+archive_directory = "E:\\SafeOps\\Archives"  # Large cold storage
+
+[system.resources]
+# Enterprise-class resource allocation
+max_cpu_cores = 16
+max_memory_mb = 65536  # 64GB
+max_disk_gb = 5000  # 5TB total
+
+# CPU pinning for critical services
+cpu_affinity_enabled = true
+dedicated_cpus = [4, 5, 6, 7, 8, 9, 10, 11]  # Reserve cores for packet processing
+
+# ============================================================================
+# HIGH AVAILABILITY CONFIGURATION
+# ============================================================================
+
+[ha]
+enabled = true
+mode = "ACTIVE_PASSIVE"  # Active-passive for stateful services
+cluster_id = "safeops-cluster-01"
+
+# Cluster nodes
+primary_node = "safeops-enterprise-01"
+secondary_node = "safeops-enterprise-02"
+
+# Heartbeat and failover
+heartbeat_interval_seconds = 1
+heartbeat_timeout_seconds = 3
+failover_timeout_seconds = 5
+auto_failback = false  # Manual failback for safety
+
+# VRRP configuration
+vrrp_enabled = true
+vrrp_virtual_ip = "10.100.1.254"
+vrrp_priority = 100  # Primary
+vrrp_preempt = false
+
+# State synchronization
+state_sync_enabled = true
+sync_interval_seconds = 1
+config_sync_enabled = true
+
+# Shared storage for stateful sync
+shared_storage_enabled = true
+shared_storage_path = "\\\\nas.corp.local\\safeops-ha"
+
+# ============================================================================
+# NETWORK CONFIGURATION - ENTERPRISE TOPOLOGY
+# ============================================================================
+
+[network]
+topology = "multi-nic"
+description = "Enterprise multi-segment network with VLAN isolation"
+
+# Advanced networking features
+bonding_enabled = true
+lacp_enabled = true  # Link aggregation (802.3ad)
+jumbo_frames_enabled = true
+mtu = 9000  # Jumbo frames for datacenter
+
+# Multi-WAN configuration
+multi_wan_enabled = true
+wan_load_balancing = "WEIGHTED_ROUND_ROBIN"
+wan_failover = true
+
+[network.interfaces]
+# Primary WAN (ISP 1)
+wan_primary = "Ethernet 0"
+wan_primary_weight = 70
+
+# Secondary WAN (ISP 2)
+wan_secondary = "Ethernet 1"
+wan_secondary_weight = 30
+
+# LAN/Internal network (bonded)
+lan_bond = "bond0"  # Ethernet 2+3 bonded
+
+# DMZ network
+dmz = "Ethernet 4"
+
+# Management (out-of-band)
+management = "Ethernet 5"
+
+[network.addressing]
+# WAN configuration (static IP from ISP)
+wan_primary_mode = "static"
+wan_primary_ip = "203.0.113.10/29"  # Example public IP
+wan_primary_gateway = "203.0.113.1"
+
+wan_secondary_mode = "static"
+wan_secondary_ip = "198.51.100.20/29"
+wan_secondary_gateway = "198.51.100.1"
+
+# Internal networks (enterprise ranges)
+lan_ip = "10.100.1.1"
+lan_netmask = "255.255.0.0"  # /16
+lan_network = "10.100.0.0/16"
+
+dmz_ip = "192.168.30.1"
+dmz_netmask = "255.255.255.0"
+dmz_network = "192.168.30.0/24"
+
+management_ip = "192.168.99.1"
+management_netmask = "255.255.255.0"
+management_network = "192.168.99.0/24"
+
+# ============================================================================
+# VLAN CONFIGURATION - NETWORK SEGMENTATION
+# ============================================================================
+
+[vlans]
+enabled = true
+vlan_aware = true
+qinq_enabled = false  # Q-in-Q for service provider
+
+# VLAN 100 - Executive/Management
+[[vlans.segments]]
+vlan_id = 100
+name = "Executive"
+description = "Executive and senior management"
+network = "10.100.0.0/24"
+gateway = "10.100.0.1"
+dhcp_enabled = true
+security_level = "HIGH"
+priority = "CRITICAL"
+
+# VLAN 200 - General Users
+[[vlans.segments]]
+vlan_id = 200
+name = "Users"
+description = "General employee workstations"
+network = "10.200.0.0/16"
+gateway = "10.200.0.1"
+dhcp_enabled = true
+security_level = "MEDIUM"
+priority = "HIGH"
+
+# VLAN 300 - Servers
+[[vlans.segments]]
+vlan_id = 300
+name = "Servers"
+description = "Production application servers"
+network = "10.30.0.0/16"
+gateway = "10.30.0.1"
+dhcp_enabled = false  # Static IPs only
+security_level = "MAXIMUM"
+priority = "CRITICAL"
+
+# VLAN 400 - Database
+[[vlans.segments]]
+vlan_id = 400
+name = "Database"
+description = "Database servers (isolated)"
+network = "10.40.0.0/24"
+gateway = "10.40.0.1"
+dhcp_enabled = false
+security_level = "MAXIMUM"
+priority = "CRITICAL"
+micro_segmentation = true
+
+# VLAN 500 - IoT/Building Systems
+[[vlans.segments]]
+vlan_id = 500
+name = "IoT"
+description = "IoT devices and building automation"
+network = "10.50.0.0/16"
+gateway = "10.50.0.1"
+dhcp_enabled = true
+security_level = "LOW"
+priority = "LOW"
+internet_only = true
+
+# VLAN 600 - Guest WiFi
+[[vlans.segments]]
+vlan_id = 600
+name = "Guest"
+description= "Guest wireless network"
+network = "10.60.0.0/16"
+gateway = "10.60.0.1"
+dhcp_enabled = true
+security_level = "UNTRUSTED"
+priority = "LOW"
+internet_only = true
+captive_portal = true
+
+# VLAN 700 - VoIP
+[[vlans.segments]]
+vlan_id = 700
+name = "VoIP"
+description = "Voice over IP telephony"
+network = "10.70.0.0/24"
+gateway = "10.70.0.1"
+dhcp_enabled = true
+security_level = "MEDIUM"
+priority = "CRITICAL"
+qos_enabled = true
+
+# VLAN 999 - Management
+[[vlans.segments]]
+vlan_id = 999
+name = "Management"
+description = "Network management and monitoring"
+network = "192.168.99.0/24"
+gateway = "192.168.99.1"
+dhcp_enabled = false
+security_level = "MAXIMUM"
+priority = "CRITICAL"
+restricted_access = true
+
+# ============================================================================
+# SERVICE CONFIGURATION - ALL ENABLED
+# ============================================================================
+
+[services]
+# Core network services
+kernel_driver = true
+network_logger = true
+firewall_engine = true
+ids_ips = true
+dns_server = true
+dhcp_server = true
+
+# Security services
+tls_proxy = true
+certificate_manager = true
+threat_intel = true
+
+# WiFi services
+wifi_ap = true  # If providing enterprise WiFi
+
+# Management services
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+#vpn_server = true  # If providing VPN
+
+# ============================================================================
+# FIREWALL - ZERO-TRUST ARCHITECTURE
+# ============================================================================
+
+[firewall]
+enabled = true
+enforcement_mode = "STRICT"
+default_action = "DENY"  # Zero-trust default deny
+
+# Comprehensive logging
+log_denied = true
+log_allowed = true  # Enterprise visibility
+log_detail_level = "VERBOSE"
+
+# Connection tracking
+connection_tracking = true
+stateful_inspection = true
+max_connections = 10000000  # 10M concurrent connections
+connection_timeout = 3600
+
+# Advanced features
+deep_packet_inspection = true
+application_control = true
+url_filtering = true
+ssl_inspection_integration = true
+
+# Geo-blocking
+geo_blocking_enabled = true
+blocked_countries = ["KP", "IR"]  # Example: North Korea, Iran
+
+# DDoS protection
+[firewall.ddos_protection]
+enabled = true
+syn_flood_protection = true
+syn_cookies = true
+icmp_flood_protection = true
+udp_flood_protection = true
+
+# Rate limiting
+global_rate_limit = true
+per_ip_rate_limit = true
+connection_rate_limit = 1000  # Per second
+
+# ============================================================================
+# IDS/IPS - INLINE BLOCKING MODE
+# ============================================================================
+
+[ids_ips]
+enabled = true
+operating_mode = "IPS"  # Inline blocking (prevention)
+signature_engine = "SURICATA"
+
+# Detection methods (all enabled)
+[ids_ips.detection]
+signature_based = true
+anomaly_based = true
+behavioral_analysis = true
+heuristic_detection = true
+machine_learning_detection = true  # Enterprise ML engine
+protocol_anomaly_detection = true
+
+# Signature management
+signature_updates_enabled = true
+update_interval_hours = 1  # Hourly update checks
+auto_reload_signatures = true
+
+# All ruleset categories enabled
+all_signatures_enabled = true
+all_categories_enabled = true
+sensitivity = "HIGH"
+
+# Commercial rulesets
+commercial_rulesets = true
+industry_specific_rules = true  # Finance, Healthcare, etc.
+
+# Enabled categories (comprehensive)
+enabled_categories = [
+    "malware", "exploit", "trojan", "backdoor", "ransomware", "cryptominer",
+    "web-attack", "sql-injection", "xss", "lfi-rfi", "command-injection",
+    "dos", "ddos", "scan", "recon", "brute-force", "password-attack",
+    "policy-violation", "data-exfiltration", "c2-communication", "apt",
+    "phishing", "suspicious-traffic", "lateral-movement", "privilege-escalation"
+]
+
+# Prevention configuration
+[ids_ips.prevention]
+ips_mode = true
+auto_block = true
+block_duration = 86400  # 24 hours
+firewall_integration = true
+
+# Advanced features
+threat_hunting_mode = true
+sandbox_integration = false  # Optional: integrate with sandbox
+threat_intel_enrichment = true
+
+# ============================================================================
+# TLS PROXY - FULL SSL/TLS INSPECTION
+# ============================================================================
+
+[tls_proxy]
+enabled = true
+mode = "TRANSPARENT"
+listen_port = 8443
+
+# Certificate management integration
+certificate_manager_integration = true
+dynamic_cert_generation = true
+cert_cache_size = 50000
+
+# Inspection policies
+inspect_all_traffic = false  # Selective inspection
+bypass_policies = true
+
+# Bypass categories (compliance/privacy)
+bypass_financial_sites = true  # Banking, payment processors
+bypass_healthcare_sites = true  # HIPAA-protected
+bypass_government_sites = true  # Government portals
+bypass_legal_sites = true  # Attorney-client privilege
+
+# Custom bypass list
+bypass_domains = [
+    "*.bank.example.com",
+    "*.ehr-system.example.com",
+    "*.gov"
+]
+
+# DLP integration
+dlp_integration = true
+malware_scanning = true
+url_filtering = true
+
+# Advanced inspection
+http2_support = true
+tls13_support = true
+certificate_validation = true
+ocsp_checking = true
+
+# ============================================================================
+# DNS SERVER - ENTERPRISE DNS
+# ============================================================================
+
+[dns]
+enabled = true
+listen_port = 53
+authoritative = false
+
+# Upstream forwarders (enterprise-grade)
+upstream_servers = [
+    "1.1.1.1",  # Cloudflare primary
+    "1.0.0.1",  # Cloudflare secondary
+    "8.8.8.8",  # Google primary
+    "8.8.4.4"   # Google secondary
+]
+
+# Caching
+cache_enabled = true
+cache_size_mb = 1024  # 1GB cache
+cache_ttl_min = 300
+cache_ttl_max = 86400
+
+# DNSSEC
+dnssec_enabled = true
+dnssec_validation = true
+
+# DNS Security
+dns_over_tls_enabled = true  # DoT
+dns_over_https_enabled = false  # DoH (optional)
+
+# Filtering
+[dns.filtering]
+enabled = true
+block_malware_domains = true
+block_phishing_domains = true
+block_c2_domains = true
+block_ransomware_domains = true
+block_cryptomining_domains = true
+block_advertising = false  # Enterprise decision
+block_tracking = true
+
+# Threat intelligence integration
+threat_intel_integration = true
+rpz_feeds_enabled = true  # Response Policy Zones
+dga_detection = true  # Domain Generation Algorithm detection
+
+# DNS sinkholing
+sinkhole_enabled = true
+sinkhole_ip = "192.168.99.99"
+
+# Logging
+query_logging = true
+response_logging = true
+log_blocked_queries = true
+
+# ============================================================================
+# DHCP SERVER - ENTERPRISE DHCP
+# ============================================================================
+
+[dhcp]
+enabled = true
+
+# High availability
+failover_enabled = true
+failover_peer = "safeops-enterprise-02"
+failover_mode = "load-balance"
+
+# VLAN-aware DHCP pools
+[[dhcp.pools]]
+name = "Executive"
+vlan_id = 100
+network = "10.100.0.0/24"
+range_start = "10.100.0.100"
+range_end = "10.100.0.200"
+lease_time = 86400  # 24 hours
+gateway = "10.100.0.1"
+dns_servers = ["10.100.1.1"]
+domain_name = "exec.corp.local"
+
+[[dhcp.pools]]
+name = "Users"
+vlan_id = 200
+network = "10.200.0.0/16"
+range_start = "10.200.100.0"
+range_end = "10.200.200.255"
+lease_time = 43200  # 12 hours
+gateway = "10.200.0.1"
+dns_servers = ["10.100.1.1"]
+domain_name = "corp.local"
+
+# Dynamic DNS integration
+ddns_enabled = true
+ddns_domain = "corp.local"
+ddns_ttl = 3600
+
+# ============================================================================
+# WIFI ACCESS POINT - 802.1X ENTERPRISE
+# ============================================================================
+
+[wifi]
+enabled = true
+
+# Corporate SSID with 802.1X
+[[wifi.ssids]]
+ssid = "Corp-Secure"
+vlan_id = 200
+security = "WPA3-Enterprise"
+encryption = "AES-CCMP"
+auth_method = "802.1X"
+radius_server = "radius.corp.local"
+radius_port = 1812
+radius_secret = "${RADIUS_SECRET}"
+accounting_enabled = true
+
+# Guest SSID
+[[wifi.ssids]]
+ssid = "Corp-Guest"
+vlan_id = 600
+security = "WPA2-PSK"
+encryption = "AES-CCMP"
+passphrase = "${GUEST_WIFI_PASS}"
+captive_portal = true
+client_isolation = true
+bandwidth_limit = 10mbps
+
+# IoT SSID
+[[wifi.ssids]]
+ssid = "Corp-IoT"
+vlan_id = 500
+security = "WPA2-PSK"
+encryption = "AES-CCMP"
+passphrase = "${IOT_WIFI_PASS}"
+client_isolation = true
+
+# ============================================================================
+# THREAT INTELLIGENCE - COMMERCIAL FEEDS
+# ============================================================================
+
+[threat_intel]
+enabled = true
+
+# Feed sources
+auto_update_feeds = true
+update_interval_hours = 1  # Hourly
+feeds = ["free", "commercial", "industry-specific"]
+
+# STIX/TAXII support
+stix_taxii_enabled = true
+taxii_servers = ["taxii.example.com"]
+
+# Commercial feeds (requires subscriptions)
+commercial_feeds = [
+    "Emerging-Threats-Pro",
+    "ProofPoint-ET-Intelligence",
+    "AlienVault-OTX-Commercial"
+]
+
+# IOC sharing
+ioc_sharing_enabled = true
+isac_integration = true  # Information Sharing and Analysis Center
+
+# Threat correlation
+correlation_enabled = true
+automated_response = true
+auto_block_threshold = 80  # Confidence score
+
+# ============================================================================
+# DATA LOSS PREVENTION (DLP)
+# ============================================================================
+
+[dlp]
+enabled = true
+
+# Content inspection
+content_inspection = true
+deep_content_analysis = true
+
+# PII detection
+pii_detection = true
+detect_ssn = true
+detect_credit_cards = true
+detect_passport_numbers = true
+detect_medical_records = true
+
+# Financial data
+financial_data_protection = true
+pci_dss_compliance = true
+
+# Compliance rules
+compliance_rules = ["PCI-DSS", "HIPAA", "GDPR", "CCPA"]
+
+# Actions
+block_violations = true
+alert_on_violations = true
+quarantine_files = true
+
+# ============================================================================
+# CERTIFICATE MANAGER - PKI WITH HSM
+# ============================================================================
+
+[certificate_manager]
+enabled = true
+
+# Certificate Authority
+internal_ca_enabled = true
+root_ca_validity_years = 20
+intermediate_ca_validity_years = 10
+
+# HSM integration (optional)
+hsm_enabled = false  # Enable if HSM available
+hsm_type = "PKCS11"
+# hsm_library_path = "C:\\Program Files\\HSM\\lib\\pkcs11.dll"
+
+# Certificate lifecycle
+auto_renewal_enabled = true
+renewal_days_before_expiry = 30
+certificate_transparency = true
+
+# TLS interception certificates
+tls_interception_ca = true
+tls_cert_cache_size = 50000
+
+# ============================================================================
+# SIEM INTEGRATION - ENTERPRISE LOGGING
+# ============================================================================
+
+[siem]
+enabled = true
+
+# Syslog
+protocol = "syslog-tls"  # Encrypted syslog
+server = "siem.corp.local"
+port = 6514
+format = "CEF"  # Common Event Format
+
+# Alternative: Splunk HEC
+[siem.splunk]
+enabled = false
+hec_endpoint = "https://splunk.corp.local:8088"
+hec_token = "${SPLUNK_HEC_TOKEN}"
+index = "safeops"
+
+# Alternative: Elasticsearch
+[siem.elasticsearch]
+enabled = false
+hosts = ["es-01.corp.local:9200", "es-02.corp.local:9200"]
+index_prefix = "safeops-"
+api_key = "${ELASTIC_API_KEY}"
+
+# Log forwarding settings
+forward_all_logs = true
+forward_firewall_logs = true
+forward_ids_alerts = true
+forward_threat_intel = true
+forward_audit_logs = true
+forward_system_logs = true
+
+# ============================================================================
+# BACKUP AND DISASTER RECOVERY
+# ============================================================================
+
+[backup]
+enabled = true
+
+# Backup schedule
+schedule = "0 */6 * * *"  # Every 6 hours
+incremental_backups = true
+full_backup_schedule = "0 2 * * 0"  # Weekly full backup
+
+# Backup scope
+backup_configs = true
+backup_database = true
+backup_logs = false  # Too large, use log archival
+backup_certificates = true
+backup_threat_intel_data = true
+
+# Encryption
+encryption_enabled = true
+encryption_algorithm = "AES-256"
+encryption_key_source = "HSM"  # or "ENV_VAR"
+
+# Backup destinations
+primary_destination = "D:\\SafeOps\\Backups"
+offsite_backup_enabled = true
+offsite_destinations = [
+    "\\\\backup-nas.corp.local\\safeops",
+    "s3://company-backups/safeops"  # Cloud backup
+]
+
+# Retention
+retention_days = 90
+full_backup_retention_months = 12
+
+# Integrity
+verify_backups = true
+test_restore_monthly = true
+
+# ============================================================================
+# UPDATE MANAGEMENT - STAGED ROLLOUT
+# ============================================================================
+
+[updates]
+# Update checking
+auto_check = true
+check_interval_hours = 6
+
+# Signature updates (critical)
+auto_install_signatures = true
+signature_priority = "IMMEDIATE"
+
+# Security updates (important)
+auto_install_security = true
+security_update_delay_hours = 24  # Wait 24h for validation
+
+# Software updates (staged)
+auto_install_software = false  # Manual approval
+staged_rollout = true
+canary_deployment = true
+canary_percentage = 10  # Test on 10% first
+
+# Update channel
+channel = "stable"
+beta_testing = false
+
+# Maintenance windows
+[[updates.maintenance_windows]]
+day = "Sunday"
+start_time = "02:00"
+end_time = "06:00"
+timezone = "UTC"
+
+# Rollback capability
+auto_rollback_on_failure = true
+rollback_timeout_minutes = 30
+
+# ============================================================================
+# WEB UI - MAXIMUM SECURITY
+# ============================================================================
+
+[web_ui]
+enabled = true
+
+# Access configuration
+https_enabled = true  # HTTPS only
+https_port = 8443
+http_redirect = true
+
+# Authentication
+require_authentication = true
+authentication_method = "LDAP"  # or "AD", "SAML"
+ldap_server = "ldap://dc.corp.local"
+ldap_base_dn = "DC=corp,DC=local"
+
+# Multi-factor authentication
+mfa_enabled = true
+mfa_required_for_admins = true
+mfa_method = "TOTP"  # Time-based OTP
+
+# Session management
+session_timeout_minutes = 15  # Short timeout for security
+concurrent_sessions_per_user = 1
+session_binding = "IP_AND_USER_AGENT"
+
+# Security headers
+security_headers_enabled = true
+hsts_enabled = true
+csp_enabled = true
+certificate_pinning = true
+
+# Access control
+ip_whitelist_enabled = true
+allowed_ips = ["192.168.99.0/24", "10.100.0.0/16"]
+
+# ============================================================================
+# LOGGING - COMPREHENSIVE AUDIT TRAIL
+# ============================================================================
+
+[logging]
+# Logging level
+log_level = "INFO"  # INFO for production (not DEBUG - too verbose)
+log_format = "JSON"  # Structured logging
+
+# Log rotation
+log_rotation_enabled = true
+log_max_size_mb = 1000  # 1GB per file
+compress_rotated_logs = true
+
+# Retention (compliance-driven)
+log_retention_days = 365  # 1 year online
+archive_retention_years = 7  # 7 years archived (SOX compliance)
+
+# Encryption
+log_encryption_enabled = true
+tamper_proof_logs = true
+
+# Packet capture
+full_packet_capture = false  # Too storage-intensive for normal operation
+alert_packet_capture = true  # Capture packets for IDS alerts only
+pcap_retention_days = 7
+
+# Detailed categorization
+[logging.categories]
+firewall_logs = true
+ids_alerts = true
+threat_intel_matches = true
+authentication_events = true
+configuration_changes = true
+system_events = true
+user_actions = true
+api_calls = true
+certificate_events = true
+vpn_connections = true
+
+# ============================================================================
+# COMPLIANCE AND AUDIT
+# ============================================================================
+
+[compliance]
+enabled = true
+
+# Compliance frameworks
+frameworks = [
+    "SOC2-TypeII",
+    "ISO27001",
+    "PCI-DSS-v4",
+    "HIPAA",
+    "GDPR",
+    "NIST-CSF",
+    "CCPA"
+]
+
+# Audit logging
+audit_logging = true
+audit_all_changes = true
+audit_user_actions = true
+audit_api_calls = true
+
+# Reporting
+automated_reporting = true
+report_schedule = "monthly"
+report_recipients = ["compliance@corp.local", "ciso@corp.local"]
+
+# Data retention (compliance requirement)
+audit_log_retention_years = 7
+data_retention_policy = "7-YEAR"
+
+# Access reviews
+access_review_enabled = true
+access_review_interval_days = 90
+
+# ============================================================================
+# MONITORING AND ALERTING
+# ============================================================================
+
+[monitoring]
+enabled = true
+
+# Metrics export
+metrics_enabled = true
+prometheus_endpoint = true
+prometheus_port = 9090
+
+# Grafana dashboards
+grafana_dashboard = true
+grafana_url = "http://grafana.corp.local:3000"
+
+# Alerting
+alerting_enabled = true
+alert_channels = ["email", "slack", "pagerduty"]
+email_alerts = "security-alerts@corp.local"
+
+# Health monitoring
+health_check_interval_seconds = 30
+service_dependency_monitoring = true
+
+# Performance metrics
+track_cpu_usage = true
+track_memory_usage = true
+track_disk_usage = true
+track_network_throughput = true
+track_connection_count = true
+
+# ============================================================================
+# PERFORMANCE OPTIMIZATION
+# ============================================================================
+
+[performance]
+# Multi-threading
+worker_threads = 16
+capture_threads = 8
+analysis_threads = 8
+
+# Hardware acceleration
+hardware_acceleration = true
+aes_ni_enabled = true  # Intel AES-NI
+sse_enabled = true
+avx_enabled = true
+
+# Connection table sizing
+connection_table_size = 10000000  # 10M entries
+flow_table_size = 5000000
+
+# Memory management
+huge_pages_enabled = true
+numa_aware = true
+
+# Network optimization
+tcp_window_scaling = true
+tcp_timestamps = true
+tcp_selective_ack = true
+zero_copy_enabled = true
+
+# Disk I/O
+async_io = true
+direct_io = true
+io_scheduler = "deadline"
+
+# ============================================================================
+# RESOURCE LIMITS
+# ============================================================================
+
+[resource_limits]
+# CPU allocation
+max_cpu_percent = 85
+reserved_cpu_cores = 2  # For OS
+
+# Memory allocation
+max_memory_mb = 61440  # 60GB (leaving 4GB for OS)
+reserved_memory_mb = 4096
+
+# Disk usage alerts
+disk_usage_warning_percent = 80
+disk_usage_critical_percent = 90
+
+# ============================================================================
+# SELF-CHECK VALIDATIONS
+# ============================================================================
+# Before deploying this configuration, verify:
+#
+# [✓] High availability pair configured and tested
+# [✓] Shared storage accessible from both nodes
+# [✓] Network VLANs created on switches
+# [✓] LDAP/AD integration configured and tested
+# [✓] RADIUS server configured for 802.1X WiFi
+# [✓] Commercial threat intel feeds subscribed
+# [✓] SIEM integration configured and tested
+# [✓] HSM configured (if used)
+# [✓] Backup destinations have sufficient space (5TB+ recommended)
+# [✓] Offsite backup accessible
+# [✓] Compliance requirements documented
+# [✓] Maintenance windows communicated
+# [✓] Change management process established
+# [✓] Disaster recovery plan tested
+# [✓] Security team trained on platform
+#
+# ============================================================================

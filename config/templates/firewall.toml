@@ -1,0 +1,621 @@
+# SafeOps Firewall Rules Configuration
+# High-level firewall rules and policies for network traffic filtering
+#
+# This file contains user-defined firewall rules, default policies, rule groups,
+# zone-based security settings, and NAT configuration.
+#
+# The firewall_engine service translates these rules into WFP filters.
+
+# ============================================================================
+# Default Policies
+# ============================================================================
+[default_policies]
+# Baseline behavior for traffic that doesn't match any explicit rule
+
+# Inbound traffic (WAN → LAN/WIFI)
+# Valid values: "ALLOW", "DENY", "REJECT"
+# Production: "DENY" (deny-by-default is most secure)
+default_inbound_policy = "DENY"
+
+# Outbound traffic (LAN/WIFI → WAN)
+# Production: "ALLOW" (permit internal users to access internet)
+default_outbound_policy = "ALLOW"
+
+# Forward traffic (between interfaces, e.g., LAN ↔ WIFI)
+# Production: "DENY" (require explicit inter-zone rules)
+default_forward_policy = "DENY"
+
+# Log packets that hit default policies
+# Useful for identifying missing rules
+policy_log_enabled = true
+
+# Send ICMP unreachable when using REJECT action
+# REJECT vs DENY: REJECT notifies sender, DENY silently drops
+reject_with_icmp = true
+
+# ============================================================================
+# Network Object Groups
+# ============================================================================
+# Reusable address and port definitions for simplified rule management
+
+[[address_objects]]
+object_name = "RFC1918_PRIVATE"
+description = "Private IP address ranges (RFC 1918)"
+addresses = [
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16"
+]
+
+[[address_objects]]
+object_name = "LAN_NETWORK"
+description = "Local area network subnet"
+addresses = ["192.168.1.0/24"]
+
+[[address_objects]]
+object_name = "WIFI_NETWORK"
+description = "WiFi network subnet"
+addresses = ["192.168.2.0/24"]
+
+[[address_objects]]
+object_name = "DMZ_NETWORK"
+description = "DMZ network subnet (optional)"
+addresses = ["192.168.100.0/24"]
+
+[[address_objects]]
+object_name = "TRUSTED_DNS"
+description = "Trusted DNS servers"
+addresses = [
+    "8.8.8.8",      # Google DNS
+    "8.8.4.4",      # Google DNS
+    "1.1.1.1",      # Cloudflare DNS
+    "1.0.0.1"       # Cloudflare DNS
+]
+
+[[address_objects]]
+object_name = "BOGON_ADDRESSES"
+description = "Invalid/reserved addresses that should never appear on WAN"
+addresses = [
+    "0.0.0.0/8",
+    "10.0.0.0/8",
+    "127.0.0.0/8",
+    "169.254.0.0/16",
+    "172.16.0.0/12",
+    "192.0.0.0/24",
+    "192.0.2.0/24",
+    "192.168.0.0/16",
+    "198.18.0.0/15",
+    "198.51.100.0/24",
+    "203.0.113.0/24",
+    "224.0.0.0/4",
+    "240.0.0.0/4"
+]
+
+# Port object groups
+[[port_objects]]
+object_name = "WEB_PORTS"
+description = "HTTP and HTTPS ports"
+protocol = "TCP"
+ports = [80, 443]
+
+[[port_objects]]
+object_name = "MAIL_PORTS"
+description = "Email service ports"
+protocol = "TCP"
+ports = [25, 110, 143, 465, 587, 993, 995]
+
+[[port_objects]]
+object_name = "DNS_PORTS"
+description = "DNS service ports"
+protocol = "BOTH"
+ports = [53]
+
+[[port_objects]]
+object_name = "MANAGEMENT_PORTS"
+description = "Management service ports"
+protocol = "TCP"
+ports = [22, 3389]  # SSH, RDP
+
+# Service object groups
+[[service_objects]]
+object_name = "HTTPS"
+description = "HTTPS web traffic"
+protocol = "TCP"
+ports = [443]
+
+[[service_objects]]
+object_name = "HTTP"
+description = "HTTP web traffic"
+protocol = "TCP"
+ports = [80]
+
+[[service_objects]]
+object_name = "DNS"
+description = "DNS queries"
+protocol = "UDP"
+ports = [53]
+
+[[service_objects]]
+object_name = "NTP"
+description = "Network Time Protocol"
+protocol = "UDP"
+ports = [123]
+
+# ============================================================================
+# Security Zones
+# ============================================================================
+[security_zones]
+# Zone-based security for interface grouping
+
+[[security_zones.zones]]
+zone_name = "WAN"
+interfaces = ["Ethernet"]
+description = "Internet-facing zone"
+
+[[security_zones.zones]]
+zone_name = "LAN"
+interfaces = ["Ethernet 2"]
+description = "Trusted internal network"
+
+[[security_zones.zones]]
+zone_name = "WIFI"
+interfaces = ["Wi-Fi"]
+description = "Wireless guest network"
+
+# Inter-zone default policies
+# Defines default action when traffic moves between zones
+[security_zones.inter_zone_defaults]
+WAN_to_LAN = "DENY"      # Internet cannot reach LAN (unless port forwarded)
+WAN_to_WIFI = "DENY"     # Internet cannot reach WiFi
+LAN_to_WAN = "ALLOW"     # LAN can access internet
+LAN_to_WIFI = "ALLOW"    # LAN can access WiFi devices
+WIFI_to_WAN = "ALLOW"    # WiFi can access internet
+WIFI_to_LAN = "DENY"     # WiFi cannot reach LAN (guest isolation)
+WIFI_to_WIFI = "DENY"    # Client isolation within WiFi
+
+# ===========================================================================
+# Firewall Rule Groups
+# ============================================================================
+# Organized collections of related firewall rules
+
+[[rule_groups]]
+group_name = "anti_spoofing"
+enabled = true
+priority = 100
+description = "Anti-spoofing and bogon filtering"
+
+[[rule_groups]]
+group_name = "management"
+enabled = true
+priority = 200
+description = "Management access rules"
+
+[[rule_groups]]
+group_name = "services"
+enabled = true
+priority = 300
+description = "Network service rules (DNS, NTP, DHCP)"
+
+[[rule_groups]]
+group_name = "outbound_internet"
+enabled = true
+priority = 400
+description = "Outbound internet access rules"
+
+[[rule_groups]]
+group_name = "port_forwards"
+enabled = true
+priority = 500
+description = "Inbound port forwarding rules"
+
+[[rule_groups]]
+group_name = "custom"
+enabled = true
+priority = 900
+description = "User-defined custom rules"
+
+# ============================================================================
+# Firewall Rules
+# ============================================================================
+# Individual packet filtering rules
+
+# --- Anti-Spoofing Rules (Priority 100) ---
+
+[[rules]]
+rule_id = 1
+rule_name = "Block_Bogon_Addresses_WAN"
+enabled = true
+group = "anti_spoofing"
+priority = 1
+action = "DENY"
+direction = "INBOUND"
+protocol = "ANY"
+source_address = "BOGON_ADDRESSES"
+destination_address = "ANY"
+interface = "WAN"
+log_enabled = true
+description = "Block packets with invalid source addresses on WAN"
+
+[[rules]]
+rule_id = 2
+rule_name = "Block_Private_IPs_WAN_Inbound"
+enabled = true
+group = "anti_spoofing"
+priority = 2
+action = "DENY"
+direction = "INBOUND"
+protocol = "ANY"
+source_address = "RFC1918_PRIVATE"
+destination_address = "ANY"
+interface = "WAN"
+log_enabled = true
+description = "Block private IP addresses coming from internet"
+
+# --- Management Rules (Priority 200) ---
+
+[[rules]]
+rule_id = 100
+rule_name = "Allow_LAN_to_Firewall_HTTPS"
+enabled = true
+group = "management"
+priority = 1
+action = "ALLOW"
+direction = "INBOUND"
+protocol = "TCP"
+source_address = "LAN_NETWORK"
+destination_address = "192.168.1.1"
+destination_port = [443]
+state = "NEW,ESTABLISHED"
+log_enabled = false
+description = "Allow LAN to access firewall web UI"
+
+[[rules]]
+rule_id = 101
+rule_name = "Allow_LAN_to_Firewall_SSH"
+enabled = false
+group = "management"
+priority = 2
+action = "ALLOW"
+direction = "INBOUND"
+protocol = "TCP"
+source_address = "LAN_NETWORK"
+destination_address = "192.168.1.1"
+destination_port = [22]
+state = "NEW,ESTABLISHED"
+log_enabled = true
+description = "Allow SSH access from LAN (disabled by default)"
+
+# --- Network Services Rules (Priority 300) ---
+
+[[rules]]
+rule_id = 200
+rule_name = "Allow_LAN_DNS"
+enabled = true
+group = "services"
+priority = 1
+action = "ALLOW"
+direction = "INBOUND"
+protocol = "UDP"
+source_address = "LAN_NETWORK"
+destination_address = "192.168.1.1"
+destination_port = [53]
+log_enabled = false
+description = "Allow LAN clients to use firewall DNS"
+
+[[rules]]
+rule_id = 201
+rule_name = "Allow_WIFI_DNS"
+enabled = true
+group = "services"
+priority = 2
+action = "ALLOW"
+direction = "INBOUND"
+protocol = "UDP"
+source_address = "WIFI_NETWORK"
+destination_address = "192.168.2.1"
+destination_port = [53]
+log_enabled = false
+description = "Allow WiFi clients to use firewall DNS"
+
+[[rules]]
+rule_id = 202
+rule_name = "Allow_LAN_DHCP"
+enabled = true
+group = "services"
+priority = 3
+action = "ALLOW"
+direction = "INBOUND"
+protocol = "UDP"
+source_address = "LAN_NETWORK"
+source_port = [68]
+destination_address = "192.168.1.1"
+destination_port = [67]
+log_enabled = false
+description = "Allow DHCP requests from LAN"
+
+[[rules]]
+rule_id = 203
+rule_name = "Allow_WIFI_DHCP"
+enabled = true
+group = "services"
+priority = 4
+action = "ALLOW"
+direction = "INBOUND"
+protocol = "UDP"
+source_address = "WIFI_NETWORK"
+source_port = [68]
+destination_address = "192.168.2.1"
+destination_port = [67]
+log_enabled = false
+description = "Allow DHCP requests from WiFi"
+
+# --- Outbound Internet Rules (Priority 400) ---
+
+[[rules]]
+rule_id = 300
+rule_name = "Allow_LAN_to_Internet_HTTP_HTTPS"
+enabled = true
+group = "outbound_internet"
+priority = 1
+action = "ALLOW"
+direction = "OUTBOUND"
+protocol = "TCP"
+source_address = "LAN_NETWORK"
+destination_address = "!RFC1918_PRIVATE"
+destination_port = [80, 443]
+state = "NEW,ESTABLISHED"
+log_enabled = false
+description = "Allow LAN web browsing"
+
+[[rules]]
+rule_id = 301
+rule_name = "Allow_WIFI_to_Internet_HTTP_HTTPS"
+enabled = true
+group = "outbound_internet"
+priority = 2
+action = "ALLOW"
+direction = "OUTBOUND"
+protocol = "TCP"
+source_address = "WIFI_NETWORK"
+destination_address = "!RFC1918_PRIVATE"
+destination_port = [80, 443]
+state = "NEW,ESTABLISHED"
+log_enabled = false
+description = "Allow WiFi web browsing"
+
+[[rules]]
+rule_id = 302
+rule_name = "Allow_LAN_DNS_to_Internet"
+enabled = true
+group = "outbound_internet"
+priority = 3
+action = "ALLOW"
+direction = "OUTBOUND"
+protocol = "UDP"
+source_address = "LAN_NETWORK"
+destination_address = "TRUSTED_DNS"
+destination_port = [53]
+log_enabled = false
+description = "Allow LAN DNS queries to trusted servers"
+
+[[rules]]
+rule_id = 303
+rule_name = "Allow_Firewall_NTP"
+enabled = true
+group = "outbound_internet"
+priority = 4
+action = "ALLOW"
+direction = "OUTBOUND"
+protocol = "UDP"
+source_address = "192.168.1.1"
+destination_port = [123]
+log_enabled = false
+description = "Allow firewall to sync time with NTP"
+
+# --- Port Forwarding Rules (Priority 500) ---
+# Example: Forward WAN port 8080 to internal web server
+
+[[rules]]
+rule_id = 500
+rule_name = "Port_Forward_Example_WebServer"
+enabled = false
+group = "port_forwards"
+priority = 1
+action = "ALLOW"
+direction = "INBOUND"
+protocol = "TCP"
+source_address = "ANY"
+destination_address = "192.168.1.100"
+destination_port = [80]
+interface = "WAN"
+state = "NEW,ESTABLISHED"
+log_enabled = true
+description = "Example: Port forward 8080 to internal web server (disabled)"
+
+# --- Custom Rules (Priority 900) ---
+
+[[rules]]
+rule_id = 900
+rule_name = "Custom_Rule_Example"
+enabled = false
+group = "custom"
+priority = 1
+action = "ALLOW"
+direction = "ANY"
+protocol = "TCP"
+source_address = "ANY"
+destination_address = "ANY"
+destination_port = [12345]
+log_enabled = true
+description = "Example custom rule (disabled)"
+
+# ============================================================================
+# Connection Tracking
+# ============================================================================
+[connection_tracking]
+# Stateful firewall tracking parameters
+
+# Enable stateful packet inspection
+connection_tracking_enabled = true
+
+# Track TCP connection states
+track_tcp_state = true
+
+# Pseudo-stateful UDP tracking
+track_udp_state = true
+
+# ICMP request/reply matching
+track_icmp_state = true
+
+# Connection idle timeouts (seconds)
+connection_timeout_tcp = 3600          # 1 hour for established TCP
+connection_timeout_udp = 180           # 3 minutes for UDP sessions
+connection_timeout_icmp = 30           # 30 seconds for ICMP
+
+# Maximum tracked connections (prevents state table exhaustion)
+max_connections = 1000000              # 1 million concurrent connections
+
+# Log connection state changes
+connection_logging = false
+
+# ============================================================================
+# NAT Configuration
+# ============================================================================
+[nat]
+# Network Address Translation settings
+
+# Enable NAT functionality
+nat_enabled = true
+
+# Source NAT (SNAT) - Masquerade LAN/WIFI to WAN
+[[nat.rules]]
+nat_type = "MASQUERADE"
+interface = "WAN"
+source_address = "LAN_NETWORK"
+enabled = true
+description = "Masquerade LAN traffic to WAN interface IP"
+
+[[nat.rules]]
+nat_type = "MASQUERADE"
+interface = "WAN"
+source_address = "WIFI_NETWORK"
+enabled = true
+description = "Masquerade WiFi traffic to WAN interface IP"
+
+# Destination NAT (DNAT) - Port forwarding examples
+# [[nat.rules]]
+# nat_type = "DNAT"
+# interface = "WAN"
+# destination_port = 8080
+# translated_address = "192.168.1.100"
+# translated_port = 80
+# protocol = "TCP"
+# enabled = false
+# description = "Example: Forward WAN:8080 to LAN:192.168.1.100:80"
+
+# ============================================================================
+# Port Forwarding
+# ============================================================================
+[port_forwarding]
+# Inbound port forwarding rules (simplified DNAT)
+
+# Example port forwards (disabled by default)
+# [[port_forwarding.forwards]]
+# external_port = 80
+# internal_address = "192.168.1.100"
+# internal_port = 80
+# protocol = "TCP"
+# enabled = false
+# description = "HTTP to internal web server"
+
+# [[port_forwarding.forwards]]
+# external_port = 443
+# internal_address = "192.168.1.100"
+# internal_port = 443
+# protocol = "TCP"
+# enabled = false
+# description = "HTTPS to internal web server"
+
+# [[port_forwarding.forwards]]
+# external_port = 3389
+# internal_address = "192.168.1.50"
+# internal_port = 3389
+# protocol = "TCP"
+# enabled = false
+# description = "RDP to internal workstation (SECURITY RISK)"
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Additional firewall behavior controls
+
+# IP fragment handling
+# Valid values: "DROP", "ALLOW", "REASSEMBLE"
+fragment_handling = "REASSEMBLE"
+
+# Action for malformed packets
+# Valid values: "DROP", "LOG_AND_DROP"
+invalid_packet_action = "LOG_AND_DROP"
+
+# Enforce RFC-compliant TCP state machine
+strict_tcp_validation = true
+
+# ICMP rate limiting (packets/second)
+# 0 = unlimited
+icmp_rate_limit = 100
+
+# Log packets with invalid source addresses (martians)
+log_martian_packets = true
+
+# Reverse path forwarding check
+# Valid values: "STRICT", "LOOSE", "DISABLED"
+# STRICT: Packet source must be reachable via incoming interface
+# LOOSE: Packet source must be reachable via any interface
+rpf_check = "STRICT"
+
+# SYN flood protection threshold (connections/second)
+# 0 = disabled, handled by ddos_protection in firewall_engine.toml
+syn_flood_protection = 0
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# WAN_INTERFACE - WAN interface name
+# LAN_INTERFACE - LAN interface name
+# DMZ_INTERFACE - DMZ interface name
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Notes
+# ============================================================================
+# Rule Evaluation Order:
+# 1. Rules are evaluated by group priority (lower first)
+# 2. Within a group, rules evaluated by rule priority
+# 3. First matching rule determines action
+# 4. If no rule matches, default policy applies
+#
+# State Matching:
+# - NEW: First packet of new connection
+# - ESTABLISHED: Part of existing connection
+# - RELATED: Related to existing connection (e.g., FTP data)
+# - INVALID: Packet doesn't match any connection
+#
+# Address Syntax:
+# - Single IP: "192.168.1.100"
+# - CIDR: "192.168.1.0/24"
+# - Range: "192.168.1.10-192.168.1.20"
+# - Object reference: "LAN_NETWORK"
+# - Negation: "!RFC1918_PRIVATE"
+# - Any: "ANY" or "0.0.0.0/0"
+#
+# Port Syntax:
+# - Single port: [80]
+# - Multiple ports: [80, 443, 8080]
+# - Range: [8000-8999]
+# - Any: [] or omit field
+#
+# ============================================================================

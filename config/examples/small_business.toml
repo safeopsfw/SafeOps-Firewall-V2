@@ -1,0 +1,407 @@
+# SafeOps v2.0 - Small Business Configuration Example
+# Pre-configured for small/medium business (10-50 devices)
+#
+# FEATURES:
+#   ✓ Strict firewall with zone-based security
+#   ✓ Multiple VLANs (Management, Staff, Guest, IoT)
+#   ✓ TLS inspection ENABLED (for security)
+#   ✓ IDS/IPS in PREVENTION mode (auto-blocking)
+#   ✓ Full threat intelligence integration
+#   ✓ Extended logging (90 days retention)
+#   ✓ DHCP reservations for servers/printers
+#   ✓ QoS rules for VoIP
+#   ✓ Daily backups
+#   ✓ DNS filtering (ads, malware, social media optional)
+#
+# COMPLIANCE:
+#   - Suitable for basic PCI-DSS compliance
+#   - 90-day log retention meets most regulations
+#
+# REQUIREMENTS:
+#   - Minimum 4 CPU cores
+#   - Minimum 4GB RAM
+#   - 100GB+ storage for logs
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+[system]
+hostname = "sb-firewall"
+timezone = "America/New_York"
+admin_email = "it@company.com"
+description = "Small Business Network Security Gateway"
+version = "2.0.0"
+
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+config_directory = "C:\\ProgramData\\SafeOps\\config"
+
+[system.resources]
+max_cpu_cores = 4
+max_memory_mb = 4096
+max_disk_gb = 100
+
+# =============================================================================
+# NETWORK CONFIGURATION
+# =============================================================================
+[network]
+topology = "3-nic"
+
+[network.interfaces]
+wan = "NIC1"
+lan = "NIC2"
+wifi = "NIC3"
+
+[network.addressing]
+wan_mode = "dhcp"
+lan_ip = "192.168.1.1"
+lan_netmask = "255.255.255.0"
+lan_network = "192.168.1.0/24"
+lan_domain = "company.local"
+wifi_ip = "192.168.2.1"
+wifi_netmask = "255.255.255.0"
+wifi_network = "192.168.2.0/24"
+
+enable_ip_forwarding = true
+enable_nat = true
+enable_ipv6 = false
+
+# =============================================================================
+# VLAN CONFIGURATION
+# =============================================================================
+[vlans]
+enabled = true
+
+[vlans.management]
+id = 10
+name = "Management"
+network = "192.168.10.0/24"
+gateway = "192.168.10.1"
+dhcp_enabled = false
+
+[vlans.servers]
+id = 20
+name = "Servers"
+network = "192.168.20.0/24"
+gateway = "192.168.20.1"
+dhcp_enabled = false
+
+[vlans.staff]
+id = 30
+name = "Staff"
+network = "192.168.30.0/24"
+gateway = "192.168.30.1"
+dhcp_enabled = true
+dhcp_range_start = "192.168.30.50"
+dhcp_range_end = "192.168.30.200"
+
+[vlans.guest]
+id = 40
+name = "Guest"
+network = "192.168.40.0/24"
+gateway = "192.168.40.1"
+dhcp_enabled = true
+dhcp_range_start = "192.168.40.10"
+dhcp_range_end = "192.168.40.250"
+isolation = true
+
+[vlans.iot]
+id = 50
+name = "IoT"
+network = "192.168.50.0/24"
+gateway = "192.168.50.1"
+dhcp_enabled = true
+dhcp_range_start = "192.168.50.10"
+dhcp_range_end = "192.168.50.250"
+isolation = true
+
+# =============================================================================
+# SERVICE TOGGLES
+# =============================================================================
+[services]
+kernel_driver = true
+network_logger = true      # ENABLED for audit trail
+firewall_engine = true
+tls_proxy = true           # ENABLED for business security
+ids_ips = true
+dns_server = true
+dhcp_server = true
+wifi_ap = true
+certificate_manager = true
+threat_intel = true
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# =============================================================================
+# FIREWALL CONFIGURATION
+# =============================================================================
+[firewall]
+enabled = true
+default_action = "deny"
+log_denied = true
+log_allowed = false
+max_connections = 1000000
+
+[firewall.ddos_protection]
+enabled = true
+syn_flood_threshold = 1000
+icmp_flood_threshold = 100
+udp_flood_threshold = 1000
+auto_blacklist_enabled = true
+blacklist_duration_seconds = 3600
+
+# =============================================================================
+# TLS INSPECTION
+# =============================================================================
+[tls_proxy]
+enabled = true
+listen_port = 443
+min_tls_version = "1.2"
+max_tls_version = "1.3"
+
+[tls_proxy.bypass]
+bypass_banking_sites = true
+bypass_healthcare_sites = true
+bypass_government_sites = false
+custom_bypass_list = [
+    "*.bank.com",
+    "*.payroll.com",
+    "*.healthcare.gov"
+]
+
+[tls_proxy.inspection]
+deep_packet_inspection = true
+scan_for_malware = true
+block_malicious_downloads = true
+
+# =============================================================================
+# IDS/IPS CONFIGURATION - PREVENTION MODE
+# =============================================================================
+[ids_ips]
+enabled = true
+mode = "ips"
+sensitivity = "medium"
+
+[ids_ips.detection]
+signatures_path = "C:\\Program Files\\SafeOps\\rules\\suricata"
+max_rules = 50000
+enabled_categories = [
+    "malware",
+    "exploit",
+    "phishing",
+    "c2_communication",
+    "data_exfiltration",
+    "brute_force",
+    "web_attacks",
+    "ransomware"
+]
+
+[ids_ips.anomaly_detection]
+enabled = true
+sensitivity = "medium"
+
+[ids_ips.prevention]
+auto_block = true
+block_duration_seconds = 3600
+alert_threshold = 2
+
+# =============================================================================
+# DNS CONFIGURATION
+# =============================================================================
+[dns]
+enabled = true
+listen_port = 53
+upstream_servers = ["1.1.1.1", "1.0.0.1", "8.8.8.8"]
+cache_enabled = true
+cache_size_mb = 256
+
+[dns.filtering]
+enabled = true
+block_ads = true
+block_trackers = true
+block_malware_domains = true
+block_phishing_domains = true
+threat_intel_integration = true
+
+[dns.security]
+dnssec_enabled = true
+rate_limit_enabled = true
+rate_limit_per_ip = 200
+
+# =============================================================================
+# DHCP CONFIGURATION
+# =============================================================================
+[dhcp]
+enabled = true
+
+[dhcp.lan_pool]
+interface = "NIC2"
+range_start = "192.168.1.50"
+range_end = "192.168.1.200"
+default_lease_hours = 24
+dns_servers = ["192.168.1.1"]
+domain_name = "company.local"
+
+# Static reservations file
+reservations_enabled = true
+reservations_file = "C:\\ProgramData\\SafeOps\\config\\dhcp\\reservations.json"
+
+# =============================================================================
+# WIFI CONFIGURATION
+# =============================================================================
+[wifi]
+enabled = true
+ssid = "CompanyWiFi"
+channel = 0
+band = "5GHz"
+country_code = "US"
+security = "wpa3"
+passphrase = "${WIFI_PASSWORD}"
+max_clients = 50
+
+[wifi.guest_network]
+enabled = true
+ssid = "Company-Guest"
+passphrase = "${WIFI_GUEST_PASSWORD}"
+vlan_id = 40
+bandwidth_limit_mbps = 25
+session_timeout_minutes = 480
+guest_isolation = true
+
+# =============================================================================
+# QoS - Quality of Service
+# =============================================================================
+[qos]
+enabled = true
+
+[qos.voip]
+priority = "high"
+ports = [5060, 5061, 10000, 20000]
+bandwidth_guarantee_percent = 20
+
+[qos.video_conference]
+priority = "high"
+applications = ["zoom", "teams", "webex"]
+bandwidth_guarantee_percent = 30
+
+[qos.guest]
+priority = "low"
+network = "192.168.40.0/24"
+bandwidth_limit_percent = 20
+
+# =============================================================================
+# THREAT INTELLIGENCE
+# =============================================================================
+[threat_intel]
+enabled = true
+update_interval_hours = 6
+
+[threat_intel.feeds]
+enabled_feeds = [
+    "abuse_urlhaus",
+    "abuse_feodo",
+    "spamhaus_drop",
+    "spamhaus_edrop",
+    "emerging_threats",
+    "tor_exit_nodes"
+]
+enable_free_feeds = true
+maxmind_geoip_enabled = true
+
+# =============================================================================
+# LOGGING - 90 DAY RETENTION
+# =============================================================================
+[logging]
+log_level = "info"
+log_format = "json"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+log_max_size_mb = 100
+log_max_files = 20
+compress_rotated = true
+retention_days = 90
+
+[logging.audit]
+enabled = true
+audit_log_file = "C:\\ProgramData\\SafeOps\\logs\\audit.log"
+retention_days = 365
+
+# =============================================================================
+# NETWORK LOGGING
+# =============================================================================
+[network_logger]
+enabled = true
+ring_buffer_size_gb = 1
+consumer_threads = 4
+circular_buffer_minutes = 30
+database_batch_size = 10000
+database_flush_interval_seconds = 10
+
+# =============================================================================
+# UPDATES - MANUAL APPROVAL
+# =============================================================================
+[updates]
+auto_check = true
+check_interval_hours = 12
+auto_download = true
+auto_install_security = true
+auto_install_signatures = true
+auto_install_software = false  # Manual approval
+channel = "stable"
+
+[updates.maintenance_window]
+days = ["sunday"]
+start_time = "02:00"
+end_time = "06:00"
+
+# =============================================================================
+# BACKUP - DAILY
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 1 * * *"  # Daily at 1 AM
+destination = "C:\\SafeOps_Backups"
+retention_days = 30
+max_backups = 30
+compression = true
+encryption = true
+
+# =============================================================================
+# DATA RETENTION
+# =============================================================================
+[retention]
+network_traffic_days = 30
+firewall_logs_days = 90
+ids_alerts_days = 365
+system_logs_days = 90
+dns_logs_days = 90
+dhcp_logs_days = 90
+
+# =============================================================================
+# MONITORING
+# =============================================================================
+[monitoring]
+metrics_enabled = true
+metrics_port = 9090
+healthcheck_enabled = true
+healthcheck_port = 8080
+
+[monitoring.alerts]
+cpu_threshold_percent = 80
+memory_threshold_percent = 85
+disk_threshold_percent = 90
+
+# =============================================================================
+# WEB UI
+# =============================================================================
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 60
+mfa_enabled = false
+default_theme = "dark"

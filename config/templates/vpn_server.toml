@@ -1,0 +1,607 @@
+# ============================================================================
+# SafeOps VPN Server Configuration
+# ============================================================================
+# Provides secure remote access to the SafeOps network via OpenVPN or
+# WireGuard protocols. Supports flexible authentication, firewall integration,
+# and comprehensive client management.
+#
+# Supported Protocols:
+#   • OpenVPN - Industry standard, broad client support
+#   • WireGuard - Modern, high-performance VPN
+#
+# Key Features:
+#   ✓ Dual protocol support (OpenVPN + WireGuard)
+#   ✓ Multiple authentication methods (Certificate, LDAP, RADIUS, 2FA)
+#   ✓ Automatic firewall integration
+#   ✓ Split tunnel or full tunnel routing
+#   ✓ Client session tracking and management
+#   ✓ Strong encryption with perfect forward secrecy
+#
+# ============================================================================
+
+# ============================================================================
+# SERVICE CONFIGURATION
+# ============================================================================
+
+[service]
+service_name = "vpn_server"
+description = "SafeOps VPN Server (OpenVPN + WireGuard)"
+version = "2.0.0"
+
+# Protocol selection
+vpn_protocol = "BOTH"  # Options: OPENVPN, WIREGUARD, BOTH
+
+# Service endpoints
+listen_address = "0.0.0.0"  # Listen on all interfaces
+grpc_listen_address = "127.0.0.1:50065"
+grpc_listen_port = 50065
+
+# Health and metrics
+health_check_enabled = true
+health_check_interval_seconds = 30
+health_check_endpoint = "http://127.0.0.1:8095/health"
+metrics_enabled = true
+metrics_port = 9105
+metrics_path = "/metrics"
+
+# Orchestrator integration
+orchestrator_endpoint = "127.0.0.1:50051"
+register_with_orchestrator = true
+
+# ============================================================================
+# OPENVPN CONFIGURATION
+# ============================================================================
+
+[openvpn]
+enabled = true
+
+# Network mode
+mode = "TUN"  # TUN (routed) or TAP (bridged)
+protocol = "UDP"  # UDP (recommended) or TCP
+port = 1194
+
+# Server configuration
+config_file = "D:\\SafeOps\\Data\\openvpn\\server.conf"
+management_interface = "127.0.0.1"
+management_port = 7505
+
+# Encryption
+cipher = "AES-256-GCM"  # AES-256-GCM, CHACHA20-POLY1305
+auth = "SHA256"  # SHA256, SHA512
+tls_version_min = "1.2"  # Minimum TLS version
+
+# Key files
+ca_certificate = "${VPN_CA_CERT}"
+server_certificate = "${VPN_SERVER_CERT}"
+server_key = "${VPN_SERVER_KEY}"
+dh_params = "D:\\SafeOps\\Data\\openvpn\\dh2048.pem"
+
+# TLS authentication (additional layer of security)
+tls_auth_enabled = true
+tls_auth_key = "D:\\SafeOps\\Data\\openvpn\\ta.key"
+tls_auth_direction = 0  # Server uses 0, clients use 1
+
+# TLS encryption (OpenVPN 2.4+, more secure than tls-auth)
+tls_crypt_enabled = false  # Enable if all clients support it
+tls_crypt_key = "D:\\SafeOps\\Data\\openvpn\\tc.key"
+
+# Compression
+compression = "LZ4"  # LZ4, LZO, NONE (NONE recommended for security)
+
+# Server directives
+keepalive_ping = 10
+keepalive_timeout = 120
+persist_key = true
+persist_tun = true
+
+# Client compatibility
+client_to_client = false  # Allow clients to communicate
+duplicate_cn = false  # Allow duplicate client certificates
+
+# ============================================================================
+# WIREGUARD CONFIGURATION
+# ============================================================================
+
+[wireguard]
+enabled = true
+
+# Interface
+interface_name = "wg0"
+port = 51820
+mtu = 1420  # Recommended for most networks
+
+# Server keys
+private_key_file = "${WIREGUARD_PRIVATE_KEY}"
+# Public key is derived from private key
+# Generate with: wg genkey | tee privatekey | wg pubkey > publickey
+
+# Network configuration
+address = "10.9.0.1/24"  # WireGuard server address
+
+# Connection settings
+persistent_keepalive = 25  # Keep NAT mappings alive (seconds)
+listen_port = 51820
+
+# Client configuration template directory
+client_config_template = "D:\\SafeOps\\Data\\wireguard\\client-template.conf"
+client_config_output_dir = "D:\\SafeOps\\Data\\wireguard\\clients"
+
+# ============================================================================
+# VPN NETWORK CONFIGURATION
+# ============================================================================
+
+[network]
+# VPN subnet (must not conflict with internal networks)
+vpn_network = "10.8.0.0/24"  # For OpenVPN
+vpn_netmask = "255.255.255.0"
+vpn_gateway = "10.8.0.1"
+
+# WireGuard uses 10.9.0.0/24 (configured above)
+
+# Client IP pool
+client_ip_pool_start = "10.8.0.100"
+client_ip_pool_end = "10.8.0.200"
+lease_duration_seconds = 86400  # 24 hours
+
+# Static IP assignments (optional)
+[[network.static_assignments]]
+client_name = "remote-worker-01"
+ip_address = "10.8.0.10"
+protocol = "OPENVPN"
+
+[[network.static_assignments]]
+client_name = "mobile-admin"
+ip_address = "10.9.0.10"
+protocol = "WIREGUARD"
+
+# ============================================================================
+# DNS AND ROUTING
+# ============================================================================
+
+[dns_routing]
+# DNS servers to push to VPN clients
+push_dns_servers = ["192.168.1.1", "1.1.1.1"]  # SafeOps DNS + fallback
+push_domain = "corp.local"
+
+# Routes to push to clients (split tunnel)
+[[dns_routing.push_routes]]
+network = "192.168.1.0"
+netmask = "255.255.255.0"
+description = "Internal LAN"
+
+[[dns_routing.push_routes]]
+network = "192.168.10.0"
+netmask = "255.255.0.0"
+description = "Corporate network"
+
+# Full tunnel vs split tunnel
+redirect_gateway = false  # false = split tunnel, true = full tunnel
+redirect_gateway_def1 = false  # Override default gateway
+
+# Prevent DNS leaks (Windows clients)
+block_outside_dns = true  # Force all DNS through VPN
+
+# IPv6 support
+ipv6_enabled = false
+push_ipv6_routes = []
+
+# ============================================================================
+# AUTHENTICATION CONFIGURATION
+# ============================================================================
+
+[authentication]
+# Primary authentication method
+authentication_method = "CERTIFICATE"  # Options: CERTIFICATE, USERNAME_PASSWORD, BOTH, LDAP, RADIUS
+
+# Certificate-based authentication
+[authentication.certificate]
+enabled = true
+ca_certificate_path = "${VPN_CA_CERT}"
+
+# Certificate revocation
+crl_enabled = true
+crl_path = "D:\\SafeOps\\Data\\openvpn\\crl.pem"
+crl_verify_mode = "STRICT"  # STRICT, OPTIONAL, NONE
+
+# Client certificate requirements
+require_client_cert = true
+verify_x509_name = true  # Verify CN matches username
+
+# Username/password authentication
+[authentication.username_password]
+enabled = false  # Enable for dual authentication (cert + password)
+user_database = "LOCAL"  # Options: LOCAL, LDAP, RADIUS, DATABASE
+
+# Local user file (if user_database = LOCAL)
+local_users_file = "D:\\SafeOps\\Data\\vpn\\users.txt"
+
+# Database authentication (if user_database = DATABASE)
+database_type = "POSTGRESQL"
+database_connection_string = "host=localhost port=5432 dbname=safeops user=vpn_auth password=${VPN_DB_PASSWORD}"
+
+# Two-factor authentication
+[authentication.two_factor]
+enabled = false  # Require 2FA
+method = "TOTP"  # Options: TOTP, SMS, EMAIL
+totp_issuer = "SafeOps VPN"
+totp_window = 1  # Number of time steps to check
+
+# LDAP authentication
+[authentication.ldap]
+enabled = false
+ldap_server = "ldap://dc.corp.local"
+ldap_port = 389
+ldap_ssl = false  # Use LDAPS (port 636) if true
+ldap_base_dn = "DC=corp,DC=local"
+ldap_bind_dn = "CN=vpn_service,OU=ServiceAccounts,DC=corp,DC=local"
+ldap_bind_password = "${LDAP_BIND_PASSWORD}"
+ldap_user_filter = "(&(objectClass=user)(sAMAccountName=%u))"
+ldap_group_filter = "(memberOf=CN=VPN-Users,OU=Groups,DC=corp,DC=local)"
+ldap_timeout_seconds = 10
+
+# RADIUS authentication
+[authentication.radius]
+enabled = false
+radius_server = "radius.corp.local"
+radius_port = 1812
+radius_secret = "${RADIUS_SECRET}"
+radius_timeout_seconds = 5
+radius_retries = 3
+
+# Accounting server (optional)
+radius_accounting_enabled = false
+radius_accounting_server = "radius.corp.local"
+radius_accounting_port = 1813
+
+# ============================================================================
+# CLIENT MANAGEMENT
+# ============================================================================
+
+[client_management]
+# Connection limits
+max_clients = 100  # Maximum concurrent VPN clients
+max_clients_per_user = 3  # Maximum connections per username
+client_timeout_seconds = 3600  # Idle timeout (1 hour)
+
+# Client tracking
+[client_management.database]
+enabled = true
+database_type = "POSTGRESQL"
+connection_string = "host=localhost port=5432 dbname=safeops user=safeops password=${POSTGRES_PASSWORD}"
+table_prefix = "vpn_"
+
+# Track client sessions
+track_sessions = true
+track_bandwidth = true
+track_connection_times = true
+
+# Client lifecycle scripts
+[client_management.scripts]
+client_connect_script = "D:\\SafeOps\\scripts\\vpn\\client-connect.ps1"
+client_disconnect_script = "D:\\SafeOps\\scripts\\vpn\\client-disconnect.ps1"
+run_scripts_async = true
+script_timeout_seconds = 30
+
+# Client configuration generation
+[client_management.config_generation]
+auto_generate_configs = true
+config_output_directory = "D:\\SafeOps\\Data\\vpn\\client-configs"
+embed_certificates = true  # Inline certificates in .ovpn files
+include_tls_auth = true
+
+# ============================================================================
+# FIREWALL INTEGRATION
+# ============================================================================
+
+[firewall_integration]
+enabled = true
+firewall_grpc_address = "127.0.0.1:50053"
+
+# Automatic firewall rule creation
+auto_create_firewall_rules = true
+
+# VPN zone configuration
+vpn_zone = "VPN"  # Firewall zone for VPN clients
+vpn_zone_trust_level = "MEDIUM"
+
+# Default traffic policy for VPN clients
+default_vpn_policy = "INSPECT"  # Options: ALLOW, DENY, INSPECT
+
+# VPN to internal network rules
+[[firewall_integration.zone_policies]]
+from_zone = "VPN"
+to_zone = "LAN"
+action = "ALLOW"
+log = true
+
+[[firewall_integration.zone_policies]]
+from_zone = "VPN"
+to_zone = "DMZ"
+action = "DENY"
+log = true
+
+[[firewall_integration.zone_policies]]
+from_zone = "LAN"
+to_zone = "VPN"
+action = "ALLOW"
+log = false
+
+# Port forwarding for VPN server
+[[firewall_integration.port_forwards]]
+external_port = 1194
+internal_ip = "192.168.1.1"
+internal_port = 1194
+protocol = "UDP"
+description = "OpenVPN"
+
+[[firewall_integration.port_forwards]]
+external_port = 51820
+internal_ip = "192.168.1.1"
+internal_port = 51820
+protocol = "UDP"
+description = "WireGuard"
+
+# ============================================================================
+# ENCRYPTION AND SECURITY
+# ============================================================================
+
+[encryption]
+# Data channel encryption
+data_cipher = "AES-256-GCM"  # AES-256-GCM, CHACHA20-POLY1305
+data_cipher_fallback = "AES-256-CBC"  # For older clients
+
+# Control channel encryption
+control_cipher = "AES-256-GCM"
+
+# HMAC authentication
+auth_algorithm = "SHA256"  # SHA256, SHA384, SHA512
+
+# Perfect forward secrecy
+perfect_forward_secrecy = true
+reneg_sec = 3600  # Renegotiate data channel key every hour
+
+# TLS settings
+tls_version_min = "1.2"
+tls_cipher_suite = "TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-ECDHE-RSA-WITH-CHACHA20-POLY1305-SHA256"
+
+# Additional security
+disable_compression = false  # Disable to prevent VORACLE attack
+verify_peer_cert = true
+remote_cert_tls = "server"  # Verify peer cert is a server cert
+
+# ============================================================================
+# LOGGING AND MONITORING
+# ============================================================================
+
+[logging]
+# Log settings
+log_level = "INFO"  # ERROR, WARN, INFO, DEBUG, TRACE
+log_format = "JSON"
+
+# Connection logging
+connection_logging_enabled = true
+log_auth_attempts = true
+log_successful_connections = true
+log_failed_connections = true
+log_disconnections = true
+
+# Session logging
+session_logging_enabled = true
+log_client_info = true  # Log client OS, version, etc.
+log_bandwidth_usage = true
+
+# Detailed traffic logging (verbose)
+traffic_logging_enabled = false  # Enable for debugging only
+log_packet_details = false
+
+# Log destinations
+log_to_file = true
+log_file_path = "D:\\SafeOps\\logs\\vpn_server.log"
+log_to_database = true
+log_to_syslog = false
+syslog_server = "siem.corp.local:514"
+
+# Log rotation
+log_rotation_enabled = true
+log_max_size_mb = 100
+log_max_files = 10
+compress_old_logs = true
+
+# ============================================================================
+# PERFORMANCE TUNING
+# ============================================================================
+
+[performance]
+# Worker threads
+worker_threads = 4  # VPN processing threads
+io_threads = 2
+
+# Socket buffers
+socket_buffer_size = 262144  # 256 KB
+socket_sndbuf = 262144
+socket_rcvbuf = 262144
+
+# TCP optimization (if using TCP mode)
+tcp_nodelay = true  # Disable Nagle's algorithm
+tcp_queue_limit = 128
+
+# Fast I/O
+fast_io_enabled = true
+
+# Thread pool
+thread_pool_size = 8
+thread_pool_queue_size = 1000
+
+# Connection queue
+max_pending_connections = 100
+
+# Packet buffering
+packet_buffer_size = 50000
+fragment_buffer_size = 10000
+
+# Link MTU discovery
+mtu_discovery = true
+mtu_test = false  # Disable to save bandwidth
+
+# ============================================================================
+# HIGH AVAILABILITY (OPTIONAL)
+# ============================================================================
+
+[high_availability]
+enabled = false  # Enable for clustered VPN servers
+
+# Cluster configuration
+cluster_mode = "ACTIVE_PASSIVE"  # ACTIVE_PASSIVE, ACTIVE_ACTIVE
+cluster_id = "vpn-cluster-01"
+
+# Peer servers
+peer_servers = ["vpn-server-02:50065", "vpn-server-03:50065"]
+
+# Virtual IP (VRRP)
+virtual_ip = "203.0.113.100"
+vrrp_priority = 100  # Higher priority = preferred master
+
+# State synchronization
+state_sync_enabled = true
+sync_interval_seconds = 5
+
+# ============================================================================
+# MONITORING AND HEALTH CHECKS
+# ============================================================================
+
+[monitoring]
+# Health checks
+health_check_enabled = true
+health_check_interval_seconds = 30
+
+# Check types
+check_openvpn_process = true
+check_wireguard_interface = true
+check_network_connectivity = true
+check_authentication_backend = true
+
+# Metrics
+export_prometheus_metrics = true
+metrics_port = 9105
+
+# Tracked metrics
+track_active_connections = true
+track_bandwidth_per_client = true
+track_authentication_rate = true
+track_connection_errors = true
+
+# Alerts
+alert_on_service_down = true
+alert_on_high_connection_count = true
+alert_on_auth_failures = true
+auth_failure_threshold = 10  # Alert after 10 failed auths
+
+# ============================================================================
+# BACKUP AND RECOVERY
+# ============================================================================
+
+[backup]
+# Backup VPN configuration and keys
+backup_enabled = true
+backup_schedule = "0 3 * * *"  # Daily at 3 AM
+backup_destination = "D:\\SafeOps\\Backups\\vpn"
+
+# Backup scope
+backup_server_keys = true
+backup_client_configs = true
+backup_user_database = true
+backup_session_logs = false  # Too large
+
+# Encryption
+backup_encryption_enabled = true
+backup_encryption_password = "${BACKUP_ENCRYPTION_PASSWORD}"
+
+# ============================================================================
+# ADVANCED SETTINGS
+# ============================================================================
+
+[advanced]
+# Custom OpenVPN directives
+custom_openvpn_config = """
+# Additional OpenVPN directives can be added here
+# Example: explicit-exit-notify 1
+"""
+
+# Custom WireGuard settings
+custom_wireguard_config = """
+# Additional WireGuard settings
+# Example: Table = 1234
+"""
+
+# IP forwarding
+enable_ip_forwarding = true
+
+# NAT traversal
+allow_nat_traversal = true
+
+# Client-to-client communication
+allow_client_to_client = false
+
+# Protocol-specific overrides
+[advanced.protocol_overrides]
+# Override settings per protocol if needed
+openvpn_specific = {}
+wireguard_specific = {}
+
+# ============================================================================
+# CLIENT PROFILES (EXAMPLES)
+# ============================================================================
+
+# Example WireGuard client configuration
+[[clients.wireguard]]
+name = "remote-worker-01"
+public_key = "CLIENT_PUBLIC_KEY_HERE"
+allowed_ips = ["10.9.0.10/32"]
+endpoint = ""  # Client endpoint (if road warrior, leave empty)
+persistent_keepalive = 25
+
+[[clients.wireguard]]
+name = "mobile-admin"
+public_key = "ADMIN_PUBLIC_KEY_HERE"
+allowed_ips = ["10.9.0.20/32"]
+persistent_keepalive = 25
+
+# OpenVPN clients are managed via certificates
+# Certificate common name = username
+
+# ============================================================================
+# ENVIRONMENT VARIABLES REFERENCE
+# ============================================================================
+# The following environment variables should be set:
+#
+# ${VPN_CA_CERT} - CA certificate path
+# ${VPN_SERVER_CERT} - Server certificate path
+# ${VPN_SERVER_KEY} - Server private key path
+# ${WIREGUARD_PRIVATE_KEY} - WireGuard server private key file
+# ${LDAP_BIND_PASSWORD} - LDAP bind password (if using LDAP)
+# ${RADIUS_SECRET} - RADIUS shared secret (if using RADIUS)
+# ${POSTGRES_PASSWORD} - PostgreSQL password
+# ${VPN_DB_PASSWORD} - VPN auth database password
+# ${BACKUP_ENCRYPTION_PASSWORD} - Backup encryption password
+#
+# ============================================================================
+
+# ============================================================================
+# SELF-CHECK VALIDATION
+# ============================================================================
+# Before deploying this configuration, verify:
+#
+# [✓] CA certificate and server certificate exist and are valid
+# [✓] Private keys have correct permissions (readable only by service)
+# [✓] VPN network (10.8.0.0/24, 10.9.0.0/24) doesn't conflict with internal networks
+# [✓] Firewall allows UDP 1194 (OpenVPN) and UDP 51820 (WireGuard)
+# [✓] DNS servers in push_dns_servers are reachable
+# [✓] Authentication backend (LDAP/RADIUS) configured and tested
+# [✓] Client certificate generation process documented
+# [✓] Split tunnel routes configured appropriately
+# [✓] Firewall integration tested and VPN zone created
+# [✓] Log directory has sufficient space
+# [✓] Backup destination accessible and has space
+# [✓] All environment variables set correctly
+#
+# ============================================================================

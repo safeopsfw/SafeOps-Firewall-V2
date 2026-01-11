@@ -1,0 +1,547 @@
+# SafeOps v2.0 - Enterprise Configuration Example
+# Pre-configured for enterprise deployment (100+ devices)
+#
+# FEATURES:
+#   ✓ Advanced firewall with GeoIP blocking
+#   ✓ Multiple security zones (DMZ, Internal, Guest, IoT)
+#   ✓ Full TLS inspection with certificate pinning bypass
+#   ✓ IDS/IPS with custom rules and ML-based detection
+#   ✓ Multiple threat intelligence feeds (premium)
+#   ✓ Long-term logging (365 days)
+#   ✓ SIEM integration (Splunk/Elasticsearch)
+#   ✓ High-availability ready
+#   ✓ Compliance mode (PCI-DSS, HIPAA, SOX, GDPR)
+#   ✓ Performance optimization for high throughput
+#
+# COMPLIANCE:
+#   - PCI-DSS: 1-year log retention, TLS 1.2+, access controls
+#   - HIPAA: Audit logging, encryption, access monitoring
+#   - SOX: Change management, audit trail
+#   - GDPR: Data minimization, right to deletion
+#
+# REQUIREMENTS:
+#   - Minimum 16 CPU cores
+#   - Minimum 16GB RAM
+#   - 1TB+ storage for logs
+#   - 10Gbps network interfaces recommended
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+[system]
+hostname = "ent-firewall-01"
+timezone = "UTC"
+admin_email = "security-team@enterprise.com"
+description = "Enterprise Network Security Gateway - Primary"
+version = "2.0.0"
+
+# Installation paths (Windows)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+config_directory = "C:\\ProgramData\\SafeOps\\config"
+
+[system.resources]
+max_cpu_cores = 16
+max_memory_mb = 16384
+max_disk_gb = 1000
+
+# =============================================================================
+# NETWORK CONFIGURATION
+# =============================================================================
+[network]
+topology = "3-nic"
+
+[network.interfaces]
+wan = "NIC1"
+lan = "NIC2"
+dmz = "NIC3"
+
+[network.addressing]
+wan_mode = "static"
+wan_static_ip = "203.0.113.10"
+wan_netmask = "255.255.255.0"
+wan_gateway = "203.0.113.1"
+lan_ip = "10.0.0.1"
+lan_netmask = "255.255.0.0"
+lan_network = "10.0.0.0/16"
+dmz_ip = "172.16.0.1"
+dmz_netmask = "255.255.255.0"
+dmz_network = "172.16.0.0/24"
+
+enable_ip_forwarding = true
+enable_nat = true
+enable_ipv6 = false
+
+# =============================================================================
+# SECURITY ZONES
+# =============================================================================
+[zones]
+[zones.wan]
+name = "WAN"
+interfaces = ["NIC1"]
+trust_level = 0
+default_policy = "deny"
+
+[zones.dmz]
+name = "DMZ"
+interfaces = ["NIC3"]
+trust_level = 25
+default_policy = "deny"
+networks = ["172.16.0.0/24"]
+
+[zones.internal]
+name = "Internal"
+interfaces = ["NIC2"]
+trust_level = 75
+default_policy = "deny"
+networks = ["10.0.0.0/16"]
+
+[zones.management]
+name = "Management"
+trust_level = 100
+default_policy = "deny"
+networks = ["10.255.0.0/24"]
+
+# =============================================================================
+# VLAN CONFIGURATION
+# =============================================================================
+[vlans]
+enabled = true
+
+[vlans.management]
+id = 10
+name = "Management"
+network = "10.255.0.0/24"
+gateway = "10.255.0.1"
+zone = "Management"
+
+[vlans.servers]
+id = 20
+name = "Servers"
+network = "10.0.20.0/24"
+gateway = "10.0.20.1"
+zone = "Internal"
+
+[vlans.databases]
+id = 30
+name = "Databases"
+network = "10.0.30.0/24"
+gateway = "10.0.30.1"
+zone = "Internal"
+isolation = true
+
+[vlans.corporate]
+id = 100
+name = "Corporate"
+network = "10.0.100.0/24"
+gateway = "10.0.100.1"
+zone = "Internal"
+
+[vlans.guest]
+id = 200
+name = "Guest"
+network = "10.0.200.0/24"
+gateway = "10.0.200.1"
+zone = "Guest"
+isolation = true
+
+[vlans.iot]
+id = 250
+name = "IoT-OT"
+network = "10.0.250.0/24"
+gateway = "10.0.250.1"
+zone = "IoT"
+isolation = true
+
+# =============================================================================
+# SERVICE TOGGLES
+# =============================================================================
+[services]
+kernel_driver = true
+network_logger = true       # CRITICAL for enterprise
+firewall_engine = true
+tls_proxy = true            # Full TLS inspection
+ids_ips = true
+dns_server = true
+dhcp_server = false         # Use central DHCP (Active Directory)
+wifi_ap = false             # Enterprise uses dedicated APs
+certificate_manager = true
+threat_intel = true
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# =============================================================================
+# FIREWALL CONFIGURATION
+# =============================================================================
+[firewall]
+enabled = true
+default_action = "deny"
+log_denied = true
+log_allowed = true
+max_connections = 10000000
+
+[firewall.geoip]
+enabled = true
+block_countries = ["KP", "IR", "SY", "CU"]
+log_blocked = true
+
+[firewall.ddos_protection]
+enabled = true
+syn_flood_threshold = 10000
+icmp_flood_threshold = 1000
+udp_flood_threshold = 10000
+connection_rate_limit = 500
+auto_blacklist_enabled = true
+blacklist_duration_seconds = 7200
+
+[firewall.rate_limiting]
+enabled = true
+max_connections_per_ip = 1000
+max_new_connections_per_sec = 100
+
+# =============================================================================
+# TLS INSPECTION
+# =============================================================================
+[tls_proxy]
+enabled = true
+listen_port = 443
+min_tls_version = "1.2"
+max_tls_version = "1.3"
+certificate_cache_size = 1024
+max_connections = 100000
+
+[tls_proxy.certificate]
+key_algorithm = "ECDSA"
+ecdsa_curve = "P-384"
+
+[tls_proxy.bypass]
+bypass_banking_sites = true
+bypass_healthcare_sites = true
+bypass_government_sites = true
+custom_bypass_list = [
+    "*.bank.com",
+    "*.payroll.com",
+    "*.healthcare.gov",
+    "*.internal.enterprise.com",
+    "*.amazonaws.com",
+    "*.azure.com",
+    "*.cloudflare.com"
+]
+
+[tls_proxy.inspection]
+deep_packet_inspection = true
+extract_http_headers = true
+scan_for_malware = true
+block_malicious_downloads = true
+send_to_ids = true
+
+[tls_proxy.performance]
+connection_pool_size = 10000
+worker_threads = 32
+enable_http2 = true
+enable_session_resumption = true
+hardware_acceleration = true
+
+# =============================================================================
+# IDS/IPS CONFIGURATION
+# =============================================================================
+[ids_ips]
+enabled = true
+mode = "ips"
+sensitivity = "high"
+
+[ids_ips.detection]
+signatures_path = "C:\\Program Files\\SafeOps\\rules\\suricata"
+custom_rules_path = "C:\\Program Files\\SafeOps\\rules\\custom"
+max_rules = 100000
+rule_reload_interval_seconds = 3600
+enabled_categories = [
+    "malware", "exploit", "phishing", "c2_communication",
+    "data_exfiltration", "lateral_movement", "privilege_escalation",
+    "credential_theft", "dos_ddos", "web_attacks", "brute_force",
+    "reconnaissance", "ransomware"
+]
+
+[ids_ips.signature_matching]
+engine = "hyperscan"
+enable_regex = true
+enable_vectorization = true
+pattern_cache_size = 1024
+
+[ids_ips.anomaly_detection]
+enabled = true
+baseline_learning_period_hours = 336
+sensitivity = "medium"
+
+[ids_ips.prevention]
+auto_block = true
+block_duration_seconds = 7200
+alert_threshold = 2
+whitelist_ips = ["10.255.0.0/24"]
+sync_with_firewall = true
+
+[ids_ips.performance]
+worker_threads = 16
+matcher_threads = 8
+packets_per_batch = 256
+memory_pool_size_mb = 2048
+
+# =============================================================================
+# THREAT INTELLIGENCE - PREMIUM
+# =============================================================================
+[threat_intel]
+enabled = true
+update_interval_hours = 1
+
+[threat_intel.feeds]
+enabled_feeds = [
+    "abuse_urlhaus", "abuse_feodo", "spamhaus_drop",
+    "spamhaus_edrop", "emerging_threats", "tor_exit_nodes", "sslbl"
+]
+parallel_downloads = 8
+enable_free_feeds = true
+
+[threat_intel.premium]
+abuseipdb_enabled = true
+virustotal_enabled = true
+alienvault_otx_enabled = true
+maxmind_enabled = true
+
+[threat_intel.scoring]
+multi_source_aggregation = true
+time_decay_enabled = true
+confidence_threshold = 60
+reputation_algorithm = "weighted_average"
+
+[threat_intel.geolocation]
+enabled = true
+block_countries = ["KP", "IR", "SY"]
+
+[threat_intel.performance]
+lookup_threads = 16
+feed_downloader_threads = 8
+batch_size = 50000
+
+# =============================================================================
+# DNS CONFIGURATION
+# =============================================================================
+[dns]
+enabled = true
+listen_port = 53
+upstream_servers = [
+    "10.0.20.10",  # Internal DNS (AD)
+    "10.0.20.11",  # Internal DNS backup
+    "1.1.1.1",     # External fallback
+    "8.8.8.8"
+]
+cache_enabled = true
+cache_size_mb = 1024
+
+[dns.filtering]
+enabled = true
+block_ads = true
+block_trackers = true
+block_malware_domains = true
+block_phishing_domains = true
+threat_intel_integration = true
+
+[dns.security]
+dnssec_enabled = true
+validate_dnssec = true
+rate_limit_enabled = true
+rate_limit_per_ip = 500
+
+# =============================================================================
+# NETWORK LOGGING
+# =============================================================================
+[network_logger]
+enabled = true
+ring_buffer_size_gb = 4
+consumer_threads = 8
+enable_zero_copy = true
+circular_buffer_minutes = 60
+database_batch_size = 50000
+database_flush_interval_seconds = 5
+
+[network_logger.dpi]
+enabled = true
+protocol_detection = true
+application_detection = true
+
+[network_logger.performance]
+cpu_affinity = [0, 1, 2, 3]
+enable_simd = true
+memory_pool_size_mb = 4096
+
+# =============================================================================
+# SIEM INTEGRATION
+# =============================================================================
+[siem]
+enabled = true
+
+[siem.splunk]
+enabled = true
+hec_url = "https://splunk.enterprise.com:8088"
+index = "safeops"
+source = "safeops-firewall"
+sourcetype = "safeops:logs"
+batch_size = 1000
+flush_interval_seconds = 5
+tls_verify = true
+
+[siem.elasticsearch]
+enabled = false
+url = "https://elasticsearch.enterprise.com:9200"
+index_pattern = "safeops-logs-%Y.%m.%d"
+batch_size = 1000
+flush_interval_seconds = 5
+
+# =============================================================================
+# COMPLIANCE MODE
+# =============================================================================
+[compliance]
+enabled = true
+frameworks = ["PCI-DSS", "HIPAA", "SOX", "GDPR"]
+
+[compliance.pci_dss]
+enabled = true
+tls_min_version = "1.2"
+log_retention_days = 365
+audit_trail_enabled = true
+access_logging = true
+change_management = true
+
+[compliance.hipaa]
+enabled = true
+encryption_required = true
+audit_logging = true
+access_controls = true
+breach_notification = true
+
+[compliance.gdpr]
+enabled = true
+data_minimization = true
+right_to_deletion = true
+
+# =============================================================================
+# LOGGING - 365 DAY RETENTION
+# =============================================================================
+[logging]
+log_level = "info"
+log_format = "json"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+log_max_size_mb = 500
+log_max_files = 100
+compress_rotated = true
+retention_days = 365
+
+[logging.audit]
+enabled = true
+audit_log_file = "C:\\ProgramData\\SafeOps\\logs\\audit.log"
+separate_audit_log = true
+retention_days = 2555  # 7 years for SOX
+sign_entries = true
+
+[logging.sensitive_data]
+redact_sensitive = true
+redact_fields = ["password", "secret", "api_key", "token", "ssn", "credit_card"]
+
+# =============================================================================
+# PERFORMANCE OPTIMIZATION
+# =============================================================================
+[performance]
+worker_threads = 16
+io_threads = 8
+ring_buffer_size_gb = 4
+packet_batch_size = 256
+database_batch_size = 50000
+enable_hardware_offload = true
+enable_rss = true
+
+# =============================================================================
+# HIGH AVAILABILITY
+# =============================================================================
+[high_availability]
+enabled = false
+mode = "active_passive"
+heartbeat_interval_ms = 1000
+failover_timeout_ms = 3000
+
+# =============================================================================
+# BACKUP
+# =============================================================================
+[backup]
+enabled = true
+schedule = "0 0 * * *"  # Daily at midnight
+destination = "C:\\SafeOps_Backups"
+retention_days = 90
+max_backups = 90
+compression = true
+encryption = true
+
+[backup.secondary]
+enabled = true
+destination = "\\\\nas.enterprise.com\\backups\\safeops"
+
+# =============================================================================
+# DATA RETENTION
+# =============================================================================
+[retention]
+network_traffic_days = 90
+firewall_logs_days = 365
+ids_alerts_days = 730
+system_logs_days = 365
+dns_logs_days = 365
+audit_logs_days = 2555
+
+# =============================================================================
+# UPDATES - MANUAL APPROVAL
+# =============================================================================
+[updates]
+auto_check = true
+check_interval_hours = 6
+auto_download = true
+auto_install_security = false  # Require approval
+auto_install_signatures = true
+auto_install_software = false
+channel = "stable"
+require_approval = true
+approval_email = "security-team@enterprise.com"
+
+[updates.maintenance_window]
+days = ["sunday"]
+start_time = "02:00"
+end_time = "04:00"
+
+# =============================================================================
+# MONITORING
+# =============================================================================
+[monitoring]
+metrics_enabled = true
+metrics_port = 9090
+healthcheck_enabled = true
+healthcheck_port = 8080
+
+[monitoring.alerts]
+cpu_threshold_percent = 70
+memory_threshold_percent = 75
+disk_threshold_percent = 80
+cooldown_minutes = 5
+
+# =============================================================================
+# WEB UI
+# =============================================================================
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443
+require_authentication = true
+session_timeout_minutes = 30
+mfa_enabled = true
+mfa_required_for_admins = true
+certificate_pinning = true
+ip_whitelist_enabled = true
+default_theme = "dark"

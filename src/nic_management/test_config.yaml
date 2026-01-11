@@ -1,0 +1,34 @@
+# Auto-Generated NIC Configuration
+# Generated from detected network interfaces
+# Edit 'alias' fields to rename interfaces
+
+wan_interfaces:
+    - name: Loopback Pseudo-Interface 1
+      alias: Primary WAN
+      priority: 1
+      weight: 100
+      enabled: true
+      health_check:
+        targets:
+            - 8.8.8.8
+            - 1.1.1.1
+        check_gateway: true
+lan_interfaces:
+    - name: Ethernet 2
+      alias: LAN (Ethernet 2)
+      enabled: true
+      network:
+        subnet: 192.168.56.0/24
+        gateway: 192.168.56.1
+    - name: Wi-Fi
+      alias: LAN (Wi-Fi)
+      enabled: true
+      network:
+        subnet: 192.168.1.0/24
+        gateway: 192.168.1.6
+    - name: Ethernet
+      alias: LAN (Ethernet)
+      enabled: true
+      network:
+        subnet: 192.168.1.0/24
+        gateway: 192.168.1.8

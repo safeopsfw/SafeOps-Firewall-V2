@@ -1,0 +1,688 @@
+# ============================================================================
+# SafeOps Home Network Configuration Example
+# ============================================================================
+# Pre-configured for residential/family use (1-20 devices)
+#
+# This example demonstrates a typical home network setup with:
+#   ✓ Basic single-LAN configuration with guest WiFi isolation
+#   ✓ Parental controls via DNS filtering
+#   ✓ IoT device segregation for security
+#   ✓ Port forwarding for gaming consoles and home servers
+#   ✓ VPN for secure remote access
+#   ✓ Simple backup to USB drive
+#   ✓ Automatic updates with family-friendly schedule
+#   ✓ Privacy-first (NO TLS interception)
+#
+# IDEAL FOR:
+#   • Family homes with kids
+#   • Home offices
+#   • Smart home enthusiasts
+#   • Gamers needing port forwarding
+#   • Tech-savvy homeowners
+#
+# HARDWARE REQUIREMENTS:
+#   • CPU: Intel Core i3/i5 (2-4 cores)
+#   • RAM: 8GB minimum
+#   • Storage: 128GB SSD
+#   • Network: 2x Gigabit NICs (WAN from ISP, LAN to home network)
+#
+# TO USE THIS CONFIG:
+#   1. Copy to C:\ProgramData\SafeOps\config\safeops.toml
+#   2. Adjust network interface names to match your hardware
+#   3. Change WiFi passwords (search for ${WIFI_PASSWORD})
+#   4. Configure port forwarding for your devices
+#   5. Run: safeops.exe validate
+#   6. Run: safeops.exe apply
+#
+# ============================================================================
+
+# ============================================================================
+# SECTION 1: Basic System Configuration
+# ============================================================================
+
+[system]
+# Your home router's name (appears in web UI)
+hostname = "home-gateway"
+
+# Set to your local timezone for correct log timestamps
+timezone = "America/New_York"  # Or "Europe/London", "Asia/Tokyo", etc.
+
+# Optional email for alerts (leave blank if unused)
+admin_email = ""
+
+description = "Home Network Security Gateway"
+version = "2.0.0"
+
+# Installation paths (Windows standard locations)
+install_directory = "C:\\Program Files\\SafeOps"
+data_directory = "C:\\ProgramData\\SafeOps"
+log_directory = "C:\\ProgramData\\SafeOps\\logs"
+backup_directory = "D:\\SafeOps_Backups"  # Can be USB drive
+
+[system.resources]
+# Home networks don't need much - these are conservative limits
+max_cpu_cores = 4          # Use up to 4 CPU cores
+max_memory_mb = 6144       # Use up to 6GB RAM (out of 8GB system)
+max_disk_gb = 80           # Maximum disk usage for logs/data
+
+# ============================================================================
+# SECTION 2: Network Configuration - Single LAN Setup
+# ============================================================================
+# This is the simplest home network setup: one WAN (internet) and one LAN
+# (all your devices). WiFi devices can connect to the same LAN.
+# ============================================================================
+
+[network]
+topology = "2-nic"  # Two network interfaces: WAN and LAN
+
+[network.interfaces]
+# WAN = Internet connection from your ISP's modem
+wan = "Ethernet 0"  # Change to match your actual interface name
+
+# LAN = Your home network (computers, phones, smart TV, etc.)
+lan = "Ethernet 1"  # Change to match your actual interface name
+
+[network.addressing]
+# WAN configuration - usually DHCP from ISP
+wan_mode = "dhcp"  # Options: dhcp, static, pppoe
+
+# If ISP requires static IP, uncomment and configure:
+# wan_mode = "static"
+# wan_ip = "203.0.113.10"
+# wan_netmask = "255.255.255.248"
+# wan_gateway = "203.0.113.1"
+# wan_dns = ["8.8.8.8", "8.8.4.4"]
+
+# LAN configuration - your home network
+lan_ip = "192.168.1.1"          # Router IP (default gateway)
+lan_netmask = "255.255.255.0"   # /24 network (254 devices)
+lan_network = "192.168.1.0/24"  # Full network notation
+lan_domain = "home.local"       # Local DNS domain
+
+# Basic routing
+enable_ip_forwarding = true  # Required for routing
+enable_nat = true            # Required for sharing internet
+enable_ipv6 = false          # Disabled for simplicity
+
+# ============================================================================
+# SECTION 3: IoT Device Segregation (Optional VLANs)
+# ============================================================================
+# Separate IoT devices (smart home) from main network for security.
+# REQUIRES: VLAN-capable network switch
+# ============================================================================
+
+[vlans]
+# Disable if you don't have a managed switch
+enabled = false  # Set to true if using VLANs
+
+# VLAN 10 - Main network (computers, phones, tablets)
+[[vlans.segments]]
+vlan_id = 10
+name = "Main"
+description = "Trusted family devices"
+network = "192.168.10.0/24"
+gateway = "192.168.10.1"
+dhcp_enabled = true
+security_level = "HIGH"
+
+# VLAN 20 - IoT devices (smart home, cameras, etc.)
+[[vlans.segments]]
+vlan_id = 20
+name = "IoT"
+description = "Smart home devices (isolated)"
+network = "192.168.20.0/24"
+gateway = "192.168.20.1"
+dhcp_enabled = true
+security_level = "LOW"
+# Restrict IoT to internet only (can't access main network)
+internet_only = true
+block_inter_vlan = true
+
+# VLAN 30 - Guest network
+[[vlans.segments]]
+vlan_id = 30
+name = "Guest"
+description = "Guest network for visitors"
+network = "192.168.30.0/24"
+gateway = "192.168.30.1"
+dhcp_enabled = true
+security_level = "UNTRUSTED"
+isolation = true
+internet_only = true
+bandwidth_limit_mbps = 25
+
+# ============================================================================
+# SECTION 4: Service Configuration
+# ============================================================================
+
+[services]
+# Core services
+kernel_driver = true      # Packet processing driver
+firewall_engine = true    # Firewall rules engine
+dns_server = true         # DNS with ad-blocking
+dhcp_server = true        # Automatic IP addressing
+ids_ips = true            # Intrusion detection (monitoring only)
+threat_intel = true       # Free threat intelligence feeds
+
+# Optional services
+network_logger = false    # Disabled to save disk space/privacy
+tls_proxy = false         # DISABLED - No SSL interception (privacy!)
+wifi_ap = false           # Enable if using SafeOps as WiFi router
+certificate_manager = true
+vpn_server = false        # Enable in VPN section if needed
+
+# Management services
+backup_restore = true
+update_manager = true
+orchestrator = true
+web_ui = true
+
+# ============================================================================
+# SECTION 5: Firewall - Secure by Default
+# ============================================================================
+
+[firewall]
+enabled = true
+default_action = "deny"  # Block everything not explicitly allowed
+
+# Logging (helps you see what's being blocked)
+log_denied = true
+log_allowed = false  # Don't log allowed traffic (too verbose)
+
+# Connection tracking
+max_connections = 100000  # Plenty for home use
+
+# Gaming-friendly features
+allow_upnp = true  # UPnP for automatic port forwarding (gaming consoles)
+allow_multicast = true  # For Chromecast, Apple TV, etc.
+
+# Basic DDoS protection
+[firewall.ddos_protection]
+enabled = true
+syn_flood_threshold = 500
+icmp_flood_threshold = 50
+
+# ============================================================================
+# SECTION 6: Port Forwarding for Gaming and Servers
+# ============================================================================
+# Forward specific ports from internet to internal devices
+# Common use: Gaming consoles, Minecraft servers, Plex media server
+# ============================================================================
+
+[[firewall.port_forwards]]
+name = "Xbox Live"
+description = "Xbox console gaming"
+external_port = 3074
+internal_ip = "192.168.1.100"  # Your Xbox IP
+internal_port = 3074
+protocol = "UDP"
+enabled = false  # Enable when you have an Xbox
+
+[[firewall.port_forwards]]
+name = "PlayStation Network"
+description = "PlayStation console gaming"
+external_port = 3478
+internal_ip = "192.168.1.101"  # Your PlayStation IP
+internal_port = 3478
+protocol = "UDP"
+enabled = false
+
+[[firewall.port_forwards]]
+name = "Minecraft Server"
+description = "Minecraft server for friends"
+external_port = 25565
+internal_ip = "192.168.1.50"  # Your Minecraft server
+internal_port = 25565
+protocol = "TCP"
+enabled = false
+
+[[firewall.port_forwards]]
+name = "Plex Media Server"
+description = "Plex for remote streaming"
+external_port = 32400
+internal_ip = "192.168.1.50"  # Your Plex server
+internal_port = 32400
+protocol = "TCP"
+enabled = false
+
+[[firewall.port_forwards]]
+name = "Home Security Camera"
+description = "Remote camera access"
+external_port = 8080
+internal_ip = "192.168.1.150"  # Camera IP
+internal_port = 80
+protocol = "TCP"
+enabled = false
+# WARNING: only enable if camera requires it, security risk!
+
+# ============================================================================
+# SECTION 7: Parental Controls via DNS Filtering
+# ============================================================================
+
+[dns]
+enabled = true
+listen_port = 53
+
+# Use fast, privacy-respecting DNS providers
+upstream_servers = [
+    "1.1.1.1",  # Cloudflare (fast, private)
+    "1.0.0.1",  # Cloudflare backup
+    "8.8.8.8",  # Google (reliable)
+    "8.8.4.4"   # Google backup
+]
+
+# DNS caching speeds up browsing
+cache_enabled = true
+cache_size_mb = 128
+cache_ttl_min = 300
+cache_ttl_max = 86400
+
+# Local DNS zone for home devices
+local_zone_enabled = true
+local_zone_name = "home.local"
+
+[dns.filtering]
+# Security filtering (ALWAYS ENABLED - blocks malware)
+enabled = true
+block_malware_domains = true      # Block known malware sites
+block_phishing_domains = true     # Block phishing/scam sites
+block_ransomware_domains = true   # Block ransomware C2 servers
+block_c2_domains = true           # Block command & control servers
+
+# Privacy filtering (RECOMMENDED)
+block_advertising = true  # Block ads network-wide (faster browsing!)
+block_tracking = true     # Block web trackers
+
+# ============================================================================
+# PARENTAL CONTROLS (Uncomment sections as needed)
+# ============================================================================
+
+# Block adult content (18+ sites)
+# block_adult_content = true
+
+# Block gambling sites
+# block_gambling = true
+
+# Block social media during school hours
+# block_social_media = false  # Set to true to block Facebook, Instagram, TikTok
+
+# Block gaming sites during homework time
+# block_gaming = false  # Set to true to block gaming sites
+
+# Block video streaming to encourage homework
+# block_streaming = false  # Set to true to block YouTube, Netflix, etc.
+
+# Time-based parental controls (example: bedtime/homework time)
+# [[dns.filtering.schedules]]
+# name = "School Nights Bedtime"
+# description = "Block entertainment from 9 PM to 7 AM on school nights"
+# days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Sunday"]
+# start_time = "21:00"  # 9 PM
+# end_time = "07:00"    # 7 AM
+# block_categories = ["gaming", "streaming", "social-media"]
+
+# [[dns.filtering.schedules]]
+# name = "Homework Time"
+# description = "Block distractions during homework time"
+# days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+# start_time = "16:00"  # 4 PM
+# end_time = "18:00"    # 6 PM
+# block_categories = ["gaming", "social-media", "streaming"]
+
+# Threat intelligence integration
+threat_intel_integration = true
+
+# ============================================================================
+# SECTION 8: Guest WiFi Isolation
+# ============================================================================
+
+[wifi]
+enabled = false  # Set to true if using SafeOps as WiFi router
+
+# Main WiFi network (family/trusted devices)
+[[wifi.ssids]]
+ssid = "MyHome-WiFi"
+security = "WPA3-PSK"  # WPA3 for best security
+encryption = "AES-CCMP"
+passphrase = "${WIFI_PASSWORD}"  # Set via environment variable
+channel = "auto"  # Auto-select best channel
+bandwidth = "80MHz"  # Wide channel for better speed
+max_clients = 25
+client_isolation = false  # Allow devices to see each other
+
+# Guest WiFi (isolated from main network)
+[[wifi.ssids]]
+ssid = "MyHome-Guest"
+security = "WPA2-PSK"  # WPA2 for compatibility
+encryption = "AES-CCMP"
+passphrase = "${GUEST_WIFI_PASSWORD}"
+channel = "auto"
+bandwidth = "40MHz"  # Narrower for stability
+max_clients = 10
+# Guest restrictions
+client_isolation = true  # Guests can't see each other
+internet_only = true  # Guests can only access internet
+bandwidth_limit_mbps = 10  # Limit guest bandwidth
+session_timeout_hours = 8  # Auto-disconnect after 8 hours
+
+# ============================================================================
+# SECTION 9: VPN for Remote Access
+# ============================================================================
+# Allows you to securely connect to your home network from anywhere
+# Example: Access home files while traveling
+# ============================================================================
+
+[vpn]
+enabled = false  # Set to true to enable VPN server
+
+# WireGuard (recommended for home use - fast and simple)
+vpn_protocol = "WIREGUARD"
+wireguard_port = 51820
+vpn_network = "10.0.100.0/24"  # VPN client IP range
+
+# Alternative: OpenVPN (better compatibility with older devices)
+# vpn_protocol = "OPENVPN"
+# openvpn_port = 1194
+# openvpn_protocol = "UDP"
+
+# VPN clients (add family members who need remote access)
+# [[vpn.clients]]
+# name = "Dad-Phone"
+# public_key = "WIREGUARD_PUBLIC_KEY_HERE"
+# allowed_ips = ["10.0.100.10/32"]
+# description = "Dad's phone for remote access"
+
+# [[vpn.clients]]
+# name = "Mom-Laptop"
+# public_key = "WIREGUARD_PUBLIC_KEY_HERE"
+# allowed_ips = ["10.0.100.20/32"]
+# description = "Mom's laptop for work from home"
+
+# ============================================================================
+# SECTION 10: DHCP - Automatic IP Addresses
+# ============================================================================
+
+[dhcp]
+enabled = true
+
+# Main network DHCP pool
+[dhcp.lan_pool]
+interface = "Ethernet 1"
+network = "192.168.1.0/24"
+range_start = "192.168.1.100"  # Start of dynamic pool
+range_end = "192.168.1.200"    # End of dynamic pool
+default_lease_hours = 24       # IP lease duration
+gateway = "192.168.1.1"
+dns_servers = ["192.168.1.1"]  # Use SafeOps for DNS (ad-blocking)
+domain_name = "home.local"
+
+# Static IP reservations (devices always get same IP)
+# Useful for: Printers, NAS, security cameras, game consoles
+[[dhcp.reservations]]
+mac = "AA:BB:CC:DD:EE:FF"
+ip = "192.168.1.10"
+hostname = "family-printer"
+description = "HP LaserJet printer"
+
+[[dhcp.reservations]]
+mac = "11:22:33:44:55:66"
+ip = "192.168.1.20"
+hostname = "nas-server"
+description = "Network storage"
+
+[[dhcp.reservations]]
+mac = "AA:BB:CC:DD:EE:11"
+ip = "192.168.1.100"
+hostname = "xbox"
+description = "Xbox console"
+
+[[dhcp.reservations]]
+mac = "AA:BB:CC:DD:EE:22"
+ip = "192.168.1.101"
+hostname = "playstation"
+description = "PlayStation console"
+
+# ============================================================================
+# SECTION 11: IDS/IPS - Detection Only (No Blocking)
+# ============================================================================
+
+[ids_ips]
+enabled = true
+operating_mode = "IDS"  # Detection only (alerts, no blocking)
+signature_engine = "SURICATA"
+
+[ids_ips.detection]
+signature_based = true
+anomaly_based = false  # Disabled to reduce false positives
+sensitivity = "LOW"  # Low sensitivity for home use
+
+# Focus on serious threats only
+enabled_categories = [
+    "malware",
+    "ransomware",
+    "phishing",
+    "c2-communication"  # Command & control servers
+]
+
+[ids_ips.prevention]
+ips_mode = false  # Never auto-block (might break things)
+auto_block = false
+
+[ids_ips.alerts]
+minimum_severity = "MEDIUM"  # Only alert on medium+ threats
+rate_limiting = true  # Don't spam alerts
+
+# ============================================================================
+# SECTION 12: Threat Intelligence (Free Feeds Only)
+# ============================================================================
+
+[threat_intel]
+enabled = true
+auto_update_feeds = true
+update_interval_hours = 24  # Daily updates
+
+feeds = ["free"]  # FREE feeds only (no API keys needed)
+
+# Recommended free feeds
+free_feeds = [
+    "Abuse.ch-Feodo",      # Botnet IPs
+    "Abuse.ch-URLhaus",    # Malware URLs
+    "Spamhaus-DROP",       # Known bad networks
+    "Emerging-Threats"     # General threats
+]
+
+auto_block_enabled = false  # Alert only, don't auto-block
+
+# ============================================================================
+# SECTION 13: Logging - Minimal for Privacy
+# ============================================================================
+
+[logging]
+log_level = "WARN"  # Only warnings and errors (saves space)
+log_format = "JSON"
+
+# Log rotation
+log_rotation_enabled = true
+log_max_size_mb = 50  # Small log files
+compress_rotated_logs = true
+
+# Short retention (saves disk space)
+log_retention_days = 7  # 1 week only
+
+[logging.categories]
+firewall_logs = true
+ids_alerts = true
+threat_intel_matches = true
+system_events = true
+# Verbose categories disabled for privacy/space
+dns_queries = false
+dhcp_events = false
+authentication_events = false
+
+# No packet capture (saves disk space and privacy)
+packet_capture_enabled = false
+
+# ============================================================================
+# SECTION 14: Simple Backup to USB Drive
+# ============================================================================
+
+[backup]
+enabled = true
+
+# Weekly backups (Sunday early morning)
+schedule = "0 3 * * 0"  # Every Sunday at 3 AM
+
+# Backup configuration and important data (not logs)
+backup_configs = true
+backup_database = true
+backup_certificates = true
+backup_dhcp_reservations = true
+
+# Backup destination - can be USB drive!
+# Windows: "D:\\SafeOps_Backups" or "E:\\SafeOps_Backups" (USB drive letter)
+# For USB: plug in USB drive, note drive letter, update path
+primary_destination = "D:\\SafeOps_Backups"
+
+# Optional: Second backup location (another USB drive or network)
+# offsite_enabled = false
+# offsite_destination = "\\\\nas.home.local\\backups\\safeops"
+
+# Simple retention (keep last 4 weeks)
+retention_days = 28
+max_backups = 4
+
+# No encryption (home use, local storage)
+encryption_enabled = false
+
+compression = true  # Save space
+
+# ============================================================================
+# SECTION 15: Automatic Updates - Family-Friendly Schedule
+# ============================================================================
+
+[updates]
+# Automatic update checking
+auto_check = true
+check_interval_hours = 24  # Check daily
+
+# Automatic installation (set-and-forget for home)
+auto_install_security = true     # Auto-install security patches
+auto_install_signatures = true   # Auto-install threat signatures
+auto_install_software = true     # Auto-install all updates for home
+
+# Stable releases only (no beta/experimental)
+channel = "stable"
+
+# Family-friendly update schedule (early weekend morning)
+[[updates.maintenance_windows]]
+day = "Saturday"
+start_time = "03:00"  # 3 AM (everyone's asleep!)
+end_time = "05:00"    # 5 AM
+timezone = "America/New_York"
+
+[[updates.maintenance_windows]]
+day = "Sunday"
+start_time = "03:00"
+end_time = "05:00"
+
+# Auto-reboot if needed (during maintenance window)
+auto_reboot_if_required = true
+reboot_delay_minutes = 5
+
+# ============================================================================
+# SECTION 16: Web UI - Simple Dashboard
+# ============================================================================
+
+[web_ui]
+enabled = true
+https_enabled = true
+https_port = 8443  # Access at https://192.168.1.1:8443
+
+# Authentication
+require_authentication = true
+authentication_method = "LOCAL"
+
+# Create admin user (change password after first login!)
+[[web_ui.users]]
+username = "admin"
+password_hash = "$2a$10$..."  # CHANGE on first login
+force_password_change = true
+
+# Relaxed session timeout for home use
+session_timeout_minutes = 480  # 8 hours
+concurrent_sessions_per_user = 3  # Multiple devices OK
+
+# Simple dashboard mode (hides complexity)
+dashboard_mode = "SIMPLE"
+show_technical_details = false
+
+default_theme = "dark"
+
+# ============================================================================
+# SECTION 17: Monitoring and Alerts
+# ============================================================================
+
+[monitoring]
+enabled = true
+health_check_interval_seconds = 60
+
+# Simple email alerts (optional)
+email_alerts_enabled = false
+# alert_email = "your-email@gmail.com"
+
+# Alert on important events only
+alert_on_service_failure = true
+alert_on_critical_threat = true
+alert_on_disk_full = true
+
+# No external monitoring (privacy)
+prometheus_enabled = false
+siem_enabled = false
+
+# ============================================================================
+# ADVANCED SETTINGS (Usually Don't Need to Change)
+# ============================================================================
+
+[performance]
+worker_threads = 2  # Minimal for home use
+memory_usage_limit_percent = 75
+
+[resource_limits]
+max_cpu_percent = 50  # Don't hog the system
+max_memory_mb = 4096  # 4GB max
+max_disk_gb = 80
+
+# ============================================================================
+# QUICK START GUIDE
+# ============================================================================
+# 1. Find your network interface names (Windows):
+#    • Press Win+R, type "ncpa.cpl", press Enter
+#    • Note the names of your adapters (e.g., "Ethernet", "Ethernet 2")
+#    • Update [network.interfaces] section above
+#
+# 2. Set WiFi passwords (if using SafeOps WiFi):
+#    • Set environment variables or replace ${WIFI_PASSWORD}
+#
+# 3. Enable features you want:
+#    • Parental controls: Uncomment block_* settings in [dns.filtering]
+#    • Port forwarding: Set enabled = true for your devices
+#    • VPN: Set [vpn] enabled = true, add client configs
+#    • Guest WiFi: Set [wifi] enabled = true
+#    • IoT segregation: Set [vlans] enabled = true (requires managed switch)
+#
+# 4. Validate and apply:
+#    • Open PowerShell as Administrator
+#    • cd "C:\Program Files\SafeOps"
+#    • .\safeops.exe validate
+#    • .\safeops.exe apply
+#
+# 5. Access web UI:
+#    • Open browser: https://192.168.1.1:8443
+#    • Login with admin credentials
+#    • Change default password!
+#
+# 6. Test internet:
+#    • Make sure devices can browse web
+#    • Check ad-blocking is working (ads.google.com should be blocked)
+#
+# ============================================================================

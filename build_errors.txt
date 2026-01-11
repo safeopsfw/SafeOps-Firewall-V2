@@ -1,0 +1,60 @@
+warning: unused import: `std::net::IpAddr`
+ --> src\..\internal\capture\packet_capture.rs:6:5
+  |
+6 | use std::net::IpAddr;
+  |     ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `Duration`, `Instant`, and `SystemTime`
+ --> src\..\internal\capture\packet_capture.rs:9:17
+  |
+9 | use std::time::{Duration, Instant, SystemTime};
+  |                 ^^^^^^^^  ^^^^^^^  ^^^^^^^^^^
+
+warning: unused import: `tokio::time::timeout`
+  --> src\..\internal\capture\packet_capture.rs:12:5
+   |
+12 | use tokio::time::timeout;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `PacketAction`
+  --> src\..\internal\capture\packet_capture.rs:17:30
+   |
+17 |     InterceptPacketResponse, PacketAction, Raw...
+   |                              ^^^^^^^^^^^^
+
+warning: unused import: `Request`
+  --> src\..\internal\integration\tls_proxy_client.rs:13:19
+   |
+13 | use tonic::{Code, Request, Status};
+   |                   ^^^^^^^
+
+warning: field `channel` is never read
+   --> src\..\internal\integration\tls_proxy_client.rs:103:5
+    |
+101 | pub struct TLSProxyClient {
+    |            -------------- field in this struct
+102 |     /// gRPC channel for TLS Proxy service
+103 |     channel: Channel,
+    |     ^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `nic_management_rust` (lib) generated 6 warnings (run `cargo fix --lib -p nic_management_rust` to apply 5 suggestions)
+warning: unused import: `std::thread`
+ --> internal\bin\packet_engine.rs:5:5
+  |
+5 | use std::thread;
+  |     ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `warn`
+ --> internal\bin\packet_engine.rs:7:24
+  |
+7 | use log::{error, info, warn, LevelFilter};
+  |                        ^^^^
+
+warning: `nic_management_rust` (bin "packet_engine") generated 2 warnings (run `cargo fix --bin "packet_engine" -p nic_management_rust` to apply 2 suggestions)
+    Finished `release` profile [optimized] target(s) in 0.41s

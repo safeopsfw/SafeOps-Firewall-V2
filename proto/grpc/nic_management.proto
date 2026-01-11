@@ -1,0 +1,650 @@
+// =============================================================================
+// NIC Management gRPC Service Definition
+// =============================================================================
+// This file defines the complete gRPC service contract for the NIC Management
+// microservice, including network interface management, routing, NAT translation,
+// load balancing, and multi-WAN failover capabilities.
+// =============================================================================
+
+syntax = "proto3";
+
+package safeops.nic_management;
+
+option go_package = "safeops/build/proto/go/nic_management";
+option csharp_namespace = "SafeOps.Proto.NICManagement";
+
+import "common.proto";
+
+// =============================================================================
+// ENUMERATIONS
+// State tracking and classification enums specific to NIC management
+// =============================================================================
+
+// Connection state for connection tracking
+enum ConnectionState {
+  CONNECTION_STATE_UNKNOWN = 0;
+  CONNECTION_STATE_NEW = 1;
+  CONNECTION_STATE_ESTABLISHED = 2;
+  CONNECTION_STATE_RELATED = 3;
+  CONNECTION_STATE_INVALID = 4;
+  CONNECTION_STATE_CLOSING = 5;
+  CONNECTION_STATE_CLOSED = 6;
+}
+
+// Network interface operational state
+enum InterfaceState {
+  INTERFACE_STATE_UNKNOWN = 0;
+  INTERFACE_STATE_UP = 1;
+  INTERFACE_STATE_DOWN = 2;
+  INTERFACE_STATE_DORMANT = 3;
+  INTERFACE_STATE_ERROR = 4;
+  INTERFACE_STATE_NOT_PRESENT = 5;
+  INTERFACE_STATE_LOWER_LAYER_DOWN = 6;
+}
+
+// WAN interface health state
+enum WANHealthState {
+  WAN_HEALTH_UNKNOWN = 0;
+  WAN_HEALTH_HEALTHY = 1;
+  WAN_HEALTH_DEGRADED = 2;
+  WAN_HEALTH_FAILING = 3;
+  WAN_HEALTH_DOWN = 4;
+  WAN_HEALTH_RECOVERING = 5;
+}
+
+// Reason for failover event
+enum FailoverReason {
+  FAILOVER_REASON_UNKNOWN = 0;
+  FAILOVER_REASON_MANUAL = 1;
+  FAILOVER_REASON_HEALTH_CHECK_FAILED = 2;
+  FAILOVER_REASON_GATEWAY_UNREACHABLE = 3;
+  FAILOVER_REASON_HIGH_PACKET_LOSS = 4;
+  FAILOVER_REASON_HIGH_LATENCY = 5;
+  FAILOVER_REASON_ADMINISTRATIVE = 6;
+  FAILOVER_REASON_SCHEDULED = 7;
+}
+
+// Load balancing algorithm mode
+enum LoadBalancingMode {
+  LOAD_BALANCING_DISABLED = 0;
+  LOAD_BALANCING_ROUND_ROBIN = 1;
+  LOAD_BALANCING_WEIGHTED = 2;
+  LOAD_BALANCING_LEAST_CONNECTIONS = 3;
+  LOAD_BALANCING_HASH_BASED = 4;
+  LOAD_BALANCING_FAILOVER_ONLY = 5;
+}
+
+// Interface duplex mode
+enum DuplexMode {
+  DUPLEX_UNKNOWN = 0;
+  DUPLEX_HALF = 1;
+  DUPLEX_FULL = 2;
+  DUPLEX_AUTO = 3;
+}
+
+// =============================================================================
+// SERVICE DEFINITION
+// Main gRPC service interface for NIC Management
+// =============================================================================
+
+service NICManagement {
+  // =========================================================================
+  // Network Interface Operations
+  // =========================================================================
+  
+  // Returns complete inventory of all detected network interfaces
+  rpc ListNetworkInterfaces(ListInterfacesRequest) returns (InterfaceListResponse);
+  
+  // Retrieves detailed information for a specific interface
+  rpc GetInterfaceDetails(InterfaceRequest) returns (InterfaceDetailsResponse);
+  
+  // Returns real-time statistics for an interface
+  rpc GetInterfaceStats(InterfaceRequest) returns (InterfaceStatsResponse);
+  
+  // Server streaming RPC for continuous metrics updates
+  rpc StreamMetrics(MetricsStreamRequest) returns (stream MetricsStreamResponse);
+  
+  // Configures IP address, netmask, gateway, DNS for an interface
+  rpc ConfigureInterface(ConfigureInterfaceRequest) returns (ConfigureInterfaceResponse);
+  
+  // Brings an interface UP (online)
+  rpc EnableInterface(InterfaceRequest) returns (InterfaceOperationResponse);
+  
+  // Brings an interface DOWN (offline)
+  rpc DisableInterface(InterfaceRequest) returns (InterfaceOperationResponse);
+  
+  // Sets the interface tag/classification (WAN, LAN, WiFi)
+  rpc SetInterfaceTag(SetInterfaceTagRequest) returns (InterfaceOperationResponse);
+  
+  // =========================================================================
+  // Routing Operations
+  // =========================================================================
+  
+  // Returns the complete routing table with all active routes
+  rpc GetRoutingTable(GetRoutingTableRequest) returns (RoutingTableResponse);
+  
+  // Adds a new static route
+  rpc AddRoute(AddRouteRequest) returns (RouteOperationResponse);
+  
+  // Removes an existing route
+  rpc RemoveRoute(RemoveRouteRequest) returns (RouteOperationResponse);
+  
+  // =========================================================================
+  // NAT and Connection Tracking
+  // =========================================================================
+  
+  // Returns NAT translation mappings with pagination support
+  rpc GetNATMappings(NATMappingsRequest) returns (NATMappingsResponse);
+  
+  // Returns active connection states
+  rpc GetConnectionTracking(ConnectionTrackingRequest) returns (ConnectionTrackingResponse);
+  
+  // Clears a specific NAT mapping
+  rpc ClearNATMapping(ClearNATMappingRequest) returns (NATOperationResponse);
+  
+  // Clears all NAT mappings (flush table)
+  rpc FlushNATTable(FlushNATTableRequest) returns (NATOperationResponse);
+  
+  // =========================================================================
+  // WAN Health and Load Balancing
+  // =========================================================================
+  
+  // Returns health status for all WAN interfaces
+  rpc GetWANHealth(GetWANHealthRequest) returns (WANHealthResponse);
+  
+  // Returns load balancing statistics
+  rpc GetLoadBalancerStats(GetLoadBalancerStatsRequest) returns (LoadBalancerStatsResponse);
+  
+  // Updates weighted load balancing configuration
+  rpc UpdateWANWeights(UpdateWANWeightsRequest) returns (WANConfigResponse);
+  
+  // Configures WAN priority order for failover
+  rpc SetWANPriority(SetWANPriorityRequest) returns (WANConfigResponse);
+  
+  // Sets the load balancing mode
+  rpc SetLoadBalancingMode(SetLoadBalancingModeRequest) returns (WANConfigResponse);
+  
+  // =========================================================================
+  // Failover Operations
+  // =========================================================================
+  
+  // Manually triggers failover from one WAN to another
+  rpc TriggerFailover(TriggerFailoverRequest) returns (FailoverResponse);
+  
+  // Returns historical failover events
+  rpc GetFailoverHistory(FailoverHistoryRequest) returns (FailoverHistoryResponse);
+  
+  // Restores primary WAN after failover
+  rpc RestorePrimaryWAN(RestorePrimaryWANRequest) returns (FailoverResponse);
+  
+  // =========================================================================
+  // Service Health and Management
+  // =========================================================================
+  
+  // Returns service health status
+  rpc HealthCheck(safeops.common.HealthCheckRequest) returns (NICHealthCheckResponse);
+  
+  // Refreshes network interface discovery
+  rpc RefreshInterfaces(RefreshInterfacesRequest) returns (RefreshInterfacesResponse);
+  
+  // Returns service configuration
+  rpc GetServiceConfig(GetServiceConfigRequest) returns (ServiceConfigResponse);
+}
+
+// =============================================================================
+// REQUEST MESSAGES
+// Input message types for RPC methods
+// =============================================================================
+
+// Request for listing interfaces with optional filtering
+message ListInterfacesRequest {
+  safeops.common.NICTag filter_tag = 1;       // Optional: filter by tag (WAN/LAN/WiFi)
+  bool include_disabled = 2;                   // Include disabled interfaces
+  bool include_virtual = 3;                    // Include virtual interfaces
+}
+
+// Request for single interface operations
+message InterfaceRequest {
+  string interface_name = 1;    // Interface name (e.g., "eth0", "Ethernet 1")
+  string interface_id = 2;      // Alternative: unique interface ID
+}
+
+// Request for metrics streaming
+message MetricsStreamRequest {
+  repeated string interface_names = 1;   // Interfaces to monitor (empty = all)
+  int32 interval_seconds = 2;            // Update interval (default: 1)
+  bool include_connection_stats = 3;     // Include connection tracking stats
+}
+
+// Request for interface configuration
+message ConfigureInterfaceRequest {
+  string interface_name = 1;
+  safeops.common.IPAddress ip_address = 2;
+  string netmask = 3;                              // e.g., "255.255.255.0" or "/24"
+  safeops.common.IPAddress gateway = 4;
+  repeated safeops.common.IPAddress dns_servers = 5;
+  int32 mtu = 6;
+  bool dhcp_enabled = 7;                           // Use DHCP instead of static
+  int32 metric = 8;                                // Route metric
+}
+
+// Request to set interface tag
+message SetInterfaceTagRequest {
+  string interface_name = 1;
+  safeops.common.NICTag tag = 2;
+}
+
+// Request for routing table
+message GetRoutingTableRequest {
+  safeops.common.IPVersion ip_version = 1;   // Filter by IPv4/IPv6
+  string interface_filter = 2;                // Filter by interface name
+}
+
+// Request to add a route
+message AddRouteRequest {
+  safeops.common.IPAddress destination = 1;
+  string netmask = 2;
+  safeops.common.IPAddress gateway = 3;
+  string interface_name = 4;
+  int32 metric = 5;
+}
+
+// Request to remove a route
+message RemoveRouteRequest {
+  safeops.common.IPAddress destination = 1;
+  string netmask = 2;
+  safeops.common.IPAddress gateway = 3;
+}
+
+// Request for NAT mappings with pagination
+message NATMappingsRequest {
+  safeops.common.Pagination pagination = 1;
+  safeops.common.Protocol filter_protocol = 2;
+  string filter_wan_interface = 3;
+  safeops.common.IPAddress filter_internal_ip = 4;
+  bool active_only = 5;
+}
+
+// Request for connection tracking
+message ConnectionTrackingRequest {
+  safeops.common.Pagination pagination = 1;
+  ConnectionState filter_state = 2;
+  safeops.common.Protocol filter_protocol = 3;
+  string filter_interface = 4;
+  safeops.common.IPAddress filter_source_ip = 5;
+  safeops.common.IPAddress filter_dest_ip = 6;
+}
+
+// Request to clear a specific NAT mapping
+message ClearNATMappingRequest {
+  string mapping_id = 1;
+  safeops.common.IPAddress internal_ip = 2;
+  int32 internal_port = 3;
+  safeops.common.Protocol protocol = 4;
+}
+
+// Request to flush NAT table
+message FlushNATTableRequest {
+  string interface_name = 1;       // Optional: specific interface only
+  bool confirm = 2;                // Safety confirmation required
+}
+
+// Request for WAN health status
+message GetWANHealthRequest {
+  repeated string interface_names = 1;   // Specific interfaces (empty = all WANs)
+}
+
+// Request for load balancer stats
+message GetLoadBalancerStatsRequest {
+  safeops.common.Timestamp since = 1;    // Stats since this time
+}
+
+// Request to update WAN weights
+message UpdateWANWeightsRequest {
+  repeated WANWeight weights = 1;
+}
+
+// Request to set WAN priority
+message SetWANPriorityRequest {
+  repeated string wan_priority_order = 1;   // Interface names in priority order
+}
+
+// Request to set load balancing mode
+message SetLoadBalancingModeRequest {
+  LoadBalancingMode mode = 1;
+}
+
+// Request to trigger failover
+message TriggerFailoverRequest {
+  string from_wan = 1;
+  string to_wan = 2;
+  bool force = 3;                           // Force even if target is unhealthy
+  string reason = 4;                        // Administrative reason
+}
+
+// Request for failover history
+message FailoverHistoryRequest {
+  safeops.common.Pagination pagination = 1;
+  safeops.common.Timestamp start_time = 2;
+  safeops.common.Timestamp end_time = 3;
+  string interface_filter = 4;
+}
+
+// Request to restore primary WAN
+message RestorePrimaryWANRequest {
+  string primary_wan = 1;
+  bool force = 2;
+}
+
+// Request to refresh interface discovery
+message RefreshInterfacesRequest {
+  bool full_scan = 1;               // Full hardware rescan
+}
+
+// Request for service configuration
+message GetServiceConfigRequest {
+  bool include_sensitive = 1;       // Include sensitive config values
+}
+
+// =============================================================================
+// RESPONSE MESSAGES
+// Output message types for RPC methods
+// =============================================================================
+
+// Response containing list of interfaces
+message InterfaceListResponse {
+  repeated safeops.common.NetworkInterface interfaces = 1;
+  int32 total_count = 2;
+  int32 wan_count = 3;
+  int32 lan_count = 4;
+  int32 wifi_count = 5;
+  safeops.common.Timestamp discovered_at = 6;
+}
+
+// Response with detailed interface information
+message InterfaceDetailsResponse {
+  safeops.common.NetworkInterface interface = 1;
+  InterfaceCapabilities capabilities = 2;
+  DriverInfo driver_info = 3;
+  InterfaceState state = 4;
+  safeops.common.NetworkStats current_stats = 5;
+}
+
+// Response with interface statistics
+message InterfaceStatsResponse {
+  string interface_name = 1;
+  safeops.common.NetworkStats stats = 2;
+  safeops.common.Timestamp collected_at = 3;
+  float packets_per_second = 4;
+  float bytes_per_second = 5;
+  float utilization_percent = 6;
+}
+
+// Streaming response for metrics
+message MetricsStreamResponse {
+  string interface_name = 1;
+  safeops.common.NetworkStats stats = 2;
+  safeops.common.Timestamp timestamp = 3;
+  float packets_per_second = 4;
+  float bytes_per_second = 5;
+  int64 active_connections = 6;
+}
+
+// Response for interface configuration
+message ConfigureInterfaceResponse {
+  safeops.common.Status status = 1;
+  string message = 2;
+  ConfigureInterfaceRequest applied_config = 3;
+  safeops.common.Timestamp applied_at = 4;
+}
+
+// Response for interface operations (enable/disable/tag)
+message InterfaceOperationResponse {
+  safeops.common.Status status = 1;
+  string message = 2;
+  string interface_name = 3;
+  InterfaceState new_state = 4;
+}
+
+// Response with routing table
+message RoutingTableResponse {
+  repeated Route routes = 1;
+  safeops.common.IPAddress default_gateway_v4 = 2;
+  safeops.common.IPAddress default_gateway_v6 = 3;
+  int32 total_routes = 4;
+}
+
+// Response for route operations
+message RouteOperationResponse {
+  safeops.common.Status status = 1;
+  string message = 2;
+  Route route = 3;
+}
+
+// Response with NAT mappings
+message NATMappingsResponse {
+  repeated NATMapping mappings = 1;
+  safeops.common.Pagination pagination = 2;
+  int32 total_count = 3;
+  int32 active_count = 4;
+}
+
+// Response with connection tracking data
+message ConnectionTrackingResponse {
+  repeated Connection connections = 1;
+  safeops.common.Pagination pagination = 2;
+  int32 total_count = 3;
+  map<string, int32> state_counts = 4;    // Count per state
+}
+
+// Response for NAT operations
+message NATOperationResponse {
+  safeops.common.Status status = 1;
+  string message = 2;
+  int32 affected_mappings = 3;
+}
+
+// Response with WAN health status
+message WANHealthResponse {
+  repeated WANHealth wan_interfaces = 1;
+  string active_primary = 2;                // Currently active primary WAN
+  bool failover_active = 3;                 // Is system in failover state
+}
+
+// Response with load balancer statistics
+message LoadBalancerStatsResponse {
+  LoadBalancingMode current_mode = 1;
+  repeated WANStats wan_stats = 2;
+  int64 total_connections = 3;
+  int64 total_bytes_transferred = 4;
+  safeops.common.Timestamp stats_since = 5;
+}
+
+// Response for WAN configuration changes
+message WANConfigResponse {
+  safeops.common.Status status = 1;
+  string message = 2;
+  safeops.common.Timestamp applied_at = 3;
+}
+
+// Response for failover operations
+message FailoverResponse {
+  safeops.common.Status status = 1;
+  string message = 2;
+  string from_wan = 3;
+  string to_wan = 4;
+  safeops.common.Timestamp failover_time = 5;
+  int64 affected_connections = 6;
+  int32 migration_time_ms = 7;
+}
+
+// Response with failover history
+message FailoverHistoryResponse {
+  repeated FailoverEvent events = 1;
+  safeops.common.Pagination pagination = 2;
+  int32 total_count = 3;
+  float average_recovery_time_seconds = 4;
+}
+
+// NIC Management specific health check response
+message NICHealthCheckResponse {
+  safeops.common.HealthStatus health = 1;
+  int32 interfaces_discovered = 2;
+  int32 interfaces_active = 3;
+  int32 wan_interfaces = 4;
+  bool packet_engine_healthy = 5;
+  bool nat_engine_healthy = 6;
+  string rust_lib_version = 7;
+}
+
+// Response for interface refresh
+message RefreshInterfacesResponse {
+  safeops.common.Status status = 1;
+  int32 interfaces_found = 2;
+  int32 new_interfaces = 3;
+  int32 removed_interfaces = 4;
+  repeated string changed_interfaces = 5;
+}
+
+// Response with service configuration
+message ServiceConfigResponse {
+  map<string, string> config = 1;
+  safeops.common.Timestamp loaded_at = 2;
+  string config_file_path = 3;
+}
+
+// =============================================================================
+// COMPLEX MESSAGE TYPES
+// Nested structures for detailed data representation
+// =============================================================================
+
+// Interface hardware/software capabilities
+message InterfaceCapabilities {
+  int32 max_speed_mbps = 1;
+  DuplexMode duplex = 2;
+  bool supports_vlan = 3;
+  bool supports_tso = 4;              // TCP Segmentation Offload
+  bool supports_gso = 5;              // Generic Segmentation Offload
+  bool supports_gro = 6;              // Generic Receive Offload
+  bool supports_checksum_offload = 7;
+  bool supports_scatter_gather = 8;
+  int32 max_mtu = 9;
+  int32 tx_queue_length = 10;
+  int32 rx_queue_length = 11;
+}
+
+// Network interface driver information
+message DriverInfo {
+  string driver_name = 1;
+  string driver_version = 2;
+  string firmware_version = 3;
+  string pci_address = 4;              // PCI bus address (if physical)
+  string hardware_id = 5;              // Windows hardware ID
+  bool is_virtual = 6;
+  string vendor_name = 7;
+  string device_model = 8;
+}
+
+// Routing table entry
+message Route {
+  safeops.common.IPAddress destination = 1;
+  string netmask = 2;
+  safeops.common.IPAddress gateway = 3;
+  string interface_name = 4;
+  int32 metric = 5;
+  bool is_default = 6;
+  bool is_static = 7;                  // Static vs dynamic route
+  string source = 8;                   // Route source (static/dhcp/ospf/etc)
+  safeops.common.Timestamp created_at = 9;
+}
+
+// NAT translation mapping entry
+message NATMapping {
+  string mapping_id = 1;
+  safeops.common.IPAddress internal_ip = 2;
+  int32 internal_port = 3;
+  safeops.common.IPAddress external_ip = 4;
+  int32 external_port = 5;
+  safeops.common.Protocol protocol = 6;
+  string wan_interface = 7;
+  safeops.common.Timestamp created_at = 8;
+  safeops.common.Timestamp last_used = 9;
+  safeops.common.Timestamp expires_at = 10;
+  int64 bytes_sent = 11;
+  int64 bytes_received = 12;
+  int64 packets_sent = 13;
+  int64 packets_received = 14;
+}
+
+// Connection tracking entry
+message Connection {
+  string connection_id = 1;
+  safeops.common.IPAddress src_ip = 2;
+  int32 src_port = 3;
+  safeops.common.IPAddress dst_ip = 4;
+  int32 dst_port = 5;
+  safeops.common.Protocol protocol = 6;
+  ConnectionState state = 7;
+  string wan_interface = 8;
+  string lan_interface = 9;
+  safeops.common.Timestamp created_at = 10;
+  safeops.common.Timestamp last_seen = 11;
+  int64 bytes_sent = 12;
+  int64 bytes_received = 13;
+  int64 packets_sent = 14;
+  int64 packets_received = 15;
+  bool is_nat = 16;                    // Connection uses NAT
+  string nat_mapping_id = 17;          // Associated NAT mapping if any
+}
+
+// WAN interface health information
+message WANHealth {
+  string interface_name = 1;
+  WANHealthState state = 2;
+  float latency_ms = 3;                // Average latency to gateway
+  float jitter_ms = 4;                 // Latency variance
+  float packet_loss_percent = 5;
+  safeops.common.Timestamp last_check = 6;
+  float uptime_percent = 7;            // Percentage of time healthy
+  int32 consecutive_failures = 8;
+  int32 consecutive_successes = 9;
+  safeops.common.IPAddress gateway = 10;
+  bool is_primary = 11;
+  bool is_active = 12;                 // Currently routing traffic
+  string health_check_target = 13;     // IP/hostname used for health checks
+}
+
+// WAN interface statistics for load balancing
+message WANStats {
+  string interface_name = 1;
+  float traffic_percentage = 2;        // Percentage of total traffic
+  int32 weight = 3;                    // Configured weight
+  int64 active_connections = 4;
+  int64 total_connections = 5;
+  int64 total_bytes_sent = 6;
+  int64 total_bytes_received = 7;
+  float average_latency_ms = 8;
+  float current_bandwidth_mbps = 9;
+  float max_bandwidth_mbps = 10;
+}
+
+// Failover event record
+message FailoverEvent {
+  string event_id = 1;
+  string from_wan = 2;
+  string to_wan = 3;
+  FailoverReason reason = 4;
+  safeops.common.Timestamp timestamp = 5;
+  int32 duration_seconds = 6;          // Time in failover state
+  int64 affected_connections = 7;
+  bool success = 8;
+  string error_message = 9;            // If failed
+  string triggered_by = 10;            // manual/automatic/scheduled
+  int32 recovery_time_ms = 11;
+}
+
+// WAN weight configuration for weighted load balancing
+message WANWeight {
+  string interface_name = 1;
+  int32 weight = 2;                    // Weight value (1-100)
+}

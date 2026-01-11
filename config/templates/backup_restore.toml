@@ -1,0 +1,472 @@
+# SafeOps Backup and Restore Configuration
+# Automated backup of configurations, database snapshots, and system state
+#
+# This service provides disaster recovery, configuration versioning, rollback
+# capabilities, and migration between SafeOps deployments.
+
+# ============================================================================
+# Service Configuration
+# ============================================================================
+[service]
+# Service identifier for orchestrator registration
+service_name = "backup_restore"
+
+# gRPC management API address
+grpc_listen_address = "127.0.0.1:50060"
+
+# Self-health check frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+
+# HTTP port for /metrics endpoint
+metrics_port = 9100
+
+# ============================================================================
+# Backup Schedule
+# ============================================================================
+[backup_schedule]
+# Enable automated backups
+backup_enabled = true
+
+# Daily backup configuration
+daily_enabled = true
+daily_time = "02:00"  # 2 AM daily
+
+# Weekly backup configuration
+weekly_enabled = true
+weekly_day = "sunday"
+weekly_time = "03:00"  # 3 AM on Sundays
+
+# Monthly backup configuration
+monthly_enabled = true
+monthly_day = 1  # First day of month
+monthly_time = "04:00"  # 4 AM
+
+# Trigger backup when configuration files modified
+backup_on_config_change = true
+
+# Automatic backup before system updates
+backup_before_update = true
+
+# ============================================================================
+# Backup Scope
+# ============================================================================
+[backup_scope]
+# Components to include in backups
+backup_components = [
+    "configurations",    # All TOML/YAML config files
+    "database",         # PostgreSQL database dump
+    "threat_intel",     # Threat intelligence data
+    "firewall_rules",   # Firewall rule state
+    "dhcp_leases",      # DHCP lease database
+    "dns_cache",        # DNS cache and zones
+    "certificates",     # SSL/TLS certificates and keys
+    "system_state"      # Orchestrator state file
+]
+
+# Optionally include recent log files in backups
+include_logs = false
+
+# Log age to include if include_logs enabled (days)
+log_retention_days = 7
+
+# Files/directories to exclude from backup
+exclude_patterns = [
+    "*.tmp",
+    "*.log",
+    "temp/*",
+    "cache/*",
+    "*.pcap"
+]
+
+# How to handle sensitive data (passwords, keys)
+# Valid values: "ENCRYPT", "EXCLUDE", "INCLUDE"
+# ENCRYPT: Include but encrypt separately (recommended)
+# EXCLUDE: Skip sensitive files
+# INCLUDE: Include in plain backup (not recommended)
+sensitive_data_handling = "ENCRYPT"
+
+# ============================================================================
+# Backup Destinations
+# ============================================================================
+# Multiple destinations for redundancy
+
+[[backup_destinations]]
+destination_name = "local_primary"
+destination_type = "LOCAL"
+enabled = true
+priority = 1
+local_path = "D:\\SafeOpsFV2\\backups"
+encryption_enabled = true
+compression_enabled = true
+compression_format = "GZIP"  # GZIP, ZSTD, BZIP2
+verification_enabled = true
+description = "Primary local backup storage"
+
+[[backup_destinations]]
+destination_name = "network_share"
+destination_type = "SMB"
+enabled = false
+priority = 2
+remote_host = "backup-server.local"
+remote_path = "/safeops/backups"
+smb_username = "${SMB_USERNAME}"
+smb_password = "${SMB_PASSWORD}"
+smb_domain = ""
+encryption_enabled = true
+compression_enabled = true
+compression_format = "ZSTD"
+verification_enabled = true
+description = "Network SMB share for offsite backup"
+
+# AWS S3 destination (disabled by default)
+# [[backup_destinations]]
+# destination_name = "aws_s3"
+# destination_type = "S3"
+# enabled = false
+# priority = 3
+# s3_bucket = "safeops-backups"
+# s3_region = "us-east-1"
+# s3_access_key = "${S3_ACCESS_KEY}"
+# s3_secret_key = "${S3_SECRET_KEY}"
+# s3_storage_class = "STANDARD_IA"  # STANDARD, STANDARD_IA, GLACIER
+# encryption_enabled = true
+# compression_enabled = true
+
+# Azure Blob Storage destination (disabled by default)
+# [[backup_destinations]]
+# destination_name = "azure_blob"
+# destination_type = "AZURE_BLOB"
+# enabled = false
+# priority = 3
+# azure_account_name = "safeopsbackups"
+# azure_storage_key = "${AZURE_STORAGE_KEY}"
+# azure_container = "backups"
+# encryption_enabled = true
+# compression_enabled = true
+
+# ============================================================================
+# Retention Policies
+# ============================================================================
+[retention_policy]
+# Keep daily backups for N days
+daily_retention_days = 7
+
+# Keep weekly backups for N weeks
+weekly_retention_weeks = 4
+
+# Keep monthly backups for N months
+monthly_retention_months = 12
+
+# Keep yearly backups for N years
+yearly_retention_years = 2
+
+# Always keep at least N backups (prevents accidental deletion)
+minimum_backups = 3
+
+# Automatically delete old backups per retention policy
+auto_cleanup_enabled = true
+
+# When to run cleanup
+# Valid values: "DAILY", "WEEKLY"
+cleanup_schedule = "DAILY"
+
+# Time for cleanup (HH:MM)
+cleanup_time = "01:00"
+
+# ============================================================================
+# Backup Encryption
+# ============================================================================
+[encryption]
+# Encrypt backup archives
+encryption_enabled = true
+
+# Encryption algorithm
+# Valid values: "AES256", "CHACHA20"
+encryption_algorithm = "AES256"
+
+# Encryption key source
+# Valid values: "FILE", "ENV_VAR", "KMS", "VAULT"
+# FILE: Read from file
+# ENV_VAR: Read from environment variable
+# KMS: AWS KMS or Azure Key Vault
+# VAULT: HashiCorp Vault
+encryption_key_source = "ENV_VAR"
+
+# Path to encryption key file (if source = FILE)
+# encryption_key_path = "D:\\SafeOpsFV2\\secrets\\backup.key"
+
+# Environment variable name (if source = ENV_VAR)
+encryption_key_env_var = "BACKUP_ENCRYPTION_KEY"
+
+# Rotate encryption keys periodically
+key_rotation_enabled = false
+
+# Key rotation frequency (days)
+key_rotation_interval = 90
+
+# ============================================================================
+# Backup Verification
+# ============================================================================
+[verification]
+# Verify backups after creation
+verification_enabled = true
+
+# Verification method
+# Valid values: "CHECKSUM", "RESTORE_TEST", "BOTH"
+# CHECKSUM: Calculate and verify checksums
+# RESTORE_TEST: Attempt to restore to temporary location
+# BOTH: Both checksum and restore test
+verification_method = "CHECKSUM"
+
+# Checksum algorithm
+# Valid values: "SHA256", "SHA512", "BLAKE2"
+checksum_algorithm = "SHA256"
+
+# Periodically test full restore process
+test_restore_enabled = true
+
+# Test restore frequency
+# Valid values: "WEEKLY", "MONTHLY"
+test_restore_schedule = "MONTHLY"
+
+# Test restore day/time
+test_restore_day = "saturday"
+test_restore_time = "23:00"
+
+# Automatically delete test restore data after validation
+test_restore_cleanup = true
+
+# Test restore temporary location
+test_restore_path = "D:\\SafeOpsFV2\\temp\\restore-test"
+
+# ============================================================================
+# Restore Configuration
+# ============================================================================
+[restore]
+# Enable restore functionality
+restore_enabled = true
+
+# Validate restore data before applying
+restore_validation = true
+
+# Default restore mode
+# Valid values: "FULL", "SELECTIVE", "DRY_RUN"
+# FULL: Restore all components
+# SELECTIVE: Restore only specified components
+# DRY_RUN: Simulate restore without applying
+restore_mode = "FULL"
+
+# Handle conflicts during restore
+# Valid values: "OVERWRITE", "SKIP", "PROMPT"
+# OVERWRITE: Replace existing files
+# SKIP: Don't restore if file exists
+# PROMPT: Ask for user decision (manual restore only)
+restore_conflict_resolution = "OVERWRITE"
+
+# Restart affected services after restore
+restore_service_restart = true
+
+# Backup current state before restore (safety measure)
+restore_backup_current = true
+
+# ============================================================================
+# Database Backup
+# ============================================================================
+[database_backup]
+# Include PostgreSQL database in backups
+database_backup_enabled = true
+
+# Database backup method
+# Valid values: "PG_DUMP", "SNAPSHOT", "WAL_ARCHIVING"
+# PG_DUMP: Standard pg_dump utility (recommended)
+# SNAPSHOT: Filesystem/storage snapshot
+# WAL_ARCHIVING: Continuous archiving with WAL
+database_backup_method = "PG_DUMP"
+
+# PostgreSQL connection settings
+database_host = "localhost"
+database_port = 5432
+database_name = "safeops"
+database_user = "safeops_backup"
+
+# Database password
+# Can be overridden with ${POSTGRES_BACKUP_PASSWORD}
+database_password = "${POSTGRES_BACKUP_PASSWORD}"
+
+# pg_dump output format
+# Valid values: "CUSTOM", "TAR", "PLAIN", "DIRECTORY"
+# CUSTOM: Custom format (recommended, allows parallel restore)
+# TAR: Tar archive
+# PLAIN: Plain SQL script
+# DIRECTORY: Directory with separate files
+database_dump_format = "CUSTOM"
+
+# Compression level (0-9, 0=none, 9=maximum)
+database_compression = 6
+
+# Number of parallel dump workers
+# Speeds up backup of large databases
+# 0 = auto-detect (number of tables)
+database_parallel_jobs = 4
+
+# Include large objects (BLOBs)
+database_include_blobs = true
+
+# ============================================================================
+# Incremental Backup
+# ============================================================================
+[incremental_backup]
+# Enable incremental backups
+incremental_backup_enabled = true
+
+# Incremental strategy
+# Valid values: "DIFFERENTIAL", "INCREMENTAL"
+# DIFFERENTIAL: Changes since last full backup
+# INCREMENTAL: Changes since last backup (full or incremental)
+incremental_strategy = "INCREMENTAL"
+
+# Days between full backups
+full_backup_interval = 7
+
+# How to detect file changes
+# Valid values: "MTIME", "CHECKSUM", "BOTH"
+# MTIME: File modification time (faster)
+# CHECKSUM: File content hash (more accurate)
+# BOTH: Both mtime and checksum
+change_detection_method = "MTIME"
+
+# Path to store incremental backup metadata
+incremental_metadata_path = "D:\\SafeOpsFV2\\data\\backup-metadata"
+
+# ============================================================================
+# Notification and Alerting
+# ============================================================================
+[notification]
+# Send backup status notifications
+notification_enabled = true
+
+# Email notifications
+[[notification.methods]]
+method = "EMAIL"
+enabled = false
+smtp_server = "smtp.example.com"
+smtp_port = 587
+smtp_tls = true
+smtp_username = "safeops@example.com"
+smtp_password = "${SMTP_PASSWORD}"
+from_address = "safeops-backup@example.com"
+to_addresses = ["admin@example.com"]
+events = ["FAILURE", "WARNING"]  # SUCCESS, FAILURE, WARNING
+
+# Webhook notifications
+[[notification.methods]]
+method = "WEBHOOK"
+enabled = false
+webhook_url = "https://webhook.example.com/backup"
+webhook_secret = "${WEBHOOK_SECRET}"
+events = ["FAILURE"]
+
+# Syslog notifications
+[[notification.methods]]
+method = "SYSLOG"
+enabled = true
+syslog_host = "localhost"
+syslog_port = 514
+syslog_protocol = "UDP"  # UDP, TCP
+events = ["SUCCESS", "FAILURE", "WARNING"]
+
+# Send immediate alert on backup failure
+alert_on_failure = true
+
+# Alert if scheduled backup doesn't run
+alert_on_missed_backup = true
+
+# Maximum time before missed backup alert (hours)
+missed_backup_threshold_hours = 25
+
+# ============================================================================
+# Performance Settings
+# ============================================================================
+[performance]
+# Number of concurrent backup operations
+# Useful when backing up to multiple destinations
+concurrent_backups = 2
+
+# Maximum bandwidth for network transfers (MB/s)
+# 0 = unlimited
+bandwidth_limit = 0
+
+# I/O priority for backup operations
+# Valid values: "LOW", "NORMAL", "HIGH"
+io_priority = "LOW"
+
+# Temporary directory for staging backups
+temp_directory = "D:\\SafeOpsFV2\\temp\\backup"
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Backup filename pattern
+# Variables: {date}, {time}, {type}, {component}
+backup_filename_pattern = "safeops-backup-{type}-{date}-{time}.tar.gz"
+
+# Date format for backup filenames
+# Uses Go time format
+date_format = "2006-01-02"
+time_format = "15-04-05"
+
+# Lock file to prevent concurrent backups
+lock_file_enabled = true
+lock_file_path = "D:\\SafeOpsFV2\\data\\backup.lock"
+
+# Maximum backup age before warning (hours)
+max_backup_age_warning = 26
+
+# Backup metadata format
+# Valid values: "JSON", "YAML"
+metadata_format = "JSON"
+
+# Include metadata file in backup archive
+include_metadata = true
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# BACKUP_ENCRYPTION_KEY - Encryption key for backup archives
+# POSTGRES_BACKUP_PASSWORD - Database backup user password
+# S3_ACCESS_KEY - AWS S3 access key
+# S3_SECRET_KEY - AWS S3 secret key
+# AZURE_STORAGE_KEY - Azure Blob Storage key
+# SMB_USERNAME - SMB share username
+# SMB_PASSWORD - SMB share password
+# BACKUP_NOTIFICATION_EMAIL - Email address for notifications
+# SMTP_PASSWORD - SMTP server password
+# WEBHOOK_SECRET - Webhook authentication secret
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The backup_restore service validates this configuration at startup and
+# will fail to start if validation fails. Common checks:
+#
+# 1. At least one backup_destination must be enabled
+# 2. Backup destination paths must be writable
+# 3. database_backup credentials must have PostgreSQL access
+# 4. encryption_key must be set if encryption_enabled
+# 5. retention_policy values must be > 0
+# 6. pg_dump must be available if database_backup_enabled
+# 7. Notification email settings must be valid
+# 8. Sufficient disk space for backup operations
+# 9. Network destinations must be reachable
+# 10. Encryption algorithm must be supported
+#
+# Use the validator: safeops-cli config validate backup_restore.toml
+# ============================================================================

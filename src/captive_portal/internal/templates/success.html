@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{.PortalConfig.Title}} - Success</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--space-6);
+            background: var(--color-success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: scaleIn 0.5s ease-out, pulse 2s ease-in-out infinite;
+        }
+
+        .success-icon svg {
+            width: 48px;
+            height: 48px;
+            color: white;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .confetti {
+            animation: confetti 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="logo">
+                <div class="success-icon">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h1>You're All Set!</h1>
+                <p>Your device is now trusted on this network</p>
+            </div>
+
+            {{if .DeviceInfo}}
+            <div class="device-info">
+                <div class="device-info-header">Your Device</div>
+                <div class="device-info-item">
+                    <span class="device-info-label">IP Address</span>
+                    <span class="device-info-value">{{.DeviceInfo.CurrentIP}}</span>
+                </div>
+                <div class="device-info-item">
+                    <span class="device-info-label">Status</span>
+                    <span class="trust-badge trust-badge--trusted">TRUSTED</span>
+                </div>
+            </div>
+            {{end}}
+
+            <div class="alert alert-success">
+                <div class="alert-icon">
+                    <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-title">Certificate Installed</div>
+                    <div class="alert-message">
+                        You now have full access to the internet through this network.
+                        All your traffic is being monitored for security threats.
+                    </div>
+                </div>
+            </div>
+
+            <a href="https://www.google.com" class="btn btn-primary">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z"
+                        clip-rule="evenodd" />
+                </svg>
+                Continue to Internet
+            </a>
+
+            <a href="/" class="btn btn-secondary">
+                Return to Portal
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>Secured by <a href="#">SafeOps</a></p>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,484 @@
+# SafeOps Web UI Configuration
+# Web-based management console for SafeOps
+#
+# Provides unified management interface for all SafeOps components via
+# gRPC APIs. Supports desktop app (Wails) and web server deployment modes.
+
+# ============================================================================
+# Service Configuration
+# ============================================================================
+[service]
+# Service identifier for orchestrator registration
+service_name = "web_ui"
+
+# Deployment mode
+# Valid values: "DESKTOP_APP", "WEB_SERVER", "BOTH"
+deployment_mode = "WEB_SERVER"
+
+# Web server listen address (if web mode)
+listen_address = "0.0.0.0"
+
+# Web server port (HTTPS)
+listen_port = 8443
+
+# Enable HTTPS
+tls_enabled = true
+
+# TLS certificate file
+# Can be overridden with ${UI_TLS_CERT}
+tls_certificate_path = "D:\\SafeOpsFV2\\certs\\web-ui.crt"
+
+# TLS private key file
+# Can be overridden with ${UI_TLS_KEY}
+tls_private_key_path = "D:\\SafeOpsFV2\\certs\\web-ui.key"
+
+# Self-health check frequency (seconds)
+health_check_interval = 30
+
+# Enable Prometheus metrics export
+metrics_enabled = true
+metrics_port = 9104
+
+# ============================================================================
+# Backend Integration
+# ============================================================================
+# gRPC connections to backend services
+
+[[backend_services]]
+service_name = "orchestrator"
+grpc_address = "${ORCHESTRATOR_ENDPOINT:-127.0.0.1:50051}"
+connection_timeout = 5
+request_timeout = 30
+retry_enabled = true
+retry_attempts = 3
+
+[[backend_services]]
+service_name = "firewall_engine"
+grpc_address = "127.0.0.1:50053"
+connection_timeout = 5
+request_timeout = 10
+retry_enabled = true
+retry_attempts = 2
+
+[[backend_services]]
+service_name = "threat_intel"
+grpc_address = "127.0.0.1:50054"
+connection_timeout = 5
+request_timeout = 10
+retry_enabled = true
+retry_attempts = 2
+
+[[backend_services]]
+service_name = "ids_ips"
+grpc_address = "127.0.0.1:50055"
+connection_timeout = 5
+request_timeout = 10
+retry_enabled = true
+retry_attempts = 2
+
+[[backend_services]]
+service_name = "dns_server"
+grpc_address = "127.0.0.1:50056"
+connection_timeout = 5
+request_timeout = 10
+retry_enabled = true
+retry_attempts = 2
+
+[[backend_services]]
+service_name = "dhcp_server"
+grpc_address = "127.0.0.1:50057"
+connection_timeout = 5
+request_timeout = 10
+retry_enabled = true
+retry_attempts = 2
+
+# Primary backend (usually orchestrator)
+primary_backend = "orchestrator"
+
+# Periodically verify backend health
+backend_health_check = true
+backend_health_check_interval = 60
+
+# ============================================================================
+# Authentication and Authorization
+# ============================================================================
+[authentication]
+# Require user authentication
+authentication_enabled = true
+
+# Authentication method
+# Valid values: "LOCAL", "LDAP", "SAML", "OAUTH2"
+authentication_method = "LOCAL"
+
+# Session management
+[authentication.session_management]
+# Idle timeout (minutes)
+session_timeout = 30
+
+# Maximum session duration (hours)
+session_max_lifetime = 24
+
+# Allow persistent sessions
+remember_me_enabled = true
+
+# Persistent session duration (days)
+remember_me_duration = 30
+
+# Maximum concurrent sessions per user
+concurrent_sessions_per_user = 3
+
+# JWT signing secret
+# Can be overridden with ${UI_JWT_SECRET}
+jwt_secret = "${UI_JWT_SECRET}"
+
+# Password policy
+[authentication.password_policy]
+# Minimum password length
+min_length = 12
+
+# Require uppercase letters
+require_uppercase = true
+
+# Require lowercase letters
+require_lowercase = true
+
+# Require numbers
+require_numbers = true
+
+# Require special characters
+require_special_chars = true
+
+# Force password change after N days
+password_expiry_days = 90
+
+# Two-factor authentication
+[authentication.two_factor_authentication]
+# Enable 2FA
+enabled = false
+
+# 2FA method
+# Valid values: "TOTP", "SMS", "EMAIL"
+method = "TOTP"
+
+# Require for admin users
+required_for_admin = true
+
+# Local user accounts
+[[authentication.local_users]]
+username = "admin"
+# Password: ChangeMe123! (MUST be changed on first login)
+password_hash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+role = "ADMIN"
+enabled = true
+force_password_change = true
+
+[[authentication.local_users]]
+username = "operator"
+password_hash = "$2a$10$..."
+role = "OPERATOR"
+enabled = false
+force_password_change = false
+
+# ============================================================================
+# Role-Based Access Control
+# ============================================================================
+[rbac]
+# Enable RBAC
+rbac_enabled = true
+
+# Role definitions
+[[rbac.roles]]
+role_name = "ADMIN"
+permissions = [
+    "system.*",
+    "firewall.*",
+    "dns.*",
+    "dhcp.*",
+    "ids.*",
+    "logs.*",
+    "users.*",
+    "settings.*"
+]
+
+[[rbac.roles]]
+role_name = "OPERATOR"
+permissions = [
+    "system.view",
+    "system.restart",
+    "firewall.view",
+    "firewall.edit",
+    "dns.view",
+    "dns.configure",
+    "dhcp.view",
+    "dhcp.configure",
+    "ids.view",
+    "ids.alerts.acknowledge",
+    "logs.view"
+]
+
+[[rbac.roles]]
+role_name = "VIEWER"
+permissions = [
+    "system.view",
+    "firewall.view",
+    "dns.view",
+    "dhcp.view",
+    "ids.view",
+    "logs.view"
+]
+
+# Default role for new users
+default_role = "VIEWER"
+
+# ============================================================================
+# Dashboard Configuration
+# ============================================================================
+[dashboard]
+# Default dashboard layout
+# Valid values: "GRID", "LIST", "CARDS"
+default_layout = "GRID"
+
+# Allow user customization
+customizable = true
+
+# Auto-refresh interval (seconds)
+refresh_interval = 30
+
+# Default widgets
+default_widgets = [
+    "system_status",
+    "network_traffic",
+    "firewall_activity",
+    "ids_alerts",
+    "dns_queries",
+    "dhcp_leases",
+    "threat_intel_summary",
+    "service_health"
+]
+
+# Maximum widgets per dashboard
+max_widgets = 12
+
+# Theme settings
+[dashboard.theme]
+# Default theme
+# Valid values: "LIGHT", "DARK", "AUTO"
+default_theme = "DARK"
+
+# Allow custom themes
+custom_themes_enabled = false
+
+# Primary brand color
+primary_color = "#1976D2"
+
+# Custom logo image path
+logo_path = "D:\\SafeOpsFV2\\assets\\logo.png"
+
+# ============================================================================
+# Feature Modules
+# ============================================================================
+[features]
+# Enabled UI modules
+enabled_modules = [
+    "dashboard",
+    "network_monitoring",
+    "firewall_management",
+    "ids_ips_management",
+    "dns_management",
+    "dhcp_management",
+    "threat_intelligence",
+    "user_management",
+    "system_settings",
+    "logs_viewer",
+    "reports",
+    "backup_restore",
+    "updates"
+]
+
+# ============================================================================
+# Real-Time Updates
+# ============================================================================
+[realtime]
+# Enable WebSocket for real-time updates
+websocket_enabled = true
+
+# WebSocket endpoint path
+websocket_path = "/ws"
+
+# Maximum concurrent WebSocket connections
+websocket_max_connections = 1000
+
+# Push live notifications to UI
+push_notifications_enabled = true
+
+# Notification types to push
+notification_types = [
+    "alerts",
+    "system_events",
+    "service_status",
+    "new_threats"
+]
+
+# WebSocket heartbeat interval (seconds)
+heartbeat_interval = 30
+
+# ============================================================================
+# Logging and Audit
+# ============================================================================
+[logging]
+# Log UI access
+access_logging_enabled = true
+
+# Access log file path
+access_log_path = "D:\\SafeOpsFV2\\logs\\web_ui_access.log"
+
+# Log all user actions
+audit_logging_enabled = true
+
+# Audit log file path
+audit_log_path = "D:\\SafeOpsFV2\\logs\\web_ui_audit.log"
+
+# UI-specific log level
+# Valid values: "TRACE", "DEBUG", "INFO", "WARN", "ERROR"
+log_level = "INFO"
+
+# Log all backend API calls
+log_api_calls = true
+
+# Log login/logout events
+log_authentication = true
+
+# Web UI log file
+web_ui_log_file = "D:\\SafeOpsFV2\\logs\\web_ui.log"
+
+# ============================================================================
+# Performance and Caching
+# ============================================================================
+[performance]
+# Enable response caching
+caching_enabled = true
+
+# Cache static assets (JS/CSS/images)
+cache_static_assets = true
+
+# Cache time-to-live (seconds)
+cache_ttl = 3600
+
+# Enable gzip compression
+compression_enabled = true
+
+# Minify JS/CSS (production)
+minification_enabled = true
+
+# Backend connection pool size
+connection_pool_size = 10
+
+# Maximum concurrent requests
+max_concurrent_requests = 100
+
+# ============================================================================
+# Security Headers
+# ============================================================================
+[security_headers]
+# Enable security headers
+security_headers_enabled = true
+
+# Enable HTTP Strict Transport Security
+hsts_enabled = true
+
+# HSTS max age (seconds)
+hsts_max_age = 31536000
+
+# Include subdomains in HSTS
+hsts_include_subdomains = true
+
+# Enable Content Security Policy
+csp_enabled = true
+
+# CSP policy string
+csp_policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+
+# X-Frame-Options
+# Valid values: "DENY", "SAMEORIGIN"
+x_frame_options = "DENY"
+
+# X-Content-Type-Options
+x_content_type_options = "nosniff"
+
+# X-XSS-Protection
+x_xss_protection = "1; mode=block"
+
+# Referrer-Policy
+referrer_policy = "strict-origin-when-cross-origin"
+
+# ============================================================================
+# API Rate Limiting
+# ============================================================================
+[rate_limiting]
+# Enable API rate limiting
+rate_limiting_enabled = true
+
+# Maximum requests per minute per user
+requests_per_minute = 300
+
+# Burst allowance
+burst_allowance = 50
+
+# Rate limit by IP address
+rate_limit_by_ip = true
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+[advanced]
+# Enable CORS (Cross-Origin Resource Sharing)
+cors_enabled = false
+
+# Allowed CORS origins
+# cors_allowed_origins = ["https://app.example.com"]
+
+# Enable API documentation (Swagger/OpenAPI)
+api_docs_enabled = false
+
+# API documentation path
+api_docs_path = "/api/docs"
+
+# Development mode (enables debug features)
+development_mode = false
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# These settings can be overridden by environment variables:
+#
+# UI_TLS_CERT - TLS certificate path
+# UI_TLS_KEY - TLS private key path
+# UI_JWT_SECRET - JWT signing secret for sessions
+# ORCHESTRATOR_ENDPOINT - Primary backend (orchestrator) address
+# LDAP_SERVER - LDAP server for authentication
+# LDAP_BIND_PASSWORD - LDAP bind password
+#
+# ============================================================================
+
+# ============================================================================
+# Configuration Validation
+# ============================================================================
+# The web_ui service validates this configuration at startup and will
+# fail to start if validation fails. Common checks:
+#
+# 1. listen_address and listen_port must be valid
+# 2. TLS certificate and key must exist if tls_enabled
+# 3. backend_services addresses must be reachable
+# 4. At least one user account must exist
+# 5. Default admin password must be changed
+# 6. JWT secret must be set and strong
+# 7. RBAC roles must have valid permissions
+# 8. Theme resources must exist
+# 9. Log directories must be writable
+# 10. Security headers configured if production mode
+#
+# SECURITY WARNING: Change default admin password immediately after
+# installation. Enable 2FA for admin accounts in production.
+#
+# Use the validator: safeops-cli config validate web_ui.toml
+# ============================================================================

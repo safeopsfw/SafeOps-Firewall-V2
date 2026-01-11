@@ -1,0 +1,3 @@
+// Network Logger gRPC Service Definition
+syntax = "proto3";
+package network_logger;
