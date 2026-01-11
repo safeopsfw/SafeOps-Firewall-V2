@@ -1,0 +1,406 @@
+{"timestamp":"2026-01-11T05:38:50.2820453Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"network-pipeline","version":"1.0.0"}}
+{"timestamp":"2026-01-11T05:38:50.2852158Z","level":"INFO","message":"Async packet logger initialized","data":{"buffer":100000}}
+{"timestamp":"2026-01-11T05:38:50.2874695Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T05:38:50.2896349Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T05:38:50.2989302Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T05:38:51.3014404Z","level":"INFO","message":"Spawning mitmproxy..."}
+{"timestamp":"2026-01-11T05:38:51.3078351Z","level":"INFO","message":"Starting mitmproxy","data":{"binary":"mitmdump","mode":"socks5","port":8080}}
+{"timestamp":"2026-01-11T05:38:52.3143033Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T05:38:52.3155048Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T05:38:52.3155048Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T05:38:52.3182819Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T05:38:52.3226631Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T05:38:52.326077Z","level":"INFO","message":"Found network adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T05:38:52.3282593Z","level":"INFO","message":"Adapter","data":{"index":0,"mac":"00:00:00:00:00:00","name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T05:38:52.3298661Z","level":"INFO","message":"Adapter","data":{"index":1,"mac":"00:00:00:00:00:00","name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T05:38:52.3322864Z","level":"INFO","message":"Adapter","data":{"index":2,"mac":"00:00:00:00:00:00","name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T05:38:52.3344065Z","level":"INFO","message":"Adapter","data":{"index":3,"mac":"f6:26:79:73:6f:7c","name":"Local Area Connection* 10"}}
+{"timestamp":"2026-01-11T05:38:52.3372064Z","level":"INFO","message":"Adapter","data":{"index":4,"mac":"00:15:5d:01:09:00","name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T05:38:52.3396899Z","level":"INFO","message":"Adapter","data":{"index":5,"mac":"f4:26:79:73:6f:7d","name":"Local Area Connection* 9"}}
+{"timestamp":"2026-01-11T05:38:52.3408535Z","level":"INFO","message":"Adapter","data":{"index":6,"mac":"f4:26:79:73:6f:7c","name":"Wi-Fi"}}
+{"timestamp":"2026-01-11T05:38:52.3434541Z","level":"INFO","message":"Adapter","data":{"index":7,"mac":"58:11:22:86:fd:c4","name":"Ethernet"}}
+{"timestamp":"2026-01-11T05:38:52.3458852Z","level":"INFO","message":"Adapter","data":{"index":8,"mac":"0a:00:27:00:00:0c","name":"Ethernet 2"}}
+{"timestamp":"2026-01-11T05:38:52.3480972Z","level":"INFO","message":"Adapter","data":{"index":9,"mac":"00:50:56:c0:00:08","name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T05:38:52.3514563Z","level":"INFO","message":"Adapter","data":{"index":10,"mac":"00:50:56:c0:00:01","name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T05:38:52.3551113Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T05:38:52.359561Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T05:38:52.3620823Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T05:38:52.3657393Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T05:38:52.3688615Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T05:38:52.3719746Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T05:38:52.3751399Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T05:38:52.3787977Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T05:38:52.3827357Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0c"}}
+{"timestamp":"2026-01-11T05:38:52.3850435Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T05:38:52.3893689Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T05:38:52.3927031Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T05:38:52.3950841Z","level":"INFO","message":"Traffic classifier initialized"}
+{"timestamp":"2026-01-11T05:38:52.3977015Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T05:38:52.4014517Z","level":"INFO","message":"Starting packet processing on all NICs..."}
+{"timestamp":"2026-01-11T05:38:52.4033197Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T05:38:52.4055369Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T05:38:53.0636417Z","level":"ERROR","message":"Process exited with error","data":{"error":"exit status 1","process":"mitmproxy"}}
+{"timestamp":"2026-01-11T05:39:07.4037536Z","level":"INFO","message":"Stats","data":{"classify_bypass":269,"classify_dns":10,"classify_drop":0,"classify_http":237025,"dns_redirected":10,"dns_responses":0,"log_dropped":0,"log_written":237304,"packets_dropped":0,"packets_read":237374,"packets_written":237304}}
+{"timestamp":"2026-01-11T05:39:08.5532723Z","level":"INFO","message":"Shutdown signal received, stopping..."}
+{"timestamp":"2026-01-11T05:39:08.5556183Z","level":"WARN","message":"Process exited unexpectedly","data":{"process":"dnsproxy"}}
+{"timestamp":"2026-01-11T05:39:08.5726283Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T05:39:10.5562916Z","level":"INFO","message":"Final stats","data":{"bypass":270,"dns":12,"dns_redirected":12,"dns_responses":0,"drop":0,"http":237060,"total":237342}}
+{"timestamp":"2026-01-11T05:39:10.5598344Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T05:39:10.561734Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T05:39:10.5641517Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":237417,"packets_written":237342}}
+{"timestamp":"2026-01-11T05:45:30.0057861Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"network-pipeline","version":"1.0.0"}}
+{"timestamp":"2026-01-11T05:45:30.0110474Z","level":"INFO","message":"Async packet logger initialized","data":{"buffer":100000}}
+{"timestamp":"2026-01-11T05:45:30.0131647Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T05:45:30.016894Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T05:45:30.0240785Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T05:45:31.0268487Z","level":"INFO","message":"Spawning mitmproxy..."}
+{"timestamp":"2026-01-11T05:45:31.031867Z","level":"INFO","message":"Starting mitmproxy","data":{"binary":"mitmdump","mode":"transparent","port":8080}}
+{"timestamp":"2026-01-11T05:45:32.0396495Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T05:45:32.0423817Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T05:45:32.0430908Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T05:45:32.0446367Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T05:45:32.0490326Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T05:45:32.0517683Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T05:45:32.0540193Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T05:45:32.0557979Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T05:45:32.0583295Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T05:45:32.0600592Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T05:45:32.0621774Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T05:45:32.0644836Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T05:45:32.0655644Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T05:45:32.0681762Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T05:45:32.0704539Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0c"}}
+{"timestamp":"2026-01-11T05:45:32.0723624Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T05:45:32.0745967Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T05:45:32.0772251Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T05:45:32.0794663Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T05:45:32.0811539Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T05:45:32.0836539Z","level":"INFO","message":"HTTP wrapper initialized","data":{"target":"127.0.0.1:8080"}}
+{"timestamp":"2026-01-11T05:45:32.085824Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T05:45:32.0880727Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T05:45:32.0898763Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T05:45:43.6313528Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-11T05:45:43.63437Z","level":"WARN","message":"Process exited unexpectedly","data":{"process":"dnsproxy"}}
+{"timestamp":"2026-01-11T05:45:43.6372013Z","level":"INFO","message":"Process stopped (context cancelled)","data":{"process":"mitmproxy"}}
+{"timestamp":"2026-01-11T05:45:43.732036Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T05:45:45.6368209Z","level":"INFO","message":"Final stats","data":{"bypass":12,"dns":0,"dns_redir":0,"drop":0,"http":37,"http_redir":26,"total":49}}
+{"timestamp":"2026-01-11T05:45:45.6396837Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T05:45:45.6421662Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T05:45:45.6443355Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":109,"packets_written":49}}
+{"timestamp":"2026-01-11T09:25:07.6271722Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"network-pipeline","version":"1.0.0"}}
+{"timestamp":"2026-01-11T09:25:07.6297303Z","level":"INFO","message":"Async packet logger initialized","data":{"buffer":100000}}
+{"timestamp":"2026-01-11T09:25:07.6308826Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T09:25:07.6319687Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T09:25:07.9409127Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T09:25:08.9447777Z","level":"INFO","message":"Spawning mitmproxy..."}
+{"timestamp":"2026-01-11T09:25:08.9557915Z","level":"INFO","message":"Starting mitmproxy","data":{"binary":"mitmdump","mode":"regular","port":8080}}
+{"timestamp":"2026-01-11T09:25:10.094036Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T09:25:10.0973985Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T09:25:10.0973985Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T09:25:10.0980298Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T09:25:10.1007311Z","level":"ERROR","message":"Failed to open WinpkFilter driver","data":{"error":"failed to open NDISAPI driver: Access is denied."}}
+{"timestamp":"2026-01-11T09:25:30.531414Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"network-pipeline","version":"1.0.0"}}
+{"timestamp":"2026-01-11T09:25:30.533575Z","level":"INFO","message":"Async packet logger initialized","data":{"buffer":100000}}
+{"timestamp":"2026-01-11T09:25:30.5346601Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T09:25:30.5357448Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T09:25:30.5449604Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T09:25:30.5600786Z","level":"ERROR","message":"Process exited with error","data":{"error":"exit status 1","process":"dnsproxy"}}
+{"timestamp":"2026-01-11T09:25:31.5466261Z","level":"INFO","message":"Spawning mitmproxy..."}
+{"timestamp":"2026-01-11T09:25:31.5521837Z","level":"INFO","message":"Starting mitmproxy","data":{"binary":"mitmdump","mode":"regular","port":8080}}
+{"timestamp":"2026-01-11T09:25:32.5605669Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T09:25:32.5616255Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T09:25:32.5621034Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T09:25:32.5626115Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T09:25:32.5647871Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T09:25:32.5676498Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T09:25:32.5942433Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T09:25:32.595289Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T09:25:32.5963524Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T09:25:32.59749Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T09:25:32.5986311Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T09:25:32.6002534Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T09:25:32.6013221Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T09:25:32.6023995Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T09:25:32.6040133Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T09:25:32.6050749Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T09:25:32.6061499Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0c"}}
+{"timestamp":"2026-01-11T09:25:32.6072105Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T09:25:32.6082856Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T09:25:32.6099009Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T09:25:32.6110063Z","level":"INFO","message":"HTTP wrapper initialized","data":{"target":"127.0.0.1:8080"}}
+{"timestamp":"2026-01-11T09:25:32.6121057Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T09:25:32.6181226Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T09:25:32.6193896Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T09:25:33.3467162Z","level":"ERROR","message":"Process exited with error","data":{"error":"exit status 1","process":"mitmproxy"}}
+{"timestamp":"2026-01-11T09:25:46.3730019Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-11T09:25:46.3883334Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T09:25:48.3764556Z","level":"INFO","message":"Final stats","data":{"bypass":1257,"dns":14,"dns_redir":14,"drop":0,"http":198,"http_redir":97,"total":1469}}
+{"timestamp":"2026-01-11T09:25:48.3778464Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T09:25:48.3798981Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T09:25:48.3809896Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":1570,"packets_written":1469}}
+{"timestamp":"2026-01-11T10:13:16.6132786Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"network-pipeline","version":"1.0.0"}}
+{"timestamp":"2026-01-11T10:13:16.6148598Z","level":"INFO","message":"Async packet logger initialized","data":{"buffer":100000}}
+{"timestamp":"2026-01-11T10:13:16.6167426Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T10:13:16.6181922Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T10:13:16.8416059Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T10:13:17.843634Z","level":"INFO","message":"Spawning mitmproxy..."}
+{"timestamp":"2026-01-11T10:13:17.8482437Z","level":"INFO","message":"Starting mitmproxy","data":{"binary":"mitmdump","mode":"regular","port":8080}}
+{"timestamp":"2026-01-11T10:13:18.955076Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T10:13:18.9556669Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T10:13:18.9556669Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T10:13:18.9567045Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T10:13:18.9588652Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T10:13:18.9609652Z","level":"INFO","message":"Found adapters","data":{"count":8}}
+{"timestamp":"2026-01-11T10:13:18.9621192Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:13:18.9632391Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T10:13:18.9642956Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T10:13:18.9659334Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:13:18.9681921Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T10:13:18.9697485Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-11T10:13:18.9709404Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T10:13:18.972506Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T10:13:18.973549Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T10:13:18.9746598Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T10:13:18.9757713Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T10:13:18.976837Z","level":"INFO","message":"HTTP wrapper initialized","data":{"target":"127.0.0.1:8080"}}
+{"timestamp":"2026-01-11T10:13:18.9774223Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T10:13:18.9789973Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T10:13:18.9800567Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T10:13:33.9794237Z","level":"INFO","message":"Stats","data":{"bypass":662,"dns":47,"dns_redir":47,"dns_resp":0,"drop":0,"dropped":0,"http":387,"http_redir":180,"http_resp":0,"packets":1220,"written":1096}}
+{"timestamp":"2026-01-11T10:13:44.4416251Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-11T10:13:44.4436348Z","level":"WARN","message":"Process exited unexpectedly","data":{"process":"dnsproxy"}}
+{"timestamp":"2026-01-11T10:13:44.4451756Z","level":"INFO","message":"Process stopped (context cancelled)","data":{"process":"mitmproxy"}}
+{"timestamp":"2026-01-11T10:13:44.4605375Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T10:13:46.444636Z","level":"INFO","message":"Final stats","data":{"bypass":1222,"dns":53,"dns_redir":53,"drop":0,"http":1099,"http_redir":385,"total":2374}}
+{"timestamp":"2026-01-11T10:13:46.4488094Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T10:13:46.4501949Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T10:13:46.4514212Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":2706,"packets_written":2374}}
+{"timestamp":"2026-01-11T10:16:33.2379717Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"network-pipeline","version":"1.0.0"}}
+{"timestamp":"2026-01-11T10:16:33.2416203Z","level":"INFO","message":"Async packet logger initialized","data":{"buffer":100000}}
+{"timestamp":"2026-01-11T10:16:33.2431984Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T10:16:33.2442591Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T10:16:33.251802Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T10:16:34.2555983Z","level":"INFO","message":"Spawning mitmproxy..."}
+{"timestamp":"2026-01-11T10:16:34.2626426Z","level":"INFO","message":"Starting mitmproxy","data":{"binary":"mitmdump","mode":"regular","port":8080}}
+{"timestamp":"2026-01-11T10:16:35.2694211Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T10:16:35.2750875Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T10:16:35.2750875Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T10:16:35.2750875Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T10:16:35.2782711Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T10:16:35.2803322Z","level":"INFO","message":"Found adapters","data":{"count":8}}
+{"timestamp":"2026-01-11T10:16:35.2813688Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:16:35.2824983Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T10:16:35.2835979Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T10:16:35.2846354Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:16:35.2857833Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T10:16:35.2868277Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-11T10:16:35.2879448Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T10:16:35.2896412Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T10:16:35.2907422Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T10:16:35.2918743Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T10:16:35.2924414Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T10:16:35.2934769Z","level":"INFO","message":"HTTP wrapper initialized","data":{"target":"127.0.0.1:8080"}}
+{"timestamp":"2026-01-11T10:16:35.2945435Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T10:16:35.2961075Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T10:16:35.2971508Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T10:16:50.2967736Z","level":"INFO","message":"Stats","data":{"bypass":1207,"dns":44,"dns_redir":44,"dns_resp":0,"drop":0,"dropped":0,"http":858,"http_redir":123,"http_resp":0,"packets":2302,"written":2109}}
+{"timestamp":"2026-01-11T10:17:05.296523Z","level":"INFO","message":"Stats","data":{"bypass":1955,"dns":44,"dns_redir":44,"dns_resp":0,"drop":0,"dropped":0,"http":1199,"http_redir":273,"http_resp":0,"packets":3472,"written":3198}}
+{"timestamp":"2026-01-11T10:17:15.1548667Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-11T10:17:15.1586711Z","level":"INFO","message":"Process stopped (context cancelled)","data":{"process":"dnsproxy"}}
+{"timestamp":"2026-01-11T10:17:15.1605937Z","level":"INFO","message":"Process stopped (context cancelled)","data":{"process":"mitmproxy"}}
+{"timestamp":"2026-01-11T10:17:15.1663554Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T10:17:17.1588436Z","level":"INFO","message":"Final stats","data":{"bypass":2545,"dns":52,"dns_redir":52,"drop":0,"http":1335,"http_redir":368,"total":3932}}
+{"timestamp":"2026-01-11T10:17:19.1912101Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T10:17:19.193492Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T10:17:19.1946141Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":4255,"packets_written":3932}}
+{"timestamp":"2026-01-11T10:44:09.2155579Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"network-pipeline","version":"1.0.0"}}
+{"timestamp":"2026-01-11T10:44:09.2181519Z","level":"INFO","message":"Async packet logger initialized","data":{"buffer":100000}}
+{"timestamp":"2026-01-11T10:44:09.220243Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T10:44:09.2224778Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T10:44:09.2966953Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T10:44:10.3006858Z","level":"INFO","message":"Spawning mitmproxy (transparent mode)..."}
+{"timestamp":"2026-01-11T10:44:10.3061911Z","level":"INFO","message":"Starting mitmproxy","data":{"binary":"mitmdump","mode":"regular","port":8080}}
+{"timestamp":"2026-01-11T10:44:11.4208924Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T10:44:11.4262126Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T10:44:11.4277459Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T10:44:11.4323948Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T10:44:11.4450178Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T10:44:11.4527704Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T10:44:11.4594701Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T10:44:11.4668266Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T10:44:11.4741593Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T10:44:11.4795877Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:44:11.4810948Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T10:44:11.4854215Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T10:44:11.4871729Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:44:11.4911139Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T10:44:11.4949088Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-11T10:44:11.5000863Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T10:44:11.5100979Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T10:44:11.5167004Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T10:44:11.520722Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T10:44:11.5270504Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T10:44:11.5296198Z","level":"INFO","message":"HTTP/HTTPS: mitmproxy handles via Windows routing"}
+{"timestamp":"2026-01-11T10:44:11.5349994Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T10:44:11.5387094Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T10:44:11.5442547Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T10:44:26.5418795Z","level":"INFO","message":"Stats","data":{"bypass":533,"dns":14,"dns_redir":14,"dns_resp":0,"drop":0,"dropped":0,"http":11456,"packets":12156,"written":12003}}
+{"timestamp":"2026-01-11T10:44:41.5413482Z","level":"INFO","message":"Stats","data":{"bypass":857,"dns":18,"dns_redir":18,"dns_resp":0,"drop":0,"dropped":0,"http":11524,"packets":12619,"written":12399}}
+{"timestamp":"2026-01-11T10:45:26.921654Z","level":"INFO","message":"Stats","data":{"bypass":3628,"dns":156,"dns_redir":156,"dns_resp":0,"drop":0,"dropped":0,"http":12270,"packets":17028,"written":16054}}
+{"timestamp":"2026-01-11T10:45:27.4146471Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-11T10:45:27.4193638Z","level":"INFO","message":"Process stopped (context cancelled)","data":{"process":"dnsproxy"}}
+{"timestamp":"2026-01-11T10:45:27.420576Z","level":"INFO","message":"Process stopped (context cancelled)","data":{"process":"mitmproxy"}}
+{"timestamp":"2026-01-11T10:45:27.430547Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T10:45:29.4187733Z","level":"INFO","message":"Final stats","data":{"bypass":3647,"dns":157,"dns_redir":157,"drop":0,"http":12272,"total":16076}}
+{"timestamp":"2026-01-11T10:45:29.4211322Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T10:45:29.4231736Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T10:45:29.4256496Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":17065,"packets_written":16076}}
+{"timestamp":"2026-01-11T10:58:11.6708261Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"go-proxy","version":"2.0.0"}}
+{"timestamp":"2026-01-11T10:58:11.6750503Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T10:58:11.6771291Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T10:58:11.6839818Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T10:58:12.6865316Z","level":"INFO","message":"Starting Go-based inline proxy","data":{"port":8080}}
+{"timestamp":"2026-01-11T10:58:13.6869138Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T10:58:13.6885794Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T10:58:13.6892858Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T10:58:13.6912773Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T10:58:13.6953684Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T10:58:13.6982974Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T10:58:13.7004987Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T10:58:13.7021839Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T10:58:13.7043392Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T10:58:13.7065882Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:58:13.7083264Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T10:58:13.7104411Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T10:58:13.7128709Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T10:58:13.7151036Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T10:58:13.7168226Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-11T10:58:13.7194637Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T10:58:13.7217431Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T10:58:13.7234008Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T10:58:13.7254542Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T10:58:13.7280826Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T10:58:13.7308069Z","level":"INFO","message":"Pipeline ready - Go proxy handles HTTP/HTTPS inline"}
+{"timestamp":"2026-01-11T10:58:13.7331523Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T10:58:13.7353962Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T10:58:13.7371463Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T10:58:43.7359136Z","level":"INFO","message":"Stats","data":{"bypass":39,"dns":17,"dns_redir":17,"drop":0,"dropped":0,"http":254263,"packets":254549,"proxy_blocked":0,"proxy_reqs":0,"written":254319}}
+{"timestamp":"2026-01-11T10:59:13.7358136Z","level":"INFO","message":"Stats","data":{"bypass":164,"dns":17,"dns_redir":17,"drop":0,"dropped":0,"http":259445,"packets":259963,"proxy_blocked":0,"proxy_reqs":0,"written":259626}}
+{"timestamp":"2026-01-11T10:59:43.735688Z","level":"INFO","message":"Stats","data":{"bypass":3032,"dns":135,"dns_redir":135,"drop":0,"dropped":0,"http":262372,"packets":266087,"proxy_blocked":0,"proxy_reqs":0,"written":265539}}
+{"timestamp":"2026-01-11T11:00:13.7358983Z","level":"INFO","message":"Stats","data":{"bypass":3327,"dns":171,"dns_redir":171,"drop":0,"dropped":0,"http":325043,"packets":332254,"proxy_blocked":0,"proxy_reqs":0,"written":328541}}
+{"timestamp":"2026-01-11T11:00:43.7356708Z","level":"INFO","message":"Stats","data":{"bypass":3702,"dns":184,"dns_redir":184,"drop":0,"dropped":0,"http":326545,"packets":334262,"proxy_blocked":0,"proxy_reqs":0,"written":330431}}
+{"timestamp":"2026-01-11T11:01:13.7364236Z","level":"INFO","message":"Stats","data":{"bypass":4195,"dns":212,"dns_redir":212,"drop":0,"dropped":0,"http":330568,"packets":339088,"proxy_blocked":0,"proxy_reqs":0,"written":334975}}
+{"timestamp":"2026-01-11T11:01:43.7356497Z","level":"INFO","message":"Stats","data":{"bypass":4622,"dns":265,"dns_redir":265,"drop":0,"dropped":0,"http":475005,"packets":484364,"proxy_blocked":0,"proxy_reqs":0,"written":479892}}
+{"timestamp":"2026-01-11T11:02:13.735755Z","level":"INFO","message":"Stats","data":{"bypass":4740,"dns":267,"dns_redir":267,"drop":0,"dropped":0,"http":476805,"packets":486460,"proxy_blocked":0,"proxy_reqs":0,"written":481812}}
+{"timestamp":"2026-01-11T11:02:43.7360904Z","level":"INFO","message":"Stats","data":{"bypass":5028,"dns":271,"dns_redir":271,"drop":0,"dropped":0,"http":480982,"packets":491232,"proxy_blocked":0,"proxy_reqs":0,"written":486281}}
+{"timestamp":"2026-01-11T11:05:54.2688103Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"go-proxy","version":"2.0.0"}}
+{"timestamp":"2026-01-11T11:05:54.2720786Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T11:05:54.274174Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T11:05:54.2828179Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T11:05:55.2861316Z","level":"INFO","message":"Starting Go-based inline proxy","data":{"port":8080}}
+{"timestamp":"2026-01-11T11:05:56.3081622Z","level":"INFO","message":"System proxy configured","data":{"proxy":"127.0.0.1:8080"}}
+{"timestamp":"2026-01-11T11:05:56.3120722Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T11:05:56.3146803Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T11:05:56.3146803Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T11:05:56.3167054Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T11:05:56.3211977Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T11:05:56.3240968Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T11:05:56.3257903Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T11:05:56.3283361Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T11:05:56.3306279Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T11:05:56.332308Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T11:05:56.3350855Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T11:05:56.3373917Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T11:05:56.3390672Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T11:05:56.3412677Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T11:05:56.3439981Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-11T11:05:56.3457445Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T11:05:56.347917Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T11:05:56.3498552Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T11:05:56.3526678Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T11:05:56.3549938Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T11:05:56.3566814Z","level":"INFO","message":"Pipeline ready - Go proxy handles HTTP/HTTPS inline"}
+{"timestamp":"2026-01-11T11:05:56.3578738Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T11:05:56.3610425Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T11:05:56.3621508Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T11:06:16.728745Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-11T11:06:16.7320363Z","level":"WARN","message":"Process exited unexpectedly","data":{"process":"dnsproxy"}}
+{"timestamp":"2026-01-11T11:06:16.8095925Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T11:06:18.7336143Z","level":"INFO","message":"Final stats","data":{"bypass":1675,"dns":13,"dns_redir":13,"drop":0,"http":2843,"proxy_blocked":0,"proxy_reqs":11,"total":4531}}
+{"timestamp":"2026-01-11T11:06:18.746341Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T11:06:18.7494533Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T11:06:18.7520637Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":4685,"packets_written":4531}}
+{"timestamp":"2026-01-11T11:08:38.6359114Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"go-proxy","version":"2.0.0"}}
+{"timestamp":"2026-01-11T11:08:38.6385535Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T11:08:38.6406713Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T11:08:38.6487306Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T11:08:39.6519367Z","level":"INFO","message":"Starting Go-based inline proxy","data":{"port":8080}}
+{"timestamp":"2026-01-11T11:08:40.6787233Z","level":"INFO","message":"System proxy configured","data":{"proxy":"127.0.0.1:8080"}}
+{"timestamp":"2026-01-11T11:08:40.683021Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T11:08:40.6862153Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T11:08:40.6862153Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T11:08:40.6878278Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T11:08:40.6927957Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T11:08:40.6956903Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T11:08:40.6983215Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T11:08:40.7004887Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T11:08:40.7026542Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T11:08:40.7053794Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T11:08:40.7075081Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T11:08:40.7096709Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T11:08:40.7118825Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T11:08:40.7140376Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T11:08:40.7165428Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-11T11:08:40.7186669Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T11:08:40.7212876Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T11:08:40.7235415Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T11:08:40.7256995Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T11:08:40.7278524Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T11:08:40.729975Z","level":"INFO","message":"Pipeline ready - Go proxy handles HTTP/HTTPS inline"}
+{"timestamp":"2026-01-11T11:08:40.732133Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T11:08:40.7342922Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T11:08:40.7364455Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T11:09:10.7347443Z","level":"INFO","message":"Stats","data":{"bypass":232,"dns":147,"dns_redir":147,"drop":0,"dropped":0,"http":587470,"packets":588159,"proxy_blocked":0,"proxy_reqs":120,"written":587849}}
+{"timestamp":"2026-01-11T11:09:40.7347715Z","level":"INFO","message":"Stats","data":{"bypass":351,"dns":168,"dns_redir":168,"drop":0,"dropped":0,"http":587852,"packets":588845,"proxy_blocked":0,"proxy_reqs":130,"written":588371}}
+{"timestamp":"2026-01-11T11:10:10.7348752Z","level":"INFO","message":"Stats","data":{"bypass":1375,"dns":179,"dns_redir":179,"drop":0,"dropped":0,"http":589977,"packets":592186,"proxy_blocked":0,"proxy_reqs":130,"written":591531}}
+{"timestamp":"2026-01-11T11:10:40.7344533Z","level":"INFO","message":"Stats","data":{"bypass":2754,"dns":200,"dns_redir":200,"drop":0,"dropped":0,"http":595105,"packets":598860,"proxy_blocked":0,"proxy_reqs":131,"written":598059}}
+{"timestamp":"2026-01-11T11:11:10.7345184Z","level":"INFO","message":"Stats","data":{"bypass":3687,"dns":210,"dns_redir":210,"drop":0,"dropped":0,"http":598816,"packets":603663,"proxy_blocked":0,"proxy_reqs":131,"written":602713}}
+{"timestamp":"2026-01-11T11:11:41.3982345Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"go-proxy","version":"2.0.0"}}
+{"timestamp":"2026-01-11T11:11:41.4031018Z","level":"INFO","message":"Spawning dnsproxy..."}
+{"timestamp":"2026-01-11T11:11:41.4052042Z","level":"INFO","message":"Attempting to start dnsproxy","data":{"binary":"D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe","port":15353}}
+{"timestamp":"2026-01-11T11:11:41.4132009Z","level":"INFO","message":"dnsproxy started successfully","data":{"port":15353}}
+{"timestamp":"2026-01-11T11:11:42.4161911Z","level":"INFO","message":"Starting Go-based inline proxy","data":{"port":8080}}
+{"timestamp":"2026-01-11T11:11:43.4383652Z","level":"INFO","message":"System proxy configured","data":{"proxy":"127.0.0.1:8080"}}
+{"timestamp":"2026-01-11T11:11:43.4404147Z","level":"INFO","message":"Starting API server","data":{"port":9002}}
+{"timestamp":"2026-01-11T11:11:43.4425414Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-11T11:11:43.4425414Z","level":"INFO","message":"API server listening","data":{"address":"0.0.0.0:9002"}}
+{"timestamp":"2026-01-11T11:11:43.4441614Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-11T11:11:43.4483308Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-11T11:11:43.4516173Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-11T11:11:43.453314Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-11T11:11:43.4556045Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-11T11:11:43.4573634Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-11T11:11:43.4596372Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T11:11:43.461814Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-11T11:11:43.4640711Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-11T11:11:43.4663445Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-11T11:11:43.4685724Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-11T11:11:43.4707553Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-11T11:11:43.4727518Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-11T11:11:43.4747714Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-11T11:11:43.4774585Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-11T11:11:43.4795451Z","level":"INFO","message":"Classifier initialized"}
+{"timestamp":"2026-01-11T11:11:43.4817929Z","level":"INFO","message":"DNS redirector initialized","data":{"target":"127.0.0.1:15353"}}
+{"timestamp":"2026-01-11T11:11:43.4839583Z","level":"INFO","message":"Pipeline ready - Go proxy handles HTTP/HTTPS inline"}
+{"timestamp":"2026-01-11T11:11:43.4862067Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-11T11:11:43.4889547Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-11T11:11:43.4912194Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-11T11:12:13.4895923Z","level":"INFO","message":"Stats","data":{"bypass":130,"dns":83,"dns_redir":83,"drop":0,"dropped":0,"http":408840,"packets":409469,"proxy_blocked":0,"proxy_reqs":267,"written":409053}}
+{"timestamp":"2026-01-11T11:12:43.4893352Z","level":"INFO","message":"Stats","data":{"bypass":191,"dns":91,"dns_redir":91,"drop":0,"dropped":0,"http":409145,"packets":410011,"proxy_blocked":0,"proxy_reqs":269,"written":409427}}
+{"timestamp":"2026-01-11T11:12:49.0757643Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-11T11:12:49.0778355Z","level":"WARN","message":"Process exited unexpectedly","data":{"process":"dnsproxy"}}
+{"timestamp":"2026-01-11T11:12:49.0962825Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-11T11:12:51.0817605Z","level":"INFO","message":"Final stats","data":{"bypass":226,"dns":96,"dns_redir":96,"drop":0,"http":409230,"proxy_blocked":0,"proxy_reqs":270,"total":409552}}
+{"timestamp":"2026-01-11T11:12:51.0915194Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-11T11:12:51.0938125Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-11T11:12:51.0959222Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":410163,"packets_written":409552}}
