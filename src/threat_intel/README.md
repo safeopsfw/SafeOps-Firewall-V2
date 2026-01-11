@@ -1,113 +1,105 @@
 # Threat Intelligence Service
 
-A comprehensive threat intelligence aggregation and analysis service for the SafeOps Firewall V2 project.
+A comprehensive threat intelligence aggregation and analysis service for SafeOps Firewall V2.
 
-## Overview
+## Quick Start
 
-This service fetches, parses, processes, and stores threat intelligence data from multiple open-source feeds. It provides a RESTful API for querying IP reputation, domain intelligence, hash signatures, and IOC data.
+### Build Pipeline
+```bash
+cd d:\SafeOpsFV2\src\threat_intel
 
-## Architecture
-
-```
-threat_intel/
-├── cmd/server/          # Main application entry point
-├── config/             # Configuration management
-├── src/
-│   ├── api/           # REST API handlers and routes
-│   ├── fetcher/       # Feed downloading and scheduling
-│   ├── parser/        # Data parsing (CSV, JSON, TXT)
-│   ├── storage/       # Database operations
-│   ├── processor/     # Data enrichment and scoring
-│   └── worker/        # Background job processing
-├── feeds/             # Downloaded feed files (gitignored)
-├── models/            # Data structures
-└── utils/             # Utility functions
+# Build pipeline (fetch + process)
+go build -o threat_intel_pipeline.exe ./cmd/pipeline
 ```
 
-## Features
+### Update Database (Run Pipeline)
+```bash
+.\threat_intel_pipeline.exe
+```
+This downloads all threat feeds and inserts them into PostgreSQL.
 
-- **Multi-format Parser**: Supports CSV, JSON, and plain text feeds
-- **Automatic Scheduling**: Configurable feed update intervals
-- **Data Enrichment**: Geolocation, ASN, and threat scoring
-- **Deduplication**: Removes duplicate entries
-- **RESTful API**: Query threat intelligence via HTTP
-- **Worker Pool**: Concurrent processing with configurable workers
-- **PostgreSQL Storage**: Efficient indexed storage
+## Direct Python Integration
 
-## Database Schema
+The `realtime_capture.py` connects **directly to PostgreSQL** - no API server needed!
 
-The service uses PostgreSQL 18 with the following tables:
-- `ip_geolocation` - IP address location data
-- `ip_blacklist` - Malicious IP addresses
-- `ip_anonymization` - VPN/Tor/Proxy detection
-- `domain_intelligence` - Domain reputation
-- `hash_intelligence` - File hash reputation
-- `ioc_storage` - Generic IOC storage
-- `threat_feeds` - Feed source management
-- `asn_data` - AS number information
+```python
+# In realtime_capture.py - ThreatIntelClient connects directly to DB
+# Database: threat_intel_db
+# Tables: ip_geolocation (1.1M IPs), ip_blacklist (34K), ip_anonymization (1.3K)
+```
 
-## Configuration
+## Database Tables
 
-Edit `config/config.yaml`:
+| Table | Records | Purpose |
+|-------|---------|---------|
+| `domains` | 1.1M+ | Malicious domain reputation (phishing, malware) |
+| `ip_blacklist` | 34K | Known malicious IPs + threat scores |
+| `ip_geolocation` | 1.1M | IP → Country, ASN, ISP (range-based lookup) |
+| `ip_anonymization` | 1.3K | VPN/Tor/Proxy detection |
 
+## Pipeline Commands
+
+```bash
+# Full update (fetch + process)
+.\threat_intel_pipeline.exe
+
+# Fetch only (download feeds)
+.\threat_intel_pipeline.exe -fetch
+
+# Process only (insert to DB)
+.\threat_intel_pipeline.exe -process
+
+# Specific category
+.\threat_intel_pipeline.exe -category=ip_geo
+
+# Check DB status
+.\threat_intel_pipeline.exe -status
+```
+
+## Threat Feed Sources
+
+Feeds are configured in `config/sources.yaml`:
+
+| Category | Example Sources |
+|----------|-----------------|
+| IP Blacklist | Feodo Tracker, FireHOL, Blocklist.de |
+| Domains | OpenPhish, URLhaus, ThreatFox |
+| VPN/Tor | Tor Exit Nodes, VPN Gate |
+| Geo/ASN | IPtoASN, GeoLite2, IP2Location |
+
+## Database Requirements
+
+PostgreSQL connection in `config/config.yaml`:
 ```yaml
-server:
-  port: 8080
-
 database:
   host: localhost
   port: 5432
-  user: postgres
-  password: your_password
-  dbname: threat_intel
-  sslmode: disable
-
-worker:
-  max_workers: 5
-  fetch_interval: 3600
+  database: threat_intel_db
+  user: threat_intel_app
+  password: ${DB_PASSWORD}
 ```
 
-## API Endpoints
+## Directory Structure
 
-- `GET /health` - Health check
-- `GET /api/v1/ip/{ip}` - Get IP reputation
-- `GET /api/v1/domain/{domain}` - Get domain intelligence
-- `GET /api/v1/hash/{hash}` - Get hash reputation
-- `GET /api/v1/ioc` - Get IOC data
-
-## Running
-
-```bash
-# Build
-go build -o threat_intel cmd/server/main.go
-
-# Run
-./threat_intel
 ```
-
-## Development
-
-```bash
-# Install dependencies
-go mod download
-
-# Run tests
-go test ./...
-
-# Run with custom config
-CONFIG_PATH=/path/to/config.yaml ./threat_intel
+threat_intel/
+├── cmd/
+│   ├── fetcher/    → Feed downloader
+│   ├── processor/  → DB inserter
+│   └── pipeline/   → All-in-one
+├── config/
+│   ├── config.yaml    → Database settings
+│   └── sources.yaml   → Threat feed URLs
+├── src/
+│   ├── fetcher/    → HTTP download logic
+│   ├── parser/     → CSV/JSON/TXT parsers
+│   ├── processor/  → Data processing
+│   └── storage/    → PostgreSQL operations
+├── data/
+│   └── fetch/      → Downloaded feeds
+└── *.exe           → Built executables
 ```
-
-## Threat Intelligence Sources
-
-Default sources include:
-- AlienVault IP Reputation
-- Abuse.ch URLhaus
-- Feodo Tracker
-- Tor Exit Nodes
-
-Additional sources can be added in `config/sources.yaml`.
 
 ## License
 
-Part of the SafeOps Firewall V2 project.
+Part of SafeOps Firewall V2 project.

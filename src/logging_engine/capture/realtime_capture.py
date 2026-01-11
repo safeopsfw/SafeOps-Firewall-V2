@@ -33,6 +33,9 @@ from typing import Optional, Dict, Tuple, Set, List
 import ipaddress
 import socket
 from functools import lru_cache
+import requests
+import csv
+from concurrent.futures import ThreadPoolExecutor
 
 # ==================== Color Support ====================
 try:
@@ -113,8 +116,8 @@ handler = logging.StreamHandler()
 handler.setFormatter(ColoredFormatter())
 logger.addHandler(handler)
 
-# SafeOpsFV2 log directory
-LOG_DIR = r'D:\SafeOpsFV2\logs'
+SAFEOPS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_DIR = os.path.join(SAFEOPS_ROOT, 'logs')
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_PATH = os.path.join(LOG_DIR, 'network_packets.log')
 
@@ -156,7 +159,7 @@ EVENT_QUEUE = Queue()
 FILE_LOCK = threading.Lock()
 
 # Log rotation settings
-LOG_ROTATE_INTERVAL = 300  # 5 minutes
+LOG_ROTATE_INTERVAL = 180  # 3 minutes
 BATCH_SIZE = 75
 
 # Stats display interval
@@ -667,6 +670,184 @@ class InterfaceScanner:
         with self.lock:
             return list(self.active_interfaces)
 
+# ==================== Threat Intel & Unknown IP Tracking ====================
+class ThreatIntelClient:
+    """Direct PostgreSQL connection for Threat Intel lookups - NO API REQUIRED"""
+    def __init__(self):
+        self.enabled = False
+        self.conn = None
+        self.cache = {}
+        self.cache_lock = threading.Lock()
+        self.cache_ttl = 300
+        self.stats = {'hits': 0, 'misses': 0, 'errors': 0, 'cached': 0, 'blacklist_hits': 0}
+        
+        # Database connection settings
+        self.db_config = {
+            'host': 'localhost',
+            'port': 5432,
+            'database': 'threat_intel_db',
+            'user': 'threat_intel_app',
+            'password': os.environ.get('DB_PASSWORD', 'safeops123')
+        }
+        
+        try:
+            import psycopg2
+            self.conn = psycopg2.connect(**self.db_config)
+            self.conn.autocommit = True
+            
+            # Test connection
+            with self.conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM ip_geolocation")
+                count = cur.fetchone()[0]
+                logging.info(f"✅ Threat Intel DB connected: {count:,} geo IPs loaded")
+            self.enabled = True
+        except ImportError:
+            logging.warning("⚠️ psycopg2 not installed. Run: pip install psycopg2-binary")
+        except Exception as e:
+            logging.warning(f"⚠️ Threat Intel DB not available: {e}")
+
+    def lookup_ip(self, ip: str) -> Optional[Dict]:
+        if not self.enabled or not self.conn:
+            return None
+        try:
+            if ipaddress.ip_address(ip).is_private:
+                return None
+        except:
+            return None
+
+        # Check cache
+        with self.cache_lock:
+            if ip in self.cache:
+                if time.time() - self.cache[ip]['ts'] < self.cache_ttl:
+                    self.stats['cached'] += 1
+                    return self.cache[ip]['data']
+        
+        try:
+            result = {'found': False, 'ip': ip}
+            
+            with self.conn.cursor() as cur:
+                # Check blacklist first
+                cur.execute("""
+                    SELECT threat_type, source, severity, first_seen 
+                    FROM ip_blacklist 
+                    WHERE ip_address = %s::inet
+                """, (ip,))
+                blacklist = cur.fetchone()
+                if blacklist:
+                    result['found'] = True
+                    result['blacklist'] = {
+                        'threat_type': blacklist[0],
+                        'source': blacklist[1],
+                        'severity': blacklist[2],
+                        'first_seen': str(blacklist[3]) if blacklist[3] else None
+                    }
+                    self.stats['blacklist_hits'] += 1
+                
+                # Get geolocation (range-based lookup for better coverage)
+                # Find the closest IP range that contains this IP
+                cur.execute("""
+                    SELECT country_code, country_name, city, region, 
+                           asn, asn_org, latitude, longitude, isp
+                    FROM ip_geolocation 
+                    WHERE ip_address <= %s::inet
+                    ORDER BY ip_address DESC
+                    LIMIT 1
+                """, (ip,))
+                geo = cur.fetchone()
+                if geo:
+                    result['found'] = True
+                    result['geolocation'] = {
+                        'country_code': geo[0],
+                        'country_name': geo[1],
+                        'city': geo[2],
+                        'region': geo[3],
+                        'asn': geo[4],
+                        'asn_org': geo[5],
+                        'latitude': float(geo[6]) if geo[6] else None,
+                        'longitude': float(geo[7]) if geo[7] else None,
+                        'isp': geo[8]
+                    }
+                
+                # Check anonymization (VPN/Tor/Proxy)
+                cur.execute("""
+                    SELECT anon_type, provider, confidence 
+                    FROM ip_anonymization 
+                    WHERE ip_address = %s::inet
+                """, (ip,))
+                anon = cur.fetchone()
+                if anon:
+                    result['found'] = True
+                    result['anonymization'] = {
+                        'type': anon[0],
+                        'provider': anon[1],
+                        'confidence': anon[2]
+                    }
+            
+            # Update cache
+            with self.cache_lock:
+                self.cache[ip] = {'data': result, 'ts': time.time()}
+            
+            if result['found']:
+                self.stats['hits'] += 1
+            else:
+                self.stats['misses'] += 1
+            
+            return result
+            
+        except Exception as e:
+            self.stats['errors'] += 1
+            logging.debug(f"TI lookup error for {ip}: {e}")
+            return None
+    
+    def close(self):
+        if self.conn:
+            self.conn.close()
+
+class UnknownIPTracker:
+    """Track IPs not found in Threat Intel database"""
+    def __init__(self):
+        self.csv_path = os.path.join(LOG_DIR, 'unknown_ips.csv')
+        self.ip_counts = {}
+        self.lock = threading.Lock()
+        self.save_interval = 60
+        
+        # Load existing
+        if os.path.exists(self.csv_path):
+            try:
+                with open(self.csv_path, 'r') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if row.get('ip_address'):
+                            self.ip_counts[row['ip_address']] = int(row.get('count', 0))
+            except: pass
+            
+        threading.Thread(target=self._save_loop, daemon=True).start()
+
+    def track(self, ip: str):
+        try:
+            if ipaddress.ip_address(ip).is_private: return
+        except: return
+        with self.lock:
+            self.ip_counts[ip] = self.ip_counts.get(ip, 0) + 1
+
+    def _save_loop(self):
+        while not STOP_SNIFFING.is_set():
+            time.sleep(self.save_interval)
+            self._save()
+
+    def _save(self):
+        with self.lock:
+            if not self.ip_counts: return
+            try:
+                sorted_ips = sorted(self.ip_counts.items(), key=lambda x: x[1], reverse=True)
+                with open(self.csv_path, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(['ip_address', 'count', 'last_updated'])
+                    for ip, count in sorted_ips:
+                        writer.writerow([ip, count, datetime.now().isoformat()])
+            except Exception as e:
+                logging.error(f"Failed to save unknown IPs: {e}")
+
 # ==================== Packet Logger (COMPLETE) ====================
 class PacketLogger:
     """Complete packet logger with full IDS/IPS capability"""
@@ -679,13 +860,26 @@ class PacketLogger:
         self.dedup_engine = DeduplicationEngine()
         self.ssl_keylogger = SSLKeyLogger(SSLKEYLOGFILE)
         self.tls_decryptor = TLSDecryptor(self.ssl_keylogger)
+        
+        # Threat Intel integration
+        self.threat_intel = ThreatIntelClient()
+        self.unknown_ip_tracker = UnknownIPTracker()
+        
+        # Thread pool for async processing
+        self.executor = ThreadPoolExecutor(max_workers=os.cpu_count() * 2)
+
         self.stats = {
             'packets_captured': 0, 'packets_logged': 0, 'packets_excluded': 0, 'packets_deduplicated': 0,
-            'tls_decryption_attempted': 0, 'tls_decrypted': 0, 'http_parsed_from_tls': 0, 'bytes_total': 0
+            'tls_decryption_attempted': 0, 'tls_decrypted': 0, 'http_parsed_from_tls': 0, 'bytes_total': 0,
+            'threat_intel_lookups': 0, 'threat_intel_hits': 0, 'unknown_ips': 0
         }
 
     def process_packet(self, packet):
-        """Process single packet with COMPLETE parsing"""
+        """Submit packet to thread pool"""
+        self.executor.submit(self._process_packet_worker, packet)
+
+    def _process_packet_worker(self, packet):
+        """Process single packet with COMPLETE parsing (running in thread)"""
         try:
             self.packet_count += 1
             self.stats['packets_captured'] += 1
@@ -709,6 +903,31 @@ class PacketLogger:
             log_entry = self._parse_packet_complete(packet, packet_id)
             if not log_entry:
                 return
+
+            # Threat Intel lookup for public IPs
+            threat_data = {}
+            for ip in [src_ip, dst_ip]:
+                if ip and not is_internal_ip(ip):
+                    self.stats['threat_intel_lookups'] += 1
+                    intel = self.threat_intel.lookup_ip(ip)
+                    if intel:
+                        if intel.get('found'):
+                            self.stats['threat_intel_hits'] += 1
+                            threat_data[ip] = {
+                                'found': True,
+                                'blacklist': intel.get('blacklist'),
+                                'geolocation': intel.get('geolocation'),
+                                'anonymization': intel.get('anonymization')
+                            }
+                        else:
+                            # Track unknown public IPs
+                            self.unknown_ip_tracker.track(ip)
+                            self.stats['unknown_ips'] += 1
+            
+            # Add threat intel to log entry if found
+            if threat_data:
+                log_entry['threat_intel'] = threat_data
+
             # Deduplication check
             should_log, dedup_reason = self.dedup_engine.should_log(log_entry)
             if not should_log:
@@ -813,17 +1032,6 @@ class PacketLogger:
                     parsed_app['gaming']['detected'] = True
                     parsed_app['gaming']['service'] = flow.gaming_service
                     parsed_app['gaming']['port'] = dst_port if direction == 'forward' else src_port
-        # Session tracking
-        if 'flow_context' in log_entry:
-            fc = log_entry['flow_context']
-            log_entry['session_tracking'] = {
-                'session_id': fc['flow_id'],
-                'first_seen': fc['flow_start_time'],
-                'last_seen': time.time(),
-                'packet_count': fc['packets_forward'] + fc['packets_backward'],
-                'byte_count': fc['bytes_forward'] + fc['bytes_backward'],
-                'session_state': 'active'
-            }
         return self._remove_empty(log_entry)
 
     def _parse_ethernet(self, packet) -> Dict:
@@ -953,14 +1161,14 @@ class PacketLogger:
                 return None
             if not payload or len(payload) == 0:
                 return None
-            payload_size = min(len(payload), 1500)
+            payload_size = min(len(payload), 256)
             payload_sample = payload[:payload_size]
             data = OrderedDict([
                 ('length', len(payload)),
                 ('data_hex', payload_sample.hex()),
                 ('data_base64', base64.b64encode(payload_sample).decode('ascii')),
             ])
-            if len(payload) > 1500:
+            if len(payload) > 256:
                 data['truncated'] = True
                 data['captured_length'] = payload_size
             else:
@@ -1042,11 +1250,65 @@ class PacketLogger:
         except Exception as e:
             return None
 
+    def _extract_sni_from_payload(self, payload: bytes) -> Optional[str]:
+        """Manually parse TLS Client Hello to get SNI (fallback for Scapy)"""
+        try:
+            # TLS Record Header (5 bytes)
+            if len(payload) < 50 or payload[0] != 0x16: return None
+            # Handshake Header
+            pos = 5
+            if payload[pos] != 0x01: return None 
+            pos += 4 # Skip Type (1) + Length (3)
+            pos += 2 # Skip Version (2)
+            pos += 32 # Skip Random (32)
+            
+            # Session ID
+            if pos >= len(payload): return None
+            sid_len = payload[pos]
+            pos += 1 + sid_len
+            
+            # Cipher Suites
+            if pos + 2 >= len(payload): return None
+            cs_len = struct.unpack('!H', payload[pos:pos+2])[0]
+            pos += 2 + cs_len
+            
+            # Compression Methods
+            if pos >= len(payload): return None
+            comp_len = payload[pos]
+            pos += 1 + comp_len
+            
+            # Extensions
+            if pos + 2 >= len(payload): return None
+            ext_len = struct.unpack('!H', payload[pos:pos+2])[0]
+            pos += 2
+            end_ext = pos + ext_len
+            
+            while pos + 4 <= end_ext:
+                etype = struct.unpack('!H', payload[pos:pos+2])[0]
+                elen = struct.unpack('!H', payload[pos+2:pos+4])[0]
+                pos += 4
+                if etype == 0x0000: # SNI
+                    if pos + 2 > end_ext: return None
+                    list_len = struct.unpack('!H', payload[pos:pos+2])[0]
+                    pos += 2
+                    if pos + 3 > end_ext: return None
+                    name_type = payload[pos]
+                    name_len = struct.unpack('!H', payload[pos+1:pos+3])[0]
+                    pos += 3
+                    if name_type == 0x00 and pos + name_len <= end_ext:
+                        return payload[pos:pos+name_len].decode('utf-8')
+                    return None
+                pos += elen
+        except:
+             pass
+        return None
+
     def _parse_application(self, packet, payload_data: Optional[Dict]) -> Dict:
-        """Application parsing with REAL TLS decryption and User-Agent extraction"""
+        """Application parsing with REAL TLS decryption, Manual SNI Extraction, and User-Agent extraction"""
         parsed_app = OrderedDict()
         parsed_app['detected_protocol'] = 'unknown'
         parsed_app['confidence'] = 'low'
+        
         # DNS
         if packet.haslayer(DNS):
             dns_data = self._parse_dns(packet)
@@ -1054,6 +1316,7 @@ class PacketLogger:
                 parsed_app['detected_protocol'] = 'dns'
                 parsed_app['confidence'] = 'high'
                 parsed_app['dns'] = dns_data
+                
         # HTTP (plaintext) - NOW WITH USER-AGENT
         if HTTP_AVAILABLE and packet.haslayer(HTTP):
             http_data = self._parse_http(packet)
@@ -1061,9 +1324,11 @@ class PacketLogger:
                 parsed_app['detected_protocol'] = 'http'
                 parsed_app['confidence'] = 'high'
                 parsed_app['http'] = http_data
-                # ✨ CRITICAL: Expose user_agent at top level for easy IDS access
                 if 'user_agent' in http_data:
                     parsed_app['user_agent'] = http_data['user_agent']
+                if 'host' in http_data:
+                    parsed_app['host'] = http_data['host']
+
         # ✨ FALLBACK: Check TCP port 80/8080 for HTTP even without HTTP layer
         if parsed_app['detected_protocol'] == 'unknown' and packet.haslayer(TCP):
             tcp = packet[TCP]
@@ -1076,34 +1341,61 @@ class PacketLogger:
                             parsed_app['detected_protocol'] = 'http'
                             parsed_app['confidence'] = 'medium'
                             parsed_app['http'] = http_data
-                            # Expose user_agent
                             if 'user_agent' in http_data:
                                 parsed_app['user_agent'] = http_data['user_agent']
+                            if 'host' in http_data:
+                                parsed_app['host'] = http_data['host']
                 except:
                     pass
-        # TLS with REAL decryption
+
+        # TLS/HTTPS Detection (Scapy Layer + Manual Fallback)
+        sni = None
+        tls_data = None
+        
+        # Method 1: Scapy TLS Layer
         if TLS_AVAILABLE and packet.haslayer(TLS):
             tls_data = self._parse_tls(packet)
-            if tls_data:
-                parsed_app['detected_protocol'] = 'tls'
-                parsed_app['confidence'] = 'high'
-                parsed_app['tls'] = tls_data
-                # Try REAL decryption
-                self.stats['tls_decryption_attempted'] += 1
-                decrypt_result = self.tls_decryptor.try_decrypt(packet, tls_data)
-                if decrypt_result:
-                    tls_data['decryption'] = decrypt_result
-                    if decrypt_result.get('decrypted'):
-                        self.stats['tls_decrypted'] += 1
-                    # ✨ EXTRACT USER-AGENT FROM DECRYPTED TLS
-                    if decrypt_result.get('http_data'):
-                        parsed_app['http'] = decrypt_result['http_data']
-                        parsed_app['http_from_tls'] = True
-                        self.stats['http_parsed_from_tls'] += 1
-                        # Expose user_agent from decrypted HTTPS
-                        if 'user_agent' in decrypt_result['http_data']:
-                            parsed_app['user_agent'] = decrypt_result['http_data']['user_agent']
-        # Detect HTTPS from port 443
+            if tls_data and 'client_hello' in tls_data:
+                 sni = tls_data['client_hello'].get('sni')
+        
+        # Method 2: Manual SNI Extraction from TCP payload (CRITICAL FIX)
+        if not sni and packet.haslayer(TCP):
+            try:
+                payload = bytes(packet[TCP].payload)
+                if len(payload) > 5:
+                    sni = self._extract_sni_from_payload(payload)
+                    # Use manual SNI for synthetic TLS data if Scapy missed it
+                    if sni and not tls_data:
+                         tls_data = {'client_hello': {'sni': sni, 'version': 'TLS (Manually Parsed)'}}
+            except:
+                pass
+
+        if tls_data:
+            parsed_app['detected_protocol'] = 'https'
+            parsed_app['confidence'] = 'high'
+            parsed_app['tls'] = tls_data
+            
+            # ✨ HOST NORMALIZATION
+            if sni:
+                parsed_app['host'] = sni 
+                if 'http' not in parsed_app:
+                    parsed_app['http'] = {'host': sni, 'protocol': 'HTTPS/TLS'}
+            
+            # Try REAL decryption
+            self.stats['tls_decryption_attempted'] += 1
+            decrypt_result = self.tls_decryptor.try_decrypt(packet, tls_data)
+            if decrypt_result:
+                tls_data['decryption'] = decrypt_result
+                if decrypt_result.get('decrypted'):
+                    self.stats['tls_decrypted'] += 1
+                if decrypt_result.get('http_data'):
+                    parsed_app['http'] = decrypt_result['http_data']
+                    parsed_app['http_from_tls'] = True
+                    self.stats['http_parsed_from_tls'] += 1
+                    if 'user_agent' in decrypt_result['http_data']:
+                        parsed_app['user_agent'] = decrypt_result['http_data']['user_agent']
+
+        # Detect HTTPS from port 443 (Fallback)
         if parsed_app['detected_protocol'] == 'unknown':
             if packet.haslayer(TCP):
                 tcp = packet[TCP]
@@ -1283,24 +1575,24 @@ class PacketLogger:
             return [self._remove_empty(item) for item in obj if item is not None and item != {} and item != []]
         return obj
 
-# ==================== Log Writer (5-min rotation - single file) ====================
+# ==================== Log Writer (3-min rotation + 6-min IDS cycle) ====================
 class LogWriter:
-    """Simple 5-Minute Rotation - Clear and rewrite single log file"""
+    """Simple 5-Minute Rotation (Rewrite Mode)"""
     def __init__(self, log_path: str):
         self.log_path = log_path
         self.write_count = 0
         self.cycle_count = 0
         self.start_time = time.time()
-        self.last_rotation = self.start_time
-        self._ensure_log_file_exists()
+        self.last_main_rotation = self.start_time
+        self._ensure_log_files_exist()
         logging.info("=" * 70)
-        logging.info(f"{Fore.CYAN}📝 LogWriter - 5-Minute Rotation (Single File)")
-        logging.info(f"Log file: {log_path}")
+        logging.info(f"{Fore.CYAN}📝 LogWriter - 5-Min Rewrite Rotation")
+        logging.info(f"Primary log: {log_path}")
         logging.info("=" * 70)
         self.writer_thread = threading.Thread(target=self._writer_loop, daemon=True)
         self.writer_thread.start()
 
-    def _ensure_log_file_exists(self):
+    def _ensure_log_files_exist(self):
         try:
             log_dir = os.path.dirname(self.log_path)
             if log_dir and not os.path.exists(log_dir):
@@ -1308,7 +1600,7 @@ class LogWriter:
             if not os.path.exists(self.log_path):
                 open(self.log_path, 'w').close()
         except Exception as e:
-            logging.error(f"Failed to create log file: {e}")
+            logging.error(f"Failed to create log files: {e}")
             raise
 
     def _writer_loop(self):
@@ -1325,7 +1617,7 @@ class LogWriter:
                     self._write_batch(batch)
                     batch = []
                 now = time.time()
-                if now - last_rotation_check >= 5:  # Check every 5s
+                if now - last_rotation_check >= 5:
                     self._check_rotation()
                     last_rotation_check = now
             except Exception as e:
@@ -1348,21 +1640,20 @@ class LogWriter:
     def _check_rotation(self):
         try:
             now = time.time()
-            if now - self.last_rotation >= LOG_ROTATE_INTERVAL:
-                self._rotate_log()
-                self.last_rotation = now
+            if now - self.last_main_rotation >= LOG_ROTATE_INTERVAL:
+                self._rotate_logs()
+                self.last_main_rotation = now
                 self.cycle_count += 1
         except Exception as e:
             logging.error(f"Rotation check error: {e}")
 
-    def _rotate_log(self):
-        """Clear log file every 5 minutes"""
+    def _rotate_logs(self):
         try:
             with FILE_LOCK:
                 if os.path.exists(self.log_path):
-                    size_kb = os.path.getsize(self.log_path) / 1024
-                    open(self.log_path, 'w').close()  # Clear and rewrite
-                    logging.info(f"🔄 Rotated: {os.path.basename(self.log_path)} ({size_kb:.1f} KB cleared)")
+                    # Rewrite mode: Clear the log
+                    open(self.log_path, 'w').close()
+                    logging.info(f"🔄 Log rotated (cleared): {os.path.basename(self.log_path)}")
         except Exception as e:
             logging.error(f"Log rotation error: {e}")
 
@@ -1606,10 +1897,6 @@ def print_final_report(logger: PacketLogger, writer: LogWriter, start_time: floa
         log_size = os.path.getsize(LOG_PATH) / 1024
         print(f"│ {Fore.WHITE}Size: {log_size:.2f} KB{' ' * 51}{Fore.BLUE}│")
     print(f"│ │")
-    print(f"│ {Fore.WHITE}IDS Archive: {Fore.CYAN}{LOG_IDS_PATH:<55}{Fore.BLUE}│")
-    if os.path.exists(LOG_IDS_PATH):
-        ids_size = os.path.getsize(LOG_IDS_PATH) / 1024
-        print(f"│ {Fore.WHITE}Size: {ids_size:.2f} KB{' ' * 51}{Fore.BLUE}│")
     print(f"│ │")
     print(f"│ {Fore.WHITE}SSL Keys: {Fore.CYAN}{SSLKEYLOGFILE:<55}{Fore.BLUE}│")
     if os.path.exists(SSLKEYLOGFILE):
@@ -1698,9 +1985,8 @@ def main():
             logging.info(f" ✓ {iface}")
         logging.info(f" ... and {len(capture_interfaces) - 10} more")
     logging.info(f"📝 Primary Log: {LOG_PATH}")
-    logging.info(f"📝 IDS Archive: {LOG_IDS_PATH}")
-    logging.info(f"🔄 Rotation: Every {LOG_ROTATE_INTERVAL // 60} min (append to archive); Archive cleared every 6 min (5s before transfer)")
-    logging.info(f"📦 Payload: Up to 1500 bytes")
+    logging.info(f"🔄 Rotation: Every 5 min (rewrite)")
+    logging.info(f"📦 Payload: Up to 256 bytes")
     if CRYPTO_AVAILABLE:
         logging.info(f"🔐 TLS Decryption: ENABLED")
     else:
