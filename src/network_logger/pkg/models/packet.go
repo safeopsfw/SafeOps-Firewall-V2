@@ -2,17 +2,30 @@ package models
 
 import "time"
 
+// GeoInfo contains geolocation data for an IP
+type GeoInfo struct {
+	Country     string  `json:"country,omitempty"`
+	CountryName string  `json:"country_name,omitempty"`
+	City        string  `json:"city,omitempty"`
+	Latitude    float64 `json:"lat,omitempty"`
+	Longitude   float64 `json:"lon,omitempty"`
+	ASN         int     `json:"asn,omitempty"`
+	ASNOrg      string  `json:"asn_org,omitempty"`
+}
+
 // PacketLog represents the complete JSON structure for a captured packet
 type PacketLog struct {
-	PacketID          string             `json:"packet_id"`
-	Timestamp         Timestamp          `json:"timestamp"`
-	CaptureInfo       CaptureInfo        `json:"capture_info"`
-	Layers            Layers             `json:"layers"`
-	ParsedApplication ParsedApplication  `json:"parsed_application"`
-	FlowContext       *FlowContext       `json:"flow_context,omitempty"`
-	SessionTracking   *SessionTracking   `json:"session_tracking,omitempty"`
-	HotspotDevice     *HotspotDevice     `json:"hotspot_device,omitempty"`
-	Deduplication     Deduplication      `json:"deduplication"`
+	PacketID          string            `json:"packet_id"`
+	Timestamp         Timestamp         `json:"timestamp"`
+	CaptureInfo       CaptureInfo       `json:"capture_info"`
+	Layers            Layers            `json:"layers"`
+	ParsedApplication ParsedApplication `json:"parsed_application"`
+	FlowContext       *FlowContext      `json:"flow_context,omitempty"`
+	SessionTracking   *SessionTracking  `json:"session_tracking,omitempty"`
+	HotspotDevice     *HotspotDevice    `json:"hotspot_device,omitempty"`
+	SrcGeo            *GeoInfo          `json:"src_geo,omitempty"`
+	DstGeo            *GeoInfo          `json:"dst_geo,omitempty"`
+	Deduplication     Deduplication     `json:"deduplication"`
 }
 
 // Timestamp represents packet capture time
@@ -260,13 +273,18 @@ type ProcessInfo struct {
 
 // HotspotDevice represents a device connected to Windows hotspot
 type HotspotDevice struct {
-	IP         string    `json:"ip"`
-	MAC        string    `json:"mac"`
-	Vendor     string    `json:"vendor"`
-	DeviceType string    `json:"device_type"` // "mobile", "laptop", "tablet", "unknown"
-	Hostname   string    `json:"hostname,omitempty"`
-	FirstSeen  time.Time `json:"first_seen"`
-	LastSeen   time.Time `json:"last_seen"`
+	IP          string    `json:"ip"`
+	MAC         string    `json:"mac"`
+	Vendor      string    `json:"vendor"`
+	DeviceType  string    `json:"device_type"` // "mobile", "laptop", "tablet", "unknown"
+	Hostname    string    `json:"hostname,omitempty"`
+	Interface   string    `json:"interface,omitempty"`
+	BytesSent   int64     `json:"bytes_sent"`
+	BytesRecv   int64     `json:"bytes_recv"`
+	PacketsSent int64     `json:"packets_sent"`
+	PacketsRecv int64     `json:"packets_recv"`
+	FirstSeen   time.Time `json:"first_seen"`
+	LastSeen    time.Time `json:"last_seen"`
 }
 
 // Deduplication represents deduplication status

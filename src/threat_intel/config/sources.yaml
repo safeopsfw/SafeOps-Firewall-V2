@@ -280,6 +280,24 @@ feeds:
     update_frequency: 86400
     description: "IPInfo IP to Country mapping"
 
+  # MaxMind GeoLite2 City - GitLab Mirror (free, includes lat/lon/city)
+  - name: "GeoLite2-City"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-city/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "MaxMind GeoLite2 IP to City/Lat/Lon mapping"
+
+  # MaxMind GeoLite2 ASN - GitLab Mirror (free, includes ASN org)
+  - name: "GeoLite2-ASN"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-asn/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "MaxMind GeoLite2 IP to ASN/Org mapping"
+
   # Keeping IPtoASN as valid default. Users can manually download IP2Location.
 
   # DISABLED - Repository path changed, returns 404

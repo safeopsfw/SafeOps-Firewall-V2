@@ -13,9 +13,11 @@ import (
 
 	"github.com/google/gopacket/pcap"
 	"github.com/safeops/network_logger/internal/capture"
+	"github.com/safeops/network_logger/internal/collectors"
 	"github.com/safeops/network_logger/internal/config"
 	"github.com/safeops/network_logger/internal/dedup"
 	"github.com/safeops/network_logger/internal/flow"
+	"github.com/safeops/network_logger/internal/geoip"
 	"github.com/safeops/network_logger/internal/hotspot"
 	"github.com/safeops/network_logger/internal/process"
 	"github.com/safeops/network_logger/internal/stats"
@@ -93,7 +95,11 @@ func main() {
 	// 8. TLS decryptor
 	tlsDecryptor := tls.NewDecryptor(tlsKeyLogger)
 
-	// 9. Packet processor
+	// 9. GeoIP lookup (PostgreSQL)
+	geoLookup := geoip.NewLookup(geoip.DefaultConfig())
+	defer geoLookup.Close()
+
+	// 10. Packet processor
 	processor := capture.NewPacketProcessor(
 		flowTracker,
 		dedupEngine,
@@ -101,6 +107,7 @@ func main() {
 		hotspotTracker,
 		tlsDecryptor,
 		statsCollector,
+		geoLookup,
 	)
 
 	// 10. JSON writer
@@ -119,6 +126,34 @@ func main() {
 	)
 	jsonWriter.Start(ctx)
 	log.Printf("💾 Master log: %s (5-min cycle)", absLogPath)
+
+	// 12. IDS Collector
+	idsLogPath := filepath.Join(logDir, "ids.log")
+	idsCollector := collectors.NewIDSCollector(idsLogPath, cfg.GetLogCycleInterval())
+	idsCollector.Start(ctx)
+	log.Printf("🛡️  IDS log: %s", idsLogPath)
+
+	// 13. Firewall Collector
+	fwLogPath := filepath.Join(logDir, "firewall.log")
+	fwCollector := collectors.NewFirewallCollector(fwLogPath, cfg.GetLogCycleInterval())
+	fwCollector.Start(ctx)
+	log.Printf("🔥 Firewall log: %s", fwLogPath)
+
+	// 14. BiFlow Collector (NetFlow split)
+	netflowDir := filepath.Join(logDir, "netflow")
+	os.MkdirAll(netflowDir, 0755)
+	ewLogPath := filepath.Join(netflowDir, "east_west.log")
+	nsLogPath := filepath.Join(netflowDir, "north_south.log")
+	unknownLogPath := filepath.Join(netflowDir, "unknown.log")
+	biflowCollector := collectors.NewBiflowCollector(ewLogPath, nsLogPath, unknownLogPath, cfg.GetLogCycleInterval())
+	biflowCollector.Start(ctx)
+	log.Printf("🌐 NetFlow: %s, %s", ewLogPath, nsLogPath)
+
+	// 15. Device Stats Collector (analyzes master log, outputs JSONL)
+	deviceLogPath := filepath.Join(logDir, "devices.jsonl")
+	deviceCollector := collectors.NewDeviceCollector(absLogPath, deviceLogPath, 30*time.Second) // Analyze every 30s
+	deviceCollector.Start(ctx)
+	log.Printf("📱 Device Inventory: %s", deviceLogPath)
 
 	// 11. Capture engine
 	captureConfig := capture.CaptureConfig{
@@ -165,8 +200,13 @@ func main() {
 					continue
 				}
 
-				// Write to log file
+				// Write to master log
 				jsonWriter.Write(pktLog)
+
+				// Route to collectors
+				idsCollector.Process(pktLog)
+				fwCollector.Process(pktLog)
+				biflowCollector.Process(pktLog)
 			}
 		}
 	}()

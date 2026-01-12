@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 )
@@ -22,6 +23,7 @@ type IPGeoStorage struct {
 type IPGeoRecord struct {
 	ID             int64     `json:"id"`
 	IPAddress      string    `json:"ip_address"`
+	IPEnd          string    `json:"ip_end,omitempty"` // For range-based records
 	CountryCode    string    `json:"country_code,omitempty"`
 	CountryName    string    `json:"country_name,omitempty"`
 	City           string    `json:"city,omitempty"`
@@ -113,13 +115,13 @@ func (s *IPGeoStorage) RenameColumn(oldName, newName string) error {
 func (s *IPGeoStorage) Insert(ctx context.Context, record *IPGeoRecord) error {
 	query := `
 		INSERT INTO ip_geolocation (
-			ip_address, country_code, country_name, city, region,
+			ip_address, ip_end, country_code, country_name, city, region,
 			postal_code, latitude, longitude, accuracy_radius,
 			asn, asn_org, isp, connection_type, timezone,
 			is_mobile, is_hosting, sources, confidence,
 			last_updated, created_at
 		) VALUES (
-			$1::inet, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+			$1::inet, $2::inet, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
 		)
 		ON CONFLICT (ip_address) DO UPDATE SET
 			country_code = COALESCE(EXCLUDED.country_code, ip_geolocation.country_code),
@@ -127,11 +129,19 @@ func (s *IPGeoStorage) Insert(ctx context.Context, record *IPGeoRecord) error {
 			city = COALESCE(EXCLUDED.city, ip_geolocation.city),
 			asn = COALESCE(EXCLUDED.asn, ip_geolocation.asn),
 			asn_org = COALESCE(EXCLUDED.asn_org, ip_geolocation.asn_org),
+			ip_end = COALESCE(EXCLUDED.ip_end, ip_geolocation.ip_end),
 			last_updated = NOW()
 	`
 
+	var ipEnd interface{}
+	if record.IPEnd != "" {
+		ipEnd = record.IPEnd
+	} else {
+		ipEnd = nil
+	}
+
 	_, err := s.db.ExecContext(ctx, query,
-		record.IPAddress, record.CountryCode, record.CountryName,
+		record.IPAddress, ipEnd, record.CountryCode, record.CountryName,
 		record.City, record.Region, record.PostalCode,
 		record.Latitude, record.Longitude, record.AccuracyRadius,
 		record.ASN, record.ASNOrg, record.ISP, record.ConnectionType,
@@ -150,14 +160,22 @@ func (s *IPGeoStorage) BulkInsertIPRanges(ctx context.Context, records []IPGeoRe
 
 	now := time.Now()
 	columns := []string{
-		"ip_address", "country_code", "asn", "asn_org",
+		"ip_address", "ip_end", "country_code", "asn", "asn_org",
 		"sources", "confidence", "last_updated", "created_at",
 	}
 
 	values := make([][]interface{}, len(records))
 	for i, rec := range records {
+		var ipEnd interface{}
+		if rec.IPEnd != "" {
+			ipEnd = rec.IPEnd
+		} else {
+			ipEnd = nil
+		}
+
 		values[i] = []interface{}{
 			rec.IPAddress,
+			ipEnd,
 			rec.CountryCode,
 			rec.ASN,
 			rec.ASNOrg,
@@ -173,18 +191,26 @@ func (s *IPGeoStorage) BulkInsertIPRanges(ctx context.Context, records []IPGeoRe
 
 // GetByIP retrieves geolocation info for an IP
 func (s *IPGeoStorage) GetByIP(ctx context.Context, ip string) (*IPGeoRecord, error) {
+	// Look for exact match OR range containment
+	// Priority: Exact match > Range match (highest confidence/latest update)
+	// For now, simpler: finds any valid record covering the IP
 	query := `
-		SELECT id, ip_address::text, country_code, country_name, city, region,
+		SELECT id, ip_address::text, ip_end::text, country_code, country_name, city, region,
 			   postal_code, latitude, longitude, accuracy_radius,
 			   asn, asn_org, isp, connection_type, timezone,
 			   is_mobile, is_hosting, confidence, last_updated, created_at
 		FROM ip_geolocation
-		WHERE ip_address = $1::inet
+		WHERE ip_address = $1::inet 
+		   OR ($1::inet BETWEEN ip_address AND ip_end)
+		ORDER BY ip_address DESC -- Logic: More specific (higher start IP) likely smaller range? Roughly.
+		LIMIT 1
 	`
 
 	var record IPGeoRecord
+	var ipEnd sql.NullString
+
 	err := s.db.QueryRowContext(ctx, query, ip).Scan(
-		&record.ID, &record.IPAddress, &record.CountryCode, &record.CountryName,
+		&record.ID, &record.IPAddress, &ipEnd, &record.CountryCode, &record.CountryName,
 		&record.City, &record.Region, &record.PostalCode,
 		&record.Latitude, &record.Longitude, &record.AccuracyRadius,
 		&record.ASN, &record.ASNOrg, &record.ISP, &record.ConnectionType,
@@ -193,6 +219,10 @@ func (s *IPGeoStorage) GetByIP(ctx context.Context, ip string) (*IPGeoRecord, er
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if ipEnd.Valid {
+		record.IPEnd = ipEnd.String
 	}
 
 	return &record, nil

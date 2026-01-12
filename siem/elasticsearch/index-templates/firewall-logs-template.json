@@ -1,6 +1,0 @@
-{
-  "index_patterns": ["firewall-logs-*"],
-  "template": {
-    "mappings": {}
-  }
-}

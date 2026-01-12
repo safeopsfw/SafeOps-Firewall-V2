@@ -32,7 +32,7 @@ func (t *DeviceTracker) TrackDevice(ip, mac string) *models.HotspotDevice {
 	device, exists := t.devices[ip]
 	if !exists {
 		vendor := t.macVendor.Lookup(mac)
-		deviceType := guessDeviceType(mac, vendor)
+		deviceType := guessDeviceType(vendor)
 
 		device = &models.HotspotDevice{
 			IP:         ip,
@@ -57,6 +57,30 @@ func (t *DeviceTracker) GetDeviceInfo(ip string) *models.HotspotDevice {
 	defer t.mu.RUnlock()
 
 	return t.devices[ip]
+}
+
+// UpdateStats updates traffic statistics for a device
+func (t *DeviceTracker) UpdateStats(ip string, bytes int, isSent bool, iface string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	device, exists := t.devices[ip]
+	if !exists {
+		return
+	}
+
+	device.LastSeen = time.Now()
+	if iface != "" {
+		device.Interface = iface
+	}
+
+	if isSent {
+		device.BytesSent += int64(bytes)
+		device.PacketsSent++
+	} else {
+		device.BytesRecv += int64(bytes)
+		device.PacketsRecv++
+	}
 }
 
 // IsHotspotIP checks if an IP is in the hotspot subnet
@@ -86,7 +110,7 @@ func (t *DeviceTracker) GetAllDevices() []*models.HotspotDevice {
 }
 
 // guessDeviceType attempts to guess device type from vendor
-func guessDeviceType(mac, vendor string) string {
+func guessDeviceType(vendor string) string {
 	vendorL := strings.ToLower(vendor)
 
 	// Mobile vendors
@@ -225,7 +249,7 @@ func getOUIDatabase() map[string]string {
 		"64006A": "Microsoft",
 
 		// Amazon
-		"F0D2F1": "Amazon",
+		"F0D2F1":   "Amazon",
 		"FC A6 67": "Amazon",
 
 		// Intel

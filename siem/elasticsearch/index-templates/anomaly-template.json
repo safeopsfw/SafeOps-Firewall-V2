@@ -1,6 +1,0 @@
-{
-  "index_patterns": ["anomaly-*"],
-  "template": {
-    "mappings": {}
-  }
-}

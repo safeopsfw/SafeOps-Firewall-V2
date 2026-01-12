@@ -8,6 +8,7 @@ import (
 
 	"github.com/safeops/network_logger/internal/dedup"
 	"github.com/safeops/network_logger/internal/flow"
+	"github.com/safeops/network_logger/internal/geoip"
 	"github.com/safeops/network_logger/internal/hotspot"
 	"github.com/safeops/network_logger/internal/parser"
 	"github.com/safeops/network_logger/internal/process"
@@ -18,18 +19,19 @@ import (
 
 // PacketProcessor processes raw packets into structured logs
 type PacketProcessor struct {
-	ethParser      *parser.EthernetParser
-	ipParser       *parser.IPParser
+	ethParser       *parser.EthernetParser
+	ipParser        *parser.IPParser
 	transportParser *parser.TransportParser
-	dnsParser      *parser.DNSParser
-	httpParser     *parser.HTTPParser
-	tlsParser      *parser.TLSParser
-	flowTracker    *flow.Tracker
-	dedupEngine    *dedup.Engine
-	processCorr    *process.Correlator
-	hotspotTracker *hotspot.DeviceTracker
-	tlsDecryptor   *tls.Decryptor
-	statsCollector *stats.Collector
+	dnsParser       *parser.DNSParser
+	httpParser      *parser.HTTPParser
+	tlsParser       *parser.TLSParser
+	flowTracker     *flow.Tracker
+	dedupEngine     *dedup.Engine
+	processCorr     *process.Correlator
+	hotspotTracker  *hotspot.DeviceTracker
+	tlsDecryptor    *tls.Decryptor
+	statsCollector  *stats.Collector
+	geoLookup       *geoip.Lookup
 }
 
 // NewPacketProcessor creates a new packet processor
@@ -40,6 +42,7 @@ func NewPacketProcessor(
 	hotspotTracker *hotspot.DeviceTracker,
 	tlsDecryptor *tls.Decryptor,
 	statsCollector *stats.Collector,
+	geoLookup *geoip.Lookup,
 ) *PacketProcessor {
 	return &PacketProcessor{
 		ethParser:       parser.NewEthernetParser(),
@@ -54,6 +57,7 @@ func NewPacketProcessor(
 		hotspotTracker:  hotspotTracker,
 		tlsDecryptor:    tlsDecryptor,
 		statsCollector:  statsCollector,
+		geoLookup:       geoLookup,
 	}
 }
 
@@ -109,6 +113,32 @@ func (p *PacketProcessor) ProcessPacket(rawPkt *models.RawPacket) (*models.Packe
 		if isLocalhostIP(srcIP) || isLocalhostIP(dstIP) {
 			return nil, nil // Skip localhost packets
 		}
+
+		// GeoIP enrichment
+		if p.geoLookup != nil && p.geoLookup.IsEnabled() {
+			if srcGeo := p.geoLookup.Lookup(srcIP); srcGeo != nil {
+				pktLog.SrcGeo = &models.GeoInfo{
+					Country:     srcGeo.Country,
+					CountryName: srcGeo.CountryName,
+					City:        srcGeo.City,
+					Latitude:    srcGeo.Latitude,
+					Longitude:   srcGeo.Longitude,
+					ASN:         srcGeo.ASN,
+					ASNOrg:      srcGeo.ASNOrg,
+				}
+			}
+			if dstGeo := p.geoLookup.Lookup(dstIP); dstGeo != nil {
+				pktLog.DstGeo = &models.GeoInfo{
+					Country:     dstGeo.Country,
+					CountryName: dstGeo.CountryName,
+					City:        dstGeo.City,
+					Latitude:    dstGeo.Latitude,
+					Longitude:   dstGeo.Longitude,
+					ASN:         dstGeo.ASN,
+					ASNOrg:      dstGeo.ASNOrg,
+				}
+			}
+		}
 	}
 
 	// Parse Transport layer
@@ -120,16 +150,24 @@ func (p *PacketProcessor) ProcessPacket(rawPkt *models.RawPacket) (*models.Packe
 		pktLog.Layers.Transport = p.transportParser.ParseUDP(layers.UDP)
 	}
 
-	// Parse Payload
+	// Parse Payload (limit to 256 bytes for efficiency)
 	if len(layers.Payload) > 0 {
+		maxHexLen := 256
+		hexData := layers.Payload
+		if len(hexData) > maxHexLen {
+			hexData = hexData[:maxHexLen]
+		}
+
 		pktLog.Layers.Payload = &models.PayloadLayer{
 			Length:  len(layers.Payload),
-			DataHex: hex.EncodeToString(layers.Payload),
+			DataHex: hex.EncodeToString(hexData),
 		}
-		if len(layers.Payload) <= 128 {
+
+		// Preview: first 64 printable chars
+		if len(layers.Payload) <= 64 {
 			pktLog.Layers.Payload.Preview = string(layers.Payload)
 		} else {
-			pktLog.Layers.Payload.Preview = string(layers.Payload[:128])
+			pktLog.Layers.Payload.Preview = string(layers.Payload[:64])
 		}
 	}
 
@@ -167,15 +205,29 @@ func (p *PacketProcessor) ProcessPacket(rawPkt *models.RawPacket) (*models.Packe
 		}
 	}
 
-	// Hotspot device tracking
-	if pktLog.Layers.Network != nil {
+	// Hotspot device tracking & stats
+	if pktLog.Layers.Network != nil && pktLog.Layers.Datalink != nil {
 		srcIP := pktLog.Layers.Network.SrcIP
 		dstIP := pktLog.Layers.Network.DstIP
+		wireLen := rawPkt.WireLen
+		iface := rawPkt.Interface
 
-		if p.hotspotTracker.IsHotspotIP(srcIP) && pktLog.Layers.Datalink != nil {
+		// Source (Sent)
+		if p.hotspotTracker.IsHotspotIP(srcIP) {
 			pktLog.HotspotDevice = p.hotspotTracker.TrackDevice(srcIP, pktLog.Layers.Datalink.SrcMAC)
-		} else if p.hotspotTracker.IsHotspotIP(dstIP) && pktLog.Layers.Datalink != nil {
-			pktLog.HotspotDevice = p.hotspotTracker.TrackDevice(dstIP, pktLog.Layers.Datalink.DstMAC)
+			p.hotspotTracker.UpdateStats(srcIP, wireLen, true, iface)
+		}
+
+		// Dest (Received)
+		if p.hotspotTracker.IsHotspotIP(dstIP) {
+			// If src wasn't hotspot, attach dst device info
+			if pktLog.HotspotDevice == nil {
+				pktLog.HotspotDevice = p.hotspotTracker.TrackDevice(dstIP, pktLog.Layers.Datalink.DstMAC)
+			} else {
+				// Otherwise just ensure it's tracked
+				p.hotspotTracker.TrackDevice(dstIP, pktLog.Layers.Datalink.DstMAC)
+			}
+			p.hotspotTracker.UpdateStats(dstIP, wireLen, false, iface)
 		}
 	}
 

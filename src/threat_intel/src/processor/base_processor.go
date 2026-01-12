@@ -280,8 +280,7 @@ func (p *Processor) parseFile(filePath string) (*parser.ParseResult, error) {
 	return parser.ParseFile(filePath, p.parserConfig)
 }
 
-// getContext returns context with timeout
+// getContext returns background context (simplified to avoid leaks)
 func getContext() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Minute)
-	return ctx
+	return context.Background()
 }

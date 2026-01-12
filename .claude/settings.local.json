@@ -88,7 +88,13 @@
       "Bash(powershell -Command \"Get-Process | Where-Object {$_ProcessName -eq ''SafeOps-Engine''} | Select-Object Id, ProcessName\")",
       "Bash(powershell -ExecutionPolicy Bypass -File:*)",
       "Bash(powershell -Command \"Get-Process -Name mitmdump -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, StartTime\")",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(timeout 15 python:*)",
+      "Bash(timeout 20 python:*)",
+      "Bash(python -c:*)",
+      "Bash(cargo new:*)",
+      "Bash(cargo doc:*)",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_ProcessName -like ''*network*logger*'' -or $_ProcessName -eq ''network_logger''} | Select-Object ProcessName,Id,Path\")"
     ]
   }
 }

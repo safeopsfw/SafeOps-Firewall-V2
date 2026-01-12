@@ -90,29 +90,69 @@ func (p *Processor) processIPtoASN(filePath string, store *storage.IPGeoStorage,
 	batchSize := p.config.BatchSize
 	var totalInserted int64
 
-	// Use parser's GetAllIPs and extract additional data
-	ips := parsed.GetAllIPs()
-
-	for i, ip := range ips {
-		records = append(records, storage.IPGeoRecord{
-			IPAddress:   ip,
-			Sources:     []string{source},
-			Confidence:  50,
-			LastUpdated: now,
-			CreatedAt:   now,
-		})
-
-		if len(records) >= batchSize {
-			inserted, err := store.BulkInsertIPRanges(ctx, records, source)
-			if err != nil {
-				return totalInserted, err
+	// IPtoASN: Start_IP \t End_IP \t ASN \t CC \t Org
+	// We need to parse raw CSV/TSV data
+	if parsed.CSVData != nil {
+		for i, rec := range parsed.CSVData.Records {
+			row := rec.RawFields
+			if len(row) < 3 {
+				continue
 			}
-			totalInserted += inserted
-			records = records[:0]
 
-			// Progress log every 10000
-			if i > 0 && i%10000 == 0 {
-				p.logger.Printf("    Progress: %d/%d IPs\n", i, len(ips))
+			ipStart := row[0]
+			ipEnd := row[1]
+			countryCode := row[3]
+			asnStr := row[2]
+			asnOrg := row[4]
+
+			asn, _ := strconv.Atoi(asnStr)
+
+			records = append(records, storage.IPGeoRecord{
+				IPAddress:   ipStart,
+				IPEnd:       ipEnd,
+				CountryCode: countryCode,
+				ASN:         asn,
+				ASNOrg:      asnOrg,
+				Sources:     []string{source},
+				Confidence:  50,
+				LastUpdated: now,
+				CreatedAt:   now,
+			})
+
+			if len(records) >= batchSize {
+				inserted, err := store.BulkInsertIPRanges(ctx, records, source)
+				if err != nil {
+					return totalInserted, err
+				}
+				totalInserted += inserted
+				records = records[:0]
+
+				if i > 0 && i%10000 == 0 {
+					p.logger.Printf("    Progress: %d rows\n", i)
+				}
+			}
+		}
+	} else {
+		// Fallback for non-CSV parsed (unlikely for TSV/CSV)
+		ips := parsed.GetAllIPs()
+		for i, ip := range ips {
+			records = append(records, storage.IPGeoRecord{
+				IPAddress:   ip,
+				Sources:     []string{source},
+				Confidence:  50,
+				LastUpdated: now,
+				CreatedAt:   now,
+			})
+			if len(records) >= batchSize {
+				inserted, err := store.BulkInsertIPRanges(ctx, records, source)
+				if err != nil {
+					return totalInserted, err
+				}
+				totalInserted += inserted
+				records = records[:0]
+				if i > 0 && i%10000 == 0 {
+					p.logger.Printf("    Progress: %d/%d IPs\n", i, len(ips))
+				}
 			}
 		}
 	}
@@ -152,6 +192,7 @@ func (p *Processor) processIP2Location(filePath string, store *storage.IPGeoStor
 
 			// Convert numeric IP to string
 			ipFrom := numericToIP(row[0])
+			ipTo := numericToIP(row[1]) // End Range
 			if ipFrom == "" {
 				continue
 			}
@@ -167,6 +208,7 @@ func (p *Processor) processIP2Location(filePath string, store *storage.IPGeoStor
 
 			records = append(records, storage.IPGeoRecord{
 				IPAddress:   ipFrom,
+				IPEnd:       ipTo,
 				CountryCode: countryCode,
 				CountryName: countryName,
 				Sources:     []string{source},
@@ -215,34 +257,76 @@ func (p *Processor) processGeoLite(filePath string, store *storage.IPGeoStorage,
 	batchSize := p.config.BatchSize
 	var totalInserted int64
 
-	// Use parsed IPs directly
-	ips := parsed.GetAllIPs()
-
-	for i, ip := range ips {
-		// Extract IP from CIDR if present
-		cleanIP := ip
-		if strings.Contains(ip, "/") {
-			cleanIP = strings.Split(ip, "/")[0]
-		}
-
-		records = append(records, storage.IPGeoRecord{
-			IPAddress:   cleanIP,
-			Sources:     []string{source},
-			Confidence:  70,
-			LastUpdated: now,
-			CreatedAt:   now,
-		})
-
-		if len(records) >= batchSize {
-			inserted, err := store.BulkInsertIPRanges(ctx, records, source)
-			if err != nil {
-				return totalInserted, err
+	// GeoLite2 TSV: HexStart \t HexEnd \t Country
+	if parsed.CSVData != nil {
+		for i, rec := range parsed.CSVData.Records {
+			row := rec.RawFields
+			if len(row) < 3 {
+				continue
 			}
-			totalInserted += inserted
-			records = records[:0]
 
-			if i > 0 && i%10000 == 0 {
-				p.logger.Printf("    Progress: %d/%d IPs\n", i, len(ips))
+			ipStart := hexToIP(row[0])
+			ipEnd := hexToIP(row[1])
+			country := row[2]
+
+			if ipStart == "" {
+				continue
+			}
+
+			records = append(records, storage.IPGeoRecord{
+				IPAddress:   ipStart,
+				IPEnd:       ipEnd,
+				CountryCode: country,
+				Sources:     []string{source},
+				Confidence:  70,
+				LastUpdated: now,
+				CreatedAt:   now,
+			})
+
+			if len(records) >= batchSize {
+				inserted, err := store.BulkInsertIPRanges(ctx, records, source)
+				if err != nil {
+					return totalInserted, err
+				}
+				totalInserted += inserted
+				records = records[:0]
+
+				if i > 0 && i%10000 == 0 {
+					p.logger.Printf("    Progress: %d rows\n", i)
+				}
+			}
+		}
+	} else {
+		// Fallback (e.g. IPInfo might be different or parsed as TXT)
+		// Use parsed IPs directly
+		ips := parsed.GetAllIPs()
+
+		for i, ip := range ips {
+			// Extract IP from CIDR if present
+			cleanIP := ip
+			if strings.Contains(ip, "/") {
+				cleanIP = strings.Split(ip, "/")[0]
+			}
+
+			records = append(records, storage.IPGeoRecord{
+				IPAddress:   cleanIP,
+				Sources:     []string{source},
+				Confidence:  70,
+				LastUpdated: now,
+				CreatedAt:   now,
+			})
+
+			if len(records) >= batchSize {
+				inserted, err := store.BulkInsertIPRanges(ctx, records, source)
+				if err != nil {
+					return totalInserted, err
+				}
+				totalInserted += inserted
+				records = records[:0]
+
+				if i > 0 && i%10000 == 0 {
+					p.logger.Printf("    Progress: %d/%d IPs\n", i, len(ips))
+				}
 			}
 		}
 	}
@@ -312,6 +396,20 @@ func (p *Processor) processGenericGeo(filePath string, store *storage.IPGeoStora
 // numericToIP converts numeric IP (from IP2Location) to dotted string
 func numericToIP(numStr string) string {
 	num, err := strconv.ParseInt(numStr, 10, 64)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%d.%d.%d.%d",
+		(num>>24)&255,
+		(num>>16)&255,
+		(num>>8)&255,
+		num&255)
+}
+
+// hexToIP converts hex IP (from GeoLite2) to dotted string
+func hexToIP(hexStr string) string {
+	num, err := strconv.ParseInt(hexStr, 16, 64)
 	if err != nil {
 		return ""
 	}

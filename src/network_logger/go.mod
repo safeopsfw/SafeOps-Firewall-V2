@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/fatih/color v1.18.0
 	github.com/google/gopacket v1.1.19
+	github.com/lib/pq v1.10.9
 	github.com/shirou/gopsutil/v3 v3.24.5
 	gopkg.in/yaml.v3 v3.0.1
 )

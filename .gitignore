@@ -77,6 +77,7 @@ yarn.lock
 # =====================================
 logs/*.log
 logs/**/*.log
+logs/*.jsonl
 # =====================================
 # Threat Intel Data
 # =====================================
@@ -229,3 +230,8 @@ src/captive_portal/internal/certs/
 src/captive_portal/logs/
 
 src/step-ca/db/
+
+# =====================================
+# SDKs & Vendor Libs
+# =====================================
+npcap-sdk-1.16/
