@@ -119,6 +119,12 @@ func main() {
 		log.Fatalf("❌ Failed to create logs directory: %v", err)
 	}
 
+	// Unknown IP tracker (tracks public IPs not in GeoIP database)
+	unknownIPPath := filepath.Join(logDir, "unknown_ips.csv")
+	unknownTracker := geoip.NewUnknownIPTracker(unknownIPPath)
+	geoLookup.SetUnknownTracker(unknownTracker)
+	log.Printf("📍 Unknown IP Tracker: %s", unknownIPPath)
+
 	jsonWriter := writer.NewJSONWriter(
 		absLogPath,
 		cfg.Logging.BatchSize,

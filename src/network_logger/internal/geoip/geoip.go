@@ -44,11 +44,12 @@ type GeoInfo struct {
 
 // Lookup provides GeoIP lookups with caching
 type Lookup struct {
-	db       *sql.DB
-	cache    map[string]*GeoInfo
-	cacheMu  sync.RWMutex
-	cacheMax int
-	enabled  bool
+	db             *sql.DB
+	cache          map[string]*GeoInfo
+	cacheMu        sync.RWMutex
+	cacheMax       int
+	enabled        bool
+	unknownTracker *UnknownIPTracker
 }
 
 // NewLookup creates a new GeoIP lookup with PostgreSQL backend
@@ -78,10 +79,11 @@ func NewLookup(cfg Config) *Lookup {
 	log.Println("✅ GeoIP: Connected to threat_intel_db")
 
 	return &Lookup{
-		db:       db,
-		cache:    make(map[string]*GeoInfo),
-		cacheMax: 10000,
-		enabled:  true,
+		db:             db,
+		cache:          make(map[string]*GeoInfo),
+		cacheMax:       10000,
+		enabled:        true,
+		unknownTracker: nil, // Set externally via SetUnknownTracker
 	}
 }
 
@@ -111,6 +113,11 @@ func (l *Lookup) Lookup(ipStr string) *GeoInfo {
 
 	// Query database
 	geo := l.queryDB(ipStr)
+
+	// Track unknown IPs (not in database and not private)
+	if geo == nil && l.unknownTracker != nil {
+		l.unknownTracker.Track(ipStr)
+	}
 
 	// Cache result
 	l.cacheMu.Lock()
@@ -195,9 +202,17 @@ func (l *Lookup) queryDB(ipStr string) *GeoInfo {
 
 // Close closes the database connection
 func (l *Lookup) Close() {
+	if l.unknownTracker != nil {
+		l.unknownTracker.Close()
+	}
 	if l.db != nil {
 		l.db.Close()
 	}
+}
+
+// SetUnknownTracker sets the unknown IP tracker
+func (l *Lookup) SetUnknownTracker(tracker *UnknownIPTracker) {
+	l.unknownTracker = tracker
 }
 
 // GetStats returns cache statistics
