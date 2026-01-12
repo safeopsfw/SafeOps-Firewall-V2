@@ -27,7 +27,6 @@ import (
 
 func main() {
 	// Parse command-line flags
-	configPath := flag.String("config", "./configs/config.yaml", "Path to configuration file")
 	listInterfaces := flag.Bool("list-interfaces", false, "List available network interfaces and exit")
 	flag.Parse()
 
@@ -40,13 +39,10 @@ func main() {
 	// Print banner
 	stats.PrintBanner()
 
-	// Load configuration
-	cfg, err := config.LoadConfig(*configPath)
-	if err != nil {
-		log.Fatalf("❌ Failed to load configuration: %v", err)
-	}
+	// Load configuration (hardcoded defaults)
+	cfg := config.LoadDefault()
 
-	log.Printf("✅ Configuration loaded from: %s", *configPath)
+	log.Println("✅ Using embedded default configuration")
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())

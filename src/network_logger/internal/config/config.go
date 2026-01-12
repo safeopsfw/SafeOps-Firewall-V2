@@ -96,6 +96,47 @@ func LoadConfig(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// LoadDefault returns hardcoded default configuration
+func LoadDefault() *Config {
+	cfg := &Config{}
+
+	// Capture settings
+	cfg.Capture.Interfaces = []string{} // All active interfaces
+	cfg.Capture.Promiscuous = true
+	cfg.Capture.SnapshotLength = 1600
+	cfg.Capture.BPFFilter = ""
+
+	// Logging settings
+	cfg.Logging.LogPath = "D:/SafeOpsFV2/logs/network_packets_master.jsonl"
+	cfg.Logging.BatchSize = 75
+	cfg.Logging.CycleMinutes = 5
+
+	// Flow settings
+	cfg.Flow.TimeoutSeconds = 60
+	cfg.Flow.CleanupIntervalSeconds = 30
+
+	// Deduplication settings
+	cfg.Deduplication.Enabled = true
+	cfg.Deduplication.WindowSeconds = 30
+	cfg.Deduplication.CacheSize = 10000
+
+	// Process settings
+	cfg.Process.CacheTTLSeconds = 10
+
+	// TLS settings
+	cfg.TLS.Enabled = true
+	cfg.TLS.KeylogFile = "D:/SafeOpsFV2/logs/sslkeys.log"
+
+	// Stats settings
+	cfg.Stats.DisplayIntervalSeconds = 120
+
+	// Hotspot settings
+	cfg.Hotspot.Enabled = true
+	cfg.Hotspot.Subnet = "192.168.137.0/24"
+
+	return cfg
+}
+
 // GetFlowTimeout returns flow timeout as duration
 func (c *Config) GetFlowTimeout() time.Duration {
 	return time.Duration(c.Flow.TimeoutSeconds) * time.Second

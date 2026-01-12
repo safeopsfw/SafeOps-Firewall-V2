@@ -24,16 +24,9 @@ func main() {
 	fmt.Println("Version: 2.0.0 (Go-based proxy)")
 	fmt.Println("Starting...")
 
-	// Load configuration
-	cfg, err := config.Load("configs/engine.yaml")
-	if err != nil {
-		cfg, err = config.Load("src/safeops-engine/configs/engine.yaml")
-		if err != nil {
-			fmt.Printf("Failed to load config: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("Loaded config from: src/safeops-engine/configs/engine.yaml")
-	}
+	// Load configuration (hardcoded defaults)
+	cfg := config.LoadDefault()
+	fmt.Println("Using embedded default configuration")
 
 	// Initialize logger
 	log := logger.New(cfg.Logging)
