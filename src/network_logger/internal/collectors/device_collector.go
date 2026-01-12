@@ -73,13 +73,13 @@ func (c *DeviceCollector) analyzeAndWrite() {
 	dir := filepath.Dir(c.outputPath)
 	os.MkdirAll(dir, 0755)
 
-	// Write to JSONL (one device per line)
-	tmpPath := c.outputPath + ".tmp"
-	file, err := os.Create(tmpPath)
+	// APPEND mode - devices are persistent across restarts
+	file, err := os.OpenFile(c.outputPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		fmt.Printf("⚠️  Device Collector: Failed to create output file: %v\n", err)
+		fmt.Printf("⚠️  Device Collector: Failed to open output file: %v\n", err)
 		return
 	}
+	defer file.Close()
 
 	writer := bufio.NewWriter(file)
 
@@ -110,12 +110,8 @@ func (c *DeviceCollector) analyzeAndWrite() {
 	}
 
 	writer.Flush()
-	file.Close()
 
-	// Atomic rename
-	os.Rename(tmpPath, c.outputPath)
-
-	fmt.Printf("📱 Device Collector: %d devices written to %s\n", len(devices), c.outputPath)
+	fmt.Printf("📱 Device Collector: %d devices appended to %s\n", len(devices), c.outputPath)
 }
 
 func (c *DeviceCollector) generateSummary(devices []*AnalyzedDevice) DeviceSummary {

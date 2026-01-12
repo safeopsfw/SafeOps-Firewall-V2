@@ -17,9 +17,10 @@ type Config struct {
 	} `yaml:"capture"`
 
 	Logging struct {
-		LogPath      string `yaml:"log_path"`
-		BatchSize    int    `yaml:"batch_size"`
-		CycleMinutes int    `yaml:"cycle_minutes"` // 5-minute overwrite cycle
+		LogPath            string `yaml:"log_path"`
+		BatchSize          int    `yaml:"batch_size"`
+		CycleMinutes       int    `yaml:"cycle_minutes"`        // 5-minute overwrite cycle for master log
+		LogRotationMinutes int    `yaml:"log_rotation_minutes"` // 5-minute cycle for rotated logs (IDS, Firewall, NetFlow)
 	} `yaml:"logging"`
 
 	Flow struct {
@@ -72,7 +73,10 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.Logging.BatchSize = 75
 	}
 	if cfg.Logging.CycleMinutes == 0 {
-		cfg.Logging.CycleMinutes = 5 // Default: 5-minute cycle
+		cfg.Logging.CycleMinutes = 5 // Default: 5-minute cycle for master log
+	}
+	if cfg.Logging.LogRotationMinutes == 0 {
+		cfg.Logging.LogRotationMinutes = 5 // Default: 5-minute rotation for IDS, Firewall, NetFlow
 	}
 	if cfg.Flow.TimeoutSeconds == 0 {
 		cfg.Flow.TimeoutSeconds = 60
@@ -109,7 +113,8 @@ func LoadDefault() *Config {
 	// Logging settings
 	cfg.Logging.LogPath = "D:/SafeOpsFV2/logs/network_packets_master.jsonl"
 	cfg.Logging.BatchSize = 75
-	cfg.Logging.CycleMinutes = 5
+	cfg.Logging.CycleMinutes = 5       // Master log: 5-minute cycle
+	cfg.Logging.LogRotationMinutes = 5 // IDS, Firewall, NetFlow: 5-minute rotation
 
 	// Flow settings
 	cfg.Flow.TimeoutSeconds = 60
@@ -157,7 +162,12 @@ func (c *Config) GetStatsDisplayInterval() time.Duration {
 	return time.Duration(c.Stats.DisplayIntervalSeconds) * time.Second
 }
 
-// GetLogCycleInterval returns log cycle interval as duration
+// GetLogCycleInterval returns log cycle interval as duration (for master log)
 func (c *Config) GetLogCycleInterval() time.Duration {
 	return time.Duration(c.Logging.CycleMinutes) * time.Minute
+}
+
+// GetLogRotationInterval returns log rotation interval for IDS, Firewall, NetFlow (3 minutes)
+func (c *Config) GetLogRotationInterval() time.Duration {
+	return time.Duration(c.Logging.LogRotationMinutes) * time.Minute
 }

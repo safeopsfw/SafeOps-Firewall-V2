@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"log"
 	"net"
 	"os"
 	"sync"
@@ -275,6 +276,7 @@ func (c *IDSCollector) cycleLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			log.Printf("🔄 IDS log cycled (5-min rotation)")
 			c.openFile()
 		}
 	}

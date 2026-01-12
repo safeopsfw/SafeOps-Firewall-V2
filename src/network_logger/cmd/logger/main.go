@@ -129,27 +129,27 @@ func main() {
 	jsonWriter.Start(ctx)
 	log.Printf("💾 Master log: %s (5-min cycle)", absLogPath)
 
-	// 12. IDS Collector
+	// 12. IDS Collector (5-min rotation)
 	idsLogPath := filepath.Join(logDir, "ids.log")
-	idsCollector := collectors.NewIDSCollector(idsLogPath, cfg.GetLogCycleInterval())
+	idsCollector := collectors.NewIDSCollector(idsLogPath, cfg.GetLogRotationInterval())
 	idsCollector.Start(ctx)
-	log.Printf("🛡️  IDS log: %s", idsLogPath)
+	log.Printf("🛡️  IDS log: %s (5-min rotation)", idsLogPath)
 
-	// 13. Firewall Collector
+	// 13. Firewall Collector (5-min rotation)
 	fwLogPath := filepath.Join(logDir, "firewall.log")
-	fwCollector := collectors.NewFirewallCollector(fwLogPath, cfg.GetLogCycleInterval())
+	fwCollector := collectors.NewFirewallCollector(fwLogPath, cfg.GetLogRotationInterval())
 	fwCollector.Start(ctx)
-	log.Printf("🔥 Firewall log: %s", fwLogPath)
+	log.Printf("🔥 Firewall log: %s (5-min rotation)", fwLogPath)
 
-	// 14. BiFlow Collector (NetFlow split)
+	// 14. BiFlow Collector (NetFlow split, 5-min rotation)
 	netflowDir := filepath.Join(logDir, "netflow")
 	os.MkdirAll(netflowDir, 0755)
 	ewLogPath := filepath.Join(netflowDir, "east_west.log")
 	nsLogPath := filepath.Join(netflowDir, "north_south.log")
 	unknownLogPath := filepath.Join(netflowDir, "unknown.log")
-	biflowCollector := collectors.NewBiflowCollector(ewLogPath, nsLogPath, unknownLogPath, cfg.GetLogCycleInterval())
+	biflowCollector := collectors.NewBiflowCollector(ewLogPath, nsLogPath, unknownLogPath, cfg.GetLogRotationInterval())
 	biflowCollector.Start(ctx)
-	log.Printf("🌐 NetFlow: %s, %s", ewLogPath, nsLogPath)
+	log.Printf("🌐 NetFlow: %s, %s (5-min rotation)", ewLogPath, nsLogPath)
 
 	// 15. Device Stats Collector (analyzes master log, outputs JSONL)
 	deviceLogPath := filepath.Join(logDir, "devices.jsonl")

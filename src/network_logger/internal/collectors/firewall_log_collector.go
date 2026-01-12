@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -248,6 +249,7 @@ func (c *FirewallCollector) cycleLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			log.Printf("🔄 Firewall log cycled (5-min rotation)")
 			c.openFile()
 		}
 	}

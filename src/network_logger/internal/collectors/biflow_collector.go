@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -87,9 +88,9 @@ func NewBiflowCollector(eastWestPath, northSouthPath, unknownPath string, cycleI
 		northSouthPath:  northSouthPath,
 		unknownPath:     unknownPath,
 		flows:           make(map[string]*FlowState),
-		flowTimeout:     60 * time.Second,
+		flowTimeout:     30 * time.Second, // Reduced from 60s for faster writes
 		cycleInterval:   cycleInterval,
-		cleanupInterval: 15 * time.Second,
+		cleanupInterval: 10 * time.Second, // Faster cleanup for real-time logs
 	}
 }
 
@@ -340,6 +341,7 @@ func (c *BiflowCollector) cycleLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			log.Printf("🔄 NetFlow logs cycled (5-min rotation)")
 			c.flushAllFlows()
 			c.openFiles()
 		}
