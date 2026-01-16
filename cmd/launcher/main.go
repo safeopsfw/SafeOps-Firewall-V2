@@ -45,7 +45,7 @@ func main() {
 			Dir:     filepath.Join(baseDir, "backend"),
 			Command: "node",
 			Args:    []string{"server.js"},
-			Env:     []string{"DB_PASSWORD=safeops123"},
+			Env:     []string{"DB_PASSWORD=admin"},
 			Port:    5050,
 		},
 		{
@@ -60,7 +60,7 @@ func main() {
 			Dir:     filepath.Join(baseDir, "src", "threat_intel"),
 			Command: filepath.Join(baseDir, "src", "threat_intel", "threat_intel_api.exe"),
 			Args:    []string{},
-			Env:     []string{"DB_PASSWORD=safeops123"},
+			Env:     []string{"DB_PASSWORD=admin"},
 			Port:    8080,
 		},
 	}

@@ -3,6 +3,8 @@ go 1.25.5
 use (
 	./src/captive_portal
 	./src/dhcp_monitor
+	./src/firewall_engine
+	./src/ids_ips
 	./src/network_logger
 	./src/nic_management
 	./src/orchestrator

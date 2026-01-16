@@ -23,7 +23,7 @@ const pool = new Pool({
   port: 5432,
   database: 'threat_intel_db',
   user: 'postgres',
-  password: 'postgres',
+  password: 'admin',
 });
 
 // Project root
@@ -61,7 +61,7 @@ app.get('/api/status', async (req, res) => {
           SELECT column_name FROM information_schema.columns 
           WHERE table_name = $1
         `, [table]);
-        
+
         status[table] = {
           row_count: parseInt(result.rows[0].count),
           columns: colResult.rows.length
@@ -196,9 +196,9 @@ app.get('/api/pipeline/status', (req, res) => {
 // Trigger pipeline update
 app.post('/api/update', async (req, res) => {
   if (pipelineStatus.running) {
-    return res.status(409).json({ 
+    return res.status(409).json({
       error: 'Pipeline is already running',
-      status: pipelineStatus 
+      status: pipelineStatus
     });
   }
 
@@ -210,9 +210,9 @@ app.post('/api/update', async (req, res) => {
   };
 
   // Return immediately, pipeline runs in background
-  res.json({ 
+  res.json({
     message: 'Pipeline started',
-    status: pipelineStatus 
+    status: pipelineStatus
   });
 
   // Run pipeline in background
@@ -225,7 +225,7 @@ async function runPipeline() {
 
   try {
     pipelineStatus.logs.push('[FETCH] Starting fetcher...');
-    
+
     // Run the Go pipeline with -delete flag
     await new Promise((resolve, reject) => {
       const proc = spawn('go', ['run', './cmd/pipeline', '-delete=true'], {

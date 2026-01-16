@@ -8,7 +8,7 @@ const poolConfig = {
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'threat_intel_db',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres', // Default postgres password
+  password: process.env.DB_PASSWORD || 'admin', // Default postgres password
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

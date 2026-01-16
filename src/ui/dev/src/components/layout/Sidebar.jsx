@@ -29,7 +29,7 @@ const operationsNav = [
 const moduleNav = [
   { name: 'IDS/IPS Rules', path: '/ids', icon: FileCode },
   { name: 'DNS Server', path: '/dns', icon: Globe, badge: 'Soon' },
-  { name: 'Firewall', path: '/firewall', icon: Lock, badge: 'Soon' },
+  { name: 'Firewall', path: '/firewall', icon: Lock },
   { name: 'Network', path: '/network', icon: Network },
   { name: 'DHCP Monitor', path: '/dhcp-monitor', icon: Wifi },
   { name: 'Certificates', path: '/certificates', icon: Key },
@@ -62,8 +62,8 @@ export default function Sidebar({ isOpen, onClose }) {
         to={item.badge ? '#' : item.path}
         onClick={item.badge ? (e) => e.preventDefault() : onClose}
         className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${isActive
-            ? 'bg-primary-500/20 text-primary-400'
-            : 'text-dark-300 hover:bg-dark-700 hover:text-white'
+          ? 'bg-primary-500/20 text-primary-400'
+          : 'text-dark-300 hover:bg-dark-700 hover:text-white'
           } ${item.badge ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <Icon className="w-5 h-5 flex-shrink-0" />

@@ -45,7 +45,7 @@ func DefaultDBConfig() *DBConfig {
 		Port:               5432,
 		Database:           "threat_intel_db",
 		User:               "postgres",
-		Password:           "postgres",
+		Password:           "admin",
 		SSLMode:            "disable",
 		MaxConnections:     25,
 		MaxIdleConnections: 5,
