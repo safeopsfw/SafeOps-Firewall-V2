@@ -5,9 +5,9 @@ Write-Host "=== SafeOps Port Conflict Checker ===" -ForegroundColor Green
 Write-Host ""
 
 $ports = @{
-    "5353" = "dnsproxy (DNS redirect)"
-    "8080" = "mitmproxy (SOCKS5)"
-    "9000" = "SafeOps API"
+    "5353"  = "dnsproxy (DNS redirect)"
+    "18080" = "mitmproxy (SOCKS5)"
+    "9000"  = "SafeOps API"
 }
 
 $conflicts = @()
@@ -34,13 +34,15 @@ foreach ($port in $ports.Keys) {
             # Port 5353 is special - mDNS can share it
             if ($port -eq "5353") {
                 Write-Host "    Note: Port 5353 (mDNS) supports multiple listeners - this is OK!" -ForegroundColor Green
-            } else {
+            }
+            else {
                 $conflicts += $port
             }
         }
 
         Write-Host ""
-    } else {
+    }
+    else {
         Write-Host "[✓] Port $port is AVAILABLE" -ForegroundColor Green
         Write-Host "    Service: $description" -ForegroundColor Gray
         Write-Host ""
@@ -61,7 +63,8 @@ if ($conflicts.Count -gt 0) {
     Write-Host "2. Change SafeOps port in configs/engine.yaml" -ForegroundColor Gray
     Write-Host ""
     exit 1
-} else {
+}
+else {
     Write-Host "=== All Ports Available ===" -ForegroundColor Green
     Write-Host "You can safely start SafeOps Engine" -ForegroundColor Green
     Write-Host ""

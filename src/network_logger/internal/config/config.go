@@ -111,7 +111,7 @@ func LoadDefault() *Config {
 	cfg.Capture.BPFFilter = ""
 
 	// Logging settings
-	cfg.Logging.LogPath = "D:/SafeOpsFV2/logs/network_packets_master.jsonl"
+	cfg.Logging.LogPath = "D:/SafeOpsFV2/bin/logs/network_packets_master.jsonl"
 	cfg.Logging.BatchSize = 75
 	cfg.Logging.CycleMinutes = 5       // Master log: 5-minute cycle
 	cfg.Logging.LogRotationMinutes = 5 // IDS, Firewall, NetFlow: 5-minute rotation
@@ -130,7 +130,7 @@ func LoadDefault() *Config {
 
 	// TLS settings
 	cfg.TLS.Enabled = true
-	cfg.TLS.KeylogFile = "D:/SafeOpsFV2/logs/sslkeys.log"
+	cfg.TLS.KeylogFile = "D:/SafeOpsFV2/bin/logs/sslkeys.log"
 
 	// Stats settings
 	cfg.Stats.DisplayIntervalSeconds = 120

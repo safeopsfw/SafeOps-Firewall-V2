@@ -302,25 +302,24 @@ func (c *BiflowCollector) openFiles() error {
 	c.writerMu.Lock()
 	defer c.writerMu.Unlock()
 
-	// Ensure directories exist
-	os.MkdirAll("../../logs/netflow", 0755)
+	// Note: log directory is created by main.go with absolute path
 
 	var err error
 
-	// East-West file
-	c.ewFile, err = os.OpenFile(c.eastWestPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	// East-West file - APPEND mode for proper Filebeat ingestion
+	c.ewFile, err = os.OpenFile(c.eastWestPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err == nil {
 		c.ewWriter = bufio.NewWriter(c.ewFile)
 	}
 
-	// North-South file
-	c.nsFile, err = os.OpenFile(c.northSouthPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	// North-South file - APPEND mode for proper Filebeat ingestion
+	c.nsFile, err = os.OpenFile(c.northSouthPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err == nil {
 		c.nsWriter = bufio.NewWriter(c.nsFile)
 	}
 
-	// Unknown file
-	c.unknownFile, err = os.OpenFile(c.unknownPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	// Unknown file - APPEND mode for proper Filebeat ingestion
+	c.unknownFile, err = os.OpenFile(c.unknownPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err == nil {
 		c.unknownWriter = bufio.NewWriter(c.unknownFile)
 	}

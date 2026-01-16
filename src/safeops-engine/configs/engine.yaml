@@ -4,7 +4,7 @@
 logging:
   level: "info"  # debug, info, warn, error
   format: "json"  # json or text
-  file: "D:/SafeOpsFV2/data/logs/engine.log"
+  file: "D:/SafeOpsFV2/bin/logs/engine.log"
 
 api:
   address: "0.0.0.0"
@@ -21,7 +21,7 @@ mitm:
   enabled: true
   binary_path: "mitmdump"  # In PATH after pip install
   addon_path: ""  # Empty for now, will be used for passive logger later
-  listen_port: 8080
+  listen_port: 18080  # Changed from 8080 to avoid conflicts
   mode: "regular"  # Regular proxy mode (WinpkFilter handles transparent redirection)
 
 classifier:
@@ -68,6 +68,16 @@ classifier:
     - "twitch.tv"
     - "youtube.com"
     - "googlevideo.com"
+    # Riot Games - Complete bypass for Valorant/LoL
+    - "riotgames.com"
+    - "valorant.com"
+    - "playvalorant.com"
+    - "pvp.net"
+    - "leagueoflegends.com"
+    - "riotcdn.net"
+    - "riotgames.net"
+    - "lolesports.com"
+    - "bacon.gg"  # Riot auth
 
 nat:
   enabled: true

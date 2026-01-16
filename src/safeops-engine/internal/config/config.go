@@ -85,7 +85,7 @@ func LoadDefault() *Config {
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
-			File:   "D:/SafeOpsFV2/data/logs/engine.log",
+			File:   "D:/SafeOpsFV2/bin/logs/engine.log",
 		},
 		API: APIConfig{
 			Address: "0.0.0.0",
@@ -102,7 +102,7 @@ func LoadDefault() *Config {
 			Enabled:    true,
 			BinaryPath: "mitmdump",
 			AddonPath:  "",
-			ListenPort: 8080,
+			ListenPort: 18080, // Changed from 8080 to avoid conflicts
 			Mode:       "regular",
 		},
 		Classifier: ClassifierConfig{

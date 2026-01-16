@@ -205,8 +205,7 @@ func (c *IDSCollector) openFile() error {
 		c.file.Close()
 	}
 
-	// Ensure directory exists
-	os.MkdirAll("../../logs", 0755)
+	// Note: log directory is created by main.go with absolute path
 
 	file, err := os.OpenFile(c.logPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {

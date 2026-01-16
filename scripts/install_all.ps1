@@ -31,10 +31,12 @@ if (Test-Path $msiPath) {
     if ($service) {
         Write-Host "Driver installed successfully" -ForegroundColor Green
         $restartNeeded = $true
-    } else {
+    }
+    else {
         Write-Host "Driver installation may have failed. Check manually." -ForegroundColor Red
     }
-} else {
+}
+else {
     Write-Host "Installer not found: $msiPath" -ForegroundColor Red
     Write-Host "Run: scripts\download_components.ps1" -ForegroundColor Yellow
     exit 1
@@ -50,7 +52,8 @@ try {
         Write-Host "Windows DNS Client is running (this is OK)" -ForegroundColor Green
         Write-Host "WinpkFilter will redirect DNS traffic to dnsproxy transparently" -ForegroundColor Yellow
     }
-} catch {
+}
+catch {
     Write-Host "DNS Client service check failed: $_" -ForegroundColor Red
 }
 
@@ -62,7 +65,8 @@ try {
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "IPEnableRouter" -Value 1
     Write-Host "IP Forwarding enabled" -ForegroundColor Green
     $restartNeeded = $true
-} catch {
+}
+catch {
     Write-Host "Failed to enable IP Forwarding: $_" -ForegroundColor Red
 }
 
@@ -81,14 +85,15 @@ try {
     New-NetFirewallRule -DisplayName "SafeOps DNS" -Direction Inbound -Protocol UDP -LocalPort 53 -Action Allow | Out-Null
     New-NetFirewallRule -DisplayName "SafeOps DNSProxy" -Direction Inbound -Protocol UDP -LocalPort 15353 -Action Allow | Out-Null
     New-NetFirewallRule -DisplayName "SafeOps API" -Direction Inbound -Protocol TCP -LocalPort 9002 -Action Allow | Out-Null
-    New-NetFirewallRule -DisplayName "SafeOps MITM" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow | Out-Null
+    New-NetFirewallRule -DisplayName "SafeOps MITM" -Direction Inbound -Protocol TCP -LocalPort 18080 -Action Allow | Out-Null
 
     Write-Host "Firewall rules configured" -ForegroundColor Green
     Write-Host "  - Port 53 (DNS redirect)" -ForegroundColor Gray
     Write-Host "  - Port 15353 (dnsproxy)" -ForegroundColor Gray
     Write-Host "  - Port 9002 (SafeOps API)" -ForegroundColor Gray
-    Write-Host "  - Port 8080 (mitmproxy)" -ForegroundColor Gray
-} catch {
+    Write-Host "  - Port 18080 (mitmproxy)" -ForegroundColor Gray
+}
+catch {
     Write-Host "Failed to configure firewall: $_" -ForegroundColor Red
 }
 
@@ -111,11 +116,13 @@ if ($restartNeeded) {
             Write-Host "Restarting in 10 seconds..." -ForegroundColor Yellow
             Start-Sleep -Seconds 10
             Restart-Computer
-        } else {
+        }
+        else {
             Write-Host "Please restart manually before running SafeOps Engine" -ForegroundColor Yellow
         }
     }
-} else {
+}
+else {
     Write-Host "All changes applied successfully" -ForegroundColor Green
     Write-Host ""
     Write-Host "Next step: Build the SafeOps Engine" -ForegroundColor Cyan
