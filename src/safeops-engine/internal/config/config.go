@@ -9,12 +9,12 @@ import (
 
 // Config represents the main configuration
 type Config struct {
-	Logging    LoggingConfig    `yaml:"logging"`
-	API        APIConfig        `yaml:"api"`
-	DNSProxy   DNSProxyConfig   `yaml:"dnsproxy"`
-	MITM       MITMConfig       `yaml:"mitm"`
+	Logging   LoggingConfig   `yaml:"logging"`
+	API       APIConfig       `yaml:"api"`
+	DNSProxy  DNSProxyConfig  `yaml:"dnsproxy"`
+	MITM      MITMConfig      `yaml:"mitm"`
 	Classifier ClassifierConfig `yaml:"classifier"`
-	NAT        NATConfig        `yaml:"nat"`
+	NAT       NATConfig       `yaml:"nat"`
 }
 
 // LoggingConfig for logging settings
@@ -77,64 +77,4 @@ func Load(path string) (*Config, error) {
 	}
 
 	return &cfg, nil
-}
-
-// LoadDefault returns hardcoded default configuration
-func LoadDefault() *Config {
-	return &Config{
-		Logging: LoggingConfig{
-			Level:  "info",
-			Format: "json",
-			File:   "D:/SafeOpsFV2/bin/logs/engine.log",
-		},
-		API: APIConfig{
-			Address: "0.0.0.0",
-			Port:    9002,
-		},
-		DNSProxy: DNSProxyConfig{
-			Enabled:       true,
-			BinaryPath:    "D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe",
-			ConfigPath:    "D:/SafeOpsFV2/src/safeops-engine/configs/dnsproxy.yaml",
-			ListenPort:    15353,
-			FallbackPorts: []int{25353, 35353, 45353},
-		},
-		MITM: MITMConfig{
-			Enabled:    true,
-			BinaryPath: "mitmdump",
-			AddonPath:  "",
-			ListenPort: 18080, // Changed from 8080 to avoid conflicts
-			Mode:       "regular",
-		},
-		Classifier: ClassifierConfig{
-			GamingPorts: []int{
-				27000, 27015, 27016, 27030, 27031, 27036, // Steam
-				9000, 9001, 9002, 9003, // Epic Games
-				1119, 6113, // Battle.net
-				3074,             // Xbox Live
-				3478, 3479, 3658, // PlayStation
-			},
-			VoIPPorts: []int{
-				3478, 3479, // Discord
-				50000, 50019, // Teams
-				8801, 8810, // Zoom
-				16384, 32767, // WebRTC
-			},
-			StreamingPorts: []int{443},
-			BypassDomains: []string{
-				"steampowered.com",
-				"epicgames.com",
-				"discord.gg",
-				"discord.com",
-				"twitch.tv",
-				"youtube.com",
-				"googlevideo.com",
-			},
-		},
-		NAT: NATConfig{
-			Enabled:        true,
-			ExternalIP:     "",
-			PortRangeStart: 60000,
-			PortRangeEnd:   65535,
-		},
-	}
 }

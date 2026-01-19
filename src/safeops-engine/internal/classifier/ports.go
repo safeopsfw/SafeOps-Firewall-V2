@@ -11,7 +11,7 @@ const (
 	PortDNSProxy = 15353
 
 	// mitmproxy SOCKS5 listens here (we tunnel HTTP/HTTPS through this)
-	PortMITMProxy = 18080
+	PortMITMProxy = 8080
 
 	// SafeOps API server
 	PortAPI = 9002
