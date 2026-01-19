@@ -115,6 +115,7 @@ func main() {
 			Name:    "Threat Intel Pipeline",
 			ExePath: filepath.Join(binDir, "threat_intel", "threat_intel.exe"),
 			WorkDir: filepath.Join(binDir, "threat_intel"),
+			Args:    []string{"-scheduler"},
 			Delay:   1 * time.Second,
 		},
 	}

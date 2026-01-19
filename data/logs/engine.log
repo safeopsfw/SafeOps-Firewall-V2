@@ -3659,3 +3659,482 @@
 {"timestamp":"2026-01-19T17:37:06.7414109Z","level":"INFO","message":"Domain","data":{"domain":"static-ecst.licdn.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
 {"timestamp":"2026-01-19T17:37:06.7627043Z","level":"INFO","message":"Domain","data":{"domain":"fp.msedge.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
 {"timestamp":"2026-01-19T17:37:07.7646309Z","level":"INFO","message":"Domain","data":{"domain":"fp.msedge.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:09.4000356Z","level":"INFO","message":"Domain","data":{"domain":"browser.events.data.microsoft.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:11.2678798Z","level":"INFO","message":"Domain","data":{"domain":"riot-client.dyn.riotcdn.net","dst_ip":"104.17.174.5","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:11.3327294Z","level":"INFO","message":"Domain","data":{"domain":"valorant.secure.dyn.riotcdn.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:11.3493447Z","level":"INFO","message":"Domain","data":{"domain":"beacons.gcp.gvt2.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:11.3608214Z","level":"INFO","message":"Domain","data":{"domain":"valorant.secure.dyn.riotcdn.net","dst_ip":"139.5.243.16","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:16.5465945Z","level":"INFO","message":"Domain","data":{"domain":"safebrowsing.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:17.5622963Z","level":"INFO","message":"Domain","data":{"domain":"safebrowsing.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:26.2452015Z","level":"INFO","message":"Domain","data":{"domain":"ev2-ring.msedge.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:26.2470682Z","level":"INFO","message":"Domain","data":{"domain":"ev2-ring.msedge.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:26.444941Z","level":"INFO","message":"Domain","data":{"domain":"e-ring-fallback.msedge.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:26.4537678Z","level":"INFO","message":"Domain","data":{"domain":"e-ring-fallback.msedge.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:30.0019537Z","level":"INFO","message":"Domain","data":{"domain":"www.bing.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:30.0317378Z","level":"INFO","message":"Domain","data":{"domain":"www.bing.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:30.2119942Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:30.2362395Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:30.6112763Z","level":"INFO","message":"Domain","data":{"domain":"substrate.office.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:30.6616065Z","level":"INFO","message":"Domain","data":{"domain":"substrate.office.com","dst_ip":"52.98.88.66","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:31.6053302Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:32.3224658Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:32.3272542Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:32.3803914Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:32.3951774Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"23.63.110.75","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:32.3970647Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"23.63.110.75","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:32.4021628Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"23.63.110.75","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:32.4045995Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"23.63.110.75","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:33.1242443Z","level":"INFO","message":"Domain","data":{"domain":"graph.facebook.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:33.1285425Z","level":"INFO","message":"Domain","data":{"domain":"clientconfig.rpg.riotgames.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:33.1296026Z","level":"INFO","message":"Domain","data":{"domain":"graph.facebook.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:33.1477735Z","level":"INFO","message":"Domain","data":{"domain":"clientconfig.rpg.riotgames.com","dst_ip":"104.18.157.37","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:33.2938443Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":617620,"packets_written":607784,"total_processed":607784}}
+{"timestamp":"2026-01-19T17:37:33.3235074Z","level":"INFO","message":"Domain","data":{"domain":"graph.facebook.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:33.3441618Z","level":"INFO","message":"Domain","data":{"domain":"graph.facebook.com","dst_ip":"57.144.48.141","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:33.3459126Z","level":"INFO","message":"Domain","data":{"domain":"graph.facebook.com","dst_ip":"57.144.48.141","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:33.4820831Z","level":"INFO","message":"Domain","data":{"domain":"test-gateway.instagram.com","dst_ip":"57.144.48.196","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:33.485005Z","level":"INFO","message":"Domain","data":{"domain":"test-gateway.instagram.com","dst_ip":"57.144.48.196","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:33.8155412Z","level":"INFO","message":"Domain","data":{"domain":"www.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:33.8182397Z","level":"INFO","message":"Domain","data":{"domain":"www.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:33.8820193Z","level":"INFO","message":"Domain","data":{"domain":"play.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:33.8875532Z","level":"INFO","message":"Domain","data":{"domain":"play.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:34.8777733Z","level":"INFO","message":"Domain","data":{"domain":"ecs.office.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:34.9026153Z","level":"INFO","message":"Domain","data":{"domain":"ecs.office.com","dst_ip":"52.123.129.14","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:35.1215105Z","level":"INFO","message":"Domain","data":{"domain":"c.whatsapp.net","dst_ip":"31.13.88.175","dst_port":80,"protocol":"http","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:35.1243978Z","level":"INFO","message":"Domain","data":{"domain":"c.whatsapp.net","dst_ip":"31.13.88.175","dst_port":80,"protocol":"http","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:36.5815724Z","level":"INFO","message":"Domain","data":{"domain":"calendarsync-pa.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:36.5851052Z","level":"INFO","message":"Domain","data":{"domain":"calendarsync-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:36.5942018Z","level":"INFO","message":"Domain","data":{"domain":"www.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:36.6253472Z","level":"INFO","message":"Domain","data":{"domain":"calendarsync-pa.googleapis.com","dst_ip":"142.250.193.10","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:36.6272169Z","level":"INFO","message":"Domain","data":{"domain":"www.googleapis.com","dst_ip":"142.250.182.106","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:36.6282913Z","level":"INFO","message":"Domain","data":{"domain":"calendarsync-pa.googleapis.com","dst_ip":"142.250.193.10","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:36.6299688Z","level":"INFO","message":"Domain","data":{"domain":"www.googleapis.com","dst_ip":"142.250.182.106","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:36.7235483Z","level":"INFO","message":"Domain","data":{"domain":"youtubei.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:36.7277665Z","level":"INFO","message":"Domain","data":{"domain":"youtubei.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.0218269Z","level":"INFO","message":"Domain","data":{"domain":"pool.ntp.org","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.0255022Z","level":"INFO","message":"Domain","data":{"domain":"pool.ntp.org","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.028258Z","level":"INFO","message":"Domain","data":{"domain":"api2.grofers.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.0298617Z","level":"INFO","message":"Domain","data":{"domain":"api2.grofers.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.0517441Z","level":"INFO","message":"Domain","data":{"domain":"youtubei.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.0721269Z","level":"INFO","message":"Domain","data":{"domain":"youtubei.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.0786608Z","level":"INFO","message":"Domain","data":{"domain":"api2.grofers.com","dst_ip":"104.17.110.183","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.0803723Z","level":"INFO","message":"Domain","data":{"domain":"api2.grofers.com","dst_ip":"104.17.110.183","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.08826Z","level":"INFO","message":"Domain","data":{"domain":"firebaseremoteconfig.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.0923001Z","level":"INFO","message":"Domain","data":{"domain":"firebaseremoteconfig.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.1054009Z","level":"INFO","message":"Domain","data":{"domain":"youtubei.googleapis.com","dst_ip":"216.239.32.223","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.107484Z","level":"INFO","message":"Domain","data":{"domain":"youtubei.googleapis.com","dst_ip":"216.239.32.223","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.1270845Z","level":"INFO","message":"Domain","data":{"domain":"jumbo.blinkit.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.1293515Z","level":"INFO","message":"Domain","data":{"domain":"jumbo.blinkit.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.1645512Z","level":"INFO","message":"Domain","data":{"domain":"firebaseremoteconfig.googleapis.com","dst_ip":"172.217.26.42","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.1668446Z","level":"INFO","message":"Domain","data":{"domain":"firebaseremoteconfig.googleapis.com","dst_ip":"172.217.26.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.1873609Z","level":"INFO","message":"Domain","data":{"domain":"jumbo.blinkit.com","dst_ip":"104.18.35.23","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.1884127Z","level":"INFO","message":"Domain","data":{"domain":"jumbo.blinkit.com","dst_ip":"104.18.35.23","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.1921841Z","level":"INFO","message":"Domain","data":{"domain":"cloudconf-app-in.heytapmobile.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.1943153Z","level":"INFO","message":"Domain","data":{"domain":"cloudconf-app-in.heytapmobile.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.2153303Z","level":"INFO","message":"Domain","data":{"domain":"cloudconf-app-in.heytapmobile.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.2177116Z","level":"INFO","message":"Domain","data":{"domain":"cloudconf-app-in.heytapmobile.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.2466621Z","level":"INFO","message":"Domain","data":{"domain":"exp1.www.linkedin.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.2489542Z","level":"INFO","message":"Domain","data":{"domain":"exp1.www.linkedin.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.3313586Z","level":"INFO","message":"Domain","data":{"domain":"firebaseremoteconfig.googleapis.com","dst_ip":"172.217.26.42","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.347559Z","level":"INFO","message":"Domain","data":{"domain":"firebaseremoteconfig.googleapis.com","dst_ip":"172.217.26.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.3819628Z","level":"INFO","message":"Domain","data":{"domain":"www.linkedin.com","dst_ip":"150.171.22.12","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.3847845Z","level":"INFO","message":"Domain","data":{"domain":"www.linkedin.com","dst_ip":"150.171.22.12","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.3880615Z","level":"INFO","message":"Domain","data":{"domain":"usc1-gcp-v62.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.3911258Z","level":"INFO","message":"Domain","data":{"domain":"aws.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.3927729Z","level":"INFO","message":"Domain","data":{"domain":"gcp.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.3945314Z","level":"INFO","message":"Domain","data":{"domain":"usc1-gcp-v61.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.3962455Z","level":"INFO","message":"Domain","data":{"domain":"us-east1-aws.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.3978451Z","level":"INFO","message":"Domain","data":{"domain":"app-analytics-v2.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.3994987Z","level":"INFO","message":"Domain","data":{"domain":"usc1-gcp-v62.api.snapchat.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.4013204Z","level":"INFO","message":"Domain","data":{"domain":"aws.api.snapchat.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.4024315Z","level":"INFO","message":"Domain","data":{"domain":"gcp.api.snapchat.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.4041017Z","level":"INFO","message":"Domain","data":{"domain":"usc1-gcp-v61.api.snapchat.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.4074976Z","level":"INFO","message":"Domain","data":{"domain":"us-east1-aws.api.snapchat.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.4092063Z","level":"INFO","message":"Domain","data":{"domain":"app-analytics-v2.snapchat.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.4456512Z","level":"INFO","message":"Domain","data":{"domain":"app-analytics-v2.snapchat.com","dst_ip":"35.244.195.33","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.447275Z","level":"INFO","message":"Domain","data":{"domain":"app-analytics-v2.snapchat.com","dst_ip":"35.244.195.33","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.4993241Z","level":"INFO","message":"Domain","data":{"domain":"i.ytimg.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.5014408Z","level":"INFO","message":"Domain","data":{"domain":"i.ytimg.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.5127005Z","level":"INFO","message":"Domain","data":{"domain":"aws.api.snapchat.com","dst_ip":"13.126.219.140","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.5142936Z","level":"INFO","message":"Domain","data":{"domain":"aws.api.snapchat.com","dst_ip":"13.126.219.140","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.5480682Z","level":"INFO","message":"Domain","data":{"domain":"usc1-gcp-v62.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.5508208Z","level":"INFO","message":"Domain","data":{"domain":"aws.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.5529468Z","level":"INFO","message":"Domain","data":{"domain":"gcp.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.5543083Z","level":"INFO","message":"Domain","data":{"domain":"us-east1-aws.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.5559922Z","level":"INFO","message":"Domain","data":{"domain":"usc1-gcp-v61.api.snapchat.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.6114174Z","level":"INFO","message":"Domain","data":{"domain":"aws.api.snapchat.com","dst_ip":"13.126.219.140","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.6124681Z","level":"INFO","message":"Domain","data":{"domain":"aws.api.snapchat.com","dst_ip":"13.126.219.140","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.6443678Z","level":"INFO","message":"Domain","data":{"domain":"us-east1-aws.api.snapchat.com","dst_ip":"44.202.21.34","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.6469309Z","level":"INFO","message":"Domain","data":{"domain":"us-east1-aws.api.snapchat.com","dst_ip":"44.202.21.34","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.7294182Z","level":"INFO","message":"Domain","data":{"domain":"icota-service-in.allawnos.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.7328333Z","level":"INFO","message":"Domain","data":{"domain":"icota-service-in.allawnos.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:37.7892668Z","level":"INFO","message":"Domain","data":{"domain":"icota-service-in.allawnos.com","dst_ip":"129.227.29.3","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.791473Z","level":"INFO","message":"Domain","data":{"domain":"icota-service-in.allawnos.com","dst_ip":"129.227.29.3","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:37.79769Z","level":"INFO","message":"Domain","data":{"domain":"us-east1-aws.api.snapchat.com","dst_ip":"44.202.21.34","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:37.7993076Z","level":"INFO","message":"Domain","data":{"domain":"us-east1-aws.api.snapchat.com","dst_ip":"44.202.21.34","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:38.0542338Z","level":"INFO","message":"Domain","data":{"domain":"eu1.clevertap-prod.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:38.0569947Z","level":"INFO","message":"Domain","data":{"domain":"eu1.clevertap-prod.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:38.0874522Z","level":"INFO","message":"Domain","data":{"domain":"eu1.clevertap-prod.com","dst_ip":"108.158.245.30","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:38.0894824Z","level":"INFO","message":"Domain","data":{"domain":"eu1.clevertap-prod.com","dst_ip":"108.158.245.30","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:41.9218566Z","level":"INFO","message":"Domain","data":{"domain":"androidpay-users-pa.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:41.9257785Z","level":"INFO","message":"Domain","data":{"domain":"crashlyticsreports-pa.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:41.9282506Z","level":"INFO","message":"Domain","data":{"domain":"androidpay-users-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:41.9293256Z","level":"INFO","message":"Domain","data":{"domain":"crashlyticsreports-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:41.9432672Z","level":"INFO","message":"Domain","data":{"domain":"crashlyticsreports-pa.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:41.9458157Z","level":"INFO","message":"Domain","data":{"domain":"play.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:41.9608488Z","level":"INFO","message":"Domain","data":{"domain":"crashlyticsreports-pa.googleapis.com","dst_ip":"142.250.182.35","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:41.9618931Z","level":"INFO","message":"Domain","data":{"domain":"crashlyticsreports-pa.googleapis.com","dst_ip":"142.250.182.35","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:41.9679931Z","level":"INFO","message":"Domain","data":{"domain":"crashlyticsreports-pa.googleapis.com","dst_ip":"142.250.182.35","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:41.9701698Z","level":"INFO","message":"Domain","data":{"domain":"crashlyticsreports-pa.googleapis.com","dst_ip":"142.250.182.35","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:42.0318345Z","level":"INFO","message":"Domain","data":{"domain":"androidpay-users-pa.googleapis.com","dst_ip":"74.125.24.92","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:42.0342894Z","level":"INFO","message":"Domain","data":{"domain":"androidpay-users-pa.googleapis.com","dst_ip":"74.125.24.92","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:42.9380384Z","level":"INFO","message":"Domain","data":{"domain":"github.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:42.9930632Z","level":"INFO","message":"Domain","data":{"domain":"github.com","dst_ip":"20.207.73.82","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:44.4222296Z","level":"INFO","message":"Domain","data":{"domain":"s3.ap-southeast-1.amazonaws.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:44.5362795Z","level":"INFO","message":"Domain","data":{"domain":"s3.ap-southeast-1.amazonaws.com","dst_ip":"52.219.129.136","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:44.8714125Z","level":"INFO","message":"Domain","data":{"domain":"glz-ap-1.ap.a.pvp.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:44.8994306Z","level":"INFO","message":"Domain","data":{"domain":"glz-ap-1.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:47.0460622Z","level":"INFO","message":"Domain","data":{"domain":"pd.ap.a.pvp.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:47.0664349Z","level":"INFO","message":"Domain","data":{"domain":"pd.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:47.237175Z","level":"INFO","message":"Domain","data":{"domain":"api.account.riotgames.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:47.2553044Z","level":"INFO","message":"Domain","data":{"domain":"api.account.riotgames.com","dst_ip":"104.19.146.81","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:47.5975146Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:48.486181Z","level":"INFO","message":"Domain","data":{"domain":"pd.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:48.4914686Z","level":"INFO","message":"Domain","data":{"domain":"pd.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:48.4930561Z","level":"INFO","message":"Domain","data":{"domain":"pd.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.2552671Z","level":"INFO","message":"Domain","data":{"domain":"apse1.pp.sgp.pvp.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.2640974Z","level":"INFO","message":"Domain","data":{"domain":"pft.val.sgp.pvp.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.2849231Z","level":"INFO","message":"Domain","data":{"domain":"apse1.pp.sgp.pvp.net","dst_ip":"104.18.41.183","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.2901483Z","level":"INFO","message":"Domain","data":{"domain":"pft.val.sgp.pvp.net","dst_ip":"172.64.146.73","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.3484464Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.4312595Z","level":"INFO","message":"Domain","data":{"domain":"d3ae7q4ygxk27u.cloudfront.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.4658122Z","level":"INFO","message":"Domain","data":{"domain":"d3ae7q4ygxk27u.cloudfront.net","dst_ip":"13.224.161.153","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.4766162Z","level":"INFO","message":"Domain","data":{"domain":"pd.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.4787238Z","level":"INFO","message":"Domain","data":{"domain":"telemetry.sgp.pvp.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.5047182Z","level":"INFO","message":"Domain","data":{"domain":"telemetry.sgp.pvp.net","dst_ip":"172.64.146.73","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.6011354Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.6061396Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.6453439Z","level":"INFO","message":"Domain","data":{"domain":"d3b2epwij7fhax.cloudfront.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.6756707Z","level":"INFO","message":"Domain","data":{"domain":"d3b2epwij7fhax.cloudfront.net","dst_ip":"18.164.242.13","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.82136Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:49.828731Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.0599471Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.0653155Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.2214185Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.2335317Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.5138209Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.5188382Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.968926Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:50.9746551Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:51.3712367Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:51.4782044Z","level":"INFO","message":"Domain","data":{"domain":"pd.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:51.741256Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:52.0990595Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:52.5147712Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:52.9150329Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:53.3059052Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:53.6373096Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:53.8612646Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:54.0341233Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:54.2058806Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:54.5207541Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:54.5223496Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:54.8628434Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:54.8666654Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:55.0520987Z","level":"INFO","message":"Domain","data":{"domain":"z-m-gateway.facebook.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:55.0557118Z","level":"INFO","message":"Domain","data":{"domain":"z-m-gateway.facebook.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:55.091751Z","level":"INFO","message":"Domain","data":{"domain":"z-m-gateway.facebook.com","dst_ip":"57.144.48.3","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:37:55.0933446Z","level":"INFO","message":"Domain","data":{"domain":"z-m-gateway.facebook.com","dst_ip":"57.144.48.3","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:37:55.2985783Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:55.5983243Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:55.6208152Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:55.9199924Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:56.1975864Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:56.4743843Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:56.482831Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:56.7355958Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:56.7464417Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.0583481Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.0766783Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.3816915Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.3988871Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.6729943Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.681411Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.8390564Z","level":"INFO","message":"Domain","data":{"domain":"shared.ap.a.pvp.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.8647295Z","level":"INFO","message":"Domain","data":{"domain":"shared.ap.a.pvp.net","dst_ip":"172.64.153.46","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.9558927Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:57.9688338Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:58.1315644Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:37:58.1424943Z","level":"INFO","message":"Domain","data":{"domain":"daily-cloudcode-pa.googleapis.com","dst_ip":"142.250.182.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:01.5916181Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:03.2926394Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":634175,"packets_written":624191,"total_processed":624191}}
+{"timestamp":"2026-01-19T17:38:04.9690647Z","level":"INFO","message":"Domain","data":{"domain":"gateway.discord.gg","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:04.9809959Z","level":"INFO","message":"Domain","data":{"domain":"gateway.discord.gg","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:14.3730687Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:38:14.376088Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:14.3900143Z","level":"INFO","message":"Domain","data":{"domain":"mdp-appconf-in.heytapdl.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:38:16.940217Z","level":"INFO","message":"Domain","data":{"domain":"graph.facebook.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:38:17.6124493Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:19.4072624Z","level":"INFO","message":"Domain","data":{"domain":"photosdata-pa.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:38:19.4108753Z","level":"INFO","message":"Domain","data":{"domain":"photosdata-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:20.7988248Z","level":"INFO","message":"Domain","data":{"domain":"www.baidu.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:22.4687843Z","level":"INFO","message":"Domain","data":{"domain":"ssl.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:22.4703312Z","level":"INFO","message":"Domain","data":{"domain":"ssl.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:24.3668075Z","level":"INFO","message":"Domain","data":{"domain":"dc.services.visualstudio.com","dst_ip":"20.213.196.214","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:24.9187949Z","level":"INFO","message":"Domain","data":{"domain":"play.googleapis.com","dst_ip":"216.239.38.223","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:25.0184523Z","level":"INFO","message":"Domain","data":{"domain":"valorant.secure.dyn.riotcdn.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:25.0385988Z","level":"INFO","message":"Domain","data":{"domain":"valorant.secure.dyn.riotcdn.net","dst_ip":"139.5.243.16","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:25.5070291Z","level":"INFO","message":"Domain","data":{"domain":"docs.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:25.6054606Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:26.5095342Z","level":"INFO","message":"Domain","data":{"domain":"docs.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:38:27.9976409Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-19T17:38:28.0964768Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-19T17:38:30.0005129Z","level":"INFO","message":"Final stats","data":{"packets_dropped":0,"packets_read":639182,"packets_written":629079,"total_processed":629079}}
+{"timestamp":"2026-01-19T17:38:30.003678Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-19T17:38:30.005303Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-19T17:38:30.0063695Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":639182,"packets_written":629079}}
+{"timestamp":"2026-01-19T17:39:50.9935615Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"pure-passthrough","version":"3.0.0"}}
+{"timestamp":"2026-01-19T17:39:50.9958039Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-19T17:39:50.9968546Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-19T17:39:50.9973993Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-19T17:39:51.0007332Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-19T17:39:51.0024547Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T17:39:51.0035741Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-19T17:39:51.0041243Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-19T17:39:51.0052407Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-19T17:39:51.0063379Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T17:39:51.0074049Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-19T17:39:51.0085328Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-19T17:39:51.009639Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-19T17:39:51.0101999Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-19T17:39:51.0113635Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-19T17:39:51.0124822Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-19T17:39:51.0135808Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-19T17:39:51.0141375Z","level":"INFO","message":"Pipeline ready - All packets captured and forwarded immediately"}
+{"timestamp":"2026-01-19T17:39:51.0152089Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-19T17:39:51.0162717Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-19T17:39:51.0173601Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-19T17:39:53.3420307Z","level":"INFO","message":"Domain","data":{"domain":"rules.emergingthreats.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.3442182Z","level":"INFO","message":"Domain","data":{"domain":"feodotracker.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.3453045Z","level":"INFO","message":"Domain","data":{"domain":"lists.blocklist.de","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.3458361Z","level":"INFO","message":"Domain","data":{"domain":"www.botvrij.eu","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.3470929Z","level":"INFO","message":"Domain","data":{"domain":"raw.githubusercontent.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.3642268Z","level":"INFO","message":"Domain","data":{"domain":"lists.blocklist.de","dst_ip":"104.21.5.194","dst_port":80,"protocol":"http","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.3665297Z","level":"INFO","message":"Domain","data":{"domain":"raw.githubusercontent.com","dst_ip":"185.199.109.133","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.4292345Z","level":"INFO","message":"Domain","data":{"domain":"sslbl.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.5698945Z","level":"INFO","message":"Domain","data":{"domain":"rules.emergingthreats.net","dst_ip":"3.228.88.65","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.6750348Z","level":"INFO","message":"Domain","data":{"domain":"openphish.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.7653187Z","level":"INFO","message":"Domain","data":{"domain":"phishing.army","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:53.854714Z","level":"INFO","message":"Domain","data":{"domain":"openphish.com","dst_ip":"165.22.207.217","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.0273384Z","level":"INFO","message":"Domain","data":{"domain":"openphish.com","dst_ip":"165.22.207.217","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.0576388Z","level":"INFO","message":"Domain","data":{"domain":"urlhaus.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.2335424Z","level":"INFO","message":"Domain","data":{"domain":"threatfox.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.3921116Z","level":"INFO","message":"Domain","data":{"domain":"raw.githubusercontent.com","dst_ip":"185.199.109.133","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.467477Z","level":"INFO","message":"Domain","data":{"domain":"threatview.io","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.5026746Z","level":"INFO","message":"Domain","data":{"domain":"threatview.io","dst_ip":"103.56.228.140","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.5056986Z","level":"INFO","message":"Domain","data":{"domain":"threatview.io","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:39:54.5256644Z","level":"INFO","message":"Domain","data":{"domain":"threatview.io","dst_ip":"172.67.193.187","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.5946365Z","level":"INFO","message":"Domain","data":{"domain":"check.torproject.org","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.6316305Z","level":"INFO","message":"Domain","data":{"domain":"www.vpngate.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.813581Z","level":"INFO","message":"Domain","data":{"domain":"check.torproject.org","dst_ip":"116.202.120.181","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.8250749Z","level":"INFO","message":"Domain","data":{"domain":"www.vpngate.net","dst_ip":"130.158.75.36","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:54.8402432Z","level":"INFO","message":"Domain","data":{"domain":"bazaar.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:55.094473Z","level":"INFO","message":"Domain","data":{"domain":"gitlab.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:55.1021376Z","level":"INFO","message":"Domain","data":{"domain":"iptoasn.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:55.1145666Z","level":"INFO","message":"Domain","data":{"domain":"gitlab.com","dst_ip":"172.65.251.78","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:55.1211677Z","level":"INFO","message":"Domain","data":{"domain":"iptoasn.com","dst_ip":"172.67.217.105","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:56.3633201Z","level":"INFO","message":"Domain","data":{"domain":"download.ip2location.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:39:56.3843469Z","level":"INFO","message":"Domain","data":{"domain":"download.ip2location.com","dst_ip":"104.26.3.214","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8686294Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8865464Z","level":"INFO","message":"Domain","data":{"domain":"clientservices.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8889502Z","level":"INFO","message":"Domain","data":{"domain":"clientservices.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8900432Z","level":"INFO","message":"Domain","data":{"domain":"oauthaccountmanager.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8908081Z","level":"INFO","message":"Domain","data":{"domain":"oauthaccountmanager.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8925376Z","level":"INFO","message":"Domain","data":{"domain":"accounts.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8942708Z","level":"INFO","message":"Domain","data":{"domain":"accounts.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8963564Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.8968646Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.9139287Z","level":"INFO","message":"Domain","data":{"domain":"clientservices.googleapis.com","dst_ip":"142.250.193.3","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:00.9392661Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"142.250.182.100","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.5517351Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.5561493Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.5619029Z","level":"INFO","message":"Domain","data":{"domain":"kidsmanagement-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.5630417Z","level":"INFO","message":"Domain","data":{"domain":"kidsmanagement-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.604554Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"142.251.43.174","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.6084947Z","level":"INFO","message":"Domain","data":{"domain":"kidsmanagement-pa.googleapis.com","dst_ip":"142.250.182.106","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.626535Z","level":"INFO","message":"Domain","data":{"domain":"memex-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:01.6346752Z","level":"INFO","message":"Domain","data":{"domain":"memex-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:04.0745803Z","level":"INFO","message":"Domain","data":{"domain":"catalog.gamepass.com","dst_ip":"139.5.243.34","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:04.857049Z","level":"INFO","message":"Domain","data":{"domain":"fonts.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:04.8584401Z","level":"INFO","message":"Domain","data":{"domain":"fonts.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:05.0977424Z","level":"INFO","message":"Domain","data":{"domain":"firebaselogging.googleapis.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:40:05.1000143Z","level":"INFO","message":"Domain","data":{"domain":"firebaselogging.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:05.1731268Z","level":"INFO","message":"Domain","data":{"domain":"firebaselogging.googleapis.com","dst_ip":"216.239.32.223","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:40:05.1748833Z","level":"INFO","message":"Domain","data":{"domain":"firebaselogging.googleapis.com","dst_ip":"216.239.32.223","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:40:07.3219811Z","level":"INFO","message":"Domain","data":{"domain":"update.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:07.326922Z","level":"INFO","message":"Domain","data":{"domain":"update.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:07.9867094Z","level":"INFO","message":"Domain","data":{"domain":"mtalk.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:07.9879592Z","level":"INFO","message":"Domain","data":{"domain":"android.clients.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:07.98978Z","level":"INFO","message":"Domain","data":{"domain":"android.clients.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:08.4052992Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:40:08.9139889Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:09.6130599Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:10.0535376Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:10.0562608Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:10.0841602Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"216.239.38.223","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:17.0358204Z","level":"INFO","message":"Domain","data":{"domain":"www.bing.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:17.2919733Z","level":"INFO","message":"Domain","data":{"domain":"substrate.office.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:17.3479046Z","level":"INFO","message":"Domain","data":{"domain":"substrate.office.com","dst_ip":"40.104.66.242","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:17.3620468Z","level":"INFO","message":"Domain","data":{"domain":"substrate.office.com","dst_ip":"40.104.66.242","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:18.5782951Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:19.5488421Z","level":"INFO","message":"Domain","data":{"domain":"aefd.nelreports.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:19.8042998Z","level":"INFO","message":"Domain","data":{"domain":"substrate.office.com","dst_ip":"40.104.66.242","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:20.5563793Z","level":"INFO","message":"Domain","data":{"domain":"aefd.nelreports.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:20.5646484Z","level":"INFO","message":"Domain","data":{"domain":"aefd.nelreports.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:21.0159855Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":96718,"packets_written":96570,"total_processed":96570}}
+{"timestamp":"2026-01-19T17:40:27.2078369Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:27.209749Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:33.6095855Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:43.3893087Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:49.4093311Z","level":"INFO","message":"Domain","data":{"domain":"api.qrserver.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:49.4104618Z","level":"INFO","message":"Domain","data":{"domain":"api.qrserver.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:50.6328592Z","level":"INFO","message":"Domain","data":{"domain":"media.fdel8-2.fna.whatsapp.net","dst_ip":"205.254.172.100","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:40:50.6339177Z","level":"INFO","message":"Domain","data":{"domain":"media.fdel8-2.fna.whatsapp.net","dst_ip":"205.254.172.100","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T17:40:51.0152887Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":108630,"packets_written":108334,"total_processed":108334}}
+{"timestamp":"2026-01-19T17:40:51.6246314Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:57.5982334Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:40:59.992771Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:00.1016488Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:00.1026812Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:00.125478Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"142.251.43.174","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:00.3528352Z","level":"INFO","message":"Domain","data":{"domain":"update.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:00.3534424Z","level":"INFO","message":"Domain","data":{"domain":"update.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:00.3724963Z","level":"INFO","message":"Domain","data":{"domain":"update.googleapis.com","dst_ip":"142.250.192.195","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:05.6412028Z","level":"INFO","message":"Domain","data":{"domain":"safebrowsing.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:05.642681Z","level":"INFO","message":"Domain","data":{"domain":"safebrowsing.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:06.6288468Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:06.6363742Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:06.821927Z","level":"INFO","message":"Domain","data":{"domain":"accounts.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:06.8232692Z","level":"INFO","message":"Domain","data":{"domain":"accounts.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:07.4829178Z","level":"INFO","message":"Domain","data":{"domain":"epdg.epc.mnc871.mcc405.pub.3gppnetwork.org","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:41:07.485567Z","level":"INFO","message":"Domain","data":{"domain":"epdg.epc.mnc871.mcc405.pub.3gppnetwork.org","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T17:41:07.4868132Z","level":"INFO","message":"Domain","data":{"domain":"epdg.epc.mnc871.mcc405.pub.3gppnetwork.org","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:07.4890492Z","level":"INFO","message":"Domain","data":{"domain":"epdg.epc.mnc871.mcc405.pub.3gppnetwork.org","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:10.281635Z","level":"INFO","message":"Domain","data":{"domain":"asc-appservice-01.asus.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:10.7067986Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:10.7093017Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:10.7111213Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:10.7116277Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:10.7322438Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"142.250.193.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:15.3677861Z","level":"INFO","message":"Domain","data":{"domain":"valorant.secure.dyn.riotcdn.net","dst_ip":"139.5.243.16","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:15.6000857Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T17:41:21.0145657Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":117387,"packets_written":116941,"total_processed":116941}}
+{"timestamp":"2026-01-19T17:41:22.8347066Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-19T17:41:22.8407515Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-19T18:14:39.9722879Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"pure-passthrough","version":"3.0.0"}}
+{"timestamp":"2026-01-19T18:14:39.9758431Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-19T18:14:39.9776506Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-19T18:14:39.9799887Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-19T18:14:39.9833799Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-19T18:14:39.9857234Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T18:14:39.9881301Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-19T18:14:39.9905388Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-19T18:14:39.9926594Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-19T18:14:39.9936711Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T18:14:39.9964737Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-19T18:14:39.9985228Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-19T18:14:40.0007111Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-19T18:14:40.003051Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-19T18:14:40.0051913Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-19T18:14:40.0077539Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-19T18:14:40.0095406Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-19T18:14:40.0120696Z","level":"INFO","message":"Pipeline ready - All packets captured and forwarded immediately"}
+{"timestamp":"2026-01-19T18:14:40.0129361Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-19T18:14:40.0157041Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-19T18:14:40.0188234Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-19T18:14:42.0039044Z","level":"INFO","message":"Domain","data":{"domain":"rules.emergingthreats.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.006252Z","level":"INFO","message":"Domain","data":{"domain":"raw.githubusercontent.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.0079123Z","level":"INFO","message":"Domain","data":{"domain":"feodotracker.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.0102056Z","level":"INFO","message":"Domain","data":{"domain":"www.botvrij.eu","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.0119129Z","level":"INFO","message":"Domain","data":{"domain":"lists.blocklist.de","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.0261117Z","level":"INFO","message":"Domain","data":{"domain":"raw.githubusercontent.com","dst_ip":"185.199.111.133","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.0302208Z","level":"INFO","message":"Domain","data":{"domain":"lists.blocklist.de","dst_ip":"104.21.5.194","dst_port":80,"protocol":"http","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.0718976Z","level":"INFO","message":"Domain","data":{"domain":"sslbl.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.2692544Z","level":"INFO","message":"Domain","data":{"domain":"openphish.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.3381678Z","level":"INFO","message":"Domain","data":{"domain":"phishing.army","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.4395094Z","level":"INFO","message":"Domain","data":{"domain":"openphish.com","dst_ip":"165.22.207.217","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.4934388Z","level":"INFO","message":"Domain","data":{"domain":"urlhaus.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.6018003Z","level":"INFO","message":"Domain","data":{"domain":"openphish.com","dst_ip":"165.22.207.217","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.6168652Z","level":"INFO","message":"Domain","data":{"domain":"threatfox.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.7674808Z","level":"INFO","message":"Domain","data":{"domain":"threatview.io","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.7867132Z","level":"INFO","message":"Domain","data":{"domain":"threatview.io","dst_ip":"172.67.193.187","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:42.9369697Z","level":"INFO","message":"Domain","data":{"domain":"raw.githubusercontent.com","dst_ip":"185.199.111.133","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.0015798Z","level":"INFO","message":"Domain","data":{"domain":"check.torproject.org","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.1326842Z","level":"INFO","message":"Domain","data":{"domain":"www.vpngate.net","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.2193398Z","level":"INFO","message":"Domain","data":{"domain":"check.torproject.org","dst_ip":"116.202.120.181","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.2351013Z","level":"INFO","message":"Domain","data":{"domain":"rules.emergingthreats.net","dst_ip":"3.228.88.65","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.3155582Z","level":"INFO","message":"Domain","data":{"domain":"www.vpngate.net","dst_ip":"130.158.75.44","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.4628249Z","level":"INFO","message":"Domain","data":{"domain":"bazaar.abuse.ch","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.5439636Z","level":"INFO","message":"Domain","data":{"domain":"gitlab.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.5652524Z","level":"INFO","message":"Domain","data":{"domain":"gitlab.com","dst_ip":"172.65.251.78","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.6470595Z","level":"INFO","message":"Domain","data":{"domain":"iptoasn.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:43.6663246Z","level":"INFO","message":"Domain","data":{"domain":"iptoasn.com","dst_ip":"172.67.217.105","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:44.5068435Z","level":"INFO","message":"Domain","data":{"domain":"download.ip2location.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:44.5328827Z","level":"INFO","message":"Domain","data":{"domain":"download.ip2location.com","dst_ip":"104.26.3.214","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.6775522Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7098466Z","level":"INFO","message":"Domain","data":{"domain":"clientservices.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7244686Z","level":"INFO","message":"Domain","data":{"domain":"clientservices.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7421401Z","level":"INFO","message":"Domain","data":{"domain":"oauthaccountmanager.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7505615Z","level":"INFO","message":"Domain","data":{"domain":"oauthaccountmanager.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7592913Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7702735Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7785037Z","level":"INFO","message":"Domain","data":{"domain":"accounts.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.7904676Z","level":"INFO","message":"Domain","data":{"domain":"accounts.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.8118155Z","level":"INFO","message":"Domain","data":{"domain":"oauthaccountmanager.googleapis.com","dst_ip":"142.250.182.106","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:49.892619Z","level":"INFO","message":"Domain","data":{"domain":"accounts.google.com","dst_ip":"142.251.12.84","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.074048Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"142.250.182.100","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.2452995Z","level":"INFO","message":"Domain","data":{"domain":"oauthaccountmanager.googleapis.com","dst_ip":"142.250.182.106","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.3737427Z","level":"INFO","message":"Domain","data":{"domain":"memex-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.3935178Z","level":"INFO","message":"Domain","data":{"domain":"memex-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.4176215Z","level":"INFO","message":"Domain","data":{"domain":"kidsmanagement-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.4357094Z","level":"INFO","message":"Domain","data":{"domain":"kidsmanagement-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.4714814Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.4818968Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.5098366Z","level":"INFO","message":"Domain","data":{"domain":"memex-pa.googleapis.com","dst_ip":"142.250.193.42","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:50.5385557Z","level":"INFO","message":"Domain","data":{"domain":"clients4.google.com","dst_ip":"142.251.43.174","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:51.554437Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:52.4313168Z","level":"INFO","message":"Domain","data":{"domain":"fonts.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:52.4337643Z","level":"INFO","message":"Domain","data":{"domain":"fonts.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:53.7535173Z","level":"INFO","message":"Domain","data":{"domain":"update.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:53.7558497Z","level":"INFO","message":"Domain","data":{"domain":"update.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:53.933303Z","level":"INFO","message":"Domain","data":{"domain":"mtalk.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:53.9383661Z","level":"INFO","message":"Domain","data":{"domain":"android.clients.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:53.9425044Z","level":"INFO","message":"Domain","data":{"domain":"android.clients.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:54.2267333Z","level":"INFO","message":"Domain","data":{"domain":"ssl.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:54.2288715Z","level":"INFO","message":"Domain","data":{"domain":"ssl.gstatic.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:55.5142259Z","level":"INFO","message":"Domain","data":{"domain":"docs.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:55.5164829Z","level":"INFO","message":"Domain","data":{"domain":"docs.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:56.6477339Z","level":"INFO","message":"Domain","data":{"domain":"www.google.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T18:14:57.5045253Z","level":"INFO","message":"Domain","data":{"domain":"test-gateway.instagram.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T18:14:57.5070174Z","level":"INFO","message":"Domain","data":{"domain":"test-gateway.instagram.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:57.7112159Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:59.4543465Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:14:59.4575211Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:03.7971387Z","level":"INFO","message":"Domain","data":{"domain":"catalog.gamepass.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:03.8197738Z","level":"INFO","message":"Domain","data":{"domain":"catalog.gamepass.com","dst_ip":"139.5.243.43","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:04.1131221Z","level":"INFO","message":"Domain","data":{"domain":"api.qrserver.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:04.1153711Z","level":"INFO","message":"Domain","data":{"domain":"api.qrserver.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:04.3004364Z","level":"INFO","message":"Domain","data":{"domain":"api.qrserver.com","dst_ip":"195.201.128.178","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:04.7467057Z","level":"INFO","message":"Domain","data":{"domain":"safebrowsing.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:04.7495618Z","level":"INFO","message":"Domain","data":{"domain":"safebrowsing.google.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:04.7684214Z","level":"INFO","message":"Domain","data":{"domain":"safebrowsing.google.com","dst_ip":"142.250.67.78","dst_port":443,"protocol":"tls","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:10.0165685Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":94047,"packets_written":93945,"total_processed":93945}}
+{"timestamp":"2026-01-19T18:15:22.2690084Z","level":"INFO","message":"Domain","data":{"domain":"ping.qwps.cn","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:31.603805Z","level":"INFO","message":"Domain","data":{"domain":"wpad.bbrouter","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:38.0999288Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:38.1020107Z","level":"INFO","message":"Domain","data":{"domain":"optimizationguide-pa.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.7"}}
+{"timestamp":"2026-01-19T18:15:40.016139Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":98147,"packets_written":97949,"total_processed":97949}}
+{"timestamp":"2026-01-19T18:15:41.856714Z","level":"INFO","message":"Domain","data":{"domain":"api.twitter.com","dst_ip":"192.168.137.1","dst_port":53,"protocol":"dns","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T18:15:41.8837634Z","level":"INFO","message":"Domain","data":{"domain":"api.twitter.com","dst_ip":"172.66.0.227","dst_port":443,"protocol":"tls","src_ip":"192.168.137.86"}}
+{"timestamp":"2026-01-19T18:15:41.8853091Z","level":"INFO","message":"Domain","data":{"domain":"api.twitter.com","dst_ip":"172.66.0.227","dst_port":443,"protocol":"tls","src_ip":"192.168.1.6"}}
+{"timestamp":"2026-01-19T18:15:42.6700866Z","level":"INFO","message":"Shutting down..."}

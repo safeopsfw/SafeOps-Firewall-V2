@@ -1,4 +1,292 @@
 {
+    "1734413": [
+        {
+            "ioc_value": "utoigzdol.localto.net",
+            "ioc_type": "domain",
+            "threat_type": "botnet_cc",
+            "malware": "apk.spynote",
+            "malware_alias": "CypherRat",
+            "malware_printable": "SpyNote",
+            "first_seen_utc": "2026-01-19 18:06:10",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-qybq1sh18d",
+            "tags": "android,C2,domain,spynote,triage",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734412": [
+        {
+            "ioc_value": "cyqahoxnt.localto.net",
+            "ioc_type": "domain",
+            "threat_type": "botnet_cc",
+            "malware": "apk.spynote",
+            "malware_alias": "CypherRat",
+            "malware_printable": "SpyNote",
+            "first_seen_utc": "2026-01-19 18:06:09",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-q6xcpaay5b",
+            "tags": "android,C2,domain,spynote,triage",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734411": [
+        {
+            "ioc_value": "xnd4x3ezm.localto.net",
+            "ioc_type": "domain",
+            "threat_type": "botnet_cc",
+            "malware": "apk.spynote",
+            "malware_alias": "CypherRat",
+            "malware_printable": "SpyNote",
+            "first_seen_utc": "2026-01-19 18:06:08",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-wmkgnshz6h",
+            "tags": "android,C2,domain,spynote,triage",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734410": [
+        {
+            "ioc_value": "47.237.107.28:7181",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.valley_rat",
+            "malware_alias": "Winos",
+            "malware_printable": "ValleyRAT",
+            "first_seen_utc": "2026-01-19 18:05:45",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-pds9wsds8b",
+            "tags": "AS45102,C2,rat,triage,valleyrat",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734409": [
+        {
+            "ioc_value": "23.248.212.114:5222",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.valley_rat",
+            "malware_alias": "Winos",
+            "malware_printable": "ValleyRAT",
+            "first_seen_utc": "2026-01-19 18:05:44",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-rnsr8acv9a",
+            "tags": "AS138415,C2,rat,triage,valleyrat",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734408": [
+        {
+            "ioc_value": "23.248.212.114:443",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.valley_rat",
+            "malware_alias": "Winos",
+            "malware_printable": "ValleyRAT",
+            "first_seen_utc": "2026-01-19 18:05:43",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-rnsr8acv9a",
+            "tags": "AS138415,C2,rat,triage,valleyrat",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734407": [
+        {
+            "ioc_value": "23.248.212.114:433",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.valley_rat",
+            "malware_alias": "Winos",
+            "malware_printable": "ValleyRAT",
+            "first_seen_utc": "2026-01-19 18:05:42",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-rnsr8acv9a",
+            "tags": "AS138415,C2,rat,triage,valleyrat",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734406": [
+        {
+            "ioc_value": "154.36.188.114:11778",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.valley_rat",
+            "malware_alias": "Winos",
+            "malware_printable": "ValleyRAT",
+            "first_seen_utc": "2026-01-19 18:05:41",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-rghcxaby6b",
+            "tags": "AS979,C2,rat,triage,valleyrat",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734405": [
+        {
+            "ioc_value": "154.36.188.114:11788",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.valley_rat",
+            "malware_alias": "Winos",
+            "malware_printable": "ValleyRAT",
+            "first_seen_utc": "2026-01-19 18:05:40",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-rghcxaby6b",
+            "tags": "AS979,C2,rat,triage,valleyrat",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734404": [
+        {
+            "ioc_value": "http://77.42.83.71",
+            "ioc_type": "url",
+            "threat_type": "botnet_cc",
+            "malware": "win.stealc",
+            "malware_alias": null,
+            "malware_printable": "Stealc",
+            "first_seen_utc": "2026-01-19 18:05:21",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-s1ypnsfz6a",
+            "tags": "AS24940,C2,stealc,stealer,triage",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734403": [
+        {
+            "ioc_value": "https://westerrd.cyou/api",
+            "ioc_type": "url",
+            "threat_type": "botnet_cc",
+            "malware": "win.lumma",
+            "malware_alias": "LummaC2 Stealer",
+            "malware_printable": "Lumma Stealer",
+            "first_seen_utc": "2026-01-19 18:05:10",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-pab67sc13e",
+            "tags": "C2,lumma,stealer,triage",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734402": [
+        {
+            "ioc_value": "https://whooptm.cyou/api",
+            "ioc_type": "url",
+            "threat_type": "botnet_cc",
+            "malware": "win.lumma",
+            "malware_alias": "LummaC2 Stealer",
+            "malware_printable": "Lumma Stealer",
+            "first_seen_utc": "2026-01-19 18:05:09",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-vq5rcaht3b",
+            "tags": "C2,lumma,stealer,triage",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734401": [
+        {
+            "ioc_value": "82.22.23.160:4449",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.asyncrat",
+            "malware_alias": null,
+            "malware_printable": "AsyncRAT",
+            "first_seen_utc": "2026-01-19 18:04:03",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-p6y1vafy2g",
+            "tags": "AS7018,asyncrat,C2,rat,triage",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734400": [
+        {
+            "ioc_value": "kokymrgy.hopto.org",
+            "ioc_type": "domain",
+            "threat_type": "botnet_cc",
+            "malware": "win.xworm",
+            "malware_alias": null,
+            "malware_printable": "XWorm",
+            "first_seen_utc": "2026-01-19 18:03:47",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-r8lveaes6h",
+            "tags": "C2,domain,triage,xworm",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734399": [
+        {
+            "ioc_value": "2.57.19.46:411",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.xworm",
+            "malware_alias": null,
+            "malware_printable": "XWorm",
+            "first_seen_utc": "2026-01-19 18:03:46",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": "https://tria.ge/260119-sfjd9aey2b",
+            "tags": "AS204914,C2,triage,xworm",
+            "anonymous": "0",
+            "reporter": "DonPasci"
+        }
+    ],
+    "1734398": [
+        {
+            "ioc_value": "45.156.87.154:7707",
+            "ioc_type": "ip:port",
+            "threat_type": "botnet_cc",
+            "malware": "win.asyncrat",
+            "malware_alias": null,
+            "malware_printable": "AsyncRAT",
+            "first_seen_utc": "2026-01-19 18:00:09",
+            "last_seen_utc": null,
+            "confidence_level": 100,
+            "is_compromised": false,
+            "reference": null,
+            "tags": "AsyncRAT,RAT",
+            "anonymous": "0",
+            "reporter": "abuse_ch"
+        }
+    ],
     "1734394": [
         {
             "ioc_value": "185.163.204.137:80",
@@ -818,7 +1106,7 @@
             "malware_alias": "CinaRAT,QuasarRAT,Yggdrasil",
             "malware_printable": "Quasar RAT",
             "first_seen_utc": "2026-01-19 13:55:53",
-            "last_seen_utc": null,
+            "last_seen_utc": "2026-01-19 18:04:44",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": "https://bazaar.abuse.ch/sample/82ec4aaf76a793427443a63d068c75315508169a64c036c281c60d87f1cac7e8/",
@@ -836,7 +1124,7 @@
             "malware_alias": "CinaRAT,QuasarRAT,Yggdrasil",
             "malware_printable": "Quasar RAT",
             "first_seen_utc": "2026-01-19 13:55:45",
-            "last_seen_utc": null,
+            "last_seen_utc": "2026-01-19 18:04:50",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": "https://bazaar.abuse.ch/sample/82ec4aaf76a793427443a63d068c75315508169a64c036c281c60d87f1cac7e8/",
@@ -854,7 +1142,7 @@
             "malware_alias": "CinaRAT,QuasarRAT,Yggdrasil",
             "malware_printable": "Quasar RAT",
             "first_seen_utc": "2026-01-19 13:55:44",
-            "last_seen_utc": null,
+            "last_seen_utc": "2026-01-19 18:04:47",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": "https://bazaar.abuse.ch/sample/82ec4aaf76a793427443a63d068c75315508169a64c036c281c60d87f1cac7e8/",
@@ -890,7 +1178,7 @@
             "malware_alias": null,
             "malware_printable": "Meterpreter",
             "first_seen_utc": "2026-01-19 12:54:35",
-            "last_seen_utc": "2026-01-19 15:54:15",
+            "last_seen_utc": "2026-01-19 17:53:43",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -908,7 +1196,7 @@
             "malware_alias": null,
             "malware_printable": "Meterpreter",
             "first_seen_utc": "2026-01-19 12:54:11",
-            "last_seen_utc": "2026-01-19 15:53:49",
+            "last_seen_utc": "2026-01-19 17:53:14",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -926,7 +1214,7 @@
             "malware_alias": null,
             "malware_printable": "Meterpreter",
             "first_seen_utc": "2026-01-19 12:52:45",
-            "last_seen_utc": "2026-01-19 15:53:00",
+            "last_seen_utc": "2026-01-19 17:52:15",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -1394,7 +1682,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-19 08:48:32",
-            "last_seen_utc": "2026-01-19 15:48:40",
+            "last_seen_utc": "2026-01-19 17:48:31",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -1412,7 +1700,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-19 08:48:12",
-            "last_seen_utc": "2026-01-19 15:48:26",
+            "last_seen_utc": "2026-01-19 17:48:14",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -1430,7 +1718,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-19 08:44:50",
-            "last_seen_utc": "2026-01-19 15:44:42",
+            "last_seen_utc": "2026-01-19 17:45:20",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -1448,7 +1736,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-19 08:44:38",
-            "last_seen_utc": "2026-01-19 15:44:35",
+            "last_seen_utc": "2026-01-19 17:45:07",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -1592,7 +1880,7 @@
             "malware_alias": "RemcosRAT,Remvio,Socmer",
             "malware_printable": "Remcos",
             "first_seen_utc": "2026-01-19 08:03:59",
-            "last_seen_utc": "2026-01-19 15:43:25",
+            "last_seen_utc": "2026-01-19 17:43:25",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/104.168.115.90",
@@ -1826,7 +2114,7 @@
             "malware_alias": null,
             "malware_printable": "Stealc",
             "first_seen_utc": "2026-01-19 07:16:14",
-            "last_seen_utc": null,
+            "last_seen_utc": "2026-01-19 17:00:15",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": "",
@@ -2150,7 +2438,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-19 04:04:10",
-            "last_seen_utc": "2026-01-19 15:45:50",
+            "last_seen_utc": "2026-01-19 17:46:13",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/158.94.210.195",
@@ -2168,7 +2456,7 @@
             "malware_alias": "RemcosRAT,Remvio,Socmer",
             "malware_printable": "Remcos",
             "first_seen_utc": "2026-01-19 04:03:56",
-            "last_seen_utc": "2026-01-19 15:44:01",
+            "last_seen_utc": "2026-01-19 17:44:12",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/130.12.182.194",
@@ -2492,7 +2780,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-18 23:00:21",
-            "last_seen_utc": "2026-01-19 15:45:49",
+            "last_seen_utc": "2026-01-19 17:46:13",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/158.94.210.195",
@@ -2510,7 +2798,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-18 23:00:21",
-            "last_seen_utc": "2026-01-19 15:45:49",
+            "last_seen_utc": "2026-01-19 17:46:13",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/158.94.210.195",
@@ -2528,7 +2816,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 23:00:17",
-            "last_seen_utc": "2026-01-19 15:49:25",
+            "last_seen_utc": "2026-01-19 17:49:11",
             "confidence_level": 90,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/51.83.254.62",
@@ -2546,7 +2834,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 23:00:16",
-            "last_seen_utc": "2026-01-19 15:49:16",
+            "last_seen_utc": "2026-01-19 17:49:03",
             "confidence_level": 90,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/47.83.182.237",
@@ -2564,7 +2852,7 @@
             "malware_alias": "Agentemis,BEACON,CobaltStrike,cobeacon",
             "malware_printable": "Cobalt Strike",
             "first_seen_utc": "2026-01-18 23:00:11",
-            "last_seen_utc": "2026-01-19 15:54:12",
+            "last_seen_utc": "2026-01-19 17:53:38",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/60.205.131.83",
@@ -2654,7 +2942,7 @@
             "malware_alias": "AgenTesla,AgentTesla,Negasteal",
             "malware_printable": "Agent Tesla",
             "first_seen_utc": "2026-01-18 21:00:04",
-            "last_seen_utc": "2026-01-19 16:24:02",
+            "last_seen_utc": "2026-01-19 18:00:04",
             "confidence_level": 50,
             "is_compromised": false,
             "reference": "https://tracker.viriback.com/index.php?q=etvidanueva.com",
@@ -2816,7 +3104,7 @@
             "malware_alias": "RemcosRAT,Remvio,Socmer",
             "malware_printable": "Remcos",
             "first_seen_utc": "2026-01-18 20:05:55",
-            "last_seen_utc": "2026-01-19 15:44:00",
+            "last_seen_utc": "2026-01-19 17:44:11",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": "https://bazaar.abuse.ch/sample/9fe4d4fa0652fe7d37175a5e866dd0ec2f446c9b1d92ca6eb88dfdaf04984a99/",
@@ -2996,7 +3284,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 18:44:31",
-            "last_seen_utc": "2026-01-19 15:44:57",
+            "last_seen_utc": "2026-01-19 17:45:35",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3014,7 +3302,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 18:44:26",
-            "last_seen_utc": "2026-01-19 15:44:50",
+            "last_seen_utc": "2026-01-19 17:45:25",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3032,7 +3320,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 18:44:21",
-            "last_seen_utc": "2026-01-19 15:44:41",
+            "last_seen_utc": "2026-01-19 17:45:17",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3050,7 +3338,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 18:44:20",
-            "last_seen_utc": "2026-01-19 15:44:39",
+            "last_seen_utc": "2026-01-19 17:45:15",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3068,7 +3356,7 @@
             "malware_alias": "Oakboat,Pinkslipbot,Qbot,Quakbot",
             "malware_printable": "QakBot",
             "first_seen_utc": "2026-01-18 18:43:02",
-            "last_seen_utc": "2026-01-19 15:43:02",
+            "last_seen_utc": "2026-01-19 17:43:02",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3626,7 +3914,7 @@
             "malware_alias": null,
             "malware_printable": "Unknown malware",
             "first_seen_utc": "2026-01-18 16:04:15",
-            "last_seen_utc": "2026-01-19 15:44:30",
+            "last_seen_utc": "2026-01-19 17:44:53",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/146.190.155.26",
@@ -3716,7 +4004,7 @@
             "malware_alias": null,
             "malware_printable": "Meterpreter",
             "first_seen_utc": "2026-01-18 12:51:36",
-            "last_seen_utc": "2026-01-19 15:54:08",
+            "last_seen_utc": "2026-01-19 17:53:35",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3734,7 +4022,7 @@
             "malware_alias": "Agentemis,BEACON,CobaltStrike,cobeacon",
             "malware_printable": "Cobalt Strike",
             "first_seen_utc": "2026-01-18 12:50:36",
-            "last_seen_utc": "2026-01-19 15:52:52",
+            "last_seen_utc": "2026-01-19 17:52:10",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3752,7 +4040,7 @@
             "malware_alias": null,
             "malware_printable": "Meterpreter",
             "first_seen_utc": "2026-01-18 12:50:31",
-            "last_seen_utc": "2026-01-19 15:52:46",
+            "last_seen_utc": "2026-01-19 17:52:05",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -3842,7 +4130,7 @@
             "malware_alias": "NetSupport",
             "malware_printable": "NetSupportManager RAT",
             "first_seen_utc": "2026-01-18 12:04:24",
-            "last_seen_utc": "2026-01-19 15:43:09",
+            "last_seen_utc": "2026-01-19 17:43:09",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/102.98.115.42",
@@ -3896,7 +4184,7 @@
             "malware_alias": "RemcosRAT,Remvio,Socmer",
             "malware_printable": "Remcos",
             "first_seen_utc": "2026-01-18 12:03:56",
-            "last_seen_utc": "2026-01-19 15:45:52",
+            "last_seen_utc": "2026-01-19 17:46:14",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/158.94.210.95",
@@ -3914,7 +4202,7 @@
             "malware_alias": "RemcosRAT,Remvio,Socmer",
             "malware_printable": "Remcos",
             "first_seen_utc": "2026-01-18 12:03:56",
-            "last_seen_utc": "2026-01-19 15:48:14",
+            "last_seen_utc": "2026-01-19 17:48:08",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/212.95.55.76",
@@ -4292,7 +4580,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:49:17",
-            "last_seen_utc": "2026-01-19 15:50:14",
+            "last_seen_utc": "2026-01-19 17:49:48",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4310,7 +4598,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:49:13",
-            "last_seen_utc": "2026-01-19 15:50:06",
+            "last_seen_utc": "2026-01-19 17:49:46",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4328,7 +4616,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:49:05",
-            "last_seen_utc": "2026-01-19 15:49:54",
+            "last_seen_utc": "2026-01-19 17:49:38",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4346,7 +4634,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:48:54",
-            "last_seen_utc": "2026-01-19 15:49:43",
+            "last_seen_utc": "2026-01-19 17:49:27",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4364,7 +4652,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:48:50",
-            "last_seen_utc": "2026-01-19 15:49:39",
+            "last_seen_utc": "2026-01-19 17:49:24",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4382,7 +4670,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 08:48:39",
-            "last_seen_utc": "2026-01-19 15:49:27",
+            "last_seen_utc": "2026-01-19 17:49:13",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4400,7 +4688,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:48:23",
-            "last_seen_utc": "2026-01-19 15:49:10",
+            "last_seen_utc": "2026-01-19 17:48:57",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4418,7 +4706,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:48:13",
-            "last_seen_utc": "2026-01-19 15:49:00",
+            "last_seen_utc": "2026-01-19 17:48:50",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4436,7 +4724,7 @@
             "malware_alias": null,
             "malware_printable": "BianLian",
             "first_seen_utc": "2026-01-18 08:47:49",
-            "last_seen_utc": "2026-01-19 15:48:37",
+            "last_seen_utc": "2026-01-19 17:48:28",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4454,7 +4742,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:47:43",
-            "last_seen_utc": "2026-01-19 15:48:31",
+            "last_seen_utc": "2026-01-19 17:48:23",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4472,7 +4760,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 08:47:18",
-            "last_seen_utc": "2026-01-19 15:48:05",
+            "last_seen_utc": "2026-01-19 17:47:56",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4490,7 +4778,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:47:11",
-            "last_seen_utc": "2026-01-19 15:47:54",
+            "last_seen_utc": "2026-01-19 17:47:49",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4508,7 +4796,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 08:46:54",
-            "last_seen_utc": "2026-01-19 15:47:37",
+            "last_seen_utc": "2026-01-19 17:47:34",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4526,7 +4814,7 @@
             "malware_alias": null,
             "malware_printable": "Eye Pyramid",
             "first_seen_utc": "2026-01-18 08:46:43",
-            "last_seen_utc": "2026-01-19 15:47:25",
+            "last_seen_utc": "2026-01-19 17:47:25",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4544,7 +4832,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:45:48",
-            "last_seen_utc": "2026-01-19 15:46:35",
+            "last_seen_utc": "2026-01-19 17:46:40",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4562,7 +4850,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:44:54",
-            "last_seen_utc": "2026-01-19 15:45:21",
+            "last_seen_utc": "2026-01-19 17:45:57",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4580,7 +4868,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 08:44:39",
-            "last_seen_utc": "2026-01-19 15:44:58",
+            "last_seen_utc": "2026-01-19 17:45:36",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4598,7 +4886,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 08:44:38",
-            "last_seen_utc": "2026-01-19 15:44:57",
+            "last_seen_utc": "2026-01-19 17:45:34",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4616,7 +4904,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-18 08:44:37",
-            "last_seen_utc": "2026-01-19 15:44:55",
+            "last_seen_utc": "2026-01-19 17:45:32",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -4634,7 +4922,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 08:44:14",
-            "last_seen_utc": "2026-01-19 15:44:29",
+            "last_seen_utc": "2026-01-19 17:44:53",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -5300,7 +5588,7 @@
             "malware_alias": null,
             "malware_printable": "Stealc",
             "first_seen_utc": "2026-01-18 08:08:11",
-            "last_seen_utc": "2026-01-19 15:00:27",
+            "last_seen_utc": "2026-01-19 17:00:16",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": null,
@@ -5480,7 +5768,7 @@
             "malware_alias": "RemcosRAT,Remvio,Socmer",
             "malware_printable": "Remcos",
             "first_seen_utc": "2026-01-18 08:03:48",
-            "last_seen_utc": "2026-01-19 15:47:30",
+            "last_seen_utc": "2026-01-19 17:47:29",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/192.142.4.232",
@@ -5840,7 +6128,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-18 04:04:07",
-            "last_seen_utc": "2026-01-19 15:50:31",
+            "last_seen_utc": "2026-01-19 17:50:00",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/95.9.236.229",
@@ -5858,7 +6146,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-18 04:04:07",
-            "last_seen_utc": "2026-01-19 15:50:28",
+            "last_seen_utc": "2026-01-19 17:49:58",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/94.154.35.73",
@@ -5876,7 +6164,7 @@
             "malware_alias": null,
             "malware_printable": "Sliver",
             "first_seen_utc": "2026-01-18 04:03:54",
-            "last_seen_utc": "2026-01-19 15:49:31",
+            "last_seen_utc": "2026-01-19 17:49:17",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/56.124.34.57",
@@ -5894,7 +6182,7 @@
             "malware_alias": "Agentemis,BEACON,CobaltStrike,cobeacon",
             "malware_printable": "Cobalt Strike",
             "first_seen_utc": "2026-01-18 02:49:55",
-            "last_seen_utc": "2026-01-19 15:51:14",
+            "last_seen_utc": "2026-01-19 17:50:37",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -5984,7 +6272,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-18 00:04:18",
-            "last_seen_utc": "2026-01-19 15:48:24",
+            "last_seen_utc": "2026-01-19 17:48:12",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/217.216.48.9",
@@ -6002,7 +6290,7 @@
             "malware_alias": "Patpoopy",
             "malware_printable": "pupy",
             "first_seen_utc": "2026-01-18 00:03:59",
-            "last_seen_utc": "2026-01-19 15:43:23",
+            "last_seen_utc": "2026-01-19 17:43:22",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/103.79.79.105",
@@ -6272,7 +6560,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-17 23:00:26",
-            "last_seen_utc": "2026-01-19 15:45:50",
+            "last_seen_utc": "2026-01-19 17:46:13",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/158.94.210.195",
@@ -6452,7 +6740,7 @@
             "malware_alias": "Agentemis,BEACON,CobaltStrike,cobeacon",
             "malware_printable": "Cobalt Strike",
             "first_seen_utc": "2026-01-17 20:52:32",
-            "last_seen_utc": "2026-01-19 15:53:37",
+            "last_seen_utc": "2026-01-19 17:52:56",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6542,7 +6830,7 @@
             "malware_alias": null,
             "malware_printable": "AdaptixC2",
             "first_seen_utc": "2026-01-17 20:05:19",
-            "last_seen_utc": "2026-01-19 15:43:16",
+            "last_seen_utc": "2026-01-19 17:43:17",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/103.194.106.229",
@@ -6596,7 +6884,7 @@
             "malware_alias": null,
             "malware_printable": "Unknown malware",
             "first_seen_utc": "2026-01-17 20:04:57",
-            "last_seen_utc": "2026-01-19 15:48:26",
+            "last_seen_utc": "2026-01-19 17:48:14",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/221.154.189.193",
@@ -6614,7 +6902,7 @@
             "malware_alias": "Havokiz",
             "malware_printable": "Havoc",
             "first_seen_utc": "2026-01-17 20:04:51",
-            "last_seen_utc": "2026-01-19 15:47:03",
+            "last_seen_utc": "2026-01-19 17:47:09",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/18.192.8.246",
@@ -6632,7 +6920,7 @@
             "malware_alias": "Havokiz",
             "malware_printable": "Havoc",
             "first_seen_utc": "2026-01-17 20:04:50",
-            "last_seen_utc": "2026-01-19 15:45:19",
+            "last_seen_utc": "2026-01-19 17:45:54",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/152.42.225.68",
@@ -6668,7 +6956,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-17 20:04:39",
-            "last_seen_utc": "2026-01-19 15:50:32",
+            "last_seen_utc": "2026-01-19 17:50:00",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/95.9.236.229",
@@ -6722,7 +7010,7 @@
             "malware_alias": "RemcosRAT,Remvio,Socmer",
             "malware_printable": "Remcos",
             "first_seen_utc": "2026-01-17 20:03:54",
-            "last_seen_utc": "2026-01-19 15:45:24",
+            "last_seen_utc": "2026-01-19 17:45:59",
             "confidence_level": 100,
             "is_compromised": false,
             "reference": "https://search.censys.io/hosts/154.244.219.177",
@@ -6794,7 +7082,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:49:13",
-            "last_seen_utc": "2026-01-19 15:49:49",
+            "last_seen_utc": "2026-01-19 17:49:33",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6812,7 +7100,7 @@
             "malware_alias": "Oakboat,Pinkslipbot,Qbot,Quakbot",
             "malware_printable": "QakBot",
             "first_seen_utc": "2026-01-17 18:48:16",
-            "last_seen_utc": "2026-01-19 15:48:50",
+            "last_seen_utc": "2026-01-19 17:48:41",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6830,7 +7118,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:47:34",
-            "last_seen_utc": "2026-01-19 15:48:07",
+            "last_seen_utc": "2026-01-19 17:47:59",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6848,7 +7136,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:47:33",
-            "last_seen_utc": "2026-01-19 15:48:06",
+            "last_seen_utc": "2026-01-19 17:47:58",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6866,7 +7154,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:47:32",
-            "last_seen_utc": "2026-01-19 15:48:05",
+            "last_seen_utc": "2026-01-19 17:47:56",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6884,7 +7172,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:47:31",
-            "last_seen_utc": "2026-01-19 15:48:04",
+            "last_seen_utc": "2026-01-19 17:47:56",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6902,7 +7190,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:47:30",
-            "last_seen_utc": "2026-01-19 15:48:00",
+            "last_seen_utc": "2026-01-19 17:47:55",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6920,7 +7208,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:45:13",
-            "last_seen_utc": "2026-01-19 15:45:07",
+            "last_seen_utc": "2026-01-19 17:45:45",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6938,7 +7226,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:44:54",
-            "last_seen_utc": "2026-01-19 15:44:51",
+            "last_seen_utc": "2026-01-19 17:45:26",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6956,7 +7244,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:44:52",
-            "last_seen_utc": "2026-01-19 15:44:49",
+            "last_seen_utc": "2026-01-19 17:45:24",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6974,7 +7262,7 @@
             "malware_alias": null,
             "malware_printable": "DeimosC2",
             "first_seen_utc": "2026-01-17 18:44:40",
-            "last_seen_utc": "2026-01-19 15:44:37",
+            "last_seen_utc": "2026-01-19 17:45:11",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -6992,7 +7280,7 @@
             "malware_alias": null,
             "malware_printable": "AsyncRAT",
             "first_seen_utc": "2026-01-17 18:44:30",
-            "last_seen_utc": "2026-01-19 15:44:26",
+            "last_seen_utc": "2026-01-19 17:44:44",
             "confidence_level": 75,
             "is_compromised": false,
             "reference": null,
@@ -7017,3498 +7305,6 @@
             "tags": "C2,cybergate,domain,rat,triage",
             "anonymous": "0",
             "reporter": "DonPasci"
-        }
-    ],
-    "1733986": [
-        {
-            "ioc_value": "137.220.133.63:433",
-            "ioc_type": "ip:port",
-            "threat_type": "botnet_cc",
-            "malware": "win.valley_rat",
-            "malware_alias": "Winos",
-            "malware_printable": "ValleyRAT",
-            "first_seen_utc": "2026-01-17 18:10:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-qdjacsh15d",
-            "tags": "AS152194,C2,rat,triage,valleyrat",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733987": [
-        {
-            "ioc_value": "137.220.133.63:80",
-            "ioc_type": "ip:port",
-            "threat_type": "botnet_cc",
-            "malware": "win.valley_rat",
-            "malware_alias": "Winos",
-            "malware_printable": "ValleyRAT",
-            "first_seen_utc": "2026-01-17 18:10:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-qdjacsh15d",
-            "tags": "AS152194,C2,rat,triage,valleyrat",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733985": [
-        {
-            "ioc_value": "137.220.133.63:443",
-            "ioc_type": "ip:port",
-            "threat_type": "botnet_cc",
-            "malware": "win.valley_rat",
-            "malware_alias": "Winos",
-            "malware_printable": "ValleyRAT",
-            "first_seen_utc": "2026-01-17 18:10:06",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-qdjacsh15d",
-            "tags": "AS152194,C2,rat,triage,valleyrat",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733984": [
-        {
-            "ioc_value": "www.noggrtea.cyou",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.valley_rat",
-            "malware_alias": "Winos",
-            "malware_printable": "ValleyRAT",
-            "first_seen_utc": "2026-01-17 18:10:02",
-            "last_seen_utc": "2026-01-17 18:10:06",
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-te7acsgt9e",
-            "tags": "C2,domain,rat,triage,valleyrat",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733983": [
-        {
-            "ioc_value": "134.195.112.203:1337",
-            "ioc_type": "ip:port",
-            "threat_type": "botnet_cc",
-            "malware": "win.quasar_rat",
-            "malware_alias": "CinaRAT,QuasarRAT,Yggdrasil",
-            "malware_printable": "Quasar RAT",
-            "first_seen_utc": "2026-01-17 18:09:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-sw191afy2c",
-            "tags": "AS35911,C2,quasar,rat,triage",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733982": [
-        {
-            "ioc_value": "https://cdn.jsdelivr.net/gh/escalator82-12-facecloth-junkyard/asset64-bundle-resolver/timestep-sim20",
-            "ioc_type": "url",
-            "threat_type": "payload_delivery",
-            "malware": "js.clearfake",
-            "malware_alias": null,
-            "malware_printable": "ClearFake",
-            "first_seen_utc": "2026-01-17 18:08:38",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": null,
-            "tags": "ClearFake",
-            "anonymous": "0",
-            "reporter": "threatcat_ch"
-        }
-    ],
-    "1733981": [
-        {
-            "ioc_value": "vmaxso.uk",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 18:07:35",
-            "last_seen_utc": "2026-01-17 18:08:07",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/c300943c88a0cae2eb609954b59c933b253c340f2997587830aee3d69adb7769/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733980": [
-        {
-            "ioc_value": "vmax.so",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 18:07:32",
-            "last_seen_utc": "2026-01-17 18:08:11",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/c300943c88a0cae2eb609954b59c933b253c340f2997587830aee3d69adb7769/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733979": [
-        {
-            "ioc_value": "vmax-link.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 18:07:30",
-            "last_seen_utc": "2026-01-17 18:08:14",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/c300943c88a0cae2eb609954b59c933b253c340f2997587830aee3d69adb7769/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733976": [
-        {
-            "ioc_value": "45.88.9.167:4678",
-            "ioc_type": "ip:port",
-            "threat_type": "botnet_cc",
-            "malware": "win.xworm",
-            "malware_alias": null,
-            "malware_printable": "XWorm",
-            "first_seen_utc": "2026-01-17 18:03:40",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-vnwewsg15d",
-            "tags": "AS204914,C2,triage,xworm",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733977": [
-        {
-            "ioc_value": "64.89.163.7:4455",
-            "ioc_type": "ip:port",
-            "threat_type": "botnet_cc",
-            "malware": "win.xworm",
-            "malware_alias": null,
-            "malware_printable": "XWorm",
-            "first_seen_utc": "2026-01-17 18:03:40",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-t7mfnagx8h",
-            "tags": "C2,triage,xworm",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733978": [
-        {
-            "ioc_value": "26.tcp.cpolar.top",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.xworm",
-            "malware_alias": null,
-            "malware_printable": "XWorm",
-            "first_seen_utc": "2026-01-17 18:03:40",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-tlvj5sgv7a",
-            "tags": "C2,domain,triage,xworm",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733974": [
-        {
-            "ioc_value": "1.tcp.cpolar.cn",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.xworm",
-            "malware_alias": null,
-            "malware_printable": "XWorm",
-            "first_seen_utc": "2026-01-17 18:03:39",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-v17npaht4g",
-            "tags": "C2,domain,triage,xworm",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733975": [
-        {
-            "ioc_value": "2011-57970.portmap.host",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.xworm",
-            "malware_alias": null,
-            "malware_printable": "XWorm",
-            "first_seen_utc": "2026-01-17 18:03:39",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "https://tria.ge/260117-vsktysg18b",
-            "tags": "C2,domain,triage,xworm",
-            "anonymous": "0",
-            "reporter": "DonPasci"
-        }
-    ],
-    "1733973": [
-        {
-            "ioc_value": "family.hk.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 18:01:38",
-            "last_seen_utc": "2026-01-17 18:08:24",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/b1a89dd51a8818d41ee607a2997eb4c8b9201f43c1004247114d4ae0aec0ddf0/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733972": [
-        {
-            "ioc_value": "bitconnect.in.net",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 18:01:17",
-            "last_seen_utc": "2026-01-17 18:08:16",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/b1a89dd51a8818d41ee607a2997eb4c8b9201f43c1004247114d4ae0aec0ddf0/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733971": [
-        {
-            "ioc_value": "58winn.uk.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 18:01:08",
-            "last_seen_utc": "2026-01-17 18:08:21",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/b1a89dd51a8818d41ee607a2997eb4c8b9201f43c1004247114d4ae0aec0ddf0/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733970": [
-        {
-            "ioc_value": "voeazul.br.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:56:13",
-            "last_seen_utc": "2026-01-17 18:08:47",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733969": [
-        {
-            "ioc_value": "open88-2.site",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:56:07",
-            "last_seen_utc": "2026-01-17 18:08:42",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733968": [
-        {
-            "ioc_value": "open88-1.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:56:05",
-            "last_seen_utc": "2026-01-17 18:08:45",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733967": [
-        {
-            "ioc_value": "m.cm88.casino",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:56:01",
-            "last_seen_utc": null,
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733966": [
-        {
-            "ioc_value": "fly88bi.jp.net",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:55:54",
-            "last_seen_utc": "2026-01-17 18:08:49",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733965": [
-        {
-            "ioc_value": "ecatcu.za.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:55:51",
-            "last_seen_utc": "2026-01-17 18:08:50",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733964": [
-        {
-            "ioc_value": "cm88casino.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:55:49",
-            "last_seen_utc": "2026-01-17 18:08:37",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733963": [
-        {
-            "ioc_value": "cm88.casino",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:55:47",
-            "last_seen_utc": null,
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733962": [
-        {
-            "ioc_value": "cm88-game.site",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:55:45",
-            "last_seen_utc": "2026-01-17 18:08:39",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733961": [
-        {
-            "ioc_value": "cloudfeebacks.in.net",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:55:43",
-            "last_seen_utc": "2026-01-17 18:08:53",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/4040bcbeb29b512c0bb6a96884d5afa1e333a7ea1ab3084db1d9af932719a05c/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733960": [
-        {
-            "ioc_value": "sc88top1.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:50:54",
-            "last_seen_utc": "2026-01-17 18:08:25",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/5faef6bc1831413de7e8770d6a0d2e1181f948a88d63e65d9baa49e26f29cdaf/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733959": [
-        {
-            "ioc_value": "sc88nv.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:50:50",
-            "last_seen_utc": "2026-01-17 18:08:27",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/5faef6bc1831413de7e8770d6a0d2e1181f948a88d63e65d9baa49e26f29cdaf/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733958": [
-        {
-            "ioc_value": "sc88game.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:50:47",
-            "last_seen_utc": "2026-01-17 18:08:31",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/5faef6bc1831413de7e8770d6a0d2e1181f948a88d63e65d9baa49e26f29cdaf/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733957": [
-        {
-            "ioc_value": "jdzvdi.sa.com",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:50:43",
-            "last_seen_utc": "2026-01-17 18:08:35",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/5faef6bc1831413de7e8770d6a0d2e1181f948a88d63e65d9baa49e26f29cdaf/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733956": [
-        {
-            "ioc_value": "1ott.in.net",
-            "ioc_type": "domain",
-            "threat_type": "botnet_cc",
-            "malware": "win.asyncrat",
-            "malware_alias": null,
-            "malware_printable": "AsyncRAT",
-            "first_seen_utc": "2026-01-17 17:50:39",
-            "last_seen_utc": "2026-01-17 18:08:33",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://bazaar.abuse.ch/sample/5faef6bc1831413de7e8770d6a0d2e1181f948a88d63e65d9baa49e26f29cdaf/",
-            "tags": "asyncrat",
-            "anonymous": "0",
-            "reporter": "abuse_ch"
-        }
-    ],
-    "1733955": [
-        {
-            "ioc_value": "zoolatours.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:16",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733947": [
-        {
-            "ioc_value": "website-927187ff.khl.exm.mybluehost.me",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733948": [
-        {
-            "ioc_value": "website-cd9a3473.khl.exm.mybluehost.me",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733949": [
-        {
-            "ioc_value": "webmail.beverlyhillmanor.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733950": [
-        {
-            "ioc_value": "viraghagymafesztival.hu",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733951": [
-        {
-            "ioc_value": "zestsolar.pt",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733952": [
-        {
-            "ioc_value": "zelenograd.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733953": [
-        {
-            "ioc_value": "zoloh.starlandhotel.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733954": [
-        {
-            "ioc_value": "wp.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:15",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733939": [
-        {
-            "ioc_value": "threenetragroup.kusherp.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733940": [
-        {
-            "ioc_value": "timdavisclucebs.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733941": [
-        {
-            "ioc_value": "traqc.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733942": [
-        {
-            "ioc_value": "toolspro.su",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733943": [
-        {
-            "ioc_value": "toyama-housenavi.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733944": [
-        {
-            "ioc_value": "tylerbosch.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733945": [
-        {
-            "ioc_value": "videoo.fit",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733946": [
-        {
-            "ioc_value": "web.serenichron.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:14",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733934": [
-        {
-            "ioc_value": "sushilanepal.com.np.nepalpaymentshub.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:13",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733935": [
-        {
-            "ioc_value": "theapptrix.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:13",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733936": [
-        {
-            "ioc_value": "test.kusherp.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:13",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733937": [
-        {
-            "ioc_value": "tinklapiuprieziura.lt",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:13",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733938": [
-        {
-            "ioc_value": "tottenhamtraders.co.uk",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:13",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733929": [
-        {
-            "ioc_value": "sleeve.diamantflex.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:12",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733930": [
-        {
-            "ioc_value": "stephan-mielke.de",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:12",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733931": [
-        {
-            "ioc_value": "spb.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:12",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733932": [
-        {
-            "ioc_value": "shop.intermusica.pe",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:12",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733933": [
-        {
-            "ioc_value": "sub1.imagineweb.dev.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:12",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733919": [
-        {
-            "ioc_value": "rodneypeters.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733920": [
-        {
-            "ioc_value": "robertevans.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733921": [
-        {
-            "ioc_value": "rostov.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733922": [
-        {
-            "ioc_value": "robholman.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733923": [
-        {
-            "ioc_value": "ragdoll-blog.online",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733924": [
-        {
-            "ioc_value": "sakhalinsk.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733925": [
-        {
-            "ioc_value": "safridi.ictclients.site",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733926": [
-        {
-            "ioc_value": "service.master-ok.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733927": [
-        {
-            "ioc_value": "saboresdomalte.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733928": [
-        {
-            "ioc_value": "serpukhov.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:11",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733913": [
-        {
-            "ioc_value": "ppsac.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:10",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733914": [
-        {
-            "ioc_value": "private.kusherp.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:10",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733915": [
-        {
-            "ioc_value": "rd4.3squaredco.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:10",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733916": [
-        {
-            "ioc_value": "pola-koko288.baby",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:10",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733917": [
-        {
-            "ioc_value": "ramyjuicy-109c437.ingress-haven.ewp.live",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:10",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733918": [
-        {
-            "ioc_value": "residencialgolapa.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:10",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733906": [
-        {
-            "ioc_value": "petrozavodsk.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:09",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733907": [
-        {
-            "ioc_value": "polbath.co.uk",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:09",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733908": [
-        {
-            "ioc_value": "ownvitality.xsrv.jp",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:09",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733909": [
-        {
-            "ioc_value": "primaveraveiculos.com.imagineweb.dev.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:09",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733910": [
-        {
-            "ioc_value": "planocreativo.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:09",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733911": [
-        {
-            "ioc_value": "qualitylivingpm.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:09",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733912": [
-        {
-            "ioc_value": "pop.arcmidlands.org",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:09",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733898": [
-        {
-            "ioc_value": "moto-hitori-tabi.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733899": [
-        {
-            "ioc_value": "northshoreplanninggroup.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733900": [
-        {
-            "ioc_value": "nzcpl.org.nz.akal.co.nz",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733901": [
-        {
-            "ioc_value": "oblachko.org",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733902": [
-        {
-            "ioc_value": "natalialfutova.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733903": [
-        {
-            "ioc_value": "national-constitution.org.ua",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733904": [
-        {
-            "ioc_value": "newtopics-lab.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733905": [
-        {
-            "ioc_value": "pharmacy.rangimedical.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:08",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733888": [
-        {
-            "ioc_value": "moraywebhosting.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733889": [
-        {
-            "ioc_value": "mosoblgosexpertiza.pro",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733890": [
-        {
-            "ioc_value": "mikekaminski.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733891": [
-        {
-            "ioc_value": "mail.mobizzapp.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733892": [
-        {
-            "ioc_value": "mail.sumom.kz",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733893": [
-        {
-            "ioc_value": "murmansk.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733894": [
-        {
-            "ioc_value": "musicoterapiafa.org",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733895": [
-        {
-            "ioc_value": "nicolettatravaini.it",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733896": [
-        {
-            "ioc_value": "noros.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733897": [
-        {
-            "ioc_value": "novocheboksarsk.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:07",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733883": [
-        {
-            "ioc_value": "mail.zlab.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:06",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733884": [
-        {
-            "ioc_value": "mf-wp.timkoerppen.de",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:06",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733885": [
-        {
-            "ioc_value": "match.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:06",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733886": [
-        {
-            "ioc_value": "mish.seanborgmans.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:06",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733887": [
-        {
-            "ioc_value": "mush.lipsomal.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:06",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733882": [
-        {
-            "ioc_value": "mail.qyl.mjm.mybluehost.me",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:05",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733881": [
-        {
-            "ioc_value": "mail.solution201.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:02",
-            "last_seen_utc": "2026-01-17 17:20:12",
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733879": [
-        {
-            "ioc_value": "mail.qni.vfh.mybluehost.me",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:01",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733880": [
-        {
-            "ioc_value": "mail.retailrecruiters.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:01",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733868": [
-        {
-            "ioc_value": "ledak383.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733869": [
-        {
-            "ioc_value": "m4.codeberry.in",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733870": [
-        {
-            "ioc_value": "mail.gestoramigo.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733871": [
-        {
-            "ioc_value": "mail.concretestampingandstaining.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733872": [
-        {
-            "ioc_value": "mail.gtexthomesusa.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733873": [
-        {
-            "ioc_value": "mail.jug.wri.temporary.site",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733874": [
-        {
-            "ioc_value": "mail.mymonster.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733875": [
-        {
-            "ioc_value": "mail.mindingyourtomorrow.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733876": [
-        {
-            "ioc_value": "mail.primaveraveiculos.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733877": [
-        {
-            "ioc_value": "mail.premiumcarepressurewashing.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733878": [
-        {
-            "ioc_value": "mail.lions306c1.org",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:20:00",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733860": [
-        {
-            "ioc_value": "lawrencecastillo.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733861": [
-        {
-            "ioc_value": "leonardomire.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733862": [
-        {
-            "ioc_value": "lighthousefinancialfl.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733863": [
-        {
-            "ioc_value": "lk-gorica.si",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733864": [
-        {
-            "ioc_value": "mail.biohitclub.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733865": [
-        {
-            "ioc_value": "mail.comeinteligente.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733866": [
-        {
-            "ioc_value": "mail.corehomeinsurance.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733867": [
-        {
-            "ioc_value": "mail.diabetesdiet.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:59",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733849": [
-        {
-            "ioc_value": "hugkodomono.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733850": [
-        {
-            "ioc_value": "jackwhittaker.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733851": [
-        {
-            "ioc_value": "kaguraslotlogin.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733852": [
-        {
-            "ioc_value": "jevtab.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733853": [
-        {
-            "ioc_value": "jeffarcher.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733854": [
-        {
-            "ioc_value": "karikaturkce.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733855": [
-        {
-            "ioc_value": "johnberlet.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733856": [
-        {
-            "ioc_value": "kirov.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733857": [
-        {
-            "ioc_value": "le-z.fautpasfaireca.fr",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733858": [
-        {
-            "ioc_value": "kiribati.dev.kdmc.pl",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733859": [
-        {
-            "ioc_value": "lchepetsk.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:58",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733843": [
-        {
-            "ioc_value": "ibermem1.gesemweb.es",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:57",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733844": [
-        {
-            "ioc_value": "harb-pharmacy.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:57",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733845": [
-        {
-            "ioc_value": "host.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:57",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733846": [
-        {
-            "ioc_value": "hunttermkt.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:57",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733847": [
-        {
-            "ioc_value": "hv-ho-no-ka.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:57",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733848": [
-        {
-            "ioc_value": "imap.thewisconsinnetwork.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:57",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733831": [
-        {
-            "ioc_value": "ftp.bldg-envelope.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733832": [
-        {
-            "ioc_value": "ftp.sarasotasmarketingagency.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": "2026-01-17 17:20:11",
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733833": [
-        {
-            "ioc_value": "firmig.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733834": [
-        {
-            "ioc_value": "fate.works",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733835": [
-        {
-            "ioc_value": "ftp.tallin.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733836": [
-        {
-            "ioc_value": "gorelovo.logomebel.ru",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733837": [
-        {
-            "ioc_value": "ftp.packermateriaiseletricos.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733838": [
-        {
-            "ioc_value": "globalparasol.in",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733839": [
-        {
-            "ioc_value": "gsdev.blackmonstermedia.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733840": [
-        {
-            "ioc_value": "guruguardianangels.jeeltechsoft.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733841": [
-        {
-            "ioc_value": "gruppobattaglia.prestashoptest.it",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733842": [
-        {
-            "ioc_value": "garden-sugizo.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:56",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733829": [
-        {
-            "ioc_value": "elsombreroelmonte.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:55",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733830": [
-        {
-            "ioc_value": "ernestevans.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:55",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733823": [
-        {
-            "ioc_value": "demo01.valion.jp",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:54",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733824": [
-        {
-            "ioc_value": "davidhines.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:54",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733825": [
-        {
-            "ioc_value": "demo.ehssg.org",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:54",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733826": [
-        {
-            "ioc_value": "dota123.co",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:54",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733827": [
-        {
-            "ioc_value": "dubrovnikboatstours.boatstoursdubrovnik.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:54",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733828": [
-        {
-            "ioc_value": "edsure.edsure.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:54",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733815": [
-        {
-            "ioc_value": "charlescardenas.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733816": [
-        {
-            "ioc_value": "clintonhvacandplumbing.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733817": [
-        {
-            "ioc_value": "dailyenglishschool.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733818": [
-        {
-            "ioc_value": "cpanel.beverlyhillmanor.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733819": [
-        {
-            "ioc_value": "daniellasouzapsi.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733820": [
-        {
-            "ioc_value": "davidalbin.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733821": [
-        {
-            "ioc_value": "danatrenchfield.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733822": [
-        {
-            "ioc_value": "demohelpdesk.ddsis.com.mx",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:53",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733809": [
-        {
-            "ioc_value": "blog.monbesoin.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:52",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733810": [
-        {
-            "ioc_value": "blindumpire.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:52",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733811": [
-        {
-            "ioc_value": "calicustomredding.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:52",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733812": [
-        {
-            "ioc_value": "branding.kusherp.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:52",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733813": [
-        {
-            "ioc_value": "career.nexevo.in",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:52",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733814": [
-        {
-            "ioc_value": "cambalacheshoes.bitbanglab.cl",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:52",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733803": [
-        {
-            "ioc_value": "arkbo.kusherp.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:51",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733804": [
-        {
-            "ioc_value": "autodiscover.oikiastays.perspectiveunity.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:51",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733805": [
-        {
-            "ioc_value": "autoconfig.management.skuire.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:51",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733806": [
-        {
-            "ioc_value": "bauwerksabdichter-goran.heise-test.at",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:51",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733807": [
-        {
-            "ioc_value": "bds1.umemarketingagency.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:51",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733808": [
-        {
-            "ioc_value": "australianpropertylovers.com.au",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:51",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733796": [
-        {
-            "ioc_value": "ad2.subvenpro.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:50",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733797": [
-        {
-            "ioc_value": "accessretirementgroup.retirevillage.com",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:50",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733798": [
-        {
-            "ioc_value": "agico.net",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:50",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733799": [
-        {
-            "ioc_value": "afforableappliancerepair.brandonwyatt.website",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:50",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733800": [
-        {
-            "ioc_value": "adv.barceloscorte.com.br",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:50",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733801": [
-        {
-            "ioc_value": "anfrage.displayinsel.de",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:50",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733802": [
-        {
-            "ioc_value": "apolausi.gr",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:50",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733794": [
-        {
-            "ioc_value": "acc.martienvisser.nl",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:49",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733795": [
-        {
-            "ioc_value": "acc.vohamij.nl",
-            "ioc_type": "domain",
-            "threat_type": "payload_delivery",
-            "malware": "unknown_stealer",
-            "malware_alias": null,
-            "malware_printable": "Unknown Stealer",
-            "first_seen_utc": "2026-01-17 17:19:49",
-            "last_seen_utc": null,
-            "confidence_level": 100,
-            "is_compromised": false,
-            "reference": "",
-            "tags": "clickfix,validin",
-            "anonymous": "0",
-            "reporter": "DaveLikesMalwre"
         }
     ]
 }

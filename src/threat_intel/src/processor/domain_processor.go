@@ -38,6 +38,11 @@ func (p *Processor) ProcessDomainFolder() (*Result, error) {
 		if err != nil {
 			p.logger.Printf("    Error parsing: %v\n", err)
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", filePath, err))
+			// Still delete failed files
+			if p.config.DeleteAfter {
+				p.deleteFile(filePath)
+				result.DeletedFiles++
+			}
 			continue
 		}
 
@@ -49,33 +54,32 @@ func (p *Processor) ProcessDomainFolder() (*Result, error) {
 		domains := parsed.GetAllDomains()
 		result.RowsRead += len(domains)
 
-		if len(domains) == 0 {
+		if len(domains) > 0 {
+			// Batch insert domains
+			var totalInserted int64
+			for i := 0; i < len(domains); i += batchSize {
+				end := i + batchSize
+				if end > len(domains) {
+					end = len(domains)
+				}
+				batch := domains[i:end]
+
+				// BulkInsert takes: (ctx, domains []string, source string, category string)
+				inserted, err := domainStore.BulkInsert(ctx, batch, source, category)
+				if err != nil {
+					p.logger.Printf("    Batch insert error: %v\n", err)
+				} else {
+					totalInserted += inserted
+				}
+			}
+
+			result.RowsInserted += totalInserted
+			p.logger.Printf("    Inserted %d domains (category: %s)\n", totalInserted, category)
+		} else {
 			p.logger.Printf("    No valid domains found\n")
-			continue
 		}
 
-		// Batch insert domains
-		var totalInserted int64
-		for i := 0; i < len(domains); i += batchSize {
-			end := i + batchSize
-			if end > len(domains) {
-				end = len(domains)
-			}
-			batch := domains[i:end]
-
-			// BulkInsert takes: (ctx, domains []string, source string, category string)
-			inserted, err := domainStore.BulkInsert(ctx, batch, source, category)
-			if err != nil {
-				p.logger.Printf("    Batch insert error: %v\n", err)
-			} else {
-				totalInserted += inserted
-			}
-		}
-
-		result.RowsInserted += totalInserted
-		p.logger.Printf("    Inserted %d domains (category: %s)\n", totalInserted, category)
-
-		// Delete file after processing
+		// Always delete file after processing
 		if p.config.DeleteAfter {
 			if err := p.deleteFile(filePath); err != nil {
 				p.logger.Printf("    Error deleting file: %v\n", err)

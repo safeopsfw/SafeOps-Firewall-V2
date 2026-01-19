@@ -186,6 +186,12 @@ func (p *Processor) ProcessAll() (*Result, error) {
 
 	result.ProcessingTime = time.Since(startTime)
 
+	// 5. Cleanup pending folder (files that couldn't be categorized)
+	if p.config.DeleteAfter {
+		pendingDeleted := p.cleanupPendingFolder()
+		result.DeletedFiles += pendingDeleted
+	}
+
 	p.logger.Println("===========================================")
 	p.logger.Println("Processing Complete")
 	p.logger.Printf("Files: %d, Rows: %d, Inserted: %d, Deleted: %d\n",
@@ -231,6 +237,28 @@ func (p *Processor) deleteFile(filePath string) error {
 		return nil
 	}
 	return os.Remove(filePath)
+}
+
+// cleanupPendingFolder deletes all files in the pending folder
+func (p *Processor) cleanupPendingFolder() int {
+	pendingPath := filepath.Join(p.config.FetchPath, "pending")
+	files, err := p.getFilesInFolder("pending")
+	if err != nil || len(files) == 0 {
+		return 0
+	}
+
+	deleted := 0
+	p.logger.Printf("Cleaning up %d files from pending folder...\n", len(files))
+	for _, filePath := range files {
+		if err := os.Remove(filePath); err != nil {
+			p.logger.Printf("  Error deleting %s: %v\n", filepath.Base(filePath), err)
+		} else {
+			deleted++
+		}
+	}
+	p.logger.Printf("  Deleted %d pending files\n", deleted)
+	_ = pendingPath // Used in log message context
+	return deleted
 }
 
 // getSourceFromFilename extracts source name from filename

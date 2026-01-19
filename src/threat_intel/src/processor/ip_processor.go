@@ -38,6 +38,11 @@ func (p *Processor) ProcessIPFolder() (*Result, error) {
 		if err != nil {
 			p.logger.Printf("    Error parsing: %v\n", err)
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", filePath, err))
+			// Still delete failed files
+			if p.config.DeleteAfter {
+				p.deleteFile(filePath)
+				result.DeletedFiles++
+			}
 			continue
 		}
 
@@ -49,49 +54,48 @@ func (p *Processor) ProcessIPFolder() (*Result, error) {
 		ips := parsed.GetAllIPs()
 		result.RowsRead += len(ips)
 
-		if len(ips) == 0 {
+		if len(ips) > 0 {
+			// Batch IPs
+			batchSize := p.config.BatchSize
+			var totalInserted int64
+
+			for i := 0; i < len(ips); i += batchSize {
+				end := i + batchSize
+				if end > len(ips) {
+					end = len(ips)
+				}
+				batch := ips[i:end]
+
+				var inserted int64
+				var insertErr error
+
+				// Route to correct storage based on category
+				switch category {
+				case "tor":
+					inserted, insertErr = anonStore.BulkInsertTorNodes(ctx, batch, source)
+				case "vpn":
+					inserted, insertErr = anonStore.BulkInsertVPNs(ctx, batch, source, source)
+				case "proxy":
+					inserted, insertErr = anonStore.BulkInsertProxies(ctx, batch, "http", source)
+				default:
+					// Use IP Blacklist for malware, abuse, etc.
+					inserted, insertErr = ipStore.BulkInsert(ctx, batch, source, category)
+				}
+
+				if insertErr != nil {
+					p.logger.Printf("    Batch insert error: %v\n", insertErr)
+				} else {
+					totalInserted += inserted
+				}
+			}
+
+			result.RowsInserted += totalInserted
+			p.logger.Printf("    Inserted %d IPs (category: %s)\n", totalInserted, category)
+		} else {
 			p.logger.Printf("    No valid IPs found\n")
-			continue
 		}
 
-		// Batch IPs
-		batchSize := p.config.BatchSize
-		var totalInserted int64
-
-		for i := 0; i < len(ips); i += batchSize {
-			end := i + batchSize
-			if end > len(ips) {
-				end = len(ips)
-			}
-			batch := ips[i:end]
-
-			var inserted int64
-			var insertErr error
-
-			// Route to correct storage based on category
-			switch category {
-			case "tor":
-				inserted, insertErr = anonStore.BulkInsertTorNodes(ctx, batch, source)
-			case "vpn":
-				inserted, insertErr = anonStore.BulkInsertVPNs(ctx, batch, source, source)
-			case "proxy":
-				inserted, insertErr = anonStore.BulkInsertProxies(ctx, batch, "http", source)
-			default:
-				// Use IP Blacklist for malware, abuse, etc.
-				inserted, insertErr = ipStore.BulkInsert(ctx, batch, source, category)
-			}
-
-			if insertErr != nil {
-				p.logger.Printf("    Batch insert error: %v\n", insertErr)
-			} else {
-				totalInserted += inserted
-			}
-		}
-
-		result.RowsInserted += totalInserted
-		p.logger.Printf("    Inserted %d IPs (category: %s)\n", totalInserted, category)
-
-		// Delete file after processing
+		// Always delete file after processing
 		if p.config.DeleteAfter {
 			if err := p.deleteFile(filePath); err != nil {
 				p.logger.Printf("    Error deleting file: %v\n", err)

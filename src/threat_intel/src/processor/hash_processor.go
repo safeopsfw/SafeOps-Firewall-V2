@@ -39,6 +39,11 @@ func (p *Processor) ProcessHashFolder() (*Result, error) {
 		if err != nil {
 			p.logger.Printf("    Error parsing: %v\n", err)
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", filePath, err))
+			// Still delete failed files
+			if p.config.DeleteAfter {
+				p.deleteFile(filePath)
+				result.DeletedFiles++
+			}
 			continue
 		}
 
@@ -103,35 +108,34 @@ func (p *Processor) ProcessHashFolder() (*Result, error) {
 
 		result.RowsRead += len(hashes)
 
-		if len(hashes) == 0 {
+		if len(hashes) > 0 {
+			p.logger.Printf("    Found %d hashes (type: %s)\n", len(hashes), hashType)
+
+			// Batch insert hashes
+			var totalInserted int64
+			for i := 0; i < len(hashes); i += batchSize {
+				end := i + batchSize
+				if end > len(hashes) {
+					end = len(hashes)
+				}
+				batch := hashes[i:end]
+
+				// BulkInsert takes: (ctx, hashes []string, hashType string, source string, malwareFamily string)
+				inserted, err := hashStore.BulkInsert(ctx, batch, hashType, source, malwareFamily)
+				if err != nil {
+					p.logger.Printf("    Batch insert error: %v\n", err)
+				} else {
+					totalInserted += inserted
+				}
+			}
+
+			result.RowsInserted += totalInserted
+			p.logger.Printf("    Inserted %d hashes\n", totalInserted)
+		} else {
 			p.logger.Printf("    No valid hashes found\n")
-			continue
 		}
 
-		p.logger.Printf("    Found %d hashes (type: %s)\n", len(hashes), hashType)
-
-		// Batch insert hashes
-		var totalInserted int64
-		for i := 0; i < len(hashes); i += batchSize {
-			end := i + batchSize
-			if end > len(hashes) {
-				end = len(hashes)
-			}
-			batch := hashes[i:end]
-
-			// BulkInsert takes: (ctx, hashes []string, hashType string, source string, malwareFamily string)
-			inserted, err := hashStore.BulkInsert(ctx, batch, hashType, source, malwareFamily)
-			if err != nil {
-				p.logger.Printf("    Batch insert error: %v\n", err)
-			} else {
-				totalInserted += inserted
-			}
-		}
-
-		result.RowsInserted += totalInserted
-		p.logger.Printf("    Inserted %d hashes\n", totalInserted)
-
-		// Delete file after processing
+		// Always delete file after processing
 		if p.config.DeleteAfter {
 			if err := p.deleteFile(filePath); err != nil {
 				p.logger.Printf("    Error deleting file: %v\n", err)
