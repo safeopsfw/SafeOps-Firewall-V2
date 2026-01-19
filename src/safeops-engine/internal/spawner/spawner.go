@@ -39,15 +39,16 @@ func (s *Spawner) SpawnDNSProxy(ctx context.Context, cfg config.DNSProxyConfig) 
 
 	for _, tryPort := range allPorts {
 		// Use CLI args instead of config file (more reliable)
+		// IMPORTANT: Use only plain DNS (no DoH) to avoid bootstrap issues
 		args := []string{
 			"-l", "127.0.0.1",
 			"-p", fmt.Sprintf("%d", tryPort),
-			"-u", "8.8.8.8",
-			"-u", "1.1.1.1",
-			"-u", "https://dns.google/dns-query",
-			"-b", "8.8.8.8",
-			"-b", "1.1.1.1",
+			"-u", "8.8.8.8",      // Google Public DNS
+			"-u", "1.1.1.1",      // Cloudflare DNS
+			"-u", "208.67.222.222", // OpenDNS
 			"--cache",
+			"--cache-size", "10000",
+			"-v", // Verbose logging for debugging
 		}
 
 		cmd = exec.CommandContext(ctx, cfg.BinaryPath, args...)

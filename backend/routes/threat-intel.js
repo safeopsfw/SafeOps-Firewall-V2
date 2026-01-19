@@ -3,7 +3,71 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// GET /api/threat-intel/stats - Dashboard statistics
+// GET /api/threat-intel/status - Table stats for UI dashboard
+router.get('/status', async (req, res) => {
+    try {
+        // Get row counts for each table
+        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization'];
+        const result = {};
+
+        for (const table of tables) {
+            try {
+                const countRes = await db.query(`SELECT COUNT(*) as count FROM ${table}`);
+                const colRes = await db.query(`
+                    SELECT COUNT(*) as count FROM information_schema.columns 
+                    WHERE table_schema = 'public' AND table_name = $1
+                `, [table]);
+                result[table] = {
+                    row_count: parseInt(countRes.rows[0]?.count || 0),
+                    columns: parseInt(colRes.rows[0]?.count || 0)
+                };
+            } catch (e) {
+                result[table] = { row_count: 0, columns: 0 };
+            }
+        }
+
+        res.json(result);
+    } catch (error) {
+        console.error('Status error:', error);
+        res.status(500).json({ error: 'Failed to fetch status' });
+    }
+});
+
+// GET /api/threat-intel/health - API health check
+router.get('/health', async (req, res) => {
+    try {
+        await db.query('SELECT 1');
+        res.json({ status: 'ok' });
+    } catch (error) {
+        res.json({ status: 'error', error: error.message });
+    }
+});
+
+// GET /api/threat-intel/headers - Table column info
+router.get('/headers', async (req, res) => {
+    try {
+        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization'];
+        const result = {};
+
+        for (const table of tables) {
+            try {
+                const colRes = await db.query(`
+                    SELECT column_name FROM information_schema.columns 
+                    WHERE table_schema = 'public' AND table_name = $1
+                    ORDER BY ordinal_position
+                `, [table]);
+                result[table] = colRes.rows.map(r => r.column_name);
+            } catch (e) {
+                result[table] = [];
+            }
+        }
+
+        res.json(result);
+    } catch (error) {
+        console.error('Headers error:', error);
+        res.status(500).json({ error: 'Failed to fetch headers' });
+    }
+});
 router.get('/stats', async (req, res) => {
     try {
         const stats = await db.query(`

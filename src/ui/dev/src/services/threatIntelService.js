@@ -3,7 +3,7 @@
  * Handles all API calls to the threat intel backend
  */
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = 'http://localhost:5050/api/threat-intel';
 
 // =============================================================================
 // Database Categories
@@ -195,7 +195,7 @@ export function removeSource(sourceId) {
  * Update source status
  */
 export function updateSource(sourceId, updates) {
-  const sources = getSources().map(s => 
+  const sources = getSources().map(s =>
     s.id === sourceId ? { ...s, ...updates } : s
   );
   saveSources(sources);

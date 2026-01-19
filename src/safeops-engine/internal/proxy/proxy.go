@@ -1,12 +1,15 @@
 package proxy
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os/exec"
 	"runtime"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/elazarl/goproxy"
 )
@@ -25,10 +28,78 @@ type InlineProxy struct {
 	blocked  uint64
 }
 
+// customDNSDialer creates a dialer that uses a specific DNS server
+func customDNSDialer(dnsServer string) func(ctx context.Context, network, addr string) (net.Conn, error) {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		// Parse host and port
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address %s: %w", addr, err)
+		}
+
+		// If it's already an IP, connect directly
+		if ip := net.ParseIP(host); ip != nil {
+			dialer := &net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}
+			return dialer.DialContext(ctx, network, addr)
+		}
+
+		// Need to resolve hostname - use our custom DNS
+		// Create a custom resolver that FORCES use of our DNS proxy
+		resolver := &net.Resolver{
+			PreferGo: true, // Force Go resolver (not cgo/system)
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				// CRITICAL: Ignore 'address' parameter (system DNS)
+				// Always connect to our dnsproxy
+				d := net.Dialer{Timeout: 10 * time.Second}
+				return d.DialContext(ctx, "udp", dnsServer)
+			},
+		}
+
+		// Resolve using our custom DNS with longer timeout
+		ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+
+		ips, err := resolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("DNS lookup failed for %s: %w", host, err)
+		}
+
+		if len(ips) == 0 {
+			return nil, fmt.Errorf("no IP addresses found for %s", host)
+		}
+
+		// Connect to the resolved IP
+		dialer := &net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}
+
+		targetAddr := net.JoinHostPort(ips[0].IP.String(), port)
+		return dialer.DialContext(ctx, network, targetAddr)
+	}
+}
+
 // New creates a new inline proxy on the specified port
 // NO HTTPS MITM - just pass-through with domain logging
-func New(port int) *InlineProxy {
+// dnsServer: address of local DNS proxy (e.g., "127.0.0.1:15353")
+func New(port int, dnsServer string) *InlineProxy {
 	proxyServer := goproxy.NewProxyHttpServer()
+
+	// Configure custom DNS resolution
+	if dnsServer != "" {
+		tr := &http.Transport{
+			DialContext:           customDNSDialer(dnsServer),
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+		proxyServer.Tr = tr
+		fmt.Printf("[PROXY] Using custom DNS resolver: %s\n", dnsServer)
+	}
 
 	p := &InlineProxy{
 		proxy: proxyServer,

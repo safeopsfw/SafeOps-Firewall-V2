@@ -45,6 +45,26 @@ func (r *Redirector) RedirectDNS(packet []byte, srcPort, dstPort uint16, dstIP n
 		return false
 	}
 
+	// CRITICAL: Don't redirect DNS packets going to localhost
+	// This prevents dnsproxy from querying itself (infinite loop)
+	if dstIP.IsLoopback() || dstIP.Equal(net.ParseIP("127.0.0.1")) {
+		return false
+	}
+
+	// CRITICAL: Don't redirect packets going to known public DNS servers
+	// These are dnsproxy's upstream queries - let them through!
+	// Google DNS: 8.8.8.8, 8.8.4.4
+	// Cloudflare: 1.1.1.1, 1.0.0.1
+	// OpenDNS: 208.67.222.222, 208.67.220.220
+	if dstIP.Equal(net.ParseIP("8.8.8.8")) ||
+		dstIP.Equal(net.ParseIP("8.8.4.4")) ||
+		dstIP.Equal(net.ParseIP("1.1.1.1")) ||
+		dstIP.Equal(net.ParseIP("1.0.0.1")) ||
+		dstIP.Equal(net.ParseIP("208.67.222.222")) ||
+		dstIP.Equal(net.ParseIP("208.67.220.220")) {
+		return false // Let dnsproxy's upstream queries through
+	}
+
 	// Need at least Ethernet (14) + IP (20) + UDP (8) = 42 bytes
 	if len(packet) < 42 {
 		return false

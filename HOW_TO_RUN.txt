@@ -1,0 +1,104 @@
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║        SafeOps Engine - How to Run (FIXED!)                 ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ PROBLEM FIXED!
+   - Config file path issue resolved
+   - Binary rebuilt and ready
+   - Config auto-loads from multiple paths
+
+═══════════════════════════════════════════════════════════════
+
+🚀 HOW TO RUN (3 STEPS):
+
+   STEP 1: Navigate to bin folder
+   ────────────────────────────────
+   cd D:\SafeOpsFV2\bin
+
+   STEP 2: Run as Administrator
+   ────────────────────────────────
+   
+   OPTION A: Double-click this file
+   → RUN_AS_ADMIN.bat
+   
+   OPTION B: PowerShell as Admin
+   → Open PowerShell as Administrator
+   → cd D:\SafeOpsFV2\bin
+   → .\safeops-engine.exe
+   
+   OPTION C: CMD as Admin
+   → Open CMD as Administrator
+   → cd D:\SafeOpsFV2\bin
+   → safeops-engine.exe
+
+   STEP 3: Verify running
+   ────────────────────────────────
+   You should see:
+   
+   ✅ Configuration loaded
+   ✅ Driver opened
+   ✅ Found X physical adapter(s)
+   ✅ Passive filter enabled
+   🚀 Starting packet interception...
+
+═══════════════════════════════════════════════════════════════
+
+⚠️  PREREQUISITES:
+
+   1. WinpkFilter driver MUST be running
+      Check: sc query ndisrd
+      Start: sc start ndisrd
+      
+   2. MUST run as Administrator
+      Right-click → "Run as Administrator"
+
+═══════════════════════════════════════════════════════════════
+
+🎯 WHAT IT DOES:
+
+   ✅ ALL UDP bypassed (except DNS)
+      → Discord calls work
+      → WhatsApp calls work
+      → Gaming has zero lag
+      
+   ✅ DNS redirected to dnsproxy (optional)
+   
+   ✅ Internet NEVER breaks (failsafe mode)
+
+═══════════════════════════════════════════════════════════════
+
+🛑 HOW TO STOP:
+
+   Press: Ctrl+C
+   
+   You'll see:
+   🛑 Shutdown signal received
+   📊 Stats: Read=X, Written=Y, Dropped=Z
+   ✅ SafeOps Engine stopped
+
+═══════════════════════════════════════════════════════════════
+
+📁 FILES:
+
+   Binary:    D:\SafeOpsFV2\bin\safeops-engine.exe
+   Config:    D:\SafeOpsFV2\src\safeops-engine\configs\engine.yaml
+   Launcher:  D:\SafeOpsFV2\bin\RUN_AS_ADMIN.bat
+   Guide:     D:\SafeOpsFV2\QUICK_START.md
+
+═══════════════════════════════════════════════════════════════
+
+📖 MORE INFO:
+
+   See: D:\SafeOpsFV2\QUICK_START.md
+   See: D:\SafeOpsFV2\SAFEOPS_ENGINE_COMPLETE.md
+   See: D:\SafeOpsFV2\src\safeops-engine\README.md
+
+═══════════════════════════════════════════════════════════════
+
+🎉 READY TO RUN!
+
+   Double-click: D:\SafeOpsFV2\bin\RUN_AS_ADMIN.bat
+
+═══════════════════════════════════════════════════════════════
