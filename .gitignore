@@ -248,3 +248,10 @@ bin/elk/
 bin/SIEM/
 bin/dnsproxy/
 bin/logs/
+
+# =====================================
+# Threat Intel Fetch Data (Large CSV files)
+# =====================================
+bin/threat_intel/data/fetch/
+src/threat_intel/data/fetch/
+data/fetch/

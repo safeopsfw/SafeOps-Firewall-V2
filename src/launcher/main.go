@@ -208,6 +208,17 @@ func startUIDevServer(projectRoot string) {
 
 	fmt.Println("  [OK] UI Dev Server starting on http://localhost:3001")
 	time.Sleep(2 * time.Second)
+
+	// Start backend API server (npm run server) for Threat Intel DB connection
+	fmt.Println("[Starting] Backend API Server...")
+	cmdServer := exec.Command("cmd", "/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run server", uiDir))
+	errServer := cmdServer.Start()
+	if errServer != nil {
+		fmt.Printf("  [ERROR] Failed to start Backend API: %v\n", errServer)
+		return
+	}
+	fmt.Println("  [OK] Backend API Server starting on http://localhost:5050")
+	time.Sleep(1 * time.Second)
 }
 
 func startService(svc Service) {
