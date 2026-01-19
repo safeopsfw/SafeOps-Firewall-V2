@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -34,10 +35,19 @@ func main() {
 	showStatus := flag.Bool("status", false, "Show database status and row counts")
 	showHeaders := flag.Bool("headers", false, "Show table headers/columns")
 	deleteAfter := flag.Bool("delete", true, "Delete files after processing")
+	scheduler := flag.Bool("scheduler", false, "Run continuously every 30 minutes")
 	flag.Parse()
+
+	// Get executable directory for relative paths
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatalf("Failed to get executable path: %v", err)
+	}
+	exeDir = filepath.Dir(exePath)
 
 	log.Println("===========================================")
 	log.Println("SafeOps Threat Intelligence Pipeline")
+	log.Printf("Working Directory: %s", exeDir)
 	log.Println("===========================================")
 
 	// Handle status
@@ -52,22 +62,41 @@ func main() {
 		return
 	}
 
+	// Scheduler mode - run every 30 minutes
+	if *scheduler {
+		log.Println("[SCHEDULER] Running in continuous mode (every 30 minutes)")
+		for {
+			runPipeline(*fetchOnly, *processOnly, *category, *deleteAfter)
+			log.Println("[SCHEDULER] Sleeping for 30 minutes...")
+			time.Sleep(30 * time.Minute)
+		}
+	}
+
+	// Single run
+	runPipeline(*fetchOnly, *processOnly, *category, *deleteAfter)
+}
+
+// Global variable for exe directory
+var exeDir string
+
+// runPipeline executes fetch and/or process based on flags
+func runPipeline(fetchOnly, processOnly bool, category string, deleteAfter bool) {
 	// Default: run both if no flags
-	runFetch := *fetchOnly || (!*fetchOnly && !*processOnly)
-	runProcess := *processOnly || (!*fetchOnly && !*processOnly)
+	runFetch := fetchOnly || (!fetchOnly && !processOnly)
+	runProcess := processOnly || (!fetchOnly && !processOnly)
 
 	startTime := time.Now()
 
 	// Step 1: Fetch
 	if runFetch {
-		if err := runFetcher(*category); err != nil {
+		if err := runFetcher(category); err != nil {
 			log.Printf("Fetcher error: %v\n", err)
 		}
 	}
 
 	// Step 2: Process
 	if runProcess {
-		if err := runProcessor(*deleteAfter); err != nil {
+		if err := runProcessor(deleteAfter); err != nil {
 			log.Printf("Processor error: %v\n", err)
 		}
 	}
@@ -81,9 +110,8 @@ func main() {
 func runFetcher(category string) error {
 	log.Println("\n[FETCH] Starting fetcher...")
 
-	// Load config from current directory
-	basePath := "."
-	configPath, err := fetcher.FindSourcesYAML(basePath)
+	// Load config from exe directory
+	configPath, err := fetcher.FindSourcesYAML(exeDir)
 	if err != nil {
 		return fmt.Errorf("failed to find sources.yaml: %w", err)
 	}
@@ -98,7 +126,7 @@ func runFetcher(category string) error {
 
 	// Create fetcher config
 	fetchConfig := &fetcher.Config{
-		StoragePath:   filepath.Join(".", "data", "fetch"),
+		StoragePath:   filepath.Join(exeDir, "data", "fetch"),
 		MaxConcurrent: 5,
 		RetryAttempts: 3,
 		RetryDelay:    5,
@@ -134,7 +162,7 @@ func runFetcher(category string) error {
 func runProcessor(deleteAfter bool) error {
 	log.Println("\n[PROCESS] Starting processor...")
 
-	config := processor.DefaultConfig(filepath.Join(".", "data", "fetch"))
+	config := processor.DefaultConfig(filepath.Join(exeDir, "data", "fetch"))
 	config.DeleteAfter = deleteAfter
 
 	proc, err := processor.NewProcessor(config)
