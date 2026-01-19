@@ -9,12 +9,25 @@ import (
 
 // Config represents the main configuration
 type Config struct {
-	Logging   LoggingConfig   `yaml:"logging"`
-	API       APIConfig       `yaml:"api"`
-	DNSProxy  DNSProxyConfig  `yaml:"dnsproxy"`
-	MITM      MITMConfig      `yaml:"mitm"`
+	Logging    LoggingConfig    `yaml:"logging"`
+	API        APIConfig        `yaml:"api"`
+	Pipeline   PipelineConfig   `yaml:"pipeline"`
+	DNSProxy   DNSProxyConfig   `yaml:"dnsproxy"`
+	MITM       MITMConfig       `yaml:"mitm"`
 	Classifier ClassifierConfig `yaml:"classifier"`
-	NAT       NATConfig       `yaml:"nat"`
+	NAT        NATConfig        `yaml:"nat"`
+}
+
+// PipelineConfig for network pipeline settings
+type PipelineConfig struct {
+	MetadataBufferSize   int  `yaml:"metadata_buffer_size"`
+	DNSCacheTTL          int  `yaml:"dns_cache_ttl"`
+	FlowCleanupInterval  int  `yaml:"flow_cleanup_interval"`
+	IPv6Enabled          bool `yaml:"ipv6_enabled"`
+	ExtractDNS           bool `yaml:"extract_dns"`
+	ExtractSNI           bool `yaml:"extract_sni"`
+	ExtractHTTP          bool `yaml:"extract_http"`
+	ExtractDHCP          bool `yaml:"extract_dhcp"`
 }
 
 // LoggingConfig for logging settings

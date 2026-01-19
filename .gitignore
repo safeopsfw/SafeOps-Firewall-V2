@@ -41,7 +41,7 @@ Cargo.lock
 # =====================================
 *.test
 *.prof
-bin/
+# bin/ - Now tracked for portable deployment
 vendor/
 
 # =====================================
@@ -213,8 +213,8 @@ certs/step-ca/ca/secrets/
 *.vlog
 *.sst
 
-# Executables
-*.exe
+# Executables - bin/*.exe are now tracked
+# *.exe - Removed to allow tracking compiled binaries
 
 # Database files
 *.db
@@ -235,3 +235,16 @@ src/step-ca/db/
 # SDKs & Vendor Libs
 # =====================================
 npcap-sdk-1.16/
+
+# =====================================
+# Step-CA (Certificates & Secrets)
+# =====================================
+bin/step-ca/
+
+# =====================================
+# ELK Stack & SIEM (Large Files)
+# =====================================
+bin/elk/
+bin/SIEM/
+bin/dnsproxy/
+bin/logs/

@@ -1,0 +1,379 @@
+# ============================================================================
+# Threat Intelligence Feed Sources
+# Comprehensive list of IP, Domain, Hash, and Geolocation feeds
+# ============================================================================
+
+feeds:
+  # ==========================================================================
+  # CATEGORY 1: IP THREAT INTEL (General Abuse / Malicious IPs)
+  # ==========================================================================
+
+  - name: "Blackbook"
+    category: "ip_blacklist"
+    url: "https://raw.githubusercontent.com/stamparm/blackbook/master/blackbook.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "High confidence blacklist"
+
+  - name: "EmergingThreats Compromised IPs"
+    category: "ip_blacklist"
+    url: "https://rules.emergingthreats.net/blockrules/compromised-ips.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "Compromised IPs from Emerging Threats"
+
+  - name: "Blocklist.de All"
+    category: "ip_blacklist"
+    url: "http://lists.blocklist.de/lists/all.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "All Blocklist.de feeds combined"
+
+  - name: "Botvrij.eu Destination IoT"
+    category: "ip_blacklist"
+    url: "https://www.botvrij.eu/data/ioclist.ip-dst.raw"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "Malicious destination IPs from Botvrij.eu"
+
+  # ==========================================================================
+  # CATEGORY 2: BOTNET / C2 / MALWARE IPs
+  # ==========================================================================
+
+  - name: "Feodo Tracker"
+    category: "ip_blacklist"
+    url: "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Botnet C2 IPs"
+
+  - name: "SSL Blacklist IPs"
+    category: "ip_blacklist"
+    url: "https://sslbl.abuse.ch/blacklist/sslipblacklist.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Malicious SSL IPs"
+
+  # Talos requires browser check - DISABLED (returns 404 for automated requests)
+  - name: "Talos IP Blacklist"
+    category: "ip_blacklist"
+    url: "https://www.talosintelligence.com/documents/ip-blacklist"
+    format: "txt"
+    enabled: false
+    update_frequency: 86400
+    description: "Cisco Talos IP Blacklist - DISABLED"
+
+  # ==========================================================================
+  # CATEGORY 3: FIREWALL / BROAD BLOCKLISTS
+  # ==========================================================================
+
+  - name: "FireHOL Level 1"
+    category: "ip_blacklist"
+    url: "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "FireHOL Level 1 - High Confidence"
+
+  - name: "FireHOL Level 2"
+    category: "ip_blacklist"
+    url: "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level2.netset"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "FireHOL Level 2 - Medium Confidence"
+
+  # ==========================================================================
+  # CATEGORY 4: DOMAIN THREAT INTEL (Phishing)
+  # ==========================================================================
+
+  - name: "OpenPhish"
+    category: "domain"
+    url: "https://openphish.com/feed.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600 # Multiple times per day
+    description: "Phishing URLs/domains - High accuracy, minimal false positives (Tier-2)"
+
+  - name: "Phishing Army"
+    category: "domain"
+    url: "https://phishing.army/download/phishing_army_blocklist_extended.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400 # Daily
+    description: "Phishing domains - Community-validated (Tier-2)"
+
+  - name: "Phishing Database"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "Active Phishing Domains"
+
+  - name: "Spam404"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/Spam404/lists/master/main-blacklist.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Spam404 Regex/Domain List"
+
+  # ==========================================================================
+  # CATEGORY 5: MALWARE / COMPROMISED DOMAINS
+  # ==========================================================================
+
+  - name: "URLhaus Recent"
+    category: "domain" # Contains URLs but we extract domains
+    url: "https://urlhaus.abuse.ch/downloads/csv_recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Recent Malware URLs"
+
+  - name: "ThreatFox Recent"
+    category: "domain"
+    url: "https://threatfox.abuse.ch/export/csv/recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Recent IOCs including domains"
+
+  - name: "Hacked Malware Web Sites"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/mitchellkrogza/The-Big-List-of-Hacked-Malware-Web-Sites/master/hacked-domains.list"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Compromised Domains"
+
+  - name: "ThreatView High Confidence"
+    category: "domain"
+    url: "https://threatview.io/Downloads/DOMAIN-High-Confidence-Feed.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "High Confidence Malicious Domains"
+
+  # ==========================================================================
+  # CATEGORY 6: MIXED / HOSTS-BASED
+  # ==========================================================================
+
+  - name: "StevenBlack Hosts"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Unified Hosts File"
+
+  - name: "Badd Boyz Hosts"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/mitchellkrogza/Badd-Boyz-Hosts/master/hosts"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Badd Boyz Hosts File"
+
+  # ==========================================================================
+  # CATEGORY 7: IP ANONYMIZATION (VPN / TOR / PROXY)
+  # ==========================================================================
+
+  - name: "Tor Exit Nodes"
+    category: "ip_anonymization"
+    url: "https://check.torproject.org/exit-addresses"
+    format: "txt"
+    enabled: true
+    update_frequency: 3600
+    description: "Official Tor exit nodes"
+
+  - name: "VPN Gate"
+    category: "ip_anonymization"
+    url: "https://www.vpngate.net/api/iphone/"
+    format: "csv"
+    enabled: true
+    update_frequency: 3600
+    description: "Public VPN servers"
+
+  - name: "Proxy List Raw"
+    category: "ip_anonymization"
+    url: "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt"
+    format: "txt"
+    enabled: true
+    update_frequency: 86400
+    description: "Open proxy servers"
+
+  # ==========================================================================
+  # CATEGORY 8: FILE HASH INTELLIGENCE
+  # ==========================================================================
+
+  - name: "MalwareBazaar Recent"
+    category: "hash"
+    url: "https://bazaar.abuse.ch/export/csv/recent/"
+    format: "csv"
+    enabled: true
+    update_frequency: 300
+    description: "Recent malware hashes"
+
+  - name: "Abuse.ch SSL Certificates"
+    category: "hash"
+    url: "https://sslbl.abuse.ch/blacklist/sslblacklist.csv"
+    format: "csv"
+    enabled: false
+    update_frequency: 300
+    description: "Malicious SSL certificate fingerprints - DISABLED"
+
+  # ==========================================================================
+  # CATEGORY 9: COMBINED IOC FEEDS
+  # ==========================================================================
+
+  - name: "ThreatFox IOCs"
+    category: "ioc"
+    url: "https://threatfox.abuse.ch/export/json/recent/"
+    format: "json"
+    enabled: true
+    update_frequency: 300
+    description: "Multi-type IOCs in JSON format"
+
+  - name: "Exploit-DB"
+    category: "ioc"
+    url: "https://gitlab.com/exploit-database/exploitdb/-/raw/main/files_exploits.csv"
+    format: "csv"
+    enabled: true
+    update_frequency: 86400
+    description: "Exploit database"
+
+  # ==========================================================================
+  # CATEGORY 10: GEO / ASN / ENRICHMENT
+  # ==========================================================================
+
+  # Using IPtoASN as the primary free source that is direct download
+  - name: "IPtoASN"
+    category: "ip_geo"
+    url: "https://iptoasn.com/data/ip2asn-v4.tsv.gz"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "IP to ASN and Country Mapping"
+
+  # GeoLite2 Country - GitLab Mirror (free, no registration)
+  - name: "GeoLite2-Country"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-country/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "GeoLite2 IP to Country mapping"
+
+  # IPInfo Country - GitLab Mirror (free, no registration)
+  - name: "IPInfo-Country"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/ipinfo-country/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "IPInfo IP to Country mapping"
+
+  # MaxMind GeoLite2 City - GitLab Mirror (free, includes lat/lon/city)
+  - name: "GeoLite2-City"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-city/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "MaxMind GeoLite2 IP to City/Lat/Lon mapping"
+
+  # MaxMind GeoLite2 ASN - GitLab Mirror (free, includes ASN org)
+  - name: "GeoLite2-ASN"
+    category: "ip_geo"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-asn/ipv4.tsv?inline=false"
+    format: "tsv"
+    enabled: true
+    update_frequency: 86400
+    description: "MaxMind GeoLite2 IP to ASN/Org mapping"
+
+  # Keeping IPtoASN as valid default. Users can manually download IP2Location.
+
+  # DISABLED - Repository path changed, returns 404
+  - name: "IP-Location-DB Country"
+    category: "ip_geo"
+    url: "https://raw.githubusercontent.com/sapics/ip-location-db/main/country/ip2location-country.csv"
+    format: "csv"
+    enabled: false
+    update_frequency: 86400
+    description: "IP to Country mapping - DISABLED (404)"
+
+  # DISABLED - Repository path changed, returns 404
+  - name: "IP-Location-DB ASN"
+    category: "asn"
+    url: "https://raw.githubusercontent.com/sapics/ip-location-db/main/asn/ip2location-asn.csv"
+    format: "csv"
+    enabled: false
+    update_frequency: 86400
+    description: "IP to ASN mapping - DISABLED (404)"
+
+  # DISABLED - URL changed, returns 404
+  - name: "IPLocate.io ASN"
+    category: "asn"
+    url: "https://iplocate.io/downloads/ip-to-asn.csv"
+    format: "csv"
+    enabled: false
+    update_frequency: 86400
+    description: "IP to ASN mapping - DISABLED (404)"
+
+  # IP2Location LITE - DB1 (Country level) - Official Download
+  - name: "IP2Location-LITE-DB1"
+    category: "ip_geo"
+    url: "https://download.ip2location.com/lite/IP2LOCATION-LITE-DB1.CSV.ZIP"
+    format: "csv"
+    enabled: true
+    update_frequency: 604800 # Weekly
+    description: "IP2Location LITE DB1 - IP to Country mapping (ZIP)"
+    parser_config:
+      has_header: false
+      columns: ["ip_from", "ip_to", "country_code", "country_name"]
+
+  # IP2Location LITE - ASN - DISABLED (requires registration at lite.ip2location.com)
+  # Use IPtoASN instead which is freely available
+  - name: "IP2Location-LITE-ASN"
+    category: "ip_geo"
+    url: "https://download.ip2location.com/lite/IP2LOCATION-LITE-ASN.CSV.ZIP"
+    format: "csv"
+    enabled: false
+    update_frequency: 604800
+    description: "DISABLED - Requires registration"
+
+  # IP2Proxy LITE - PX1 - DISABLED (requires registration at lite.ip2location.com)
+  - name: "IP2Proxy-LITE-PX1"
+    category: "ip_anonymization"
+    url: "https://download.ip2location.com/lite/IP2PROXY-LITE-PX1.CSV.ZIP"
+    format: "csv"
+    enabled: false
+    update_frequency: 604800
+    description: "DISABLED - Requires registration"
+
+# ==========================================================================
+# Parser Configuration
+# ==========================================================================
+parser_config:
+  csv:
+    default_delimiter: ","
+    skip_header: true
+    comment_char: "#"
+
+  txt:
+    comment_chars: ["#", "//", ";"]
+    trim_whitespace: true
+
+  json:
+    validate_schema: true
+
+  tsv:
+    delimiter: "\t"
+    skip_header: false # IMPORTANT: IPtoASN has no header

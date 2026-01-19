@@ -299,7 +299,7 @@ func (d *Driver) processPacket(buffer *ndisapi.IntermediateBuffer, adapter Adapt
 	}
 }
 
-// parsePacket extracts IP/TCP/UDP information from raw packet
+// parsePacket extracts IP/TCP/UDP information from raw packet (IPv4 + IPv6)
 func (d *Driver) parsePacket(buffer *ndisapi.IntermediateBuffer, adapter Adapter) *ParsedPacket {
 	data := buffer.Buffer[:buffer.Length]
 
@@ -308,11 +308,22 @@ func (d *Driver) parsePacket(buffer *ndisapi.IntermediateBuffer, adapter Adapter
 	}
 
 	etherType := binary.BigEndian.Uint16(data[12:14])
-	if etherType != 0x0800 {
-		return nil
+
+	// IPv4
+	if etherType == 0x0800 {
+		return d.parseIPv4(buffer, adapter, data[14:])
 	}
 
-	ipHeader := data[14:]
+	// IPv6
+	if etherType == 0x86DD {
+		return d.parseIPv6(buffer, adapter, data[14:])
+	}
+
+	return nil
+}
+
+// parseIPv4 handles IPv4 packets
+func (d *Driver) parseIPv4(buffer *ndisapi.IntermediateBuffer, adapter Adapter, ipHeader []byte) *ParsedPacket {
 	if len(ipHeader) < 20 {
 		return nil
 	}
@@ -347,6 +358,64 @@ func (d *Driver) parsePacket(buffer *ndisapi.IntermediateBuffer, adapter Adapter
 	}
 
 	transportHeader := ipHeader[headerLen:]
+	if len(transportHeader) < 4 {
+		return parsed
+	}
+
+	if protocol == ProtoTCP || protocol == ProtoUDP {
+		parsed.SrcPort = binary.BigEndian.Uint16(transportHeader[0:2])
+		parsed.DstPort = binary.BigEndian.Uint16(transportHeader[2:4])
+
+		payloadOffset := 4
+		if protocol == ProtoTCP && len(transportHeader) >= 13 {
+			tcpHeaderLen := int(transportHeader[12]>>4) * 4
+			if tcpHeaderLen >= 20 {
+				payloadOffset = tcpHeaderLen
+			}
+		} else if protocol == ProtoUDP {
+			payloadOffset = 8
+		}
+
+		if len(transportHeader) > payloadOffset {
+			parsed.Payload = transportHeader[payloadOffset:]
+		}
+	}
+
+	return parsed
+}
+
+// parseIPv6 handles IPv6 packets (minimal, fast)
+func (d *Driver) parseIPv6(buffer *ndisapi.IntermediateBuffer, adapter Adapter, ipHeader []byte) *ParsedPacket {
+	if len(ipHeader) < 40 {
+		return nil
+	}
+
+	version := ipHeader[0] >> 4
+	if version != 6 {
+		return nil
+	}
+
+	protocol := ipHeader[6] // Next header
+	srcIP := net.IP(ipHeader[8:24])
+	dstIP := net.IP(ipHeader[24:40])
+
+	direction := DirectionOutbound
+	if buffer.DeviceFlags == ndisapi.PACKET_FLAG_ON_RECEIVE {
+		direction = DirectionInbound
+	}
+
+	parsed := &ParsedPacket{
+		Direction:     direction,
+		SrcIP:         srcIP,
+		DstIP:         dstIP,
+		Protocol:      protocol,
+		RawBuffer:     buffer,
+		AdapterHandle: adapter.Handle,
+		AdapterName:   adapter.Name,
+	}
+
+	// IPv6 header is always 40 bytes (no options in base header)
+	transportHeader := ipHeader[40:]
 	if len(transportHeader) < 4 {
 		return parsed
 	}

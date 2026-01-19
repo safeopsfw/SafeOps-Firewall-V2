@@ -1,0 +1,220 @@
+# =============================================================================
+# DHCP Monitor Service Configuration
+# =============================================================================
+# This file configures the DHCP Monitor service for real-time device tracking
+# Environment variables can be used with ${VARIABLE_NAME} syntax
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+database:
+  # PostgreSQL connection settings
+  host: "${DB_HOST:-localhost}"
+  port: ${DB_PORT:-5432}
+  name: "${DB_NAME:-safeops}"
+  user: "${DB_USER:-postgres}"
+  password: "${DB_PASSWORD:-postgres}"
+  sslmode: "${DB_SSLMODE:-disable}"  # disable, require, verify-ca, verify-full
+  
+  # Connection pool settings
+  pool:
+    min_connections: 5
+    max_connections: 25
+    connection_timeout: 10s       # Max time to wait for connection
+    idle_timeout: 5m              # Close idle connections after this
+    max_lifetime: 1h              # Max connection lifetime (prevents stale)
+  
+  # Auto-migration settings
+  migration:
+    auto_migrate: true            # Create tables if missing on startup
+    validate_schema: true         # Check schema version matches expected
+
+# =============================================================================
+# GRPC SERVER CONFIGURATION
+# =============================================================================
+grpc:
+  host: "${GRPC_HOST:-0.0.0.0}"   # Bind address (0.0.0.0 = all interfaces)
+  port: ${GRPC_PORT:-50055}       # gRPC listening port
+  
+  # Connection settings
+  max_message_size: 4194304       # 4MB max message size
+  connection_timeout: 30s         # Client connection timeout
+  
+  # Keep-alive settings
+  keepalive:
+    time: 30s                     # Ping interval when idle
+    timeout: 10s                  # Wait for ping response
+    min_time: 10s                 # Min time between pings from client
+  
+  # TLS settings (disabled for Phase 2)
+  tls:
+    enabled: false
+    cert_file: ""
+    key_file: ""
+
+# =============================================================================
+# NETWORK MONITORING CONFIGURATION
+# =============================================================================
+monitoring:
+  # PRIMARY: Windows IP Helper API (real-time callbacks)
+  ip_helper:
+    enabled: true
+    callback_timeout: 5s          # Max time for callback registration
+  
+  # ARP table monitoring
+  arp_table:
+    refresh_interval: 5s          # How often to refresh ARP cache
+    poll_interval: 30s            # Fallback polling (catches callback misses)
+    cache_duration: 5m            # How long to cache ARP entries
+  
+  # Interface filtering (regex patterns)
+  interfaces:
+    # Monitor all by default
+    include_patterns:
+      - ".*"                      # Match all interfaces
+    
+    # Exclude virtual/internal interfaces
+    exclude_patterns:
+      - "vEthernet.*WSL.*"        # WSL virtual adapters
+      - "Loopback.*"              # Loopback interfaces
+    
+    # Or specify exact interface names
+    # include_names:
+    #   - "Mobile Hotspot"
+    #   - "Ethernet"
+    #   - "Wi-Fi"
+  
+  # Detection method priority
+  detection:
+    primary_method: "IP_HELPER_API"     # Fastest (15-35ms)
+    secondary_method: "ARP_TABLE"       # Fallback polling
+    dedup_cache_duration: 5m            # Prevent duplicate detections
+    dedup_cache_max_size: 10000         # Max cached entries
+
+# =============================================================================
+# DHCP EVENT LOG CONFIGURATION (Secondary/Enrichment)
+# =============================================================================
+dhcp_event_log:
+  enabled: true
+  
+  # Windows Event Log settings
+  channel: "Microsoft-Windows-Dhcp-Client/Operational"
+  
+  # Polling settings (for hostname enrichment only)
+  poll_interval: 30s              # How often to check Event Log
+  
+  # Event ID filters
+  event_ids:
+    - 50001                       # DHCP Address Acquired
+    - 50002                       # DHCP Address Renewed
+    - 50003                       # DHCP Address Released
+  
+  # Enrichment settings
+  enrichment:
+    resolve_hostname: true        # Extract hostname from events
+    resolve_vendor: true          # MAC OUI vendor lookup
+    vendor_database: "data/oui.txt"  # MAC vendor database file
+
+# =============================================================================
+# DEVICE MANAGEMENT CONFIGURATION
+# =============================================================================
+device_management:
+  # Device status settings
+  status:
+    inactive_timeout: 15m         # Mark OFFLINE after no activity
+    expired_timeout: 24h          # Mark EXPIRED after long inactivity
+  
+  # Cleanup policies
+  cleanup:
+    enabled: true
+    interval: 5m                  # How often to run cleanup
+    purge_expired_after: 168h     # Delete EXPIRED devices after 7 days
+  
+  # IP history retention
+  ip_history:
+    retention_days: 90            # Keep IP history for 90 days
+    max_entries_per_device: 1000  # Max history entries per device
+  
+  # Unknown device handling
+  unknown_devices:
+    auto_create: true             # Automatically create DB entry
+    default_trust_status: "UNTRUSTED"
+    default_device_type: "Unknown"
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+logging:
+  level: "${LOG_LEVEL:-INFO}"     # DEBUG, INFO, WARN, ERROR
+  
+  # Output destinations
+  output:
+    stdout: true
+    file:
+      enabled: false
+      path: "${LOG_FILE:-logs/dhcp_monitor.log}"
+      
+      # Rotation settings
+      rotation:
+        max_size_mb: 100          # Rotate after 100MB
+        max_age_days: 30          # Keep logs for 30 days
+        max_backups: 5            # Keep 5 old log files
+        compress: true            # Compress rotated logs
+  
+  # Log format
+  format: "json"                  # json or text
+  
+  # Component-specific log levels (override global)
+  components:
+    database: "INFO"
+    grpc: "INFO"
+    watcher: "DEBUG"              # More verbose for detection debugging
+    manager: "INFO"
+
+# =============================================================================
+# SERVICE BEHAVIOR CONFIGURATION
+# =============================================================================
+service:
+  name: "dhcp_monitor"
+  version: "2.0.0"
+  
+  # Startup behavior
+  startup:
+    validate_database: true       # Check DB connection on startup
+    validate_interfaces: true     # Verify network interfaces exist
+    fail_fast: true               # Exit on validation failure
+  
+  # Shutdown behavior
+  shutdown:
+    timeout: 30s                  # Max time for graceful shutdown
+    drain_connections: true       # Wait for in-flight requests
+  
+  # Health check
+  health:
+    enabled: true
+    interval: 30s                 # Self-health check interval
+  
+  # Metrics (Prometheus)
+  metrics:
+    enabled: true
+    port: 9095
+    path: "/metrics"
+
+# =============================================================================
+# INTEGRATION CONFIGURATION
+# =============================================================================
+integrations:
+  # Orchestrator registration (future)
+  orchestrator:
+    enabled: false
+    address: "localhost:50050"
+  
+  # TLS Proxy client (Phase 4)
+  tls_proxy:
+    enabled: false
+    address: "localhost:50051"
+  
+  # Captive Portal client (Phase 3)
+  captive_portal:
+    enabled: false
+    address: "localhost:8080"

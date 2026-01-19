@@ -12,6 +12,7 @@ import (
 	"safeops-engine/internal/config"
 	"safeops-engine/internal/driver"
 	"safeops-engine/internal/logger"
+	"safeops-engine/internal/parser"
 )
 
 func main() {
@@ -19,19 +20,15 @@ func main() {
 	fmt.Println("Version: 3.0.0 (Pure Passthrough)")
 	fmt.Println("Starting...")
 
-	// Load configuration
-	cfg, err := config.Load("configs/engine.yaml")
-	if err != nil {
-		cfg, err = config.Load("src/safeops-engine/configs/engine.yaml")
-		if err != nil {
-			fmt.Printf("Failed to load config: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("Loaded config from: src/safeops-engine/configs/engine.yaml")
+	// Hardcoded configuration
+	logCfg := config.LoggingConfig{
+		Level:  "info",
+		Format: "json",
+		File:   "D:/SafeOpsFV2/data/logs/engine.log",
 	}
 
 	// Initialize logger
-	log := logger.New(cfg.Logging)
+	log := logger.New(logCfg)
 	log.Info("SafeOps Engine starting", map[string]interface{}{
 		"version": "3.0.0",
 		"mode":    "pure-passthrough",
@@ -62,12 +59,45 @@ func main() {
 
 	log.Info("Pipeline ready - All packets captured and forwarded immediately", nil)
 
+	// Initialize parsers for domain extraction
+	dnsParser := parser.NewDNSParser()
+	tlsParser := parser.NewTLSParser()
+	httpParser := parser.NewHTTPParser()
+
 	// Packet counter
 	var packetCount uint64
 
-	// Packet handler: PURE PASSTHROUGH - Zero overhead
+	// Packet handler: Extract domains and log them
 	drv.SetHandler(func(pkt *driver.ParsedPacket) bool {
 		atomic.AddUint64(&packetCount, 1)
+
+		// Extract domain based on port
+		var domain string
+		var protocol string
+
+		switch pkt.DstPort {
+		case 53: // DNS
+			domain = dnsParser.ExtractDomain(pkt.Payload)
+			protocol = "dns"
+		case 443: // HTTPS/TLS
+			domain = tlsParser.ExtractSNI(pkt.Payload)
+			protocol = "tls"
+		case 80: // HTTP
+			domain = httpParser.ExtractHost(pkt.Payload)
+			protocol = "http"
+		}
+
+		// Log domain if found
+		if domain != "" {
+			log.Info("Domain", map[string]interface{}{
+				"domain":   domain,
+				"protocol": protocol,
+				"src_ip":   pkt.SrcIP.String(),
+				"dst_ip":   pkt.DstIP.String(),
+				"dst_port": pkt.DstPort,
+			})
+		}
+
 		return true // Always forward immediately
 	})
 

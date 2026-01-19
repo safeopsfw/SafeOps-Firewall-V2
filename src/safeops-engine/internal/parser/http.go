@@ -52,6 +52,11 @@ func (p *HTTPParser) ExtractHost(payload []byte) string {
 	return ""
 }
 
+// IsHTTPRequest checks if the payload looks like an HTTP request (public)
+func (p *HTTPParser) IsHTTPRequest(payload []byte) bool {
+	return p.isHTTPRequest(payload)
+}
+
 // isHTTPRequest checks if the payload looks like an HTTP request
 func (p *HTTPParser) isHTTPRequest(payload []byte) bool {
 	// Check for HTTP methods

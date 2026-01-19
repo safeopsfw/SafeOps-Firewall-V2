@@ -1,0 +1,95 @@
+# SafeOps Engine Configuration
+# Network Pipeline v1.0
+
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json or text
+  file: "D:/SafeOpsFV2/data/logs/engine.log"
+
+api:
+  address: "0.0.0.0"
+  port: 9002  # Changed from 9000 to avoid Step CA conflict
+
+pipeline:
+  # Buffer size for metadata stream (higher = less drops under load)
+  metadata_buffer_size: 20000  # Increased from 10k for better performance
+
+  # DNS cache TTL in seconds
+  dns_cache_ttl: 300
+
+  # Flow cleanup interval in seconds
+  flow_cleanup_interval: 60
+
+  # Enable IPv6 support
+  ipv6_enabled: true
+
+  # Feature toggles (disable to reduce overhead)
+  extract_dns: true
+  extract_sni: true
+  extract_http: true
+  extract_dhcp: true
+
+dnsproxy:
+  enabled: true
+  binary_path: "D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe"
+  config_path: "D:/SafeOpsFV2/src/safeops-engine/configs/dnsproxy.yaml"
+  listen_port: 15353  # Changed from 5353 to avoid Steam/mDNS conflicts
+  fallback_ports: [25353, 35353, 45353]  # Fallbacks if 15353 is busy
+
+mitm:
+  enabled: true
+  binary_path: "mitmdump"  # In PATH after pip install
+  addon_path: ""  # Empty for now, will be used for passive logger later
+  listen_port: 8080
+  mode: "regular"  # Regular proxy mode (WinpkFilter handles transparent redirection)
+
+classifier:
+  # Gaming ports (bypass inspection for low latency)
+  gaming_ports:
+    - 27000  # Steam
+    - 27015  # Steam
+    - 27016  # Steam
+    - 27030  # Steam
+    - 27031  # Steam
+    - 27036  # Steam
+    - 9000   # Epic Games
+    - 9001   # Epic Games
+    - 9002   # Epic Games
+    - 9003   # Epic Games
+    - 1119   # Battle.net
+    - 6113   # Battle.net
+    - 3074   # Xbox Live
+    - 3478   # PlayStation
+    - 3479   # PlayStation
+    - 3658   # PlayStation
+
+  # VoIP ports (bypass inspection)
+  voip_ports:
+    - 3478   # Discord
+    - 3479   # Discord
+    - 50000  # Teams
+    - 50019  # Teams
+    - 8801   # Zoom
+    - 8810   # Zoom
+    - 16384  # WebRTC start
+    - 32767  # WebRTC end
+
+  # Streaming ports (bypass inspection)
+  streaming_ports:
+    - 443    # QUIC/HTTP3 (will check protocol)
+
+  # Bypass these domains (SNI-based)
+  bypass_domains:
+    - "steampowered.com"
+    - "epicgames.com"
+    - "discord.gg"
+    - "discord.com"
+    - "twitch.tv"
+    - "youtube.com"
+    - "googlevideo.com"
+
+nat:
+  enabled: true
+  external_ip: ""  # Auto-detect if empty
+  port_range_start: 60000
+  port_range_end: 65535

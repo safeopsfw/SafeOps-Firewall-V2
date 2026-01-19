@@ -18,7 +18,9 @@
       "Bash(echo:*)",
       "Bash(find:*)",
       "Bash(netstat:*)",
-      "Bash(nslookup:*)"
+      "Bash(nslookup:*)",
+      "Bash(ls:*)",
+      "Bash(git -C \"D:\\\\SafeOpsFV2\" status)"
     ]
   }
 }

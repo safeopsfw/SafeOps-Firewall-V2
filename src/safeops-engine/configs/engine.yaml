@@ -10,6 +10,25 @@ api:
   address: "0.0.0.0"
   port: 9002  # Changed from 9000 to avoid Step CA conflict
 
+pipeline:
+  # Buffer size for metadata stream (higher = less drops under load)
+  metadata_buffer_size: 20000  # Increased from 10k for better performance
+
+  # DNS cache TTL in seconds
+  dns_cache_ttl: 300
+
+  # Flow cleanup interval in seconds
+  flow_cleanup_interval: 60
+
+  # Enable IPv6 support
+  ipv6_enabled: true
+
+  # Feature toggles (disable to reduce overhead)
+  extract_dns: true
+  extract_sni: true
+  extract_http: true
+  extract_dhcp: true
+
 dnsproxy:
   enabled: true
   binary_path: "D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe"
