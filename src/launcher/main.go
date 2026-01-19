@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 // Service configuration
@@ -18,19 +21,32 @@ type Service struct {
 	Delay        time.Duration
 }
 
+// Database configuration for threat intel
+const (
+	dbHost     = "localhost"
+	dbPort     = 5432
+	dbUser     = "postgres"
+	dbPassword = "postgres"
+	dbName     = "threat_intel_db"
+)
+
 func main() {
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Println("║           SafeOps Launcher - Starting All Services            ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// Get executable directory
+	// Get executable directory (now in project root)
 	exePath, err := os.Executable()
 	if err != nil {
 		fmt.Printf("Error getting executable path: %v\n", err)
 		os.Exit(1)
 	}
-	binDir := filepath.Dir(exePath)
+	projectRoot := filepath.Dir(exePath)
+	binDir := filepath.Join(projectRoot, "bin")
+
+	// Initialize Threat Intel Database
+	initThreatIntelDB()
 
 	// Define services
 	services := []Service{
@@ -86,7 +102,7 @@ func main() {
 	}
 
 	// Start UI Dev Server
-	startUIDevServer(binDir)
+	startUIDevServer(projectRoot)
 
 	fmt.Println()
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
@@ -94,6 +110,7 @@ func main() {
 	fmt.Println("╠═══════════════════════════════════════════════════════════════╣")
 	fmt.Println("║  Service              │ Port/Info                             ║")
 	fmt.Println("║  ─────────────────────────────────────────────────────────────║")
+	fmt.Println("║  Threat Intel DB      │ PostgreSQL :5432                      ║")
 	fmt.Println("║  NIC Management       │ :8081 (REST API + SSE)                ║")
 	fmt.Println("║  DHCP Monitor         │ :50055 (gRPC)                         ║")
 	fmt.Println("║  Step-CA              │ :9000 (HTTPS)                         ║")
@@ -108,11 +125,34 @@ func main() {
 	fmt.Scanln()
 }
 
-func startUIDevServer(binDir string) {
+func initThreatIntelDB() {
+	fmt.Println("[Initializing] Threat Intel Database...")
+
+	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		fmt.Printf("  [WARN] Could not connect to database: %v\n", err)
+		return
+	}
+	defer db.Close()
+
+	// Test connection
+	err = db.Ping()
+	if err != nil {
+		fmt.Printf("  [WARN] Database not reachable: %v\n", err)
+		fmt.Println("  [INFO] Start PostgreSQL and ensure threat_intel_db exists")
+		return
+	}
+
+	fmt.Println("  [OK] Threat Intel Database connected (PostgreSQL)")
+	time.Sleep(1 * time.Second)
+}
+
+func startUIDevServer(projectRoot string) {
 	fmt.Println("[Starting] UI Dev Server...")
 
-	// UI is in src/ui/dev relative to bin's parent (project root)
-	projectRoot := filepath.Dir(binDir)
 	uiDir := filepath.Join(projectRoot, "src", "ui", "dev")
 
 	if _, err := os.Stat(uiDir); os.IsNotExist(err) {
@@ -120,7 +160,7 @@ func startUIDevServer(binDir string) {
 		return
 	}
 
-	// Start npm run dev
+	// Start npm run dev in a new window
 	cmd := exec.Command("cmd", "/c", "start", "cmd", "/k", "cd /d", uiDir, "&&", "npm", "run", "dev")
 	err := cmd.Start()
 	if err != nil {
