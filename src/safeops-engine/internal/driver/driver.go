@@ -41,6 +41,10 @@ type ParsedPacket struct {
 	RawBuffer     *ndisapi.IntermediateBuffer
 	AdapterHandle ndisapi.Handle
 	AdapterName   string
+
+	// Domain extraction (for Firewall/IDS/IPS engines)
+	Domain       string // Extracted domain name (from DNS/SNI/HTTP)
+	DomainSource string // Source of domain: "DNS", "SNI", "HTTP", or empty
 }
 
 // PacketHandler is called for each captured packet

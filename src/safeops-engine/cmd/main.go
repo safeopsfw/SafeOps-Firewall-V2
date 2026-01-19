@@ -65,7 +65,7 @@ func main() {
 	// Packet counter
 	var packetCount uint64
 
-	// Packet handler: PURE PASSTHROUGH - No inspection, no modification
+	// Packet handler: PURE PASSTHROUGH - Zero overhead
 	drv.SetHandler(func(pkt *driver.ParsedPacket) bool {
 		atomic.AddUint64(&packetCount, 1)
 		return true // Always forward immediately

@@ -293,3 +293,123 @@
 {"timestamp":"2026-01-19T06:06:04.5682317Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":320108,"packets_written":317765,"total_processed":317765}}
 {"timestamp":"2026-01-19T06:06:34.567639Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":321059,"packets_written":318587,"total_processed":318587}}
 {"timestamp":"2026-01-19T06:07:04.5676418Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":321922,"packets_written":319311,"total_processed":319311}}
+{"timestamp":"2026-01-19T06:07:34.5677402Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":331279,"packets_written":328541,"total_processed":328541}}
+{"timestamp":"2026-01-19T06:08:04.5673258Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":348381,"packets_written":345502,"total_processed":345502}}
+{"timestamp":"2026-01-19T06:08:34.5680817Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":352769,"packets_written":349778,"total_processed":349779}}
+{"timestamp":"2026-01-19T06:09:04.5677576Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":353706,"packets_written":350605,"total_processed":350605}}
+{"timestamp":"2026-01-19T06:09:34.567745Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":354768,"packets_written":351555,"total_processed":351555}}
+{"timestamp":"2026-01-19T06:10:04.568822Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":358138,"packets_written":354773,"total_processed":354773}}
+{"timestamp":"2026-01-19T06:10:34.567658Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":359764,"packets_written":356294,"total_processed":356294}}
+{"timestamp":"2026-01-19T06:11:04.5673237Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":361165,"packets_written":357569,"total_processed":357569}}
+{"timestamp":"2026-01-19T06:11:34.5673071Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":362208,"packets_written":358485,"total_processed":358485}}
+{"timestamp":"2026-01-19T06:12:04.5732679Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":363912,"packets_written":360051,"total_processed":360051}}
+{"timestamp":"2026-01-19T06:12:34.5675423Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":365235,"packets_written":361251,"total_processed":361251}}
+{"timestamp":"2026-01-19T06:13:04.5676376Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":366580,"packets_written":362467,"total_processed":362467}}
+{"timestamp":"2026-01-19T06:13:34.5675156Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":367337,"packets_written":363095,"total_processed":363095}}
+{"timestamp":"2026-01-19T06:14:04.5682801Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":368613,"packets_written":364213,"total_processed":364213}}
+{"timestamp":"2026-01-19T06:14:34.5678505Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":369951,"packets_written":365421,"total_processed":365421}}
+{"timestamp":"2026-01-19T06:15:04.5742688Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":373184,"packets_written":368531,"total_processed":368531}}
+{"timestamp":"2026-01-19T06:15:34.5689658Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":374253,"packets_written":369482,"total_processed":369482}}
+{"timestamp":"2026-01-19T06:16:04.5676243Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":376171,"packets_written":371260,"total_processed":371260}}
+{"timestamp":"2026-01-19T06:16:34.5677114Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":377645,"packets_written":372608,"total_processed":372608}}
+{"timestamp":"2026-01-19T06:17:04.567738Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":378758,"packets_written":373593,"total_processed":373593}}
+{"timestamp":"2026-01-19T06:17:34.567715Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":381129,"packets_written":375836,"total_processed":375836}}
+{"timestamp":"2026-01-19T06:18:04.5677092Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":382003,"packets_written":376527,"total_processed":376527}}
+{"timestamp":"2026-01-19T06:18:34.5675198Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":383157,"packets_written":377555,"total_processed":377555}}
+{"timestamp":"2026-01-19T06:19:04.567445Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":384454,"packets_written":378724,"total_processed":378724}}
+{"timestamp":"2026-01-19T06:19:34.5677404Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":389438,"packets_written":383579,"total_processed":383579}}
+{"timestamp":"2026-01-19T06:20:04.5680871Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":396241,"packets_written":390224,"total_processed":390224}}
+{"timestamp":"2026-01-19T06:20:34.5675934Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":404912,"packets_written":398746,"total_processed":398746}}
+{"timestamp":"2026-01-19T06:21:04.5676945Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":411321,"packets_written":405025,"total_processed":405025}}
+{"timestamp":"2026-01-19T06:21:34.5676579Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":418287,"packets_written":411861,"total_processed":411861}}
+{"timestamp":"2026-01-19T06:22:04.567822Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":425197,"packets_written":418613,"total_processed":418613}}
+{"timestamp":"2026-01-19T06:22:31.826224Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-19T06:22:31.8334023Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-19T06:22:33.829901Z","level":"INFO","message":"Final stats","data":{"packets_dropped":0,"packets_read":432263,"packets_written":425564,"total_processed":425564}}
+{"timestamp":"2026-01-19T06:22:33.8331209Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-19T06:22:33.834622Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-19T06:22:33.8367781Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":432263,"packets_written":425564}}
+{"timestamp":"2026-01-19T06:24:30.3101814Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"pure-passthrough","version":"3.0.0"}}
+{"timestamp":"2026-01-19T06:24:30.3138995Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-19T06:24:30.3160023Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-19T06:24:30.3176257Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-19T06:24:30.3229222Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-19T06:24:30.3255965Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T06:24:30.3277482Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-19T06:24:30.3298259Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-19T06:24:30.3314349Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-19T06:24:30.3336093Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-19T06:24:30.3357471Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T06:24:30.3379245Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-19T06:24:30.3395312Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-19T06:24:30.3416863Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-19T06:24:30.343351Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-19T06:24:30.3455421Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-19T06:24:30.3477014Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-19T06:24:30.3508674Z","level":"INFO","message":"Pipeline ready - All packets captured and forwarded immediately"}
+{"timestamp":"2026-01-19T06:24:30.3530155Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-19T06:24:30.3552211Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-19T06:24:30.3573725Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-19T06:25:00.355329Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":146589,"packets_written":146453,"total_processed":146453}}
+{"timestamp":"2026-01-19T06:25:30.3553683Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":153963,"packets_written":153699,"total_processed":153699}}
+{"timestamp":"2026-01-19T06:26:00.3555294Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":158592,"packets_written":158215,"total_processed":158215}}
+{"timestamp":"2026-01-19T06:26:30.3554038Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":163292,"packets_written":162752,"total_processed":162752}}
+{"timestamp":"2026-01-19T06:27:00.3554355Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":170737,"packets_written":170072,"total_processed":170072}}
+{"timestamp":"2026-01-19T06:27:30.3558538Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":176420,"packets_written":175627,"total_processed":175627}}
+{"timestamp":"2026-01-19T06:28:17.5875639Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"pure-passthrough","version":"3.0.0"}}
+{"timestamp":"2026-01-19T06:28:17.6147179Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-19T06:28:17.6168847Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-19T06:28:17.6195912Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-19T06:28:17.6240057Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-19T06:28:17.6267473Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T06:28:17.6289123Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-19T06:28:17.6315974Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-19T06:28:17.6339525Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-19T06:28:17.6361901Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-19T06:28:17.6389123Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T06:28:17.6410961Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-19T06:28:17.6433133Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-19T06:28:17.6454802Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-19T06:28:17.6476682Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-19T06:28:17.6499445Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-19T06:28:17.6521793Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-19T06:28:17.6560199Z","level":"INFO","message":"Pipeline ready - All packets captured and forwarded immediately"}
+{"timestamp":"2026-01-19T06:28:17.6588837Z","level":"INFO","message":"Domain parsers initialized","data":{"parsers":"DNS, TLS/SNI, HTTP"}}
+{"timestamp":"2026-01-19T06:28:17.6610208Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-19T06:28:17.6632374Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-19T06:28:17.6654847Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-19T06:28:47.6638315Z","level":"INFO","message":"Stats","data":{"domains_dns":33,"domains_http":0,"domains_sni":16,"packets_dropped":0,"packets_read":244476,"packets_written":244356,"total_processed":244358}}
+{"timestamp":"2026-01-19T06:29:07.0886786Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-19T06:29:07.0961425Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-19T06:29:09.0949808Z","level":"INFO","message":"Final stats","data":{"packets_dropped":0,"packets_read":1268280,"packets_written":1268097,"total_processed":1268097}}
+{"timestamp":"2026-01-19T06:29:09.0999042Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-19T06:29:09.1045319Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-19T06:29:09.1072073Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":1268280,"packets_written":1268097}}
+{"timestamp":"2026-01-19T06:33:30.5594388Z","level":"INFO","message":"SafeOps Engine starting","data":{"mode":"pure-passthrough","version":"3.0.0"}}
+{"timestamp":"2026-01-19T06:33:30.5692897Z","level":"INFO","message":"Initializing WinpkFilter driver..."}
+{"timestamp":"2026-01-19T06:33:30.5738075Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-19T06:33:30.579561Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-19T06:33:30.5861518Z","level":"INFO","message":"Found adapters","data":{"count":11}}
+{"timestamp":"2026-01-19T06:33:30.5906944Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T06:33:30.5951193Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-19T06:33:30.5995847Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-19T06:33:30.6042835Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-19T06:33:30.6086778Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-19T06:33:30.6131697Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-19T06:33:30.6172456Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-19T06:33:30.6218434Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-19T06:33:30.6262356Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-19T06:33:30.6513465Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-19T06:33:30.6536462Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0d"}}
+{"timestamp":"2026-01-19T06:33:30.6564661Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-19T06:33:30.6587133Z","level":"INFO","message":"Pipeline ready - All packets captured and forwarded immediately"}
+{"timestamp":"2026-01-19T06:33:30.6610737Z","level":"INFO","message":"Domain parsers initialized","data":{"parsers":"DNS, TLS/SNI, HTTP"}}
+{"timestamp":"2026-01-19T06:33:30.6634315Z","level":"INFO","message":"Starting packet processing..."}
+{"timestamp":"2026-01-19T06:33:30.665826Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-19T06:33:30.6682536Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-19T06:33:43.2735902Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-19T06:33:43.3136693Z","level":"INFO","message":"Packet processing loop stopped"}
+{"timestamp":"2026-01-19T06:33:45.3079645Z","level":"INFO","message":"Final stats","data":{"packets_dropped":0,"packets_read":129007,"packets_written":128947,"total_processed":128947}}
+{"timestamp":"2026-01-19T06:33:45.7630821Z","level":"INFO","message":"SafeOps Engine stopped"}
+{"timestamp":"2026-01-19T06:33:45.7703063Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-19T06:33:45.7748615Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":129007,"packets_written":128947}}
