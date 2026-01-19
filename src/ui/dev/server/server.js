@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 8080;
+const PORT = 5050;
 
 // Middleware
 app.use(cors());
@@ -46,6 +46,95 @@ let pipelineStatus = {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Health check alias
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================================================
+// Device Endpoints (safeops database)
+// ============================================================================
+
+// SafeOps database pool for devices
+const safeopsPool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  database: 'safeops',
+  user: 'postgres',
+  password: 'postgres',
+});
+
+// Get all devices
+app.get('/api/devices', async (req, res) => {
+  try {
+    const result = await safeopsPool.query(`
+      SELECT 
+        mac_address as mac,
+        host(current_ip) as ip,
+        hostname,
+        vendor,
+        device_type as os,
+        trust_status,
+        interface_name as "nicType",
+        interface_name as "nicInterfaceName",
+        COALESCE(ca_cert_installed, false) as "hasCertificate",
+        first_seen as "firstSeen",
+        last_seen as "lastSeen"
+      FROM devices
+      ORDER BY last_seen DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    // Fallback query without ca_cert_installed column
+    try {
+      const result = await safeopsPool.query(`
+        SELECT 
+          mac_address as mac,
+          host(current_ip) as ip,
+          hostname,
+          vendor,
+          device_type as os,
+          trust_status,
+          interface_name as "nicType",
+          interface_name as "nicInterfaceName",
+          false as "hasCertificate",
+          first_seen as "firstSeen",
+          last_seen as "lastSeen"
+        FROM devices
+        ORDER BY last_seen DESC
+      `);
+      res.json(result.rows);
+    } catch (fallbackErr) {
+      console.error('Error fetching devices:', fallbackErr.message);
+      res.json([]);
+    }
+  }
+});
+
+// Get device stats
+app.get('/api/devices/stats', async (req, res) => {
+  try {
+    const result = await safeopsPool.query(`
+      SELECT 
+        COUNT(*) as total,
+        0 as enrolled,
+        COUNT(*) as unenrolled,
+        COUNT(*) FILTER (WHERE last_seen > NOW() - INTERVAL '5 minutes') as active
+      FROM devices
+    `);
+    const stats = result.rows[0];
+    res.json({
+      totalDevices: parseInt(stats.total) || 0,
+      enrolledDevices: parseInt(stats.enrolled) || 0,
+      unenrolledDevices: parseInt(stats.unenrolled) || 0,
+      activeDevices: parseInt(stats.active) || 0
+    });
+  } catch (error) {
+    console.error('Error fetching device stats:', error.message);
+    res.json({ totalDevices: 0, enrolledDevices: 0, unenrolledDevices: 0, activeDevices: 0 });
+  }
 });
 
 // Database status

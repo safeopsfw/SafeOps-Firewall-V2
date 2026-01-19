@@ -3,7 +3,7 @@
  * Handles all API calls to the threat intel backend
  */
 
-const API_BASE = 'http://localhost:5050/api/threat-intel';
+const API_BASE = 'http://localhost:5050/api';
 
 // =============================================================================
 // Database Categories

@@ -26,8 +26,8 @@ database:
   
   # Auto-migration settings
   migration:
-    auto_migrate: false           # Create tables if missing on startup
-    validate_schema: false        # Check schema version matches expected
+    auto_migrate: true            # Create tables if missing on startup
+    validate_schema: true         # Check schema version matches expected
 
 # =============================================================================
 # GRPC SERVER CONFIGURATION

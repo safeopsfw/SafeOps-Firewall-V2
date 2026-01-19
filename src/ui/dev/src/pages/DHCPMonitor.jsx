@@ -288,14 +288,14 @@ function DHCPMonitor() {
 
                     <div className="qr-code-container">
                         <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://${selectedGateway}:8080`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://${selectedGateway}:8090`}
                             alt="Portal QR Code"
                             className="qr-code-img"
                         />
                     </div>
                     <div className="portal-url" style={{ textAlign: 'center', marginTop: '1rem' }}>
                         <a
-                            href={`http://${selectedGateway}:8080`}
+                            href={`http://${selectedGateway}:8090`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -305,7 +305,7 @@ function DHCPMonitor() {
                                 textDecoration: 'none'
                             }}
                         >
-                            http://{selectedGateway}:8080
+                            http://{selectedGateway}:8090
                         </a>
                     </div>
                 </div>
@@ -333,14 +333,14 @@ function DHCPMonitor() {
                 <div className="endpoints-grid">
                     <div className="endpoint">
                         <span className="endpoint-label">Captive Portal (HTTP)</span>
-                        <a href={`http://${selectedGateway}:8080`} target="_blank" rel="noopener noreferrer">
-                            http://{selectedGateway}:8080
+                        <a href={`http://${selectedGateway}:8090`} target="_blank" rel="noopener noreferrer">
+                            http://{selectedGateway}:8090
                         </a>
                     </div>
                     <div className="endpoint">
                         <span className="endpoint-label">Captive Portal (HTTPS)</span>
-                        <a href={`https://${selectedGateway}:8444`} target="_blank" rel="noopener noreferrer">
-                            https://{selectedGateway}:8444
+                        <a href={`https://${selectedGateway}:8445`} target="_blank" rel="noopener noreferrer">
+                            https://{selectedGateway}:8445
                         </a>
                     </div>
                     <div className="endpoint">
@@ -451,7 +451,7 @@ function DHCPMonitor() {
                         <div className="step-number">2</div>
                         <div className="step-content">
                             <h4>Scan QR / Open Portal</h4>
-                            <p>User scans QR code or visits portal.safeops.local:8080</p>
+                            <p>User scans QR code or visits portal.safeops.local:8090</p>
                         </div>
                     </div>
                     <div className="flow-arrow">→</div>
