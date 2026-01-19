@@ -2654,7 +2654,7 @@
             "malware_alias": "AgenTesla,AgentTesla,Negasteal",
             "malware_printable": "Agent Tesla",
             "first_seen_utc": "2026-01-18 21:00:04",
-            "last_seen_utc": "2026-01-19 16:00:04",
+            "last_seen_utc": "2026-01-19 16:12:02",
             "confidence_level": 50,
             "is_compromised": false,
             "reference": "https://tracker.viriback.com/index.php?q=etvidanueva.com",

@@ -121,6 +121,13 @@ func main() {
 	fmt.Println("║  UI Dev Server        │ :3001 (Vite)                          ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Println()
+
+	// Open browser to SafeOps UI
+	fmt.Println("[Opening] SafeOps Dashboard in browser...")
+	time.Sleep(3 * time.Second)
+	exec.Command("cmd", "/c", "start", "http://localhost:3001").Start()
+
+	fmt.Println()
 	fmt.Println("Press Enter to exit...")
 	fmt.Scanln()
 }
@@ -161,7 +168,7 @@ func startUIDevServer(projectRoot string) {
 	}
 
 	// Start npm run dev in a new window
-	cmd := exec.Command("cmd", "/c", "start", "cmd", "/k", "cd /d", uiDir, "&&", "npm", "run", "dev")
+	cmd := exec.Command("cmd", "/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run dev", uiDir))
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("  [ERROR] Failed to start UI: %v\n", err)
