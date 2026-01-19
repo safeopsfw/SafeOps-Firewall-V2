@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -30,10 +32,25 @@ const (
 	dbName     = "threat_intel_db"
 )
 
+var startedProcesses []*os.Process
+var devServerCmd *exec.Cmd // Keep track of dev server specially if needed, currently started via 'start' in separate window
+
 func main() {
+	// Setup signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		fmt.Println("\nReceived shutdown signal. Cleaning up...")
+		cleanup()
+		os.Exit(0)
+	}()
+
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Println("║           SafeOps Launcher - Starting All Services            ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
+	fmt.Println("Press Ctrl+C to stop all services and exit.")
 	fmt.Println()
 
 	// Get executable directory (now in project root)
@@ -51,48 +68,54 @@ func main() {
 	// Define services
 	services := []Service{
 		{
+			Name:    "Threat Intel API",
+			ExePath: filepath.Join(binDir, "threat_intel", "threat_intel_api.exe"),
+			WorkDir: filepath.Join(binDir, "threat_intel"),
+			Delay:   1 * time.Second,
+		},
+		{
 			Name:    "NIC Management",
 			ExePath: filepath.Join(binDir, "nic_management", "nic_management.exe"),
 			WorkDir: filepath.Join(binDir, "nic_management"),
-			Delay:   2 * time.Second,
+			Delay:   1 * time.Second,
 		},
 		{
 			Name:    "DHCP Monitor",
 			ExePath: filepath.Join(binDir, "dhcp_monitor", "dhcp_monitor.exe"),
 			WorkDir: filepath.Join(binDir, "dhcp_monitor"),
-			Delay:   2 * time.Second,
+			Delay:   1 * time.Second,
 		},
 		{
 			Name:    "Step-CA",
 			ExePath: filepath.Join(binDir, "step-ca", "bin", "step-ca.exe"),
 			WorkDir: filepath.Join(binDir, "step-ca"),
 			Args:    []string{"config/ca.json", "--password-file", "secrets/password.txt"},
-			Delay:   3 * time.Second,
+			Delay:   2 * time.Second,
 		},
 		{
 			Name:    "Captive Portal",
 			ExePath: filepath.Join(binDir, "captive_portal", "captive_portal.exe"),
 			WorkDir: filepath.Join(binDir, "captive_portal"),
-			Delay:   2 * time.Second,
+			Delay:   1 * time.Second,
 		},
 		{
 			Name:         "SafeOps Engine",
 			ExePath:      filepath.Join(binDir, "safeops-engine", "safeops-engine.exe"),
 			WorkDir:      filepath.Join(binDir, "safeops-engine"),
 			RequireAdmin: true,
-			Delay:        2 * time.Second,
+			Delay:        1 * time.Second,
 		},
 		{
 			Name:    "Network Logger",
 			ExePath: filepath.Join(binDir, "network_logger", "network_logger.exe"),
 			WorkDir: filepath.Join(binDir, "network_logger"),
-			Delay:   2 * time.Second,
+			Delay:   1 * time.Second,
 		},
 		{
-			Name:    "Threat Intel",
+			Name:    "Threat Intel Pipeline",
 			ExePath: filepath.Join(binDir, "threat_intel", "threat_intel.exe"),
 			WorkDir: filepath.Join(binDir, "threat_intel"),
-			Delay:   2 * time.Second,
+			Delay:   1 * time.Second,
 		},
 	}
 
@@ -111,6 +134,7 @@ func main() {
 	fmt.Println("║  Service              │ Port/Info                             ║")
 	fmt.Println("║  ─────────────────────────────────────────────────────────────║")
 	fmt.Println("║  Threat Intel DB      │ PostgreSQL :5432                      ║")
+	fmt.Println("║  Threat Intel API     │ :5050 (REST API)                      ║")
 	fmt.Println("║  NIC Management       │ :8081 (REST API + SSE)                ║")
 	fmt.Println("║  DHCP Monitor         │ :50055 (gRPC)                         ║")
 	fmt.Println("║  Step-CA              │ :9000 (HTTPS)                         ║")
@@ -125,11 +149,13 @@ func main() {
 	// Open browser to SafeOps UI
 	fmt.Println("[Opening] SafeOps Dashboard in browser...")
 	time.Sleep(3 * time.Second)
+	// Open in default browser, no need to track this process
 	exec.Command("cmd", "/c", "start", "http://localhost:3001").Start()
 
 	fmt.Println()
-	fmt.Println("Press Enter to exit...")
+	fmt.Println("Services are running. Press Enter to stop all services and exit...")
 	fmt.Scanln()
+	cleanup()
 }
 
 func initThreatIntelDB() {
@@ -168,6 +194,11 @@ func startUIDevServer(projectRoot string) {
 	}
 
 	// Start npm run dev in a new window
+	// Using "start" cmd means it runs in separate window, we can't easily kill it unless we track its window/process
+	// Ideally we would run it as a child process and pipe output, but user seems to prefer separate window or background
+	// For "Close all services", we can try to kill node.exe or just leave it since it's a dev server in a separate terminal
+	// If the user wants it closed, they can close the terminal window.
+	// However, we can track the 'cmd' process we started? Start returns immediately.
 	cmd := exec.Command("cmd", "/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run dev", uiDir))
 	err := cmd.Start()
 	if err != nil {
@@ -191,6 +222,8 @@ func startService(svc Service) {
 	// Create command
 	cmd := exec.Command(svc.ExePath, svc.Args...)
 	cmd.Dir = svc.WorkDir
+	// We do NOT set SysProcAttr to create new console group because we want signals to propagate?
+	// Actually, on Windows, if we want to kill them individually, we just keep their Process objects.
 
 	// Start the process
 	err := cmd.Start()
@@ -199,8 +232,25 @@ func startService(svc Service) {
 		return
 	}
 
+	startedProcesses = append(startedProcesses, cmd.Process)
 	fmt.Printf("  [OK] %s started (PID: %d)\n", svc.Name, cmd.Process.Pid)
 
 	// Wait before starting next service
 	time.Sleep(svc.Delay)
+}
+
+func cleanup() {
+	fmt.Println("\n[Stopping] Stopping all services...")
+	for _, p := range startedProcesses {
+		if p != nil {
+			fmt.Printf("  Killing PID %d... ", p.Pid)
+			err := p.Kill()
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+			} else {
+				fmt.Println("OK")
+			}
+		}
+	}
+	fmt.Println("[Done] All services stopped.")
 }

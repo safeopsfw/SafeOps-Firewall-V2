@@ -2654,7 +2654,7 @@
             "malware_alias": "AgenTesla,AgentTesla,Negasteal",
             "malware_printable": "Agent Tesla",
             "first_seen_utc": "2026-01-18 21:00:04",
-            "last_seen_utc": "2026-01-19 16:12:02",
+            "last_seen_utc": "2026-01-19 16:24:02",
             "confidence_level": 50,
             "is_compromised": false,
             "reference": "https://tracker.viriback.com/index.php?q=etvidanueva.com",
@@ -10509,60 +10509,6 @@
             "tags": "clickfix,validin",
             "anonymous": "0",
             "reporter": "DaveLikesMalwre"
-        }
-    ],
-    "1733755": [
-        {
-            "ioc_value": "https://chromium.report.tech.b55081fa-9cd1-48c2-95d4-efe.crashnotify.org/browser/chrome?uuid=null",
-            "ioc_type": "url",
-            "threat_type": "payload_delivery",
-            "malware": "unknown",
-            "malware_alias": null,
-            "malware_printable": "Unknown malware",
-            "first_seen_utc": "2026-01-17 16:20:10",
-            "last_seen_utc": null,
-            "confidence_level": 90,
-            "is_compromised": false,
-            "reference": "https://clickfix.carsonww.com/domains/chromium.report.tech.b55081fa-9cd1-48c2-95d4-efe.crashnotify.org",
-            "tags": "ClickFix",
-            "anonymous": "0",
-            "reporter": "CarsonWilliams"
-        }
-    ],
-    "1733757": [
-        {
-            "ioc_value": "http://45.92.29.74/1.sh",
-            "ioc_type": "url",
-            "threat_type": "payload_delivery",
-            "malware": "unknown",
-            "malware_alias": null,
-            "malware_printable": "Unknown malware",
-            "first_seen_utc": "2026-01-17 16:20:09",
-            "last_seen_utc": "2026-01-17 11:00:28",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://greedybear.honeynet.org",
-            "tags": "honeypot",
-            "anonymous": "0",
-            "reporter": "greedybear"
-        }
-    ],
-    "1733775": [
-        {
-            "ioc_value": "http://45.92.29.74/wget.sh",
-            "ioc_type": "url",
-            "threat_type": "payload_delivery",
-            "malware": "unknown",
-            "malware_alias": null,
-            "malware_printable": "Unknown malware",
-            "first_seen_utc": "2026-01-17 16:20:09",
-            "last_seen_utc": "2026-01-17 11:20:22",
-            "confidence_level": 75,
-            "is_compromised": false,
-            "reference": "https://greedybear.honeynet.org",
-            "tags": "honeypot",
-            "anonymous": "0",
-            "reporter": "greedybear"
         }
     ]
 }
