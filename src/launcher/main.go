@@ -13,7 +13,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Service configuration
+// Service represents a background service to start
 type Service struct {
 	Name         string
 	ExePath      string
@@ -33,7 +33,6 @@ const (
 )
 
 var startedProcesses []*os.Process
-var devServerCmd *exec.Cmd // Keep track of dev server specially if needed, currently started via 'start' in separate window
 
 func main() {
 	// Setup signal handling for graceful shutdown
@@ -53,14 +52,12 @@ func main() {
 	fmt.Println("Press Ctrl+C to stop all services and exit.")
 	fmt.Println()
 
-	// Get executable directory (now in project root)
-	exePath, err := os.Executable()
-	if err != nil {
-		fmt.Printf("Error getting executable path: %v\n", err)
-		os.Exit(1)
-	}
-	projectRoot := filepath.Dir(exePath)
-	binDir := filepath.Join(projectRoot, "bin")
+	// Detect project root and bin directory
+	projectRoot, binDir := detectPaths()
+
+	fmt.Printf("[INFO] Project Root: %s\n", projectRoot)
+	fmt.Printf("[INFO] Bin Directory: %s\n", binDir)
+	fmt.Println()
 
 	// Initialize Threat Intel Database
 	initThreatIntelDB()
@@ -125,8 +122,8 @@ func main() {
 		startService(svc)
 	}
 
-	// Start UI Dev Server
-	startUIDevServer(projectRoot)
+	// Start UI Dev Server and Backend API
+	startUIAndBackend(projectRoot)
 
 	fmt.Println()
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
@@ -135,28 +132,86 @@ func main() {
 	fmt.Println("║  Service              │ Port/Info                             ║")
 	fmt.Println("║  ─────────────────────────────────────────────────────────────║")
 	fmt.Println("║  Threat Intel DB      │ PostgreSQL :5432                      ║")
-	fmt.Println("║  Threat Intel API     │ :5050 (REST API)                      ║")
+	fmt.Println("║  Threat Intel API     │ :5050 (REST API via Node)             ║")
 	fmt.Println("║  NIC Management       │ :8081 (REST API + SSE)                ║")
 	fmt.Println("║  DHCP Monitor         │ :50055 (gRPC)                         ║")
 	fmt.Println("║  Step-CA              │ :9000 (HTTPS)                         ║")
 	fmt.Println("║  Captive Portal       │ :8445 (HTTPS) / :8090 (HTTP)          ║")
 	fmt.Println("║  SafeOps Engine       │ Admin Mode (Packet Capture)           ║")
 	fmt.Println("║  Network Logger       │ Packet Logging                        ║")
-	fmt.Println("║  Threat Intel         │ Threat Feed Pipeline                  ║")
-	fmt.Println("║  UI Dev Server        │ :3001 (Vite)                          ║")
+	fmt.Println("║  Threat Intel         │ Threat Feed Pipeline (-scheduler)     ║")
+	fmt.Println("║  UI Frontend          │ :3001 (Vite)                          ║")
+	fmt.Println("║  Backend API          │ :5050 (Node.js + Step-CA Proxy)       ║")
+	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
+	fmt.Println()
+	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
+	fmt.Println("║              Expected CPU Load (Idle/Active)                  ║")
+	fmt.Println("╠═══════════════════════════════════════════════════════════════╣")
+	fmt.Println("║  DHCP Monitor         │ ~1-3% (polling ARP table)             ║")
+	fmt.Println("║  Step-CA              │ ~0-1% (idle), ~3% (issuing certs)     ║")
+	fmt.Println("║  Captive Portal       │ ~0-1% (idle), ~2% (serving pages)     ║")
+	fmt.Println("║  SafeOps Engine       │ ~2-5% (packet capture)                ║")
+	fmt.Println("║  Network Logger       │ ~1-3% (logging packets)               ║")
+	fmt.Println("║  Threat Intel         │ ~0% (idle), ~10-20% (fetching feeds)  ║")
+	fmt.Println("║  NIC Management       │ ~0-1% (idle)                          ║")
+	fmt.Println("║  UI + Backend         │ ~2-5% (Vite HMR + Node)               ║")
+	fmt.Println("║  ─────────────────────────────────────────────────────────────║")
+	fmt.Println("║  TOTAL (Idle)         │ ~5-15% CPU                            ║")
+	fmt.Println("║  TOTAL (Active)       │ ~15-35% CPU                           ║")
+	fmt.Println("║  RAM Usage            │ ~500MB - 1GB                          ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
 	// Open browser to SafeOps UI
 	fmt.Println("[Opening] SafeOps Dashboard in browser...")
 	time.Sleep(3 * time.Second)
-	// Open in default browser, no need to track this process
 	exec.Command("cmd", "/c", "start", "http://localhost:3001").Start()
 
 	fmt.Println()
 	fmt.Println("Services are running. Press Enter to stop all services and exit...")
 	fmt.Scanln()
 	cleanup()
+}
+
+// detectPaths finds project root and bin directory based on launcher location
+func detectPaths() (projectRoot, binDir string) {
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Printf("Error getting executable path: %v\n", err)
+		os.Exit(1)
+	}
+
+	exeDir := filepath.Dir(exePath)
+	exeName := filepath.Base(exeDir)
+
+	// Check if running from bin/ folder
+	if exeName == "bin" {
+		// Launcher is in bin/, project root is parent
+		projectRoot = filepath.Dir(exeDir)
+		binDir = exeDir
+		fmt.Println("[INFO] Launcher detected in bin/ folder")
+	} else if _, err := os.Stat(filepath.Join(exeDir, "bin")); err == nil {
+		// Launcher is in project root, bin/ exists
+		projectRoot = exeDir
+		binDir = filepath.Join(exeDir, "bin")
+		fmt.Println("[INFO] Launcher detected in project root")
+	} else if _, err := os.Stat(filepath.Join(exeDir, "..", "bin")); err == nil {
+		// Launcher might be in some subfolder, check parent for bin/
+		projectRoot = filepath.Join(exeDir, "..")
+		binDir = filepath.Join(projectRoot, "bin")
+		fmt.Println("[INFO] Launcher detected in subfolder, using parent as root")
+	} else {
+		// Default: assume exeDir is project root
+		projectRoot = exeDir
+		binDir = filepath.Join(exeDir, "bin")
+		fmt.Println("[WARN] Could not detect folder structure, assuming project root")
+	}
+
+	// Resolve absolute paths
+	projectRoot, _ = filepath.Abs(projectRoot)
+	binDir, _ = filepath.Abs(binDir)
+
+	return projectRoot, binDir
 }
 
 func initThreatIntelDB() {
@@ -173,19 +228,16 @@ func initThreatIntelDB() {
 	defer db.Close()
 
 	// Test connection
-	err = db.Ping()
-	if err != nil {
-		fmt.Printf("  [WARN] Database not reachable: %v\n", err)
-		fmt.Println("  [INFO] Start PostgreSQL and ensure threat_intel_db exists")
+	if err := db.Ping(); err != nil {
+		fmt.Printf("  [WARN] Database ping failed: %v\n", err)
 		return
 	}
 
-	fmt.Println("  [OK] Threat Intel Database connected (PostgreSQL)")
-	time.Sleep(1 * time.Second)
+	fmt.Println("  [OK] Database connection verified")
 }
 
-func startUIDevServer(projectRoot string) {
-	fmt.Println("[Starting] UI Dev Server...")
+func startUIAndBackend(projectRoot string) {
+	fmt.Println("[Starting] UI Frontend and Backend API...")
 
 	uiDir := filepath.Join(projectRoot, "src", "ui", "dev")
 
@@ -194,31 +246,24 @@ func startUIDevServer(projectRoot string) {
 		return
 	}
 
-	// Start npm run dev in a new window
-	// Using "start" cmd means it runs in separate window, we can't easily kill it unless we track its window/process
-	// Ideally we would run it as a child process and pipe output, but user seems to prefer separate window or background
-	// For "Close all services", we can try to kill node.exe or just leave it since it's a dev server in a separate terminal
-	// If the user wants it closed, they can close the terminal window.
-	// However, we can track the 'cmd' process we started? Start returns immediately.
-	cmd := exec.Command("cmd", "/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run dev", uiDir))
+	// Start npm run dev (UI Frontend) in a new window
+	cmd := exec.Command("cmd", "/c", "start", "SafeOps-UI", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run dev", uiDir))
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("  [ERROR] Failed to start UI: %v\n", err)
-		return
+	} else {
+		fmt.Println("  [OK] UI Frontend starting on http://localhost:3001")
 	}
-
-	fmt.Println("  [OK] UI Dev Server starting on http://localhost:3001")
 	time.Sleep(2 * time.Second)
 
-	// Start backend API server (npm run server) for Threat Intel DB connection
-	fmt.Println("[Starting] Backend API Server...")
-	cmdServer := exec.Command("cmd", "/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run server", uiDir))
+	// Start npm run server (Backend API) in a new window
+	cmdServer := exec.Command("cmd", "/c", "start", "SafeOps-Backend", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run server", uiDir))
 	errServer := cmdServer.Start()
 	if errServer != nil {
 		fmt.Printf("  [ERROR] Failed to start Backend API: %v\n", errServer)
-		return
+	} else {
+		fmt.Println("  [OK] Backend API starting on http://localhost:5050 (with Step-CA proxy)")
 	}
-	fmt.Println("  [OK] Backend API Server starting on http://localhost:5050")
 	time.Sleep(1 * time.Second)
 }
 
@@ -231,38 +276,51 @@ func startService(svc Service) {
 		return
 	}
 
-	// Create command
 	cmd := exec.Command(svc.ExePath, svc.Args...)
 	cmd.Dir = svc.WorkDir
-	// We do NOT set SysProcAttr to create new console group because we want signals to propagate?
-	// Actually, on Windows, if we want to kill them individually, we just keep their Process objects.
 
 	// Start the process
-	err := cmd.Start()
-	if err != nil {
-		fmt.Printf("  [ERROR] Failed to start: %v\n", err)
+	if err := cmd.Start(); err != nil {
+		fmt.Printf("  [ERROR] Failed to start %s: %v\n", svc.Name, err)
 		return
 	}
 
-	startedProcesses = append(startedProcesses, cmd.Process)
-	fmt.Printf("  [OK] %s started (PID: %d)\n", svc.Name, cmd.Process.Pid)
+	// Track the process for cleanup
+	if cmd.Process != nil {
+		startedProcesses = append(startedProcesses, cmd.Process)
+	}
 
-	// Wait before starting next service
+	fmt.Printf("  [OK] %s started (PID: %d)\n", svc.Name, cmd.Process.Pid)
 	time.Sleep(svc.Delay)
 }
 
 func cleanup() {
-	fmt.Println("\n[Stopping] Stopping all services...")
-	for _, p := range startedProcesses {
-		if p != nil {
-			fmt.Printf("  Killing PID %d... ", p.Pid)
-			err := p.Kill()
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-			} else {
-				fmt.Println("OK")
-			}
+	fmt.Println("\n[Cleanup] Stopping all services...")
+
+	// Kill tracked processes
+	for _, proc := range startedProcesses {
+		if proc != nil {
+			fmt.Printf("  Stopping PID %d...\n", proc.Pid)
+			proc.Kill()
 		}
 	}
-	fmt.Println("[Done] All services stopped.")
+
+	// Kill known service executables
+	services := []string{
+		"threat_intel_api.exe",
+		"threat_intel.exe",
+		"nic_management.exe",
+		"dhcp_monitor.exe",
+		"step-ca.exe",
+		"captive_portal.exe",
+		"safeops-engine.exe",
+		"network_logger.exe",
+	}
+
+	for _, svc := range services {
+		exec.Command("taskkill", "/IM", svc, "/F").Run()
+	}
+
+	fmt.Println("  [OK] Background services stopped")
+	fmt.Println("  [NOTE] UI and Backend windows may still be open - close them manually if needed")
 }

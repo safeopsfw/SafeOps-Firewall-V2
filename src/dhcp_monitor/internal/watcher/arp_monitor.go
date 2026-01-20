@@ -260,7 +260,7 @@ func (m *ARPMonitor) pollARPTable() {
 	}
 
 	// Diff with previous snapshot
-	added, changed, _ := m.arpTable.Diff(m.prevSnapshot, entries)
+	added, changed, unchanged := m.arpTable.Diff(m.prevSnapshot, entries)
 
 	// Process new devices
 	for _, entry := range added {
@@ -270,6 +270,11 @@ func (m *ARPMonitor) pollARPTable() {
 	// Process IP changes
 	for _, entry := range changed {
 		m.handleARPDetection(&entry, EventTypeIPChanged)
+	}
+
+	// Send heartbeat for unchanged devices (to update last_seen)
+	for _, entry := range unchanged {
+		m.sendHeartbeat(&entry)
 	}
 
 	// Update snapshot for next poll
@@ -315,6 +320,21 @@ func (m *ARPMonitor) handleARPDetection(entry *ARPEntry, eventType string) {
 
 	log.Printf("[ARP_MONITOR] %s via ARP poll: MAC=%s IP=%s Interface=%s",
 		eventType, entry.MACAddress, entry.IPAddress.String(), entry.InterfaceName)
+}
+
+// sendHeartbeat sends a heartbeat event for still-present devices (updates last_seen)
+func (m *ARPMonitor) sendHeartbeat(entry *ARPEntry) {
+	// Skip broadcast/multicast MACs
+	if entry.MACAddress == "FF:FF:FF:FF:FF:FF" || entry.MACAddress == "" {
+		return
+	}
+
+	event := NewDeviceHeartbeatEvent(entry.MACAddress, entry.IPAddress.String(), entry.InterfaceName, entry.InterfaceIndex)
+
+	if err := m.sendEvent(event); err != nil {
+		// Heartbeat failures are non-critical
+		return
+	}
 }
 
 // runCacheCleanup periodically removes expired cache entries

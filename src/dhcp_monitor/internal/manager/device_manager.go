@@ -227,6 +227,8 @@ func (m *DeviceManager) handleEvent(event *watcher.NetworkEvent) {
 		err = m.handleInterfaceChanged(ctx, event)
 	case watcher.EventTypeDeviceOnline:
 		err = m.handleDeviceOnline(ctx, event)
+	case watcher.EventTypeDeviceHeartbeat:
+		err = m.handleDeviceHeartbeat(ctx, event)
 	default:
 		log.Printf("[DEVICE_MANAGER] Unknown event type: %s", event.EventType)
 		return
@@ -421,6 +423,25 @@ func (m *DeviceManager) handleDeviceOffline(ctx context.Context, event *watcher.
 // handleDeviceOnline processes device coming online events
 func (m *DeviceManager) handleDeviceOnline(ctx context.Context, event *watcher.NetworkEvent) error {
 	return m.handleDeviceDetected(ctx, event)
+}
+
+// handleDeviceHeartbeat updates last_seen for devices still present in ARP table
+func (m *DeviceManager) handleDeviceHeartbeat(ctx context.Context, event *watcher.NetworkEvent) error {
+	device, err := m.db.GetDeviceByMAC(ctx, event.MACAddress)
+	if err != nil {
+		// Device doesn't exist, ignore heartbeat (will be created on next detection)
+		return nil
+	}
+
+	// Update last_seen timestamp
+	device.LastSeen = time.Now()
+	device.IsOnline = true
+
+	if err := m.db.UpdateDevice(ctx, device); err != nil {
+		return fmt.Errorf("failed to update device heartbeat: %w", err)
+	}
+
+	return nil
 }
 
 // handleInterfaceChanged processes interface switch events

@@ -20,6 +20,7 @@ const (
 	EventTypeIPChanged        = "IP_CHANGED"        // Existing device changed IP
 	EventTypeDeviceOnline     = "DEVICE_ONLINE"     // Offline device became active
 	EventTypeDeviceOffline    = "DEVICE_OFFLINE"    // Device inactive for timeout
+	EventTypeDeviceHeartbeat  = "DEVICE_HEARTBEAT"  // Device still present (update last_seen)
 	EventTypeHostnameUpdated  = "HOSTNAME_UPDATED"  // DHCP Event Log provided hostname
 	EventTypeInterfaceChanged = "INTERFACE_CHANGED" // Device moved between NICs
 	EventTypeLeaseRenewed     = "LEASE_RENEWED"     // DHCP lease renewal
@@ -161,6 +162,20 @@ func NewDeviceOnlineEvent(deviceID uuid.UUID, mac, ip, interfaceName string, ifI
 	}
 }
 
+// NewDeviceHeartbeatEvent creates a DEVICE_HEARTBEAT event for last_seen update
+func NewDeviceHeartbeatEvent(mac, ip, interfaceName string, ifIndex uint32) *NetworkEvent {
+	return &NetworkEvent{
+		EventType:       EventTypeDeviceHeartbeat,
+		Timestamp:       time.Now(),
+		MACAddress:      normalizeMACAddress(mac),
+		IPAddress:       net.ParseIP(ip),
+		InterfaceName:   interfaceName,
+		InterfaceIndex:  ifIndex,
+		DetectionSource: DetectionSourceARPTable,
+		Metadata:        make(map[string]string),
+	}
+}
+
 // NewInterfaceChangedEvent creates an INTERFACE_CHANGED event
 func NewInterfaceChangedEvent(deviceID uuid.UUID, mac, ip, newIface string, newIfIndex uint32, oldIface string) *NetworkEvent {
 	event := &NetworkEvent{
@@ -228,7 +243,8 @@ func (e *NetworkEvent) requiresIP() bool {
 func (e *NetworkEvent) IsDeviceEvent() bool {
 	switch e.EventType {
 	case EventTypeDeviceDetected, EventTypeIPChanged, EventTypeDeviceOnline,
-		EventTypeDeviceOffline, EventTypeHostnameUpdated, EventTypeInterfaceChanged:
+		EventTypeDeviceOffline, EventTypeHostnameUpdated, EventTypeInterfaceChanged,
+		EventTypeDeviceHeartbeat:
 		return true
 	default:
 		return false

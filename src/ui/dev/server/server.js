@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
+import https from 'https';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
@@ -365,6 +366,62 @@ async function runPipeline() {
 }
 
 // ============================================================================
+// Step-CA Proxy Endpoints (bypass TLS issues for self-signed certs)
+// ============================================================================
+
+// Helper function to make https request ignoring self-signed certs
+function httpsGet(url, timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      rejectUnauthorized: false, // Ignore self-signed cert
+      timeout: timeout
+    };
+
+    const req = https.get(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve({ status: res.statusCode, data }));
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
+  });
+}
+
+// Step-CA health check proxy
+app.get('/api/stepca/health', async (req, res) => {
+  try {
+    const result = await httpsGet('https://localhost:9000/health');
+    if (result.status === 200) {
+      res.json(JSON.parse(result.data));
+    } else {
+      res.status(result.status).json({ status: 'error', message: 'Step-CA not responding' });
+    }
+  } catch (error) {
+    console.error('Step-CA health check failed:', error.message);
+    res.status(503).json({ status: 'offline', message: error.message });
+  }
+});
+
+// Step-CA root CA certificate proxy
+app.get('/api/stepca/roots.pem', async (req, res) => {
+  try {
+    const result = await httpsGet('https://localhost:9000/roots.pem');
+    if (result.status === 200) {
+      res.type('text/plain').send(result.data);
+    } else {
+      res.status(result.status).send('Unable to fetch root CA');
+    }
+  } catch (error) {
+    console.error('Step-CA roots.pem fetch failed:', error.message);
+    res.status(503).send('Step-CA not available');
+  }
+});
+
+// ============================================================================
 // Start Server
 // ============================================================================
 
@@ -382,5 +439,7 @@ app.listen(PORT, () => {
   console.log(`    GET  /api/lookup/hash/{hash}`);
   console.log(`    POST /api/update`);
   console.log(`    GET  /api/pipeline/status`);
+  console.log(`    GET  /api/stepca/health`);
+  console.log(`    GET  /api/stepca/roots.pem`);
   console.log('==========================================');
 });

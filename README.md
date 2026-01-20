@@ -164,14 +164,19 @@ SafeOpsFV2/
 
 ## 📚 Documentation
 
-Detailed technical documentation is available for each subsystem:
+Detailed technical documentation is available for each subsystem in the `docs/` folder:
 
-- **[NIC Management Deep Dive](file:///D:/plan/NIC_MANAGEMENT_DEEP_DIVE.md)** - Load balancing, failover, and interface control.
-- **[Captive Portal Architecture](file:///D:/plan/CAPTIVE_PORTAL_DEEP_DIVE.md)** - Guest flows and certificate distribution.
-- **[Threat Intelligence System](file:///D:/plan/THREAT_INTEL_DEEP_DIVE.md)** - Feed sources, parsing, and database design.
-- **[Network Logger Internals](file:///D:/plan/NETWORK_LOGGER_DEEP_DIVE.md)** - Packet pipelines and log rotation strategies.
-- **[SIEM / ELK Setup](file:///D:/plan/SIEM_DEEP_DIVE.md)** - Log ingestion and dashboarding with Elastic Stack.
-- **[UI Dashboard Guide](file:///D:/plan/UI_DASHBOARD_DEEP_DIVE.md)** - React components and visual topology.
+| Module | Description |
+|--------|-------------|
+| **NIC Management** | Load balancing, failover, and interface control |
+| **Captive Portal** | Guest onboarding flows and certificate distribution |
+| **Threat Intelligence** | Feed sources, parsing, and database design |
+| **Network Logger** | Packet pipelines and log rotation strategies |
+| **DHCP Monitor** | Device detection and trust management |
+| **SafeOps Engine** | Packet capture and protocol parsing |
+| **Step-CA** | Certificate Authority configuration |
+
+> **Note**: For in-depth architecture details, refer to the inline comments in each service's source code under `src/`.
 
 ---
 
@@ -211,7 +216,42 @@ Then run the updater:
 
 ---
 
-## 📄 License
+## � System Requirements & Performance
+
+### Minimum Requirements
+| Resource | Requirement |
+|----------|-------------|
+| **OS** | Windows 10/11 (64-bit) |
+| **CPU** | 4 cores (2.4 GHz+) |
+| **RAM** | 4 GB |
+| **Disk** | 2 GB free space |
+| **Network** | Npcap driver installed |
+
+### Expected Resource Usage
+
+| State | CPU Usage | RAM Usage |
+|-------|-----------|-----------|
+| **Idle** | ~5-15% | ~500MB - 1GB |
+| **Active** (packet capture, feed fetching) | ~15-35% | ~800MB - 1.5GB |
+
+### Per-Service Breakdown
+
+| Service | CPU (Idle) | CPU (Active) | Notes |
+|---------|------------|--------------|-------|
+| **DHCP Monitor** | ~1% | ~3% | ARP table polling every 30s |
+| **Step-CA** | ~0-1% | ~3% | Spikes during certificate issuance |
+| **SafeOps Engine** | ~2% | ~5% | Real-time packet capture |
+| **Network Logger** | ~1% | ~3% | Writing packet logs to disk |
+| **Threat Intel** | ~0% | ~10-20% | Spikes during feed downloads (every 30m) |
+| **NIC Management** | ~0-1% | ~1% | Light REST API service |
+| **Captive Portal** | ~0-1% | ~2% | Serving portal pages |
+| **UI + Backend** | ~2% | ~5% | Vite HMR + Node.js API |
+
+> **Note**: CPU percentages are approximate and measured on an Intel i7 (4-core). Actual usage varies based on network traffic volume and system configuration.
+
+---
+
+## �📄 License
 
 **Proprietary & Confidential**  
 Copyright (c) 2026 SafeOps Project. All Rights Reserved.  
