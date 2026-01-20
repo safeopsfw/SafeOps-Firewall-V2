@@ -27,6 +27,12 @@ const pool = new Pool({
   password: 'admin',
 });
 
+// Handle unexpected errors on idle clients
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client (threat_intel_db):', err);
+  // process.exit(-1); // Don't exit, just log it
+});
+
 // Project root
 const PROJECT_ROOT = path.resolve(__dirname, '../../../../');
 const THREAT_INTEL_PATH = path.join(PROJECT_ROOT, 'src', 'threat_intel');
@@ -65,6 +71,11 @@ const safeopsPool = new Pool({
   database: 'safeops',
   user: 'postgres',
   password: 'postgres',
+});
+
+// Handle unexpected errors on idle clients
+safeopsPool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client (safeops):', err);
 });
 
 // Get all devices

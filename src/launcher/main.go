@@ -246,23 +246,30 @@ func startUIAndBackend(projectRoot string) {
 		return
 	}
 
-	// Start npm run dev (UI Frontend) in a new window
-	cmd := exec.Command("cmd", "/c", "start", "SafeOps-UI", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run dev", uiDir))
+	// Start npm run dev (UI Frontend) in a new cmd window
+	cmd := exec.Command("cmd", "/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run dev", uiDir))
 	err := cmd.Start()
 	if err != nil {
 		fmt.Printf("  [ERROR] Failed to start UI: %v\n", err)
 	} else {
 		fmt.Println("  [OK] UI Frontend starting on http://localhost:3001")
 	}
-	time.Sleep(2 * time.Second)
 
-	// Start npm run server (Backend API) in a new window
-	cmdServer := exec.Command("cmd", "/c", "start", "SafeOps-Backend", "cmd", "/k", fmt.Sprintf("cd /d %s && npm run server", uiDir))
-	errServer := cmdServer.Start()
-	if errServer != nil {
-		fmt.Printf("  [ERROR] Failed to start Backend API: %v\n", errServer)
+	fmt.Println("  [WAIT] Waiting 5 seconds for UI to initialize...")
+	time.Sleep(5 * time.Second)
+
+	// Start npm run server (Backend API) in a new cmd window
+	backendDir := filepath.Join(projectRoot, "backend")
+	if _, err := os.Stat(backendDir); os.IsNotExist(err) {
+		fmt.Printf("  [SKIP] Backend directory not found: %s\n", backendDir)
 	} else {
-		fmt.Println("  [OK] Backend API starting on http://localhost:5050 (with Step-CA proxy)")
+		cmdServer := exec.Command("cmd", "/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && npm start", backendDir))
+		errServer := cmdServer.Start()
+		if errServer != nil {
+			fmt.Printf("  [ERROR] Failed to start Backend API: %v\n", errServer)
+		} else {
+			fmt.Println("  [OK] Backend API starting on http://localhost:5050 (from backend/)")
+		}
 	}
 	time.Sleep(1 * time.Second)
 }
