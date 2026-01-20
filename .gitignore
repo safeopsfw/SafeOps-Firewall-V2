@@ -246,7 +246,6 @@ bin/step-ca/
 # ELK Stack & SIEM (Large Files)
 # =====================================
 bin/elk/
-bin/SIEM/
 bin/dnsproxy/
 bin/logs/
 
