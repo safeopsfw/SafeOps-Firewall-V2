@@ -62,6 +62,7 @@ yarn.lock
 # =====================================
 .vs/
 .vscode/
+.claude/
 *.suo
 *.user
 *.userosscache
