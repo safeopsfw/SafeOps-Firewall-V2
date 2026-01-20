@@ -1,0 +1,235 @@
+# SafeOps Requirements Setup Configuration
+# This installer sets up ALL dependencies needed for SafeOps Firewall V2
+
+installation:
+  # Base installation directory for SafeOps components
+  base_dir: "C:\\Program Files\\SafeOps"
+
+  # Temporary download directory
+  temp_dir: "C:\\Temp\\SafeOps-Setup"
+
+  # Skip components that are already installed
+  skip_existing: true
+
+  # Interactive mode (prompt for confirmations)
+  interactive: true
+
+# PostgreSQL Configuration
+postgresql:
+  # PostgreSQL version to install
+  version: "16.1"
+
+  # Download URL (Windows x64 installer)
+  download_url: "https://get.enterprisedb.com/postgresql/postgresql-16.1-1-windows-x64.exe"
+
+  # Installation directory (customizable)
+  install_dir: "C:\\Program Files\\PostgreSQL\\16"
+
+  # Data directory (customizable)
+  data_dir: "C:\\Program Files\\PostgreSQL\\16\\data"
+
+  # PostgreSQL port
+  port: 5432
+
+  # Superuser (postgres) password - CHANGE THIS!
+  postgres_password: "postgres"
+
+  # Locale
+  locale: "English, United States"
+
+  # Service name
+  service_name: "postgresql-x64-16"
+
+  # Databases to create
+  databases:
+    - name: "threat_intel_db"
+      owner: "postgres"
+      encoding: "UTF8"
+      description: "Threat Intelligence and IOC storage"
+
+    - name: "safeops_network"
+      owner: "postgres"
+      encoding: "UTF8"
+      description: "Network operations (DHCP, DNS, NIC Management)"
+
+    - name: "safeops"
+      owner: "postgres"
+      encoding: "UTF8"
+      description: "General application data and captive portal"
+
+  # Database users to create
+  users:
+    - username: "safeops"
+      password: "admin"
+      description: "Main SafeOps application user"
+      databases: ["threat_intel_db", "safeops_network", "safeops"]
+
+    - username: "threat_intel_app"
+      password: "admin"
+      description: "Threat Intelligence service user"
+      databases: ["threat_intel_db"]
+
+    - username: "dhcp_server"
+      password: "admin"
+      description: "DHCP Monitor service user"
+      databases: ["safeops_network"]
+
+    - username: "dns_server"
+      password: "admin"
+      description: "DNS service user"
+      databases: ["safeops_network"]
+
+# WinPkFilter Driver Configuration
+winpkfilter:
+  # WinPkFilter version
+  version: "3.4.8"
+
+  # Download URL (adjust to actual URL)
+  download_url: "https://www.ntkernel.com/downloads/WinpkFilter_3.4.8.exe"
+
+  # Installation directory (customizable)
+  install_dir: "C:\\Program Files\\SafeOps\\WinPkFilter"
+
+  # Driver file name
+  driver_file: "ndisapi.sys"
+
+  # Required for SafeOps Engine
+  required: true
+
+# Node.js Configuration
+nodejs:
+  # Node.js version (LTS)
+  version: "20.11.0"
+
+  # Download URL
+  download_url: "https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi"
+
+  # Installation directory (customizable)
+  install_dir: "C:\\Program Files\\nodejs"
+
+  # Add to PATH automatically
+  add_to_path: true
+
+  # Required for UI and Backend
+  required: true
+
+# Database Schemas Configuration
+database_schemas:
+  # Threat Intel DB schemas (applied in order)
+  threat_intel_schemas:
+    - file: "001_initial_setup.sql"
+      description: "Foundation setup and extensions"
+    - file: "002_ip_reputation.sql"
+      description: "IP blacklist and threat scoring"
+    - file: "003_domain_reputation.sql"
+      description: "Domain threat intelligence"
+    - file: "004_hash_reputation.sql"
+      description: "File hash reputation (malware)"
+    - file: "007_geolocation.sql"
+      description: "GeoIP data (countries, ASN)"
+    - file: "008_threat_feeds.sql"
+      description: "Threat feed configuration"
+    - file: "010_whitelist_filters.sql"
+      description: "Whitelist/blacklist filters"
+    - file: "016_firewall_engine.sql"
+      description: "Firewall rules storage"
+    - file: "017_ids_ips.sql"
+      description: "Intrusion detection/prevention"
+    - file: "021_threat_intel.sql"
+      description: "Core threat intel schema"
+    - file: "users.sql"
+      description: "User management"
+
+  # SafeOps Network DB schemas
+  safeops_network_schemas:
+    - file: "013_dhcp_server.sql"
+      description: "DHCP pools, leases, reservations"
+    - file: "020_nic_management.sql"
+      description: "Network interface state"
+    - file: "022_step_ca.sql"
+      description: "Secret storage (Phase 3A)"
+
+  # DHCP Monitor migrations (safeops_network)
+  dhcp_migrations:
+    - file: "002_add_portal_tracking.sql"
+      description: "Portal shown tracking"
+    - file: "003_add_ca_cert_tracking.sql"
+      description: "CA certificate installation tracking"
+    - file: "004_add_device_fingerprint.sql"
+      description: "Device fingerprinting"
+    - file: "005_fix_missing_columns.sql"
+      description: "Schema corrections"
+
+# Installation Options
+options:
+  # Create desktop shortcuts
+  create_shortcuts: false
+
+  # Configure Windows Firewall rules
+  configure_firewall: true
+
+  # Firewall ports to open
+  firewall_ports:
+    - port: 5432
+      protocol: "TCP"
+      name: "PostgreSQL Database"
+      direction: "in"
+
+    - port: 3001
+      protocol: "TCP"
+      name: "SafeOps UI Frontend"
+      direction: "in"
+
+    - port: 5050
+      protocol: "TCP"
+      name: "SafeOps Backend API"
+      direction: "in"
+
+# Post-Installation Verification
+verification:
+  # Services to check
+  services:
+    - name: "postgresql-x64-16"
+      expected_status: "running"
+
+  # Ports to verify are listening
+  ports:
+    - port: 5432
+      host: "localhost"
+      description: "PostgreSQL"
+
+  # Database connectivity checks
+  databases:
+    - name: "threat_intel_db"
+      host: "localhost"
+      port: 5432
+      user: "postgres"
+
+    - name: "safeops_network"
+      host: "localhost"
+      port: 5432
+      user: "postgres"
+
+    - name: "safeops"
+      host: "localhost"
+      port: 5432
+      user: "postgres"
+
+# Security Notes
+security:
+  default_passwords:
+    postgres: "postgres"
+    safeops: "admin"
+    threat_intel_app: "admin"
+    dhcp_server: "admin"
+    dns_server: "admin"
+
+  warning: |
+    ⚠️  IMPORTANT SECURITY WARNING ⚠️
+
+    Default passwords are set for initial setup:
+    - PostgreSQL superuser (postgres): postgres
+    - SafeOps users: admin
+
+    These are NOT secure for production use!
+    Please change all default passwords after installation.
