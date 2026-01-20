@@ -1,0 +1,88 @@
+# SafeOps SIEM Integration Configuration
+# This config file controls the installation and setup of the ELK Stack
+
+installation:
+  # Installation directory on D: drive (1TB storage)
+  install_dir: "D:\\SafeOps-SIEM-Integration"
+
+  # Temporary download directory
+  temp_dir: "D:\\SafeOps-SIEM-Integration\\temp"
+
+  # Data storage directory
+  data_dir: "D:\\SafeOps-SIEM-Integration\\data"
+
+  # Logs directory
+  logs_dir: "D:\\SafeOps-SIEM-Integration\\logs"
+
+# ELK Stack Configuration
+elk_stack:
+  # Elasticsearch configuration
+  elasticsearch:
+    version: "8.11.3"
+    download_url: "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.11.3-windows-x86_64.zip"
+    port: 9200
+    heap_size: "2g"  # Adjust based on available RAM
+
+  # Kibana configuration
+  kibana:
+    version: "8.11.3"
+    download_url: "https://artifacts.elastic.co/downloads/kibana/kibana-8.11.3-windows-x86_64.zip"
+    port: 5601
+
+  # Logstash configuration
+  logstash:
+    version: "8.11.3"
+    download_url: "https://artifacts.elastic.co/downloads/logstash/logstash-8.11.3-windows-x86_64.zip"
+    port: 5044
+
+# Credentials (default - CHANGE AFTER INSTALLATION)
+credentials:
+  elasticsearch_username: "elastic"
+  elasticsearch_password: "SafeOps2026!"  # Default password - will be shown during installation
+  kibana_encryption_key: "SafeOpsKibana2026SecretKey123456"  # 32+ characters required
+
+# SafeOps Integration
+safeops_integration:
+  # Path to SafeOps network logs
+  log_sources:
+    - "D:\\SafeOpsFV2\\bin\\logs\\netflow"
+    - "D:\\SafeOpsFV2\\bin\\logs\\engine.log"
+    - "D:\\SafeOpsFV2\\bin\\logs\\ids.log"
+
+  # Index patterns for Kibana
+  index_patterns:
+    - "safeops-network-*"
+    - "safeops-ids-*"
+    - "safeops-engine-*"
+
+# Windows Service Configuration
+windows_service:
+  # Run ELK components as Windows services
+  create_services: true
+
+  # Start services on Windows startup
+  auto_start: true
+
+  # Service names
+  elasticsearch_service: "SafeOps-Elasticsearch"
+  kibana_service: "SafeOps-Kibana"
+  logstash_service: "SafeOps-Logstash"
+
+# Alternative SIEM Options (if you prefer different solutions)
+# These are commented out - uncomment to use instead of ELK
+alternatives:
+  # Wazuh (Open-source SIEM with better security focus)
+  # wazuh:
+  #   enabled: false
+  #   version: "4.7.0"
+  #   includes: ["manager", "indexer", "dashboard"]
+
+  # Graylog (Simpler alternative to ELK)
+  # graylog:
+  #   enabled: false
+  #   version: "5.2"
+
+  # Security Onion (Complete security monitoring platform)
+  # security_onion:
+  #   enabled: false
+  #   note: "Requires Linux VM - not directly installable on Windows"
