@@ -74,9 +74,13 @@ graph TD
 ## 🚀 Quick Start
 
 ### Prerequisites
+
+> 📋 **See [REQUIREMENTS.md](REQUIREMENTS.md) for complete installation guide**
+
 - **OS**: Windows 10/11 (64-bit) (Run as Administrator)
-- **Database**: PostgreSQL Service running on port `5432`
-- **Dependencies**: Npcap driver installed
+- **Database**: PostgreSQL 15+ running on port `5432`
+- **Driver**: WinpkFilter driver installed
+- **Runtime**: Node.js 18+ for UI/Backend
 
 ### One-Click Launch
 The unified launcher handles all service dependencies and startup sequences.
@@ -164,7 +168,14 @@ SafeOpsFV2/
 
 ## 📚 Documentation
 
-Detailed technical documentation is available for each subsystem in the `docs/` folder:
+Detailed technical documentation is available for each subsystem:
+
+| Document | Description |
+|----------|-------------|
+| **[REQUIREMENTS.md](REQUIREMENTS.md)** | 📋 **Pre-installation requirements & setup guide** |
+| **README.md** | Project overview, architecture, and quick start |
+
+### Module Documentation (in `docs/` folder)
 
 | Module | Description |
 |--------|-------------|

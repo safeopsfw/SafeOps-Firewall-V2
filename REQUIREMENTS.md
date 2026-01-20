@@ -64,7 +64,8 @@ Required for SafeOps Engine packet capture functionality.
 **Installation:**
 1. Download WinpkFilter SDK
 2. Run installer as Administrator
-3. Reboot system after installation
+3. **Default Install Path:** `C:\Program Files\WinpkFilter\`
+4. Reboot system after installation
 
 > ⚠️ The SafeOps Engine will not capture packets without this driver installed.
 
@@ -74,6 +75,32 @@ Required for SafeOps Engine packet capture functionality.
 Required for running compiled Go and C++ executables.
 
 **Download:** https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+**Version:** Visual C++ Redistributable 2015-2022 (Latest)
+
+> Any version from 2015 onwards works. The link above always provides the latest cumulative update.
+
+---
+
+## 🔐 Pre-Configured Components (Included in Repository)
+
+The following components are **already configured** in the SafeOps repository and require no additional setup:
+
+### Step-CA (Certificate Authority)
+- **Location:** `bin/step-ca/`
+- **Config:** `bin/step-ca/config/ca.json`
+- **Password:** `bin/step-ca/secrets/password.txt`
+- **Certificates:** `bin/step-ca/certs/`
+
+> Step-CA is fully configured and starts automatically with the launcher. No manual setup required.
+
+### DNSProxy
+- **Location:** `bin/dnsproxy/`
+- **Config:** Pre-configured for local DNS filtering
+
+### Threat Intel Pipeline
+- **Location:** `bin/threat_intel/`
+- **Sources Config:** `bin/threat_intel/config/sources.yaml` (editable to add/remove feeds)
 
 ---
 
