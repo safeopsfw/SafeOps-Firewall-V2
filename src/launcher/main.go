@@ -171,6 +171,9 @@ func main() {
 }
 
 // detectPaths finds project root and bin directory based on launcher location
+// Supports running from:
+//   - Project root (D:\SafeOpsFV2\safeops_launcher.exe)
+//   - Bin folder (D:\SafeOpsFV2\bin\safeops_launcher.exe)
 func detectPaths() (projectRoot, binDir string) {
 	exePath, err := os.Executable()
 	if err != nil {
@@ -179,34 +182,41 @@ func detectPaths() (projectRoot, binDir string) {
 	}
 
 	exeDir := filepath.Dir(exePath)
-	exeName := filepath.Base(exeDir)
+	exeDirName := filepath.Base(exeDir)
 
-	// Check if running from bin/ folder
-	if exeName == "bin" {
+	// Method 1: Check if we're in the bin/ folder
+	if exeDirName == "bin" {
 		// Launcher is in bin/, project root is parent
 		projectRoot = filepath.Dir(exeDir)
 		binDir = exeDir
-		fmt.Println("[INFO] Launcher detected in bin/ folder")
+		fmt.Println("[INFO] Running from: bin/ folder")
 	} else if _, err := os.Stat(filepath.Join(exeDir, "bin")); err == nil {
-		// Launcher is in project root, bin/ exists
+		// Method 2: Launcher is in project root (bin/ exists as subdirectory)
 		projectRoot = exeDir
 		binDir = filepath.Join(exeDir, "bin")
-		fmt.Println("[INFO] Launcher detected in project root")
-	} else if _, err := os.Stat(filepath.Join(exeDir, "..", "bin")); err == nil {
-		// Launcher might be in some subfolder, check parent for bin/
-		projectRoot = filepath.Join(exeDir, "..")
-		binDir = filepath.Join(projectRoot, "bin")
-		fmt.Println("[INFO] Launcher detected in subfolder, using parent as root")
+		fmt.Println("[INFO] Running from: project root")
+	} else if _, err := os.Stat(filepath.Join(exeDir, "src")); err == nil {
+		// Method 3: We're in project root (src/ exists - alternative check)
+		projectRoot = exeDir
+		binDir = filepath.Join(exeDir, "bin")
+		fmt.Println("[INFO] Running from: project root (detected via src/)")
 	} else {
-		// Default: assume exeDir is project root
+		// Method 4: Default - assume exeDir is project root
 		projectRoot = exeDir
 		binDir = filepath.Join(exeDir, "bin")
 		fmt.Println("[WARN] Could not detect folder structure, assuming project root")
 	}
 
-	// Resolve absolute paths
+	// Resolve to absolute paths
 	projectRoot, _ = filepath.Abs(projectRoot)
 	binDir, _ = filepath.Abs(binDir)
+
+	// Validate that bin directory exists
+	if _, err := os.Stat(binDir); os.IsNotExist(err) {
+		fmt.Printf("[ERROR] Bin directory not found: %s\n", binDir)
+		fmt.Println("[INFO] Make sure you run the launcher from the project root or bin folder")
+		os.Exit(1)
+	}
 
 	return projectRoot, binDir
 }
