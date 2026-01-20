@@ -29,6 +29,7 @@ func main() {
 
 	// Initialize logger
 	log := logger.New(logCfg)
+	log.StartRotation() // Start 5-minute log rotation
 	log.Info("SafeOps Engine starting", map[string]interface{}{
 		"version": "3.0.0",
 		"mode":    "pure-passthrough",

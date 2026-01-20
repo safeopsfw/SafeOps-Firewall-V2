@@ -287,4 +287,41 @@ router.get('/feed-history', async (req, res) => {
     }
 });
 
+// Track pipeline status
+let pipelineStatus = {
+    running: false,
+    lastRun: null,
+    lastResult: null,
+    logs: []
+};
+
+// GET /api/threat-intel/pipeline/status - Get pipeline execution status
+router.get('/pipeline/status', (req, res) => {
+    res.json(pipelineStatus);
+});
+
+// POST /api/threat-intel/update - Trigger threat intel update (placeholder)
+router.post('/update', async (req, res) => {
+    if (pipelineStatus.running) {
+        return res.status(409).json({
+            error: 'Pipeline is already running',
+            status: pipelineStatus
+        });
+    }
+
+    // For now, just return a message since the actual pipeline runs separately
+    pipelineStatus = {
+        running: false,
+        lastRun: new Date().toISOString(),
+        lastResult: { success: true, message: 'Threat intelligence pipeline runs via threat_intel.exe -scheduler' },
+        logs: ['Pipeline is managed by threat_intel.exe service. Check service logs for details.']
+    };
+
+    res.json({
+        message: 'Threat intelligence updates are handled by the threat_intel.exe service',
+        status: pipelineStatus,
+        note: 'To manually trigger updates, run: threat_intel.exe -fetch -process'
+    });
+});
+
 module.exports = router;

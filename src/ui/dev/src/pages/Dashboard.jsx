@@ -113,16 +113,16 @@ export default function Dashboard() {
     try {
       const dashboardStats = await dataService.getDashboardStats();
       setStats({
-        totalThreatsBlocked: dashboardStats.totalThreatsBlocked || 1234567,
-        activeFeeds: dashboardStats.activeFeeds || 24,
-        systemHealth: dashboardStats.systemHealth || 99.9,
-        openAlerts: dashboardStats.openAlerts || 7,
-        activeIOCs: 260759,
-        dnsQueries: "1.2M",
-        firewallRules: 847,
-        idsAlerts: 156,
-        connections: 2341,
-        entities: 89,
+        totalThreatsBlocked: dashboardStats.totalThreatsBlocked || 0,
+        activeFeeds: dashboardStats.activeFeeds || 0,
+        systemHealth: dashboardStats.systemHealth || 100,
+        openAlerts: dashboardStats.openAlerts || 0,
+        activeIOCs: dashboardStats.activeIOCs || 0,
+        dnsQueries: dashboardStats.dnsQueries || 0,
+        firewallRules: dashboardStats.firewallRules || 0,
+        idsAlerts: dashboardStats.idsAlerts || 0,
+        connections: dashboardStats.connections || 0,
+        entities: dashboardStats.entities || 0,
       });
     } catch (error) {
       console.error("Failed to load dashboard data:", error);
@@ -135,26 +135,26 @@ export default function Dashboard() {
     {
       label: "Total Threats Blocked",
       value: stats.totalThreatsBlocked.toLocaleString(),
-      change: "+12.5%",
+      change: null,
       positive: true,
     },
     {
       label: "Active Feeds",
       value: stats.activeFeeds.toString(),
-      change: "+2",
+      change: null,
       positive: true,
     },
     {
       label: "System Health",
       value: `${stats.systemHealth}%`,
-      change: "0%",
+      change: null,
       positive: true,
     },
     {
       label: "Open Alerts",
       value: stats.openAlerts.toString(),
-      change: "-3",
-      positive: true,
+      change: null,
+      positive: stats.openAlerts === 0,
     },
   ];
 
@@ -162,9 +162,8 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       {/* Data Source Indicator */}
       <div
-        className={`mb-4 flex items-center gap-2 text-sm ${
-          dbMode ? "text-green-400" : "text-blue-400"
-        }`}
+        className={`mb-4 flex items-center gap-2 text-sm ${dbMode ? "text-green-400" : "text-blue-400"
+          }`}
       >
         {dbMode ? (
           <>
@@ -199,15 +198,16 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-dark-400 text-sm">{stat.label}</span>
-              <span
-                className={`text-xs px-2 py-1 rounded-full ${
-                  stat.positive
+              {stat.change && (
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${stat.positive
                     ? "bg-green-500/20 text-green-400"
                     : "bg-red-500/20 text-red-400"
-                }`}
-              >
-                {stat.change}
-              </span>
+                    }`}
+                >
+                  {stat.change}
+                </span>
+              )}
             </div>
             <div className="text-2xl font-bold text-white">{stat.value}</div>
           </div>
@@ -228,11 +228,10 @@ export default function Dashboard() {
             <Link
               key={module.id}
               to={isActive ? module.path : "#"}
-              className={`group relative bg-dark-800 border border-dark-700 rounded-xl p-6 transition-all duration-300 ${
-                isActive
-                  ? "hover:bg-dark-700 hover:border-dark-600 cursor-pointer"
-                  : "opacity-60 cursor-not-allowed"
-              }`}
+              className={`group relative bg-dark-800 border border-dark-700 rounded-xl p-6 transition-all duration-300 ${isActive
+                ? "hover:bg-dark-700 hover:border-dark-600 cursor-pointer"
+                : "opacity-60 cursor-not-allowed"
+                }`}
             >
               {/* Status Badge */}
               {!isActive && (
@@ -289,9 +288,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="flex items-center gap-2">
             <div
-              className={`w-2 h-2 rounded-full ${
-                dbMode ? "bg-green-400" : "bg-yellow-400"
-              }`}
+              className={`w-2 h-2 rounded-full ${dbMode ? "bg-green-400" : "bg-yellow-400"
+                }`}
             />
             <span className="text-dark-300 text-sm">
               Database {dbMode ? "" : "(Demo)"}

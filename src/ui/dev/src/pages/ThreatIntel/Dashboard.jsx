@@ -182,15 +182,15 @@ export default function ThreatIntelDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* API Health Status */}
+          {/* Database Health Status */}
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${apiHealth?.status === 'ok'
-              ? 'bg-green-500/10 text-green-400'
-              : 'bg-red-500/10 text-red-400'
+            ? 'bg-green-500/10 text-green-400'
+            : 'bg-red-500/10 text-red-400'
             }`}>
             <span className={`w-2 h-2 rounded-full ${apiHealth?.status === 'ok' ? 'bg-green-400' : 'bg-red-400'
               }`} />
             <span className="text-sm font-medium">
-              API: {apiHealth?.status === 'ok' ? 'Connected' : 'Offline'}
+              Database: {apiHealth?.status === 'ok' ? 'Online' : 'Offline'}
             </span>
           </div>
 
@@ -199,8 +199,8 @@ export default function ThreatIntelDashboard() {
             onClick={triggerUpdate}
             disabled={pipelineStatus.running}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${pipelineStatus.running
-                ? 'bg-yellow-500/20 text-yellow-400 cursor-wait'
-                : 'bg-green-500 hover:bg-green-600 text-white'
+              ? 'bg-yellow-500/20 text-yellow-400 cursor-wait'
+              : 'bg-green-500 hover:bg-green-600 text-white'
               }`}
           >
             {pipelineStatus.running ? (
@@ -238,8 +238,8 @@ export default function ThreatIntelDashboard() {
               key={key}
               onClick={() => setActiveTab(key)}
               className={`p-4 rounded-xl border transition-all duration-200 text-left ${isActive
-                  ? 'bg-gradient-to-br ' + cat.color + ' border-transparent text-white shadow-lg scale-[1.02]'
-                  : 'bg-dark-800 border-dark-700 hover:border-dark-500 text-dark-200 hover:text-white'
+                ? 'bg-gradient-to-br ' + cat.color + ' border-transparent text-white shadow-lg scale-[1.02]'
+                : 'bg-dark-800 border-dark-700 hover:border-dark-500 text-dark-200 hover:text-white'
                 }`}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -350,10 +350,10 @@ export default function ThreatIntelDashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${source.status === 'active'
-                              ? 'bg-green-500/10 text-green-400'
-                              : source.status === 'failed'
-                                ? 'bg-red-500/10 text-red-400'
-                                : 'bg-yellow-500/10 text-yellow-400'
+                            ? 'bg-green-500/10 text-green-400'
+                            : source.status === 'failed'
+                              ? 'bg-red-500/10 text-red-400'
+                              : 'bg-yellow-500/10 text-yellow-400'
                             }`}>
                             {source.status === 'active' && <Check className="w-3 h-3" />}
                             {source.status === 'failed' && <X className="w-3 h-3" />}
@@ -421,15 +421,15 @@ export default function ThreatIntelDashboard() {
                   <div
                     key={apiKey.id}
                     className={`p-4 rounded-lg border ${apiKey.isActive
-                        ? 'bg-dark-700/50 border-dark-600'
-                        : 'bg-dark-800 border-dark-700 opacity-50'
+                      ? 'bg-dark-700/50 border-dark-600'
+                      : 'bg-dark-800 border-dark-700 opacity-50'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-white">{apiKey.name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded ${apiKey.isActive
-                          ? 'bg-green-500/10 text-green-400'
-                          : 'bg-red-500/10 text-red-400'
+                        ? 'bg-green-500/10 text-green-400'
+                        : 'bg-red-500/10 text-red-400'
                         }`}>
                         {apiKey.isActive ? 'Active' : 'Revoked'}
                       </span>
@@ -808,11 +808,11 @@ export default function ThreatIntelDashboard() {
                 <div
                   key={i}
                   className={`py-1 ${log.includes('[ERROR]') ? 'text-red-400' :
-                      log.includes('[COMPLETE]') ? 'text-green-400' :
-                        log.includes('[FETCH]') ? 'text-blue-400' :
-                          log.includes('[PROCESS]') ? 'text-purple-400' :
-                            log.includes('[CLEANUP]') ? 'text-yellow-400' :
-                              'text-dark-300'
+                    log.includes('[COMPLETE]') ? 'text-green-400' :
+                      log.includes('[FETCH]') ? 'text-blue-400' :
+                        log.includes('[PROCESS]') ? 'text-purple-400' :
+                          log.includes('[CLEANUP]') ? 'text-yellow-400' :
+                            'text-dark-300'
                     }`}
                 >
                   {log}
@@ -826,8 +826,8 @@ export default function ThreatIntelDashboard() {
             {/* Result Summary */}
             {pipelineStatus.lastResult && !pipelineStatus.running && (
               <div className={`mt-4 p-3 rounded-lg ${pipelineStatus.lastResult.success
-                  ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-                  : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                : 'bg-red-500/10 border border-red-500/20 text-red-400'
                 }`}>
                 {pipelineStatus.lastResult.success ? (
                   <p>✓ Database updated successfully in {pipelineStatus.lastResult.duration}</p>

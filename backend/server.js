@@ -38,14 +38,31 @@ app.get('/health', async (req, res) => {
     try {
         const dbConnected = await db.testConnection();
         res.json({
-            status: 'healthy',
+            status: 'ok',
             timestamp: new Date().toISOString(),
             database: dbConnected ? 'connected' : 'disconnected',
             uptime: process.uptime()
         });
     } catch (error) {
         res.status(503).json({
-            status: 'unhealthy',
+            status: 'error',
+            error: error.message
+        });
+    }
+});
+
+// API Health check (for frontend service calls)
+app.get('/api/health', async (req, res) => {
+    try {
+        const dbConnected = await db.testConnection();
+        res.json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            database: dbConnected ? 'connected' : 'disconnected'
+        });
+    } catch (error) {
+        res.json({
+            status: 'error',
             error: error.message
         });
     }
@@ -109,6 +126,35 @@ app.get('/api/stepca/roots.pem', async (req, res) => {
     });
 
     proxyReq.end();
+});
+
+// Database status endpoint for UI (returns row counts for threat intel tables)
+app.get('/api/status', async (req, res) => {
+    try {
+        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization'];
+        const result = {};
+
+        for (const table of tables) {
+            try {
+                const countRes = await db.query(`SELECT COUNT(*) as count FROM ${table}`);
+                const colRes = await db.query(`
+                    SELECT COUNT(*) as count FROM information_schema.columns 
+                    WHERE table_schema = 'public' AND table_name = $1
+                `, [table]);
+                result[table] = {
+                    row_count: parseInt(countRes.rows[0]?.count || 0),
+                    columns: parseInt(colRes.rows[0]?.count || 0)
+                };
+            } catch (e) {
+                result[table] = { row_count: 0, columns: 0 };
+            }
+        }
+
+        res.json(result);
+    } catch (error) {
+        console.error('Status error:', error);
+        res.status(500).json({ error: 'Failed to fetch status' });
+    }
 });
 
 // API Routes

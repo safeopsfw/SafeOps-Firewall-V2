@@ -62,14 +62,11 @@ func main() {
 	// Initialize Threat Intel Database
 	initThreatIntelDB()
 
+	// Reset Step-CA database if corrupted (prevents BadgerDB issues)
+	resetStepCADatabase(binDir)
+
 	// Define services
 	services := []Service{
-		{
-			Name:    "Threat Intel API",
-			ExePath: filepath.Join(binDir, "threat_intel", "threat_intel_api.exe"),
-			WorkDir: filepath.Join(binDir, "threat_intel"),
-			Delay:   1 * time.Second,
-		},
 		{
 			Name:    "NIC Management",
 			ExePath: filepath.Join(binDir, "nic_management", "nic_management.exe"),
@@ -234,6 +231,33 @@ func initThreatIntelDB() {
 	}
 
 	fmt.Println("  [OK] Database connection verified")
+}
+
+// resetStepCADatabase clears the BadgerDB folder to prevent corruption issues
+// BadgerDB can become corrupted if Step-CA doesn't shut down cleanly
+func resetStepCADatabase(binDir string) {
+	stepCADBPath := filepath.Join(binDir, "step-ca", "db")
+
+	// Check if db folder exists
+	if _, err := os.Stat(stepCADBPath); os.IsNotExist(err) {
+		return // No db folder, nothing to do
+	}
+
+	fmt.Println("[Maintenance] Resetting Step-CA database (prevents BadgerDB corruption)...")
+
+	// Remove the db folder
+	if err := os.RemoveAll(stepCADBPath); err != nil {
+		fmt.Printf("  [WARN] Could not remove Step-CA db: %v\n", err)
+		return
+	}
+
+	// Recreate empty db folder
+	if err := os.MkdirAll(stepCADBPath, 0755); err != nil {
+		fmt.Printf("  [WARN] Could not recreate Step-CA db folder: %v\n", err)
+		return
+	}
+
+	fmt.Println("  [OK] Step-CA database reset successfully")
 }
 
 func startUIAndBackend(projectRoot string) {

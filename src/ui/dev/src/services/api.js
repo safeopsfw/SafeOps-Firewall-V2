@@ -2,9 +2,9 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-// Check if we're in database mode
-export const getDataSource = () => localStorage.getItem('safeops_data_source') || 'dummy';
-export const isDbMode = () => getDataSource() === 'database';
+// Check if we're in database mode (default to database mode)
+export const getDataSource = () => localStorage.getItem('safeops_data_source') || 'database';
+export const isDbMode = () => getDataSource() !== 'dummy';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -35,7 +35,7 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
-    
+
     const message = error.response?.data?.message || error.message || 'An error occurred';
     return Promise.reject(new Error(message));
   }
@@ -48,33 +48,25 @@ api.interceptors.response.use(
 export const DEMO_DATA = {
   dashboard: {
     stats: {
-      totalThreatsBlocked: 1234567,
-      activeFeeds: 24,
-      systemHealth: 99.9,
-      openAlerts: 7
+      totalThreatsBlocked: 0,
+      activeFeeds: 0,
+      systemHealth: 100,
+      openAlerts: 0
     }
   },
-  
+
   threatIntel: {
     stats: {
-      totalIPs: 95847,
-      totalDomains: 45231,
-      totalHashes: 102456,
-      activeThreats: 17225
+      totalIPs: 0,
+      totalDomains: 0,
+      totalHashes: 0,
+      activeThreats: 0
     },
-    recentThreats: [
-      { id: 1, type: 'ip', value: '192.168.1.100', severity: 'critical', score: 95, source: 'AlienVault OTX', firstSeen: '2h ago' },
-      { id: 2, type: 'domain', value: 'malware-c2.evil.com', severity: 'high', score: 88, source: 'Abuse.ch', firstSeen: '4h ago' },
-      { id: 3, type: 'hash', value: 'd41d8cd98f00b204e9800998ecf8427e', severity: 'medium', score: 65, source: 'VirusTotal', firstSeen: '6h ago' },
-    ]
+    recentThreats: []
   },
-  
-  feeds: [
-    { id: 1, name: 'AlienVault OTX', status: 'active', records: 45231 },
-    { id: 2, name: 'Abuse.ch URLhaus', status: 'active', records: 12847 },
-    { id: 3, name: 'Feodo Tracker', status: 'failed', records: 5231 },
-  ],
-  
+
+  feeds: [],
+
   users: [
     { id: 1, email: 'admin@safeops.com', name: 'SafeOps Admin', role: 'superadmin', isActive: true },
     { id: 2, email: 'analyst@safeops.com', name: 'Security Analyst', role: 'analyst', isActive: true },
@@ -98,7 +90,7 @@ export const dataService = {
       return DEMO_DATA.dashboard.stats;
     }
   },
-  
+
   // Threat Intel stats
   async getThreatIntelStats() {
     if (!isDbMode()) {
@@ -111,7 +103,7 @@ export const dataService = {
       return DEMO_DATA.threatIntel.stats;
     }
   },
-  
+
   // Threat Intel recent threats
   async getRecentThreats() {
     if (!isDbMode()) {
@@ -124,7 +116,7 @@ export const dataService = {
       return DEMO_DATA.threatIntel.recentThreats;
     }
   },
-  
+
   // Feeds
   async getFeeds() {
     if (!isDbMode()) {
@@ -137,7 +129,7 @@ export const dataService = {
       return DEMO_DATA.feeds;
     }
   },
-  
+
   // Users
   async getUsers() {
     if (!isDbMode()) {
@@ -150,7 +142,7 @@ export const dataService = {
       return DEMO_DATA.users;
     }
   },
-  
+
   // IOC comparison
   async compareIOCs(iocs, databases) {
     if (!isDbMode()) {
