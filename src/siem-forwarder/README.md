@@ -51,7 +51,6 @@ A high-performance, Go-based log forwarder that ships SafeOps logs to Elasticsea
 | `engine.log` | `safeops-engine-YYYY.MM.DD` | SafeOps engine events |
 | `firewall.log` | `safeops-firewall-YYYY.MM.DD` | Firewall decisions |
 | `ids.log` | `safeops-ids-YYYY.MM.DD` | Intrusion detection alerts |
-| `devices.jsonl` | `safeops-devices-YYYY.MM.DD` | Connected device inventory |
 
 ## Installation
 

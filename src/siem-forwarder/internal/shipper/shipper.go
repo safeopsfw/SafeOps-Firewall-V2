@@ -264,7 +264,6 @@ func extractTimestamp(doc map[string]interface{}, logType string) string {
 	timestampFields := map[string][]string{
 		"firewall":           {"timestamp_ist", "timestamp"},
 		"ids":                {"timestamp_ist", "timestamp"},
-		"devices":            {"generated_at", "first_seen", "device.first_seen"},
 		"netflow_eastwest":   {"timestamp", "flow_end", "@timestamp"},
 		"netflow_northsouth": {"timestamp", "flow_end", "@timestamp"},
 		"netflow_unknown":    {"timestamp", "flow_end", "@timestamp"},
