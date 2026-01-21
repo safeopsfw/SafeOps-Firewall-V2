@@ -18,9 +18,30 @@
 
 **Complete network visibility, threat intelligence, and access control in a single unified platform.**
 
-[Quick Start](#-quick-start) • [Architecture](#-architecture) • [Features](#-key-features) • [Documentation](#-documentation)
+[Quick Start](#-quick-start) • [Architecture](#-architecture) • [Features](#-key-features) • [📚 Documentation](#-documentation)
 
 </div>
+
+---
+
+## 📚 **COMPLETE DOCUMENTATION AVAILABLE**
+
+> ✅ **All 10 components now have detailed documentation!**
+> Each doc includes file locations, functionality, ports, APIs, dependencies, configuration, and troubleshooting.
+
+**👉 [View Complete Documentation](docs/README.md)** | **[Component Docs](docs/README.md#-complete-component-documentation)** | **[Quick Reference](docs/QUICK-REFERENCE.md)** | **[Project Stats](docs/PROJECT-STATS.md)**
+
+**Available Documentation:**
+- ✅ [SafeOps Launcher](docs/components/00-SafeOps-Launcher.md) - Service orchestrator
+- ✅ [SIEM (ELK)](docs/components/01-SIEM.md) - Security monitoring
+- ✅ [NIC Management](docs/components/02-NIC-Management.md) - Multi-WAN & NAT (13.5 KB)
+- ✅ [DHCP Monitor](docs/components/03-DHCP-Monitor.md) - Device detection (14.7 KB)
+- ✅ [Threat Intelligence](docs/components/04-Threat-Intelligence.md) - 100+ feeds **COMPLETE!**
+- ✅ [Network Logger](docs/components/05-Network-Logger.md) - Packet capture **COMPLETE!**
+- ✅ [SafeOps Engine](docs/components/06-SafeOps-Engine.md) - Firewall **COMPLETE!**
+- ✅ [DNS Proxy](docs/components/07-DNS-Proxy.md) - DNS filtering **COMPLETE!**
+- ✅ [Captive Portal](docs/components/08-Captive-Portal.md) - Device auth (12.7 KB)
+- ✅ [Step-CA (PKI)](docs/components/09-Step-CA.md) - Certificate Authority (13.4 KB)
 
 ---
 
