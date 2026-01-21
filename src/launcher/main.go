@@ -106,6 +106,13 @@ func main() {
 			Delay:   1 * time.Second,
 		},
 		{
+			Name:    "SIEM Forwarder",
+			ExePath: filepath.Join(binDir, "siem-forwarder", "siem-forwarder.exe"),
+			WorkDir: filepath.Join(binDir, "siem-forwarder"),
+			Args:    []string{"-config", "config.yaml"},
+			Delay:   1 * time.Second,
+		},
+		{
 			Name:    "Threat Intel Pipeline",
 			ExePath: filepath.Join(binDir, "threat_intel", "threat_intel.exe"),
 			WorkDir: filepath.Join(binDir, "threat_intel"),
@@ -136,6 +143,7 @@ func main() {
 	fmt.Println("║  Captive Portal       │ :8445 (HTTPS) / :8090 (HTTP)          ║")
 	fmt.Println("║  SafeOps Engine       │ Admin Mode (Packet Capture)           ║")
 	fmt.Println("║  Network Logger       │ Packet Logging                        ║")
+	fmt.Println("║  SIEM Forwarder       │ Log Shipping → Elasticsearch          ║")
 	fmt.Println("║  Threat Intel         │ Threat Feed Pipeline (-scheduler)     ║")
 	fmt.Println("║  UI Frontend          │ :3001 (Vite)                          ║")
 	fmt.Println("║  Backend API          │ :5050 (Node.js + Step-CA Proxy)       ║")
@@ -151,6 +159,7 @@ func main() {
 	fmt.Println("║  Network Logger       │ ~1-3% (logging packets)               ║")
 	fmt.Println("║  Threat Intel         │ ~0% (idle), ~10-20% (fetching feeds)  ║")
 	fmt.Println("║  NIC Management       │ ~0-1% (idle)                          ║")
+	fmt.Println("║  SIEM Forwarder       │ ~0-1% (idle), ~2% (shipping)          ║")
 	fmt.Println("║  UI + Backend         │ ~2-5% (Vite HMR + Node)               ║")
 	fmt.Println("║  ─────────────────────────────────────────────────────────────║")
 	fmt.Println("║  TOTAL (Idle)         │ ~5-15% CPU                            ║")
@@ -356,6 +365,7 @@ func cleanup() {
 		"captive_portal.exe",
 		"safeops-engine.exe",
 		"network_logger.exe",
+		"siem-forwarder.exe",
 	}
 
 	for _, svc := range services {
