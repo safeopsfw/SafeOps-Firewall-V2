@@ -191,22 +191,33 @@ SafeOpsFV2/
 
 Detailed technical documentation is available for each subsystem:
 
+### Quick Reference
 | Document | Description |
 |----------|-------------|
-| **[REQUIREMENTS.md](REQUIREMENTS.md)** | 📋 **Pre-installation requirements & setup guide** |
-| **README.md** | Project overview, architecture, and quick start |
+| **[REQUIREMENTS.md](REQUIREMENTS.md)** | 📋 Pre-installation requirements & setup guide |
+| **[docs/README.md](docs/README.md)** | 📖 Documentation hub and component overview |
+| **[docs/QUICK-REFERENCE.md](docs/QUICK-REFERENCE.md)** | ⚡ Quick reference for ports, paths & commands |
+| **[docs/PROJECT-STATS.md](docs/PROJECT-STATS.md)** | 📊 Project statistics and codebase metrics |
 
-### Module Documentation (in `docs/` folder)
+### Component Documentation
+| # | Component | Document |
+|---|-----------|----------|
+| 00 | **SafeOps Launcher** | [00-SafeOps-Launcher.md](docs/components/00-SafeOps-Launcher.md) |
+| 01 | **SIEM (ELK Stack)** | [01-SIEM.md](docs/components/01-SIEM.md) |
+| 02 | **NIC Management** | [02-NIC-Management.md](docs/components/02-NIC-Management.md) |
+| 03 | **DHCP Monitor** | [03-DHCP-Monitor.md](docs/components/03-DHCP-Monitor.md) |
+| 04 | **Threat Intelligence** | [04-Threat-Intelligence.md](docs/components/04-Threat-Intelligence.md) |
+| 05 | **Network Logger** | [05-Network-Logger.md](docs/components/05-Network-Logger.md) |
+| 06 | **SafeOps Engine** | [06-SafeOps-Engine.md](docs/components/06-SafeOps-Engine.md) |
+| 07 | **DNS Proxy** | [07-DNS-Proxy.md](docs/components/07-DNS-Proxy.md) |
+| 08 | **Captive Portal** | [08-Captive-Portal.md](docs/components/08-Captive-Portal.md) |
+| 09 | **Step-CA (PKI)** | [09-Step-CA.md](docs/components/09-Step-CA.md) |
 
-| Module | Description |
-|--------|-------------|
-| **NIC Management** | Load balancing, failover, and interface control |
-| **Captive Portal** | Guest onboarding flows and certificate distribution |
-| **Threat Intelligence** | Feed sources, parsing, and database design |
-| **Network Logger** | Packet pipelines and log rotation strategies |
-| **DHCP Monitor** | Device detection and trust management |
-| **SafeOps Engine** | Packet capture and protocol parsing |
-| **Step-CA** | Certificate Authority configuration |
+### Additional Documentation
+| Document | Description |
+|----------|-------------|
+| [firewall-engine-implementation-plan.md](docs/firewall-engine-implementation-plan.md) | Firewall engine design & implementation plan |
+| [network_manager_SPEC.md](docs/network_manager_SPEC.md) | Network manager specification |
 
 > **Note**: For in-depth architecture details, refer to the inline comments in each service's source code under `src/`.
 
