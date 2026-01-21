@@ -4,7 +4,7 @@
 # Build Outputs
 # =====================================
 build/
-*.exe
+# *.exe - REMOVED: Executables are tracked for release
 *.dll
 *.sys
 *.obj
@@ -238,9 +238,11 @@ src/step-ca/db/
 npcap-sdk-1.16/
 
 # =====================================
-# Step-CA (Certificates & Secrets)
+# Step-CA (Certificates & Secrets Only - EXE tracked for release)
 # =====================================
-bin/step-ca/
+bin/step-ca/secrets/
+bin/step-ca/ca/db/
+bin/step-ca/ca/secrets/
 
 # =====================================
 # ELK Stack & SIEM (Large Files)

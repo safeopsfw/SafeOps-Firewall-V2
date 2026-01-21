@@ -1,0 +1,6 @@
+{
+	"ca-url": "https://localhost:9000",
+	"ca-config": "D:\\SafeOpsFV2\\src\\step-ca\\config\\ca.json",
+	"fingerprint": "3227031bee17dec4345d132d992ce2e6cc68000efc03f2a5be2b621c41b641a2",
+	"root": "D:\\SafeOpsFV2\\src\\step-ca\\certs\\root_ca.crt"
+}
