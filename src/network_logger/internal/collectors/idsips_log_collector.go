@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -17,6 +18,7 @@ import (
 type IDSLog struct {
 	TimestampIST string           `json:"timestamp_ist"`
 	PacketID     string           `json:"packet_id"`
+	FlowID       string           `json:"flow_id"` // For cross-log correlation with firewall/netflow
 	SrcIP        string           `json:"src_ip"`
 	DstIP        string           `json:"dst_ip"`
 	SrcPort      uint16           `json:"src_port,omitempty"`
@@ -45,7 +47,9 @@ type IDSCollector struct {
 	writer        *bufio.Writer
 	batchSize     int
 	logsWritten   int64
+	logsFiltered  int64 // Deduplication stats
 	cycleInterval time.Duration
+	dedupFilter   *DuplicateFilter // Multi-layer deduplication
 }
 
 // NewIDSCollector creates a new IDS collector
@@ -55,6 +59,7 @@ func NewIDSCollector(logPath string, cycleInterval time.Duration) *IDSCollector 
 		batchQueue:    make(chan *IDSLog, 5000),
 		batchSize:     50,
 		cycleInterval: cycleInterval,
+		dedupFilter:   NewDuplicateFilter(),
 	}
 }
 
@@ -80,6 +85,14 @@ func (c *IDSCollector) Process(pkt *models.PacketLog) {
 	// Convert to IDS log
 	idsLog := c.toIDSLog(pkt)
 	if idsLog == nil {
+		return
+	}
+
+	// Deduplication check (connection + payload hash)
+	if isDup, _ := c.dedupFilter.IsDuplicate(idsLog); isDup {
+		c.mu.Lock()
+		c.logsFiltered++
+		c.mu.Unlock()
 		return
 	}
 
@@ -145,9 +158,13 @@ func (c *IDSCollector) toIDSLog(pkt *models.PacketLog) *IDSLog {
 	// IST timestamp (UTC+5:30)
 	ist := pkt.Timestamp.ISO8601 // Already has timezone
 
+	// Generate flow ID for cross-log correlation
+	flowID := c.generateFlowID(pkt)
+
 	idsLog := &IDSLog{
 		TimestampIST: ist,
 		PacketID:     pkt.PacketID,
+		FlowID:       flowID,
 		SrcIP:        pkt.Layers.Network.SrcIP,
 		DstIP:        pkt.Layers.Network.DstIP,
 		SrcGeo:       pkt.SrcGeo,
@@ -192,6 +209,38 @@ func (c *IDSCollector) toIDSLog(pkt *models.PacketLog) *IDSLog {
 	}
 
 	return idsLog
+}
+
+// generateFlowID creates a normalized bidirectional flow ID
+// Uses same format as FirewallCollector and BiflowCollector for cross-log correlation
+func (c *IDSCollector) generateFlowID(pkt *models.PacketLog) string {
+	srcIP := pkt.Layers.Network.SrcIP
+	dstIP := pkt.Layers.Network.DstIP
+	var srcPort, dstPort uint16
+	proto := "OTHER"
+
+	if pkt.Layers.Transport != nil {
+		srcPort = pkt.Layers.Transport.SrcPort
+		dstPort = pkt.Layers.Transport.DstPort
+	}
+
+	switch pkt.Layers.Network.Protocol {
+	case 6:
+		proto = "TCP"
+	case 17:
+		proto = "UDP"
+	case 1:
+		proto = "ICMP"
+	}
+
+	// Normalize: smaller IP first for consistent bidirectional matching
+	// This matches FirewallCollector and BiflowCollector normalization
+	if srcIP > dstIP || (srcIP == dstIP && srcPort > dstPort) {
+		srcIP, dstIP = dstIP, srcIP
+		srcPort, dstPort = dstPort, srcPort
+	}
+
+	return fmt.Sprintf("%s:%d-%s:%d/%s", srcIP, srcPort, dstIP, dstPort, proto)
 }
 
 func (c *IDSCollector) openFile() error {
@@ -299,9 +348,14 @@ func (c *IDSCollector) closeFile() {
 func (c *IDSCollector) GetStats() map[string]interface{} {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	dedupStats := c.dedupFilter.GetStats()
 	return map[string]interface{}{
-		"logs_written": c.logsWritten,
-		"queue_size":   len(c.batchQueue),
+		"logs_written":     c.logsWritten,
+		"logs_filtered":    c.logsFiltered,
+		"queue_size":       len(c.batchQueue),
+		"dedup_total":      dedupStats.TotalPackets,
+		"dedup_duplicates": dedupStats.PayloadDuplicates,
+		"dedup_unique":     dedupStats.UniqueLogged,
 	}
 }
 

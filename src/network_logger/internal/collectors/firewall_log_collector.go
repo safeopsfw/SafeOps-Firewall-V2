@@ -79,8 +79,7 @@ type FirewallCollector struct {
 }
 
 const (
-	maxActiveFlows   = 100000   // Max concurrent flows to track
-	maxFileSizeBytes = 10 << 20 // 10 MB
+	maxActiveFlows = 100000 // Max concurrent flows to track
 )
 
 // NewFirewallCollector creates a new flow-based firewall collector
@@ -131,16 +130,18 @@ func (c *FirewallCollector) generateFlowKey(pkt *models.PacketLog) string {
 	if pkt.Layers.Transport != nil {
 		srcPort = pkt.Layers.Transport.SrcPort
 		dstPort = pkt.Layers.Transport.DstPort
-		if pkt.Layers.Network.Protocol == 6 {
+		switch pkt.Layers.Network.Protocol {
+		case 6:
 			proto = "TCP"
-		} else if pkt.Layers.Network.Protocol == 17 {
+		case 17:
 			proto = "UDP"
 		}
 	} else if pkt.Layers.Network.Protocol == 1 {
 		proto = "ICMP"
 	}
 
-	// Normalize: consistent ordering for bidirectional matching
+	// Normalize: smaller IP first for consistent bidirectional matching
+	// This matches BiflowCollector's normalization for cross-log correlation
 	if srcIP > dstIP || (srcIP == dstIP && srcPort > dstPort) {
 		srcIP, dstIP = dstIP, srcIP
 		srcPort, dstPort = dstPort, srcPort

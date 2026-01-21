@@ -33,9 +33,7 @@ log_files:
     index_prefix: "safeops-ids"
     type: "ids"
     
-  - path: "devices.jsonl"
-    index_prefix: "safeops-devices"
-    type: "devices"
+  # Removed: devices.jsonl - Device tracking logs not needed in SIEM (causes spam)
 
 # Position tracking settings
 position_db:
