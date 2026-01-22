@@ -216,7 +216,8 @@ Detailed technical documentation is available for each subsystem:
 ### Additional Documentation
 | Document | Description |
 |----------|-------------|
-| [firewall-engine-implementation-plan.md](docs/firewall-engine-implementation-plan.md) | Firewall engine design & implementation plan |
+| [Architecture-gRPC-Integration.md](docs/components/Architecture-gRPC-Integration.md) | gRPC integration patterns and system architecture |
+| [Performance-Optimizations-v3.1.md](docs/components/Performance-Optimizations-v3.1.md) | Performance optimization techniques and benchmarks |
 | [network_manager_SPEC.md](docs/network_manager_SPEC.md) | Network manager specification |
 
 > **Note**: For in-depth architecture details, refer to the inline comments in each service's source code under `src/`.

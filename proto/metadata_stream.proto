@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package safeops;
+
+option go_package = "safeops-engine/pkg/grpc/pb";
+
+// MetadataStreamService provides packet metadata streaming and verdict enforcement
+service MetadataStreamService {
+  // StreamMetadata streams packet metadata to subscribers (server-side streaming)
+  rpc StreamMetadata(SubscribeRequest) returns (stream PacketMetadata);
+
+  // ApplyVerdict sends a verdict decision back to SafeOps Engine
+  rpc ApplyVerdict(VerdictRequest) returns (VerdictResponse);
+
+  // GetStats returns engine statistics
+  rpc GetStats(StatsRequest) returns (StatsResponse);
+}
+
+// SubscribeRequest initiates a metadata stream subscription
+message SubscribeRequest {
+  string subscriber_id = 1;     // Unique identifier for subscriber (e.g., "firewall-engine")
+  repeated string filters = 2;   // Optional filters (e.g., "tcp", "udp", "dns")
+}
+
+// PacketMetadata contains all packet information
+message PacketMetadata {
+  // Packet identification
+  uint64 packet_id = 1;          // Unique packet ID for verdict correlation
+  int64 timestamp = 2;           // Unix timestamp (nanoseconds)
+
+  // Network info
+  string src_ip = 3;
+  string dst_ip = 4;
+  uint32 src_port = 5;
+  uint32 dst_port = 6;
+  uint32 protocol = 7;           // IP protocol number (6=TCP, 17=UDP)
+  uint32 packet_size = 8;
+  string direction = 9;          // "INBOUND" or "OUTBOUND"
+  string adapter_name = 10;
+
+  // Domain extraction
+  string domain = 11;            // Extracted domain name
+  string domain_source = 12;     // "DNS", "SNI", "HTTP", or empty
+
+  // TCP flags
+  uint32 tcp_flags = 13;
+  bool is_syn = 14;
+  bool is_ack = 15;
+  bool is_rst = 16;
+  bool is_fin = 17;
+
+  // Protocol detection
+  bool is_dns_query = 18;
+  bool is_dns_response = 19;
+  bool is_http = 20;
+  string http_method = 21;       // "GET", "POST", etc.
+
+  // Performance optimization
+  string cache_key = 22;         // Pre-computed cache key (for verdict caching)
+}
+
+// VerdictRequest sends a decision from Firewall to SafeOps
+message VerdictRequest {
+  uint64 packet_id = 1;          // Packet ID to apply verdict to
+  VerdictType verdict = 2;       // Decision type
+  string reason = 3;             // Human-readable reason (for logging)
+  string rule_id = 4;            // Optional: Rule that triggered this verdict
+  uint32 ttl_seconds = 5;        // Optional: How long to cache this verdict (0 = apply once)
+  string cache_key = 6;          // Cache key for verdict caching (src_ip:dst_ip:proto:port)
+}
+
+// VerdictType defines possible firewall decisions
+enum VerdictType {
+  ALLOW = 0;                     // Allow packet through
+  DROP = 1;                      // Silently drop packet
+  BLOCK = 2;                     // Block with TCP RST or ICMP unreachable
+  REDIRECT = 3;                  // DNS redirect to different IP
+}
+
+// VerdictResponse confirms verdict was applied
+message VerdictResponse {
+  bool success = 1;
+  string message = 2;            // Error message if success=false
+  uint64 packets_affected = 3;   // Number of packets affected (if cached verdict)
+}
+
+// StatsRequest requests engine statistics
+message StatsRequest {
+  // Empty for now, can add filters later
+}
+
+// StatsResponse returns engine statistics
+message StatsResponse {
+  uint64 packets_read = 1;
+  uint64 packets_written = 2;
+  uint64 packets_dropped = 3;
+  uint64 active_subscribers = 4;
+  uint64 verdicts_applied = 5;
+  uint64 cached_verdicts = 6;
+}

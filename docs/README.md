@@ -143,6 +143,11 @@ Press **Ctrl+C** in the launcher window
 - **[Architecture Diagram](safeops_architecture%20(3).md)** - System architecture overview
 - **[CA Certificate Guide](safeops_ca_certificate.md)** - Certificate management details
 
+### 🏗️ Architecture & Performance Documentation
+
+- **[Architecture-gRPC-Integration.md](components/Architecture-gRPC-Integration.md)** - gRPC integration patterns and architecture
+- **[Performance-Optimizations-v3.1.md](components/Performance-Optimizations-v3.1.md)** - Performance optimization techniques and benchmarks
+
 ## Port Reference
 
 | Component | Port(s) | Protocol | Purpose |
@@ -353,6 +358,6 @@ go test -v
 
 ---
 
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-22
 **Status:** Active Development
 **Platform:** Windows 10/11 (64-bit)

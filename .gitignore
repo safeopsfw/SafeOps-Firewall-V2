@@ -208,6 +208,7 @@ INSTALLATION_IMPLEMENTATION_REPORT.md
 # Project Planning Notes
 # =====================================
 plan
+docs/plans/
 # Step-CA database and logs
 certs/step-ca/ca/db/
 certs/step-ca/ca/secrets/

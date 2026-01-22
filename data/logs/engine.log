@@ -1,34 +1,7 @@
-{"timestamp":"2026-01-21T10:59:14.0807805Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
-{"timestamp":"2026-01-21T10:59:14.1026412Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":180541,"packets_written":179470,"total_processed":179470}}
-{"timestamp":"2026-01-21T10:59:41.9373037Z","level":"INFO","message":"Domain","data":{"domain":"antigravity-unleash.goog","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:44.1028526Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":191694,"packets_written":190515,"total_processed":190515}}
-{"timestamp":"2026-01-21T10:59:47.3697896Z","level":"INFO","message":"Domain","data":{"domain":"steamdb.info","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:47.4058236Z","level":"INFO","message":"Domain","data":{"domain":"steamdb.info","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:47.4309862Z","level":"INFO","message":"Domain","data":{"domain":"steamdb.info","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.4"}}
-{"timestamp":"2026-01-21T10:59:49.555647Z","level":"INFO","message":"Domain","data":{"domain":"feeds.elastic.co","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:49.5801855Z","level":"INFO","message":"Domain","data":{"domain":"feeds.elastic.co","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:49.5953498Z","level":"INFO","message":"Domain","data":{"domain":"feeds.elastic.co","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.4"}}
-{"timestamp":"2026-01-21T10:59:50.7838165Z","level":"INFO","message":"Domain","data":{"domain":"telemetry.elastic.co","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:50.8652938Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:50.9236747Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:50.9388776Z","level":"INFO","message":"Domain","data":{"domain":"content-autofill.googleapis.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.4"}}
-{"timestamp":"2026-01-21T10:59:50.9940956Z","level":"INFO","message":"Domain","data":{"domain":"vector.maps.elastic.co","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:51.0253602Z","level":"INFO","message":"Domain","data":{"domain":"vector.maps.elastic.co","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:51.0371137Z","level":"INFO","message":"Domain","data":{"domain":"vector.maps.elastic.co","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.4"}}
-{"timestamp":"2026-01-21T10:59:51.1289349Z","level":"INFO","message":"Domain","data":{"domain":"www.google-analytics.com","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:51.1734628Z","level":"INFO","message":"Domain","data":{"domain":"www.google-analytics.com","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:51.2233718Z","level":"INFO","message":"Domain","data":{"domain":"www.google-analytics.com","dst_ip":"38.254.162.7","dst_port":53,"protocol":"dns","src_ip":"192.168.1.4"}}
-{"timestamp":"2026-01-21T10:59:51.4233311Z","level":"INFO","message":"Domain","data":{"domain":"www.google-analytics.com","dst_ip":"142.250.182.206","dst_port":443,"protocol":"tls","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T10:59:51.4516618Z","level":"INFO","message":"Domain","data":{"domain":"www.google-analytics.com","dst_ip":"142.250.182.206","dst_port":443,"protocol":"tls","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:00:01.0463329Z","level":"INFO","message":"Domain","data":{"domain":"ap.vg.ac.pvp.net","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:00:11.8138882Z","level":"INFO","message":"Domain","data":{"domain":"ota.nvidia.com","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:00:11.8457046Z","level":"INFO","message":"Domain","data":{"domain":"ota.nvidia.com","dst_ip":"96.17.194.233","dst_port":443,"protocol":"tls","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:00:14.1022989Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":200973,"packets_written":199686,"total_processed":199686}}
-{"timestamp":"2026-01-21T11:00:15.2744219Z","level":"INFO","message":"Domain","data":{"domain":"catalog.gamepass.com","dst_ip":"205.254.160.34","dst_port":443,"protocol":"tls","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:00:30.9854804Z","level":"INFO","message":"Domain","data":{"domain":"dc.services.visualstudio.com","dst_ip":"20.213.196.212","dst_port":443,"protocol":"tls","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:00:42.2959008Z","level":"INFO","message":"Domain","data":{"domain":"antigravity-unleash.goog","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:00:44.1032379Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":208104,"packets_written":206711,"total_processed":206711}}
-{"timestamp":"2026-01-21T11:00:45.063572Z","level":"INFO","message":"Domain","data":{"domain":"time.windows.com","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:01:11.1798623Z","level":"INFO","message":"Domain","data":{"domain":"ctldl.windowsupdate.com","dst_ip":"192.168.1.1","dst_port":53,"protocol":"dns","src_ip":"192.168.1.5"}}
-{"timestamp":"2026-01-21T11:01:14.1024726Z","level":"INFO","message":"Stats","data":{"packets_dropped":0,"packets_read":213952,"packets_written":212451,"total_processed":212451}}
-{"timestamp":"2026-01-21T11:01:30.9206955Z","level":"INFO","message":"Shutting down..."}
+{"timestamp":"2026-01-22T10:45:13.2834571Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
+{"timestamp":"2026-01-22T10:45:10.0092865Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-01-22T10:45:14.7240799Z","level":"INFO","message":"Shutting down SafeOps Engine"}
+{"timestamp":"2026-01-22T10:45:14.7265177Z","level":"INFO","message":"Stopping gRPC server"}
+{"timestamp":"2026-01-22T10:45:14.7280801Z","level":"INFO","message":"gRPC server stopped"}
+{"timestamp":"2026-01-22T10:45:14.7291314Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-01-22T10:45:14.7302286Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":390542,"packets_written":383094}}
