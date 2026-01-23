@@ -8,7 +8,6 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/google/uuid v1.6.0
 	google.golang.org/grpc v1.78.0
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
