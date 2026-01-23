@@ -1,7 +1,21 @@
-{"timestamp":"2026-01-22T10:45:13.2834571Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
-{"timestamp":"2026-01-22T10:45:10.0092865Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
-{"timestamp":"2026-01-22T10:45:14.7240799Z","level":"INFO","message":"Shutting down SafeOps Engine"}
-{"timestamp":"2026-01-22T10:45:14.7265177Z","level":"INFO","message":"Stopping gRPC server"}
-{"timestamp":"2026-01-22T10:45:14.7280801Z","level":"INFO","message":"gRPC server stopped"}
-{"timestamp":"2026-01-22T10:45:14.7291314Z","level":"INFO","message":"Closing WinpkFilter driver"}
-{"timestamp":"2026-01-22T10:45:14.7302286Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":390542,"packets_written":383094}}
+{"timestamp":"2026-01-23T18:08:10.6952413Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-01-23T18:08:10.7023712Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-01-23T18:08:10.7073138Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-23T18:08:10.711852Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-01-23T18:08:10.7159251Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-01-23T18:08:10.7193924Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"vEthernet (Default Switch)"}}
+{"timestamp":"2026-01-23T18:08:10.7239981Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet8"}}
+{"timestamp":"2026-01-23T18:08:10.7278793Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"VMware Network Adapter VMnet1"}}
+{"timestamp":"2026-01-23T18:08:10.7318845Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-01-23T18:08:10.7363926Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-01-23T18:08:10.740183Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-01-23T18:08:10.7437453Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-01-23T18:08:10.7485537Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:0e"}}
+{"timestamp":"2026-01-23T18:08:10.7524473Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-01-23T18:08:10.7578978Z","level":"INFO","message":"gRPC server created","data":{"address":"127.0.0.1:50051"}}
+{"timestamp":"2026-01-23T18:08:10.7619221Z","level":"INFO","message":"Starting gRPC server","data":{"address":"127.0.0.1:50051"}}
+{"timestamp":"2026-01-23T18:08:10.766276Z","level":"INFO","message":"SafeOps Engine initialized","data":{"grpc_listen":"127.0.0.1:50051","mode":"grpc-stream","version":"3.0.0"}}
+{"timestamp":"2026-01-23T18:08:10.766276Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-01-23T18:08:10.7740062Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-01-23T18:08:12.7137334Z","level":"INFO","message":"New metadata subscriber","data":{"filters":null,"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-01-23T18:12:08.3730636Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}

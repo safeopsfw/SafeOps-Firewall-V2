@@ -97,7 +97,14 @@ func main() {
 			ExePath:      filepath.Join(binDir, "safeops-engine", "safeops-engine.exe"),
 			WorkDir:      filepath.Join(binDir, "safeops-engine"),
 			RequireAdmin: true,
-			Delay:        1 * time.Second,
+			Delay:        2 * time.Second, // Give SafeOps Engine more time to start
+		},
+		{
+			Name:         "Firewall Engine V4",
+			ExePath:      filepath.Join(binDir, "firewall_engine", "firewall-engine.exe"),
+			WorkDir:      filepath.Join(binDir, "firewall_engine"),
+			RequireAdmin: true,
+			Delay:        2 * time.Second, // Needs SafeOps Engine to be running
 		},
 		{
 			Name:    "Network Logger",
@@ -142,6 +149,7 @@ func main() {
 	fmt.Println("║  Step-CA              │ :9000 (HTTPS)                         ║")
 	fmt.Println("║  Captive Portal       │ :8445 (HTTPS) / :8090 (HTTP)          ║")
 	fmt.Println("║  SafeOps Engine       │ Admin Mode (Packet Capture)           ║")
+	fmt.Println("║  Firewall Engine V4   │ Dual-Engine (SafeOps + WFP)           ║")
 	fmt.Println("║  Network Logger       │ Packet Logging                        ║")
 	fmt.Println("║  SIEM Forwarder       │ Log Shipping → Elasticsearch          ║")
 	fmt.Println("║  Threat Intel         │ Threat Feed Pipeline (-scheduler)     ║")
@@ -156,6 +164,7 @@ func main() {
 	fmt.Println("║  Step-CA              │ ~0-1% (idle), ~3% (issuing certs)     ║")
 	fmt.Println("║  Captive Portal       │ ~0-1% (idle), ~2% (serving pages)     ║")
 	fmt.Println("║  SafeOps Engine       │ ~2-5% (packet capture)                ║")
+	fmt.Println("║  Firewall Engine V4   │ ~2-5% (dual-engine enforcement)       ║")
 	fmt.Println("║  Network Logger       │ ~1-3% (logging packets)               ║")
 	fmt.Println("║  Threat Intel         │ ~0% (idle), ~10-20% (fetching feeds)  ║")
 	fmt.Println("║  NIC Management       │ ~0-1% (idle)                          ║")
@@ -364,6 +373,7 @@ func cleanup() {
 		"step-ca.exe",
 		"captive_portal.exe",
 		"safeops-engine.exe",
+		"firewall-engine.exe",
 		"network_logger.exe",
 		"siem-forwarder.exe",
 	}
