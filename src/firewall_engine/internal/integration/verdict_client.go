@@ -337,7 +337,7 @@ func (c *VerdictClient) SendVerdict(ctx context.Context, packet *models.PacketMe
 }
 
 // sendVerdictOnce attempts to send a verdict once.
-func (c *VerdictClient) sendVerdictOnce(ctx context.Context, packet *models.PacketMetadata, verdict *models.VerdictResult) error {
+func (c *VerdictClient) sendVerdictOnce(_ context.Context, packet *models.PacketMetadata, verdict *models.VerdictResult) error {
 	// This is a placeholder - in production, this would call the gRPC service
 	// For now, we just log the verdict
 	c.logger.Printf("Verdict: %s:%d -> %s:%d [%s] %s",

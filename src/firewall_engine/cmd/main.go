@@ -337,7 +337,7 @@ func convertVerdictType(verdict models.Verdict) pb.VerdictType {
 
 // printStats prints periodic statistics.
 func printStats(insp *inspector.Inspector, cache *cache.VerdictCache,
-	conn *connection.Tracker, client *integration.SafeOpsGRPCClient, logger *log.Logger) {
+	conn *connection.Tracker, _ *integration.SafeOpsGRPCClient, logger *log.Logger) {
 
 	inspStats := insp.GetStats()
 	cacheStats := cache.GetStats()
@@ -354,7 +354,7 @@ func printStats(insp *inspector.Inspector, cache *cache.VerdictCache,
 
 // printFinalStats prints final statistics on shutdown.
 func printFinalStats(insp *inspector.Inspector, cache *cache.VerdictCache,
-	conn *connection.Tracker, logger *log.Logger) {
+	conn *connection.Tracker, _ *log.Logger) {
 
 	inspStats := insp.GetStats()
 	cacheStats := cache.GetStats()
