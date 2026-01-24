@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,14 +25,14 @@ type Service struct {
 	Delay        time.Duration
 }
 
-// Database configuration for threat intel
-const (
-	dbHost     = "localhost"
-	dbPort     = 5432
-	dbUser     = "postgres"
-	dbPassword = "postgres"
-	dbName     = "threat_intel_db"
-)
+// DBConfig holds database configuration
+type DBConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Name     string
+}
 
 var startedProcesses []*os.Process
 
@@ -59,8 +61,11 @@ func main() {
 	fmt.Printf("[INFO] Bin Directory: %s\n", binDir)
 	fmt.Println()
 
+	// Load Database Configuration
+	dbConfig := loadDBConfig(projectRoot)
+
 	// Initialize Threat Intel Database
-	initThreatIntelDB()
+	initThreatIntelDB(dbConfig)
 
 	// Reset Step-CA database if corrupted (prevents BadgerDB issues)
 	resetStepCADatabase(binDir)
@@ -239,11 +244,78 @@ func detectPaths() (projectRoot, binDir string) {
 	return projectRoot, binDir
 }
 
-func initThreatIntelDB() {
+func loadDBConfig(projectRoot string) DBConfig {
+	config := DBConfig{
+		Host:     "localhost",
+		Port:     5432,
+		User:     "postgres",
+		Password: "postgres", // Default, but now overridable
+		Name:     "threat_intel_db",
+	}
+
+	// 1. Try to read backend/.env
+	envPath := filepath.Join(projectRoot, "backend", ".env")
+	if content, err := os.ReadFile(envPath); err == nil {
+		lines := strings.Split(string(content), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				// Handle quotes if present
+				value = strings.Trim(value, `"'`)
+
+				switch key {
+				case "DB_HOST":
+					config.Host = value
+				case "DB_PORT":
+					if p, err := strconv.Atoi(value); err == nil {
+						config.Port = p
+					}
+				case "DB_USER":
+					config.User = value
+				case "DB_PASSWORD":
+					config.Password = value
+				case "DB_NAME":
+					config.Name = value
+				}
+			}
+		}
+		fmt.Printf("[INFO] Loaded configuration from %s\n", envPath)
+	}
+
+	// 2. Override with environment variables
+	if v := os.Getenv("DB_HOST"); v != "" {
+		config.Host = v
+	}
+	if v := os.Getenv("DB_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			config.Port = p
+		}
+	}
+	if v := os.Getenv("DB_USER"); v != "" {
+		config.User = v
+	}
+	if v := os.Getenv("DB_PASSWORD"); v != "" {
+		config.Password = v
+	}
+	if v := os.Getenv("DB_NAME"); v != "" {
+		config.Name = v
+	}
+
+	return config
+}
+
+func initThreatIntelDB(config DBConfig) {
 	fmt.Println("[Initializing] Threat Intel Database...")
+	fmt.Printf("  [INFO] Connecting to %s@%s:%d\n", config.User, config.Host, config.Port)
 
 	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, dbPort, dbUser, dbPassword, dbName)
+		config.Host, config.Port, config.User, config.Password, config.Name)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
