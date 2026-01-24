@@ -1,0 +1,307 @@
+syntax = "proto3";
+
+package firewall.management.v1;
+
+option go_package = "firewall_engine/pkg/grpc/management/pb";
+
+import "google/protobuf/timestamp.proto";
+
+// ============================================================================
+// FirewallManagement Service
+// ============================================================================
+
+// FirewallManagement service for runtime control and queries
+service FirewallManagement {
+  // Statistics queries
+  rpc GetStatistics(GetStatisticsRequest) returns (GetStatisticsResponse);
+  rpc GetRuleStats(GetRuleStatsRequest) returns (GetRuleStatsResponse);
+  rpc GetTopBlockedDomains(GetTopBlockedDomainsRequest) returns (GetTopBlockedDomainsResponse);
+
+  // Health monitoring
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+  rpc GetComponentHealth(GetComponentHealthRequest) returns (GetComponentHealthResponse);
+
+  // Rule management
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+  rpc GetRule(GetRuleRequest) returns (GetRuleResponse);
+  rpc ReloadRules(ReloadRulesRequest) returns (ReloadRulesResponse);
+
+  // Cache management
+  rpc GetCacheStats(GetCacheStatsRequest) returns (GetCacheStatsResponse);
+  rpc FlushCache(FlushCacheRequest) returns (FlushCacheResponse);
+
+  // Connection tracking
+  rpc GetActiveConnections(GetActiveConnectionsRequest) returns (GetActiveConnectionsResponse);
+  rpc GetConnectionByFlowID(GetConnectionByFlowIDRequest) returns (GetConnectionByFlowIDResponse);
+
+  // Engine control
+  rpc SetLogLevel(SetLogLevelRequest) returns (SetLogLevelResponse);
+  rpc GetEngineInfo(GetEngineInfoRequest) returns (GetEngineInfoResponse);
+}
+
+// ============================================================================
+// Statistics Messages
+// ============================================================================
+
+message GetStatisticsRequest {
+  // Time window in seconds for statistics (default: 60)
+  int32 window_seconds = 1;
+}
+
+message GetStatisticsResponse {
+  uint64 total_packets = 1;
+  uint64 allowed_packets = 2;
+  uint64 denied_packets = 3;
+  double throughput_pps = 4;
+  double cache_hit_rate = 5;
+  LatencyStats latency = 6;
+  map<string, uint64> packets_by_protocol = 7;
+  map<string, uint64> packets_by_action = 8;
+  uint64 total_bytes = 9;
+  uint64 bytes_in = 10;
+  uint64 bytes_out = 11;
+}
+
+message LatencyStats {
+  double p50_seconds = 1;
+  double p95_seconds = 2;
+  double p99_seconds = 3;
+  double avg_seconds = 4;
+  double max_seconds = 5;
+  double min_seconds = 6;
+}
+
+message GetRuleStatsRequest {
+  // Optional: filter by rule ID
+  string rule_id = 1;
+  // Max rules to return (default: 100)
+  int32 limit = 2;
+}
+
+message GetRuleStatsResponse {
+  repeated RuleStat rules = 1;
+  int32 total_count = 2;
+}
+
+message RuleStat {
+  string id = 1;
+  string name = 2;
+  string action = 3;
+  uint64 hit_count = 4;
+  google.protobuf.Timestamp last_hit = 5;
+  double avg_latency_seconds = 6;
+  int32 priority = 7;
+}
+
+message GetTopBlockedDomainsRequest {
+  // Number of top domains to return (default: 10)
+  int32 limit = 1;
+}
+
+message GetTopBlockedDomainsResponse {
+  repeated BlockedDomain domains = 1;
+}
+
+message BlockedDomain {
+  string domain = 1;
+  uint64 block_count = 2;
+  string rule_id = 3;
+  google.protobuf.Timestamp last_blocked = 4;
+}
+
+// ============================================================================
+// Health Messages
+// ============================================================================
+
+message GetHealthRequest {}
+
+message GetHealthResponse {
+  // Status: "healthy", "degraded", "unhealthy"
+  string status = 1;
+  repeated ComponentHealth components = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  double check_latency_ms = 4;
+}
+
+message GetComponentHealthRequest {
+  string component_name = 1;
+}
+
+message GetComponentHealthResponse {
+  ComponentHealth component = 1;
+}
+
+message ComponentHealth {
+  string name = 1;
+  string status = 2;
+  string message = 3;
+  double latency_ms = 4;
+  bool critical = 5;
+  map<string, string> details = 6;
+}
+
+// ============================================================================
+// Rule Messages
+// ============================================================================
+
+message ListRulesRequest {
+  // Optional: filter by action ("ALLOW", "DENY")
+  string action = 1;
+  // Max rules to return (default: 100)
+  int32 limit = 2;
+  // Pagination offset
+  int32 offset = 3;
+}
+
+message ListRulesResponse {
+  repeated Rule rules = 1;
+  int32 total_count = 2;
+  bool has_more = 3;
+}
+
+message GetRuleRequest {
+  string rule_id = 1;
+}
+
+message GetRuleResponse {
+  Rule rule = 1;
+  bool found = 2;
+}
+
+message Rule {
+  string id = 1;
+  string name = 2;
+  string action = 3;
+  int32 priority = 4;
+  repeated string conditions = 5;
+  uint64 hit_count = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_hit = 8;
+  bool enabled = 9;
+}
+
+message ReloadRulesRequest {}
+
+message ReloadRulesResponse {
+  bool success = 1;
+  int32 rules_loaded = 2;
+  double reload_time_seconds = 3;
+  repeated string errors = 4;
+  int32 previous_rule_count = 5;
+}
+
+// ============================================================================
+// Cache Messages
+// ============================================================================
+
+message GetCacheStatsRequest {}
+
+message GetCacheStatsResponse {
+  uint64 size = 1;
+  uint64 capacity = 2;
+  double hit_rate = 3;
+  uint64 hits = 4;
+  uint64 misses = 5;
+  uint64 evictions = 6;
+}
+
+message FlushCacheRequest {
+  // Optional: pattern to match (empty means flush all)
+  string pattern = 1;
+}
+
+message FlushCacheResponse {
+  bool success = 1;
+  uint64 entries_flushed = 2;
+}
+
+// ============================================================================
+// Connection Messages
+// ============================================================================
+
+message GetActiveConnectionsRequest {
+  // Max connections to return (default: 100)
+  int32 limit = 1;
+  // Optional: filter by protocol
+  string protocol = 2;
+  // Optional: filter by state
+  string state = 3;
+}
+
+message GetActiveConnectionsResponse {
+  repeated Connection connections = 1;
+  uint64 total_connections = 2;
+}
+
+message GetConnectionByFlowIDRequest {
+  string flow_id = 1;
+}
+
+message GetConnectionByFlowIDResponse {
+  Connection connection = 1;
+  bool found = 2;
+}
+
+message Connection {
+  string flow_id = 1;
+  string src_ip = 2;
+  int32 src_port = 3;
+  string dst_ip = 4;
+  int32 dst_port = 5;
+  string protocol = 6;
+  // State: "NEW", "ESTABLISHED", "SYN_SENT", "CLOSE_WAIT", etc.
+  string state = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp last_activity = 9;
+  uint64 packets_in = 10;
+  uint64 packets_out = 11;
+  uint64 bytes_in = 12;
+  uint64 bytes_out = 13;
+  string application = 14;
+}
+
+// ============================================================================
+// Engine Messages
+// ============================================================================
+
+message SetLogLevelRequest {
+  // Level: "trace", "debug", "info", "warn", "error"
+  string level = 1;
+}
+
+message SetLogLevelResponse {
+  bool success = 1;
+  string previous_level = 2;
+  string new_level = 3;
+  string error = 4;
+}
+
+message GetEngineInfoRequest {}
+
+message GetEngineInfoResponse {
+  string version = 1;
+  string build_time = 2;
+  string go_version = 3;
+  string git_commit = 4;
+  google.protobuf.Timestamp start_time = 5;
+  double uptime_seconds = 6;
+  EngineConfig config = 7;
+  EngineStats stats = 8;
+}
+
+message EngineConfig {
+  bool safeops_enabled = 1;
+  bool wfp_enabled = 2;
+  int32 rule_count = 3;
+  int32 cache_capacity = 4;
+  int32 max_connections = 5;
+  string log_level = 6;
+  string mode = 7;
+}
+
+message EngineStats {
+  uint64 packets_processed = 1;
+  uint64 active_connections = 2;
+  int32 goroutines = 3;
+  uint64 memory_bytes = 4;
+}

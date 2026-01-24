@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	oldlog "log"
 	"os"
 	"os/signal"
 	"strings"
@@ -16,9 +17,13 @@ import (
 	"firewall_engine/internal/cache"
 	"firewall_engine/internal/connection"
 	"firewall_engine/internal/enforcement"
+	"firewall_engine/internal/health"
 	"firewall_engine/internal/inspector"
 	"firewall_engine/internal/integration"
+	"firewall_engine/internal/logging"
+	"firewall_engine/internal/metrics"
 	"firewall_engine/internal/wfp"
+	"firewall_engine/pkg/grpc/management"
 	"firewall_engine/pkg/models"
 
 	"safeops-engine/pkg/grpc/pb"
@@ -29,15 +34,41 @@ import (
 // ============================================================================
 
 func main() {
-	fmt.Println("=== SafeOps Firewall Engine V4 ===")
-	fmt.Println("Version: 4.0.0 (Dual-Engine + WFP Integration)")
-	fmt.Println("Initializing Phase 4 components...")
+	fmt.Println("=== SafeOps Firewall Engine V5 ===")
+	fmt.Println("Version: 5.0.0 (Dual-Engine + WFP + Structured Logging)")
+	fmt.Println("Initializing Phase 5 components...")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Create logger
-	logger := log.New(os.Stdout, "[FIREWALL] ", log.LstdFlags|log.Lmicroseconds)
+	// ========================================================================
+	// 0. Initialize Structured Logging (Phase 5)
+	// ========================================================================
+	logConfig := logging.LogConfig{
+		Level:           logging.LevelFromEnvironment(),
+		Format:          logging.FormatConsole, // Console output for engine ops
+		Output:          logging.OutputStdout,  // Console only - firewall.log is for network flows
+		EnableCaller:    true,
+		EnableTimestamp: true,
+		TimestampFormat: "rfc3339",
+	}
+
+	log, err := logging.NewLogger(logConfig)
+	if err != nil {
+		fmt.Printf("Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+	logging.SetGlobal(log)
+	defer log.Sync()
+
+	log.Info().
+		Str(logging.FieldVersion, "5.0.0").
+		Str("level", logConfig.Level.String()).
+		Msg("Structured logging initialized")
+
+	// Create legacy logger for components that still need *log.Logger
+	legacyLogger := oldlog.New(os.Stdout, "[FIREWALL] ", oldlog.LstdFlags|oldlog.Lmicroseconds)
+	_ = legacyLogger // Keep for backward compatibility
 
 	// ========================================================================
 	// 1. Initialize Verdict Cache
@@ -49,13 +80,13 @@ func main() {
 
 	verdictCache, err := cache.NewVerdictCache(cacheConfig)
 	if err != nil {
-		logger.Fatalf("Failed to create verdict cache: %v", err)
+		log.Fatal().Err(err).Msg("Failed to create verdict cache")
 	}
-	logger.Println("[✓] Verdict Cache initialized (capacity=100K, TTL=60s)")
+	log.Info().Int("capacity", 100000).Dur("ttl", 60*time.Second).Msg("Verdict Cache initialized")
 
 	// Start cache background cleanup
 	if err := verdictCache.Start(ctx); err != nil {
-		logger.Fatalf("Failed to start verdict cache: %v", err)
+		log.Fatal().Err(err).Msg("Failed to start verdict cache")
 	}
 
 	// ========================================================================
@@ -66,9 +97,9 @@ func main() {
 
 	connTracker, err := connection.NewTracker(connConfig)
 	if err != nil {
-		logger.Fatalf("Failed to create connection tracker: %v", err)
+		log.Fatal().Err(err).Msg("Failed to create connection tracker")
 	}
-	logger.Println("[✓] Connection Tracker initialized (capacity=500K)")
+	log.Info().Int("capacity", 500000).Msg("Connection Tracker initialized")
 
 	// ========================================================================
 	// 3. Initialize Fast-Path Evaluator
@@ -80,7 +111,7 @@ func main() {
 	fastPathConfig.EnableEstablished = true
 
 	fastPath := inspector.NewFastPath(fastPathConfig)
-	logger.Println("[✓] Fast-Path Evaluator initialized (gaming/VoIP bypass enabled)")
+	log.Info().Bool("gaming_bypass", true).Bool("voip_bypass", true).Msg("Fast-Path Evaluator initialized")
 
 	// ========================================================================
 	// 4. Initialize Enforcement Handler
@@ -92,9 +123,9 @@ func main() {
 
 	enforcementHandler, err := enforcement.NewVerdictHandler(enfConfig)
 	if err != nil {
-		logger.Fatalf("Failed to create enforcement handler: %v", err)
+		log.Fatal().Err(err).Msg("Failed to create enforcement handler")
 	}
-	logger.Println("[✓] Enforcement Handler initialized (fail-open enabled)")
+	log.Info().Bool("fail_open", true).Msg("Enforcement Handler initialized")
 
 	// ========================================================================
 	// 5. Initialize Packet Inspector
@@ -109,7 +140,7 @@ func main() {
 
 	packetInspector, err := inspector.NewInspector(inspConfig)
 	if err != nil {
-		logger.Fatalf("Failed to create packet inspector: %v", err)
+		log.Fatal().Err(err).Msg("Failed to create packet inspector")
 	}
 
 	// Wire dependencies
@@ -118,11 +149,11 @@ func main() {
 	packetInspector.SetFastPathEvaluator(fastPath)
 	// Note: VerdictCache interface mismatch - using adapter pattern if needed
 
-	logger.Println("[✓] Packet Inspector initialized (8 workers, all features enabled)")
+	log.Info().Int("workers", 8).Bool("fail_open", true).Msg("Packet Inspector initialized")
 
 	// Start inspector
 	if err := packetInspector.Start(ctx); err != nil {
-		logger.Fatalf("Failed to start packet inspector: %v", err)
+		log.Fatal().Err(err).Msg("Failed to start packet inspector")
 	}
 
 	// ========================================================================
@@ -133,17 +164,16 @@ func main() {
 
 	// Try to initialize WFP (requires admin privileges)
 	wfpConfig := wfp.DefaultEngineConfig()
-	wfpConfig.SessionName = "SafeOps_Firewall_V4"
+	wfpConfig.SessionName = "SafeOps_Firewall_V5"
 	wfpConfig.Dynamic = true
 
 	wfpEngine = wfp.NewEngine(wfpConfig)
 	if err := wfpEngine.Open(); err != nil {
-		logger.Printf("[WARNING] WFP initialization failed: %v", err)
-		logger.Println("         Running in SafeOps-only mode (no OS-level filtering)")
-		logger.Println("         Make sure you're running as Administrator")
+		log.Warn().Err(err).Msg("WFP initialization failed - running in SafeOps-only mode")
+		log.Info().Msg("Make sure you're running as Administrator for WFP support")
 		wfpEngine = nil
 	} else {
-		logger.Println("[✓] WFP Engine initialized (Windows Filtering Platform)")
+		log.Info().Msg("WFP Engine initialized (Windows Filtering Platform)")
 	}
 
 	// ========================================================================
@@ -158,12 +188,12 @@ func main() {
 
 	dualEngine, err = enforcement.NewDualEngineCoordinatorWithConfig(wfpEngine, dualEngineConfig)
 	if err != nil {
-		logger.Printf("[WARNING] Dual-engine init failed: %v", err)
+		log.Warn().Err(err).Msg("Dual-engine init failed")
 	} else {
 		if err := dualEngine.Start(ctx); err != nil {
-			logger.Printf("[WARNING] Dual-engine start failed: %v", err)
+			log.Warn().Err(err).Msg("Dual-engine start failed")
 		} else {
-			logger.Printf("[✓] Dual-Engine Coordinator started (mode: %s)", dualEngine.GetMode())
+			log.Info().Str("mode", dualEngine.GetMode().String()).Msg("Dual-Engine Coordinator started")
 		}
 	}
 
@@ -173,13 +203,10 @@ func main() {
 	grpcClient := integration.NewSafeOpsGRPCClient("firewall-engine", "127.0.0.1:50051")
 
 	if err := grpcClient.Connect(ctx); err != nil {
-		logger.Printf("[WARNING] Failed to connect to SafeOps Engine: %v", err)
-		logger.Println("         Running in standalone mode (no packet capture)")
-		logger.Println("         Make sure:")
-		logger.Println("         1. SafeOps Engine is running")
-		logger.Println("         2. Listening on 127.0.0.1:50051")
+		log.Warn().Err(err).Msg("Failed to connect to SafeOps Engine - running in standalone mode")
+		log.Info().Msg("Make sure SafeOps Engine is running on 127.0.0.1:50051")
 	} else {
-		logger.Println("[✓] Connected to SafeOps Engine (127.0.0.1:50051)")
+		log.Info().Str("address", "127.0.0.1:50051").Msg("Connected to SafeOps Engine")
 	}
 	defer grpcClient.Disconnect()
 
@@ -194,7 +221,7 @@ func main() {
 			// Process through inspection pipeline
 			result, err := packetInspector.Inspect(ctx, packet)
 			if err != nil {
-				logger.Printf("[ERROR] Inspection failed: %v", err)
+				log.Error().Err(err).Msg("Inspection failed")
 				return
 			}
 
@@ -210,15 +237,118 @@ func main() {
 			go grpcClient.SendVerdict(ctx, pkt.PacketId, verdictType, result.Reason,
 				result.RuleID, cacheTTL, pkt.CacheKey)
 		}); err != nil {
-			logger.Printf("[ERROR] Failed to start capture: %v", err)
+			log.Error().Err(err).Msg("Failed to start capture")
 		} else {
-			logger.Println("[✓] Packet capture stream started")
+			log.Info().Msg("Packet capture stream started")
 		}
 	}
 
 	// ========================================================================
-	// 10. Statistics Reporter
+	// 9. Initialize Prometheus Metrics Exporter (Phase 5)
 	// ========================================================================
+	metricsConfig := metrics.DefaultExporterConfig()
+	metricsConfig.Address = ":9090"
+	metricsConfig.Path = "/metrics"
+
+	metricsRegistry := metrics.NewDefaultRegistry()
+	if err := metricsRegistry.Register(); err != nil {
+		log.Error().Err(err).Msg("Failed to register metrics - continuing without metrics")
+	} else {
+		metricsExporter, err := metrics.NewExporter(metricsConfig, metricsRegistry)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create metrics exporter")
+		} else {
+			if err := metricsExporter.StartAsync(); err != nil {
+				log.Error().Err(err).Msg("Failed to start metrics exporter")
+			} else {
+				log.Info().Str("address", ":9090").Str("path", "/metrics").Msg("Prometheus metrics exporter started")
+			}
+		}
+	}
+
+	// ========================================================================
+	// 10. Initialize Health Server (Phase 5)
+	// ========================================================================
+	healthAggregator := health.NewAggregator()
+
+	// Register health checkers for all components
+	healthAggregator.Register(health.NewFuncChecker("verdict_cache", true, func(ctx context.Context) health.CheckResult {
+		if verdictCache == nil {
+			return health.Unhealthy("Cache not initialized")
+		}
+		size := verdictCache.Size()
+		if size > 90000 {
+			return health.Degraded(fmt.Sprintf("Cache near capacity: %d/100000", size))
+		}
+		return health.Healthy(fmt.Sprintf("Cache healthy: %d entries", size))
+	}))
+
+	healthAggregator.Register(health.NewFuncChecker("connection_tracker", true, func(ctx context.Context) health.CheckResult {
+		if connTracker == nil {
+			return health.Unhealthy("Tracker not initialized")
+		}
+		count := connTracker.Count()
+		if count > 450000 {
+			return health.Degraded(fmt.Sprintf("Connections near limit: %d/500000", count))
+		}
+		return health.Healthy(fmt.Sprintf("Tracking %d connections", count))
+	}))
+
+	healthAggregator.Register(health.NewFuncChecker("safeops_connection", true, func(ctx context.Context) health.CheckResult {
+		if grpcClient == nil || !grpcClient.IsConnected() {
+			return health.Degraded("SafeOps Engine not connected")
+		}
+		return health.Healthy("Connected to SafeOps Engine")
+	}))
+
+	healthAggregator.Register(health.NewFuncChecker("wfp_engine", false, func(ctx context.Context) health.CheckResult {
+		if wfpEngine == nil || !wfpEngine.IsOpen() {
+			return health.Degraded("WFP Engine not available")
+		}
+		return health.Healthy("WFP Engine active")
+	}))
+
+	// Start health HTTP server
+	healthConfig := health.DefaultHTTPConfig()
+	healthConfig.Address = ":8085"
+
+	healthServer, err := health.NewServer(healthConfig, healthAggregator)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create health server")
+	} else {
+		if err := healthServer.StartAsync(); err != nil {
+			log.Error().Err(err).Msg("Failed to start health server")
+		} else {
+			healthServer.SetStarted(true)
+			log.Info().Str("address", ":8085").Msg("Health server started")
+		}
+	}
+
+	// ========================================================================
+	// 11. Initialize gRPC Management Server (Phase 5)
+	// ========================================================================
+	mgmtConfig := management.DefaultServerConfig()
+	mgmtConfig.Address = ":50054"
+
+	mgmtDeps := management.Dependencies{
+		Logger:           log,
+		HealthAggregator: healthAggregator,
+		RollingStats:     metrics.GlobalStats(),
+	}
+
+	mgmtServer, err := management.NewServer(mgmtConfig, mgmtDeps)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create management server")
+	} else {
+		if err := mgmtServer.StartAsync(); err != nil {
+			log.Error().Err(err).Msg("Failed to start management server")
+		} else {
+			log.Info().Str("address", ":50054").Msg("gRPC management server started")
+		}
+	}
+
+	// ========================================================================
+	// 12. Statistics Reporter
 	// ========================================================================
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
@@ -229,7 +359,7 @@ func main() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				printStats(packetInspector, verdictCache, connTracker, grpcClient, logger)
+				printStats(packetInspector, verdictCache, connTracker, grpcClient, legacyLogger)
 			}
 		}
 	}()
@@ -239,7 +369,7 @@ func main() {
 	// ========================================================================
 	separator := strings.Repeat("=", 60)
 	fmt.Println("\n" + separator)
-	fmt.Println("Firewall Engine V4 is RUNNING")
+	fmt.Println("Firewall Engine V5 is RUNNING")
 	fmt.Println(separator)
 	fmt.Println("Dual-Engine Mode:")
 	if dualEngine != nil {
@@ -263,6 +393,11 @@ func main() {
 	fmt.Println("  • Inspector:          8 workers, fail-open")
 	fmt.Println("  • Enforcement:        DROP/BLOCK/REDIRECT/REJECT")
 	fmt.Println(separator)
+	fmt.Println("Phase 5 Servers:")
+	fmt.Println("  • Metrics:            http://localhost:9090/metrics")
+	fmt.Println("  • Health:             http://localhost:8085/health")
+	fmt.Println("  • gRPC Management:    grpc://localhost:50054")
+	fmt.Println(separator)
 	fmt.Println("Performance Targets:")
 	fmt.Println("  • Throughput:         100K+ pps")
 	fmt.Println("  • Cache Hit Latency:  ~10-15μs")
@@ -284,22 +419,36 @@ func main() {
 	cancel()
 
 	// Graceful shutdown - stop components in reverse order
+
+	// Stop Phase 5 servers first
+	if mgmtServer != nil {
+		if err := mgmtServer.Stop(); err != nil {
+			log.Error().Err(err).Msg("Error stopping management server")
+		}
+	}
+
+	if healthServer != nil {
+		if err := healthServer.Stop(); err != nil {
+			log.Error().Err(err).Msg("Error stopping health server")
+		}
+	}
+
 	if dualEngine != nil {
 		if err := dualEngine.Stop(); err != nil {
-			logger.Printf("Error stopping dual-engine: %v", err)
+			log.Error().Err(err).Msg("Error stopping dual-engine")
 		}
 	}
 
 	if err := packetInspector.Stop(); err != nil {
-		logger.Printf("Error stopping inspector: %v", err)
+		log.Error().Err(err).Msg("Error stopping inspector")
 	}
 
 	if err := verdictCache.Stop(); err != nil {
-		logger.Printf("Error stopping cache: %v", err)
+		log.Error().Err(err).Msg("Error stopping cache")
 	}
 
 	// Print final statistics
-	printFinalStats(packetInspector, verdictCache, connTracker, logger)
+	printFinalStats(packetInspector, verdictCache, connTracker, legacyLogger)
 
 	fmt.Println("Firewall Engine stopped.")
 }

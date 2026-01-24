@@ -5,23 +5,23 @@
     "updated_at": 1768993285
   },
   "D:\\SafeOpsFV2\\bin\\logs\\firewall.log": {
-    "offset": 278495,
-    "inode": 1769191925561862700,
-    "updated_at": 1769191925
+    "offset": 505,
+    "inode": 1769254599471270300,
+    "updated_at": 1769254599
   },
   "D:\\SafeOpsFV2\\bin\\logs\\ids.log": {
-    "offset": 87948,
-    "inode": 1769191924561691200,
-    "updated_at": 1769191924
+    "offset": 3239,
+    "inode": 1769254602470982800,
+    "updated_at": 1769254602
   },
   "D:\\SafeOpsFV2\\bin\\logs\\netflow\\east_west.log": {
-    "offset": 100838,
-    "inode": 1769191916563935600,
-    "updated_at": 1769191916
+    "offset": 117342,
+    "inode": 1769191928373687300,
+    "updated_at": 1769254593
   },
   "D:\\SafeOpsFV2\\bin\\logs\\netflow\\north_south.log": {
-    "offset": 298337,
-    "inode": 1769191916563935600,
-    "updated_at": 1769191916
+    "offset": 330412,
+    "inode": 1769191928373687300,
+    "updated_at": 1769254593
   }
 }
