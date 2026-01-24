@@ -258,3 +258,5 @@ bin/logs/
 bin/threat_intel/data/fetch/
 src/threat_intel/data/fetch/
 data/fetch/
+
+docs/plan/
