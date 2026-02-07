@@ -11,7 +11,7 @@ database:
   port: 5432
   database: threat_intel_db
   user: threat_intel_app
-  password: ${DB_PASSWORD} # Use environment variable for security
+  password: admin # Default password (change in production, or use DB_PASSWORD env var)
   sslmode: disable # Options: disable, require, verify-full
 
   # Connection Pooling

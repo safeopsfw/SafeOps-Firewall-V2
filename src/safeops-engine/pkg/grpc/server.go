@@ -11,6 +11,7 @@ import (
 
 	"safeops-engine/internal/driver"
 	"safeops-engine/internal/logger"
+	"safeops-engine/internal/parser"
 	"safeops-engine/pkg/grpc/pb"
 
 	"google.golang.org/grpc"
@@ -33,12 +34,17 @@ type Server struct {
 	nextPktID   uint64
 
 	// Verdict system
-	verdictCache   map[string]*CachedVerdict // key: src_ip:dst_ip:proto:port
+	verdictCache   map[string]*CachedVerdict // key: src_ip:src_port:dst_ip:dst_port:proto
 	verdictMutex   sync.RWMutex
 	verdictsApplied uint64
 
 	// Stats
 	subscriberCount uint64
+
+	// Protocol parsers (created once, reused)
+	dnsParser  *parser.DNSParser
+	httpParser *parser.HTTPParser
+	tlsParser  *parser.TLSParser
 }
 
 // Subscriber represents a client subscribed to metadata stream
@@ -78,6 +84,9 @@ func NewServer(log *logger.Logger, drv *driver.Driver, listenAddr string) (*Serv
 		listener:     listener,
 		subscribers:  make(map[string]*Subscriber),
 		verdictCache: make(map[string]*CachedVerdict),
+		dnsParser:    parser.NewDNSParser(),
+		httpParser:   parser.NewHTTPParser(),
+		tlsParser:    parser.NewTLSParser(),
 	}
 
 	pb.RegisterMetadataStreamServiceServer(grpcServer, s)
@@ -184,6 +193,9 @@ func (s *Server) BroadcastPacket(pkt *driver.ParsedPacket) bool {
 
 	// Generate unique packet ID
 	pktID := atomic.AddUint64(&s.nextPktID, 1)
+
+	// Extract domain if this is web traffic (DNS/HTTP/HTTPS)
+	s.extractDomain(pkt)
 
 	// Convert to protobuf message
 	pbPkt := convertToProtobuf(pkt, pktID)
@@ -333,11 +345,12 @@ func (s *Server) GetStats(ctx context.Context, req *pb.StatsRequest) (*pb.StatsR
 // Helper methods
 
 func (s *Server) getCacheKey(pkt *driver.ParsedPacket) string {
-	return fmt.Sprintf("%s:%s:%d:%d",
+	return fmt.Sprintf("%s:%d:%s:%d:%d",
 		pkt.SrcIP.String(),
+		pkt.SrcPort,
 		pkt.DstIP.String(),
-		pkt.Protocol,
 		pkt.DstPort,
+		pkt.Protocol,
 	)
 }
 
@@ -401,11 +414,12 @@ func (s *Server) matchesFilters(pkt *pb.PacketMetadata, filters []string) bool {
 
 func convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64) *pb.PacketMetadata {
 	// Pre-compute cache key for verdict caching (5-tuple)
-	cacheKey := fmt.Sprintf("%s:%s:%d:%d",
+	cacheKey := fmt.Sprintf("%s:%d:%s:%d:%d",
 		pkt.SrcIP.String(),
+		pkt.SrcPort,
 		pkt.DstIP.String(),
-		pkt.Protocol,
 		pkt.DstPort,
+		pkt.Protocol,
 	)
 
 	pbPkt := &pb.PacketMetadata{
@@ -466,6 +480,37 @@ func convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64) *pb.PacketMetadat
 	}
 
 	return pbPkt
+}
+
+// extractDomain extracts domain from DNS/HTTP/HTTPS packets
+// Only called for new connections (not cached), so minimal performance impact
+func (s *Server) extractDomain(pkt *driver.ParsedPacket) {
+	// DNS query (UDP port 53)
+	if pkt.Protocol == 17 && pkt.DstPort == 53 {
+		if domain := s.dnsParser.ExtractDomain(pkt.Payload); domain != "" {
+			pkt.Domain = domain
+			pkt.DomainSource = "DNS"
+			return
+		}
+	}
+
+	// HTTPS (TCP port 443) - Extract SNI
+	if pkt.Protocol == 6 && pkt.DstPort == 443 {
+		if sni := s.tlsParser.ExtractSNI(pkt.Payload); sni != "" {
+			pkt.Domain = sni
+			pkt.DomainSource = "SNI"
+			return
+		}
+	}
+
+	// HTTP (TCP port 80) - Extract Host header
+	if pkt.Protocol == 6 && pkt.DstPort == 80 {
+		if host := s.httpParser.ExtractHost(pkt.Payload); host != "" {
+			pkt.Domain = host
+			pkt.DomainSource = "HTTP"
+			return
+		}
+	}
 }
 
 func min(a, b int) int {

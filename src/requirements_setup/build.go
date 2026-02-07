@@ -39,6 +39,8 @@ func main() {
 		"embedded/schemas/threat_intel",
 		"embedded/schemas/safeops_network",
 		"embedded/schemas/dhcp_migrations",
+		"embedded/schemas/patches",
+		"embedded/schemas/seeds",
 	}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -168,6 +170,38 @@ func copySchemas() error {
 			return fmt.Errorf("failed to copy %s: %w", migration, err)
 		}
 		fmt.Printf("  Copied: %s\n", migration)
+	}
+
+	// Schema patches (fixes for threat_intel pipeline binary)
+	patches := []string{
+		"001_threat_intel_patches.sql",
+		"002_views_and_functions.sql",
+	}
+
+	patchBaseDir := filepath.Join("..", "..", "database", "patches")
+	for _, patch := range patches {
+		src := filepath.Join(patchBaseDir, patch)
+		dest := filepath.Join("embedded", "schemas", "patches", patch)
+		if err := copyFile(src, dest); err != nil {
+			return fmt.Errorf("failed to copy %s: %w", patch, err)
+		}
+		fmt.Printf("  Copied: %s\n", patch)
+	}
+
+	// Seed data
+	seeds := []string{
+		"feed_sources_config.sql",
+		"initial_threat_categories.sql",
+	}
+
+	seedBaseDir := filepath.Join("..", "..", "database", "seeds")
+	for _, seed := range seeds {
+		src := filepath.Join(seedBaseDir, seed)
+		dest := filepath.Join("embedded", "schemas", "seeds", seed)
+		if err := copyFile(src, dest); err != nil {
+			return fmt.Errorf("failed to copy %s: %w", seed, err)
+		}
+		fmt.Printf("  Copied: %s\n", seed)
 	}
 
 	return nil

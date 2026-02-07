@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"threat_intel/src/enrichment"
 	"threat_intel/src/fetcher"
 	"threat_intel/src/processor"
 	"threat_intel/src/storage"
@@ -25,6 +26,7 @@ import (
 //   go run ./cmd/pipeline -category=ip_geo    # Fetch specific category
 //   go run ./cmd/pipeline -status             # Show database status
 //   go run ./cmd/pipeline -headers            # Show table headers
+//   go run ./cmd/pipeline -enrich=path.csv    # Enrich unknown IPs from CSV
 // =============================================================================
 
 func main() {
@@ -36,6 +38,7 @@ func main() {
 	showHeaders := flag.Bool("headers", false, "Show table headers/columns")
 	deleteAfter := flag.Bool("delete", true, "Delete files after processing")
 	scheduler := flag.Bool("scheduler", false, "Run continuously every 30 minutes")
+	enrichCSV := flag.String("enrich", "", "Enrich unknown IPs from CSV file (path to CSV)")
 	flag.Parse()
 
 	// Get executable directory for relative paths
@@ -59,6 +62,14 @@ func main() {
 	// Handle headers
 	if *showHeaders {
 		showTableHeaders()
+		return
+	}
+
+	// Handle enrichment
+	if *enrichCSV != "" {
+		if err := runEnrichment(*enrichCSV); err != nil {
+			log.Fatalf("Enrichment error: %v\n", err)
+		}
 		return
 	}
 
@@ -237,6 +248,48 @@ func showTableHeaders() {
 			fmt.Printf("  %-25s %s%s\n", col.Name, col.DataType, nullable)
 		}
 	}
+}
+
+// =============================================================================
+// Enrichment
+// =============================================================================
+
+// runEnrichment enriches unknown IPs from CSV using free geo APIs
+func runEnrichment(csvPath string) error {
+	log.Println("\n[ENRICH] Starting IP enrichment...")
+
+	// Resolve path relative to exe directory if not absolute
+	if !filepath.IsAbs(csvPath) {
+		csvPath = filepath.Join(exeDir, csvPath)
+	}
+
+	// Check file exists
+	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
+		return fmt.Errorf("CSV file not found: %s", csvPath)
+	}
+
+	config := enrichment.DefaultEnrichConfig(csvPath)
+
+	enricher, err := enrichment.NewEnricher(config)
+	if err != nil {
+		return fmt.Errorf("failed to create enricher: %w", err)
+	}
+	defer enricher.Close()
+
+	result, err := enricher.Run()
+	if err != nil {
+		return fmt.Errorf("enrichment failed: %w", err)
+	}
+
+	// Log final summary
+	if result.Failed > 0 || result.DBErrors > 0 {
+		log.Printf("[ENRICH] Completed with issues: %d failed lookups, %d DB errors\n",
+			result.Failed, result.DBErrors)
+	} else {
+		log.Printf("[ENRICH] Success! %d IPs enriched and stored\n", result.Success)
+	}
+
+	return nil
 }
 
 // =============================================================================

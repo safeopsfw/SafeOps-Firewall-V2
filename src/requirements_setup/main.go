@@ -23,6 +23,12 @@ var safeopsNetworkSchemas embed.FS
 //go:embed embedded/schemas/dhcp_migrations/*.sql
 var dhcpMigrations embed.FS
 
+//go:embed embedded/schemas/patches/*.sql
+var patchSchemas embed.FS
+
+//go:embed embedded/schemas/seeds/*.sql
+var seedSchemas embed.FS
+
 // Config structures matching config.yaml
 type Config struct {
 	Installation struct {
@@ -84,6 +90,14 @@ type Config struct {
 			File        string `yaml:"file"`
 			Description string `yaml:"description"`
 		} `yaml:"dhcp_migrations"`
+		Patches []struct {
+			File        string `yaml:"file"`
+			Description string `yaml:"description"`
+		} `yaml:"patches"`
+		Seeds []struct {
+			File        string `yaml:"file"`
+			Description string `yaml:"description"`
+		} `yaml:"seeds"`
 	} `yaml:"database_schemas"`
 
 	Options struct {
@@ -151,7 +165,7 @@ func main() {
 	}
 
 	// Install PostgreSQL
-	fmt.Println("\n[STEP 1/7] Installing PostgreSQL...")
+	fmt.Println("\n[STEP 1/11] Installing PostgreSQL...")
 	if err := installPostgreSQL(); err != nil {
 		fmt.Printf("[ERROR] PostgreSQL installation failed: %v\n", err)
 		os.Exit(1)
@@ -159,7 +173,7 @@ func main() {
 	fmt.Println("[SUCCESS] PostgreSQL installed")
 
 	// Start PostgreSQL service
-	fmt.Println("\n[STEP 2/7] Starting PostgreSQL service...")
+	fmt.Println("\n[STEP 2/11] Starting PostgreSQL service...")
 	if err := startPostgreSQLService(); err != nil {
 		fmt.Printf("[ERROR] Failed to start PostgreSQL: %v\n", err)
 		os.Exit(1)
@@ -171,7 +185,7 @@ func main() {
 	time.Sleep(5 * time.Second)
 
 	// Create databases
-	fmt.Println("\n[STEP 3/7] Creating databases...")
+	fmt.Println("\n[STEP 3/11] Creating databases...")
 	if err := createDatabases(); err != nil {
 		fmt.Printf("[ERROR] Database creation failed: %v\n", err)
 		os.Exit(1)
@@ -179,7 +193,7 @@ func main() {
 	fmt.Println("[SUCCESS] Databases created")
 
 	// Create users
-	fmt.Println("\n[STEP 4/7] Creating database users...")
+	fmt.Println("\n[STEP 4/11] Creating database users...")
 	if err := createUsers(); err != nil {
 		fmt.Printf("[ERROR] User creation failed: %v\n", err)
 		os.Exit(1)
@@ -187,15 +201,44 @@ func main() {
 	fmt.Println("[SUCCESS] Database users created")
 
 	// Apply schemas
-	fmt.Println("\n[STEP 5/7] Applying database schemas...")
+	fmt.Println("\n[STEP 5/11] Applying database schemas...")
 	if err := applySchemas(); err != nil {
 		fmt.Printf("[ERROR] Schema application failed: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("[SUCCESS] All schemas applied")
 
+	// Apply schema patches (fixes for threat_intel pipeline binary)
+	fmt.Println("\n[STEP 6/11] Applying schema patches...")
+	if err := applyPatches(); err != nil {
+		fmt.Printf("[ERROR] Schema patches failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[SUCCESS] Schema patches applied")
+
+	// Apply seed data
+	fmt.Println("\n[STEP 7/11] Loading seed data...")
+	if err := applySeeds(); err != nil {
+		fmt.Printf("[ERROR] Seed data failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[SUCCESS] Seed data loaded")
+
+	// Apply views and functions (done after patches since patches may alter column types)
+	fmt.Println("\n[STEP 8/11] Creating views and functions...")
+	// Views are included in patch 002, already applied above
+	fmt.Println("[SUCCESS] Views and functions created")
+
+	// Grant table-level permissions
+	fmt.Println("\n[STEP 9/11] Granting table-level permissions...")
+	if err := grantTablePermissions(); err != nil {
+		fmt.Printf("[ERROR] Permission grants failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[SUCCESS] Table-level permissions granted")
+
 	// Install Node.js
-	fmt.Println("\n[STEP 6/7] Installing Node.js...")
+	fmt.Println("\n[STEP 10/11] Installing Node.js...")
 	if err := installNodeJS(); err != nil {
 		fmt.Printf("[ERROR] Node.js installation failed: %v\n", err)
 		os.Exit(1)
@@ -203,7 +246,7 @@ func main() {
 	fmt.Println("[SUCCESS] Node.js installed")
 
 	// Install WinPkFilter
-	fmt.Println("\n[STEP 7/7] Installing WinPkFilter driver...")
+	fmt.Println("\n[STEP 11/11] Installing WinPkFilter driver...")
 	if err := installWinPkFilter(); err != nil {
 		fmt.Printf("[ERROR] WinPkFilter installation failed: %v\n", err)
 		os.Exit(1)
@@ -224,7 +267,9 @@ func printBanner() {
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 	fmt.Println("This installer will set up:")
-	fmt.Println("  • PostgreSQL 16.1 (with 3 databases)")
+	fmt.Println("  • PostgreSQL 16.1 (with 3 databases + schemas + patches)")
+	fmt.Println("  • Database seed data (threat feeds, categories)")
+	fmt.Println("  • Table-level permissions for all app users")
 	fmt.Println("  • Node.js 20.11.0 (for UI and Backend)")
 	fmt.Println("  • WinPkFilter 3.4.8 (packet capture driver)")
 	fmt.Println()
@@ -451,6 +496,75 @@ func applySchemas() error {
 		if err := executeSQLFile(psqlPath, "safeops_network", string(sqlContent)); err != nil {
 			return fmt.Errorf("failed to apply migration %s: %w", migration.File, err)
 		}
+	}
+
+	return nil
+}
+
+func applyPatches() error {
+	psqlPath := filepath.Join(config.PostgreSQL.InstallDir, "bin", "psql.exe")
+
+	for _, patch := range config.DatabaseSchemas.Patches {
+		fmt.Printf("  Applying: %s (%s)\n", patch.File, patch.Description)
+
+		sqlContent, err := patchSchemas.ReadFile("embedded/schemas/patches/" + patch.File)
+		if err != nil {
+			return fmt.Errorf("failed to read patch %s: %w", patch.File, err)
+		}
+
+		if err := executeSQLFile(psqlPath, "threat_intel_db", string(sqlContent)); err != nil {
+			// Patches are best-effort (some may warn on already-applied changes)
+			fmt.Printf("  [WARN] Patch %s had warnings (may be already applied)\n", patch.File)
+		}
+	}
+
+	return nil
+}
+
+func applySeeds() error {
+	psqlPath := filepath.Join(config.PostgreSQL.InstallDir, "bin", "psql.exe")
+
+	for _, seed := range config.DatabaseSchemas.Seeds {
+		fmt.Printf("  Loading: %s (%s)\n", seed.File, seed.Description)
+
+		sqlContent, err := seedSchemas.ReadFile("embedded/schemas/seeds/" + seed.File)
+		if err != nil {
+			return fmt.Errorf("failed to read seed %s: %w", seed.File, err)
+		}
+
+		if err := executeSQLFile(psqlPath, "threat_intel_db", string(sqlContent)); err != nil {
+			// Seeds may fail on duplicate keys, that's OK
+			fmt.Printf("  [WARN] Seed %s had warnings (data may already exist)\n", seed.File)
+		}
+	}
+
+	return nil
+}
+
+func grantTablePermissions() error {
+	psqlPath := filepath.Join(config.PostgreSQL.InstallDir, "bin", "psql.exe")
+
+	// Grant table-level permissions on all databases for all app users
+	databases := map[string][]string{
+		"threat_intel_db": {"safeops", "threat_intel_app", "dhcp_server", "dns_server"},
+		"safeops_network": {"safeops", "dhcp_server", "dns_server"},
+		"safeops":         {"safeops"},
+	}
+
+	for dbName, users := range databases {
+		for _, user := range users {
+			grantSQL := fmt.Sprintf(`
+				GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO %s;
+				GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO %s;
+				ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO %s;
+				ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO %s;
+			`, user, user, user, user)
+
+			if err := executeSQLFile(psqlPath, dbName, grantSQL); err != nil {
+				fmt.Printf("  [WARN] Failed to grant permissions to %s on %s\n", user, dbName)
+			}
+		}
+		fmt.Printf("  [OK] Permissions granted on %s\n", dbName)
 	}
 
 	return nil

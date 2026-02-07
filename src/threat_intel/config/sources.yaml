@@ -281,22 +281,24 @@ feeds:
     description: "IPInfo IP to Country mapping"
 
   # MaxMind GeoLite2 City - GitLab Mirror (free, includes lat/lon/city)
+  # NOTE: Repo changed from ipv4.tsv to locale-specific ipv4-en.tsv (Feb 2026)
   - name: "GeoLite2-City"
     category: "ip_geo"
-    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-city/ipv4.tsv?inline=false"
+    url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-city/ipv4-en.tsv?inline=false"
     format: "tsv"
     enabled: true
     update_frequency: 86400
     description: "MaxMind GeoLite2 IP to City/Lat/Lon mapping"
 
-  # MaxMind GeoLite2 ASN - GitLab Mirror (free, includes ASN org)
+  # MaxMind GeoLite2 ASN - DISABLED: geolite2-asn/ directory removed from GitLab repo (Feb 2026)
+  # IPtoASN (ip2asn-v4.tsv.gz) already provides IP-to-ASN+country mapping
   - name: "GeoLite2-ASN"
     category: "ip_geo"
     url: "https://gitlab.com/tdulcet/ip-geolocation-dbs/-/raw/main/geolite2-asn/ipv4.tsv?inline=false"
     format: "tsv"
-    enabled: true
+    enabled: false
     update_frequency: 86400
-    description: "MaxMind GeoLite2 IP to ASN/Org mapping"
+    description: "DISABLED - Directory removed from GitLab repo. Use IPtoASN instead"
 
   # Keeping IPtoASN as valid default. Users can manually download IP2Location.
 
@@ -327,14 +329,16 @@ feeds:
     update_frequency: 86400
     description: "IP to ASN mapping - DISABLED (404)"
 
-  # IP2Location LITE - DB1 (Country level) - Official Download
+  # IP2Location LITE - DB1 (Country level) - DISABLED: ZIP download unreliable
+  # Server often returns HTML/captcha instead of ZIP, causing "unexpected EOF" on extraction
+  # GeoLite2-Country + IPInfo-Country + IPtoASN already provide country-level coverage
   - name: "IP2Location-LITE-DB1"
     category: "ip_geo"
     url: "https://download.ip2location.com/lite/IP2LOCATION-LITE-DB1.CSV.ZIP"
     format: "csv"
-    enabled: true
+    enabled: false
     update_frequency: 604800 # Weekly
-    description: "IP2Location LITE DB1 - IP to Country mapping (ZIP)"
+    description: "DISABLED - ZIP download unreliable (unexpected EOF). Use GeoLite2-Country instead"
     parser_config:
       has_header: false
       columns: ["ip_from", "ip_to", "country_code", "country_name"]

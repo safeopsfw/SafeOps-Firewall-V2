@@ -160,6 +160,20 @@ database_schemas:
     - file: "005_fix_missing_columns.sql"
       description: "Schema corrections"
 
+  # Schema patches (applied after base schemas to fix drift with compiled binaries)
+  patches:
+    - file: "001_threat_intel_patches.sql"
+      description: "Schema fixes for threat_intel pipeline binary"
+    - file: "002_views_and_functions.sql"
+      description: "Corrected views and dashboard helper functions"
+
+  # Seed data (initial configuration data)
+  seeds:
+    - file: "feed_sources_config.sql"
+      description: "Threat feed source configurations"
+    - file: "initial_threat_categories.sql"
+      description: "Threat category taxonomy"
+
 # Installation Options
 options:
   # Create desktop shortcuts

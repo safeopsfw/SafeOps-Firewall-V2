@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"bytes"
+	"encoding/binary"
 	"strings"
 )
 
@@ -15,32 +15,32 @@ func NewTLSParser() *TLSParser {
 
 // ExtractSNI extracts the Server Name Indication from TLS ClientHello
 // Returns empty string if not a valid TLS ClientHello or no SNI present
+// RFC 5246 compliant implementation - handles TLS 1.0 through TLS 1.3
 func (p *TLSParser) ExtractSNI(payload []byte) string {
 	if len(payload) < 43 {
 		return ""
 	}
 
-	// Check TLS record header
-	// 0x16 = Handshake
+	// Validate TLS record header
+	// Byte 0: Content Type (0x16 = Handshake)
 	if payload[0] != 0x16 {
 		return ""
 	}
 
-	// TLS version (3.1 = TLS 1.0, 3.3 = TLS 1.2, etc.)
+	// Byte 1-2: TLS version (0x03 0x01 = TLS 1.0, 0x03 0x03 = TLS 1.2, etc.)
 	if payload[1] != 0x03 {
 		return ""
 	}
 
-	// Check handshake type (0x01 = ClientHello)
+	// Byte 5: Handshake type (0x01 = ClientHello)
 	if len(payload) < 6 || payload[5] != 0x01 {
 		return ""
 	}
 
-	// Find SNI extension
-	// This is a simplified search - looks for the SNI pattern
-	sni := p.findSNI(payload)
+	// Parse ClientHello structure per RFC 5246
+	sni := p.parseClientHello(payload)
 
-	// Validate hostname
+	// Validate extracted hostname
 	if len(sni) < 3 || !strings.Contains(sni, ".") {
 		return ""
 	}
@@ -48,47 +48,137 @@ func (p *TLSParser) ExtractSNI(payload []byte) string {
 	return sni
 }
 
-// findSNI searches for SNI in the TLS extensions
-func (p *TLSParser) findSNI(data []byte) string {
-	// Look for server_name extension (type 0x0000)
-	// Simplified search - looks for hostname patterns
+// parseClientHello parses TLS ClientHello per RFC 5246 Section 7.4.1.2
+func (p *TLSParser) parseClientHello(data []byte) string {
+	// ClientHello structure:
+	// - HandshakeType: 1 byte (0x01)
+	// - Length: 3 bytes
+	// - Version: 2 bytes
+	// - Random: 32 bytes
+	// - SessionID: 1 byte length + variable
+	// - CipherSuites: 2 bytes length + variable
+	// - CompressionMethods: 1 byte length + variable
+	// - Extensions: 2 bytes length + variable
 
-	for i := 40; i < len(data)-10; i++ {
-		// Look for potential hostname start
-		if data[i] >= 'a' && data[i] <= 'z' || data[i] >= 'A' && data[i] <= 'Z' {
-			// Try to extract hostname
-			hostname := p.extractHostname(data, i)
-			if p.isValidHostname(hostname) {
-				return hostname
-			}
+	offset := 6 // Skip TLS record header (5) + HandshakeType (1)
+
+	// Skip Length (3 bytes) + Version (2 bytes) + Random (32 bytes) = 37 bytes
+	offset += 37
+
+	if offset >= len(data) {
+		return ""
+	}
+
+	// Parse SessionID length
+	sessionIDLen := int(data[offset])
+	offset += 1 + sessionIDLen
+
+	if offset+2 > len(data) {
+		return ""
+	}
+
+	// Parse CipherSuites length
+	cipherSuitesLen := int(binary.BigEndian.Uint16(data[offset : offset+2]))
+	offset += 2 + cipherSuitesLen
+
+	if offset >= len(data) {
+		return ""
+	}
+
+	// Parse CompressionMethods length
+	compressionLen := int(data[offset])
+	offset += 1 + compressionLen
+
+	if offset+2 > len(data) {
+		return ""
+	}
+
+	// Parse Extensions length
+	extensionsLen := int(binary.BigEndian.Uint16(data[offset : offset+2]))
+	offset += 2
+
+	if offset+extensionsLen > len(data) {
+		return ""
+	}
+
+	// Search for SNI extension (type 0x0000)
+	return p.findSNIExtension(data[offset:offset+extensionsLen])
+}
+
+// findSNIExtension searches for SNI in TLS extensions
+func (p *TLSParser) findSNIExtension(extensions []byte) string {
+	offset := 0
+
+	for offset+4 <= len(extensions) {
+		// Extension type (2 bytes)
+		extType := binary.BigEndian.Uint16(extensions[offset : offset+2])
+		offset += 2
+
+		// Extension length (2 bytes)
+		extLen := int(binary.BigEndian.Uint16(extensions[offset : offset+2]))
+		offset += 2
+
+		if offset+extLen > len(extensions) {
+			return "" // Invalid extension length
 		}
+
+		// Check if this is SNI extension (type 0x0000)
+		if extType == 0x0000 {
+			return p.parseSNIExtension(extensions[offset : offset+extLen])
+		}
+
+		offset += extLen
 	}
 
 	return ""
 }
 
-// extractHostname tries to extract a hostname starting at the given position
-func (p *TLSParser) extractHostname(data []byte, start int) string {
-	var buf bytes.Buffer
-
-	for i := start; i < len(data) && i < start+253; i++ {
-		c := data[i]
-
-		// Valid hostname characters
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_' {
-			buf.WriteByte(c)
-		} else {
-			break
-		}
+// parseSNIExtension extracts hostname from SNI extension data
+func (p *TLSParser) parseSNIExtension(data []byte) string {
+	if len(data) < 5 {
+		return ""
 	}
 
-	return buf.String()
+	// SNI extension structure:
+	// - ServerNameList length: 2 bytes
+	// - NameType: 1 byte (0x00 = host_name)
+	// - HostName length: 2 bytes
+	// - HostName: variable
+
+	offset := 2 // Skip ServerNameList length
+
+	// Check NameType (should be 0x00 for hostname)
+	if data[offset] != 0x00 {
+		return ""
+	}
+	offset++
+
+	if offset+2 > len(data) {
+		return ""
+	}
+
+	// Extract HostName length
+	nameLen := int(binary.BigEndian.Uint16(data[offset : offset+2]))
+	offset += 2
+
+	if offset+nameLen > len(data) || nameLen == 0 || nameLen > 253 {
+		return "" // Invalid hostname length
+	}
+
+	// Extract hostname
+	hostname := string(data[offset : offset+nameLen])
+
+	// Basic validation
+	if !p.isValidHostname(hostname) {
+		return ""
+	}
+
+	return hostname
 }
 
-// isValidHostname checks if the string looks like a valid hostname
+// isValidHostname validates the extracted hostname
 func (p *TLSParser) isValidHostname(s string) bool {
-	if len(s) < 4 || len(s) > 253 {
+	if len(s) < 3 || len(s) > 253 {
 		return false
 	}
 
@@ -102,13 +192,14 @@ func (p *TLSParser) isValidHostname(s string) bool {
 		return false
 	}
 
-	// Check for common TLDs
-	commonTLDs := []string{".com", ".net", ".org", ".io", ".co", ".app", ".dev"}
-	for _, tld := range commonTLDs {
-		if strings.HasSuffix(s, tld) {
-			return true
+	// Check for valid characters (alphanumeric, dot, hyphen)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '.' || c == '-') {
+			return false
 		}
 	}
 
-	return false
+	return true
 }
