@@ -1,0 +1,30 @@
+# Domain Blocklist - one domain per line
+# Lines starting with # are comments
+# Subdomains are automatically matched (blocking evil.com also blocks cdn.evil.com)
+# This file is hot-reloadable - changes take effect without restart
+#
+# Example entries:
+# malware.com
+# phishing-site.xyz
+# tracker.biz
+
+# ===== Facebook =====
+facebook.com
+fbcdn.net
+fbsbx.com
+fb.com
+fb.me
+fbpigeon.com
+facebook.net
+fbcdn.com
+messenger.com
+instagram.com
+
+# ===== X (Twitter) =====
+twitter.com
+x.com
+twimg.com
+t.co
+tweetdeck.com
+twitpic.com
+twitter.jp

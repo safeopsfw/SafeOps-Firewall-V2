@@ -1,0 +1,59 @@
+# SafeOps Firewall Engine - Main Configuration
+
+[engine]
+version = "5.1.0"
+worker_count = 8
+fail_open = true
+log_level = "info"
+
+[safeops]
+grpc_address = "127.0.0.1:50051"
+control_api_address = "127.0.0.1:50052"
+subscriber_id = "firewall-engine"
+filters = ["tcp", "udp"]
+reconnect_max_retries = 5
+reconnect_backoff_seconds = 2
+
+[database]
+host = "localhost"
+port = 5432
+user = "safeops"
+password = "admin"
+dbname = "threat_intel_db"
+pool_size = 10
+pool_max_lifetime_minutes = 30
+ssl_mode = "disable"
+
+[database.network]
+host = "localhost"
+port = 5432
+user = "safeops"
+password = "admin"
+dbname = "safeops_network"
+pool_size = 5
+
+[performance]
+verdict_cache_size = 100000
+verdict_cache_ttl_seconds = 60
+verdict_cache_cleanup_seconds = 10
+max_connections = 500000
+packet_buffer_size = 100000
+threat_intel_refresh_minutes = 5
+geoip_cache_size = 500000
+geoip_cache_ttl_hours = 24
+
+[servers]
+metrics_address = ":9090"
+metrics_path = "/metrics"
+health_address = ":8085"
+management_address = ":50054"
+web_api_address = ":8443"
+
+[logging]
+console_level = "info"
+file_level = "debug"
+alert_log_dir = "data/logs/firewall-alerts"
+packet_log_dir = "data/logs/firewall-packets"
+max_file_size_mb = 100
+max_backups = 10
+compress_rotated = true

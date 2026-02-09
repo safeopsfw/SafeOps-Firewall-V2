@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"safeops-engine/internal/driver"
 	"safeops-engine/internal/logger"
 	"safeops-engine/internal/parser"
+	"safeops-engine/internal/verdict"
 	"safeops-engine/pkg/grpc/pb"
 
 	"google.golang.org/grpc"
@@ -23,28 +25,32 @@ import (
 type Server struct {
 	pb.UnimplementedMetadataStreamServiceServer
 
-	log        *logger.Logger
-	driver     *driver.Driver
-	grpcServer *grpc.Server
-	listener   net.Listener
+	log           *logger.Logger
+	driver        *driver.Driver
+	verdictEngine *verdict.Engine
+	grpcServer    *grpc.Server
+	listener      net.Listener
 
-	// Subscribers
-	subscribers map[string]*Subscriber
-	subMutex    sync.RWMutex
-	nextPktID   uint64
-
-	// Verdict system
-	verdictCache   map[string]*CachedVerdict // key: src_ip:src_port:dst_ip:dst_port:proto
-	verdictMutex   sync.RWMutex
-	verdictsApplied uint64
-
-	// Stats
+	// Subscribers - atomic snapshot for lock-free broadcast
+	subscribers     atomic.Value // stores []*Subscriber (slice snapshot)
+	subscriberMap   map[string]*Subscriber
+	subMutex        sync.Mutex // only held during add/remove, NOT during broadcast
+	nextPktID       uint64
 	subscriberCount uint64
+	droppedPackets  uint64 // atomic counter for packets dropped due to full channel
+
+	// Verdict cache - sync.Map for lock-free reads on hot path
+	verdictCache    sync.Map // key: string -> *CachedVerdict
+	verdictsApplied uint64
+	cacheSize       int64 // atomic counter for cache size
 
 	// Protocol parsers (created once, reused)
 	dnsParser  *parser.DNSParser
 	httpParser *parser.HTTPParser
 	tlsParser  *parser.TLSParser
+
+	// Reusable buffer pool for cache key generation
+	keyBufPool sync.Pool
 }
 
 // Subscriber represents a client subscribed to metadata stream
@@ -53,19 +59,33 @@ type Subscriber struct {
 	Channel chan *pb.PacketMetadata
 	Cancel  context.CancelFunc
 	Filters []string // Optional protocol filters
+	// Pre-computed filter flags for fast matching
+	acceptTCP  bool
+	acceptUDP  bool
+	acceptDNS  bool
+	acceptHTTP bool
+	acceptAll  bool
+	closed     atomic.Bool // prevents double-close panic on shutdown
+}
+
+// CloseChannel safely closes the subscriber's channel exactly once
+func (sub *Subscriber) CloseChannel() {
+	if sub.closed.CompareAndSwap(false, true) {
+		close(sub.Channel)
+	}
 }
 
 // CachedVerdict stores a verdict decision with TTL
 type CachedVerdict struct {
-	Verdict     pb.VerdictType
-	Reason      string
-	RuleID      string
-	ExpiresAt   time.Time
-	HitCount    uint64
+	Verdict   pb.VerdictType
+	Reason    string
+	RuleID    string
+	ExpiresAt int64  // Unix nano for fast comparison (no time.Time allocation)
+	HitCount  uint64
 }
 
 // NewServer creates a new gRPC metadata stream server
-func NewServer(log *logger.Logger, drv *driver.Driver, listenAddr string) (*Server, error) {
+func NewServer(log *logger.Logger, drv *driver.Driver, ve *verdict.Engine, listenAddr string) (*Server, error) {
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on %s: %w", listenAddr, err)
@@ -78,16 +98,25 @@ func NewServer(log *logger.Logger, drv *driver.Driver, listenAddr string) (*Serv
 	)
 
 	s := &Server{
-		log:          log,
-		driver:       drv,
-		grpcServer:   grpcServer,
-		listener:     listener,
-		subscribers:  make(map[string]*Subscriber),
-		verdictCache: make(map[string]*CachedVerdict),
-		dnsParser:    parser.NewDNSParser(),
-		httpParser:   parser.NewHTTPParser(),
-		tlsParser:    parser.NewTLSParser(),
+		log:           log,
+		driver:        drv,
+		verdictEngine: ve,
+		grpcServer:    grpcServer,
+		listener:      listener,
+		subscriberMap: make(map[string]*Subscriber),
+		dnsParser:     parser.NewDNSParser(),
+		httpParser:    parser.NewHTTPParser(),
+		tlsParser:     parser.NewTLSParser(),
+		keyBufPool: sync.Pool{
+			New: func() interface{} {
+				buf := make([]byte, 0, 64) // Pre-allocate 64 bytes for cache key
+				return &buf
+			},
+		},
 	}
+
+	// Initialize empty subscriber snapshot
+	s.subscribers.Store(make([]*Subscriber, 0))
 
 	pb.RegisterMetadataStreamServiceServer(grpcServer, s)
 
@@ -129,22 +158,23 @@ func (s *Server) cacheCleanupLoop() {
 
 // cleanExpiredVerdicts removes expired entries from verdict cache
 func (s *Server) cleanExpiredVerdicts() {
-	now := time.Now()
-	s.verdictMutex.Lock()
-	defer s.verdictMutex.Unlock()
-
+	now := time.Now().UnixNano()
 	removed := 0
-	for key, verdict := range s.verdictCache {
-		if now.After(verdict.ExpiresAt) {
-			delete(s.verdictCache, key)
+
+	s.verdictCache.Range(func(key, value interface{}) bool {
+		cv := value.(*CachedVerdict)
+		if now > cv.ExpiresAt {
+			s.verdictCache.Delete(key)
+			atomic.AddInt64(&s.cacheSize, -1)
 			removed++
 		}
-	}
+		return true
+	})
 
 	if removed > 0 {
 		s.log.Debug("Cleaned expired verdicts", map[string]interface{}{
 			"removed":   removed,
-			"remaining": len(s.verdictCache),
+			"remaining": atomic.LoadInt64(&s.cacheSize),
 		})
 	}
 }
@@ -153,13 +183,14 @@ func (s *Server) cleanExpiredVerdicts() {
 func (s *Server) Stop() {
 	s.log.Info("Stopping gRPC server", nil)
 
-	// Close all subscriber channels
+	// Close all subscriber channels (safe: CloseChannel is idempotent)
 	s.subMutex.Lock()
-	for _, sub := range s.subscribers {
+	for _, sub := range s.subscriberMap {
 		sub.Cancel()
-		close(sub.Channel)
+		sub.CloseChannel()
 	}
-	s.subscribers = make(map[string]*Subscriber)
+	s.subscriberMap = make(map[string]*Subscriber)
+	s.subscribers.Store(make([]*Subscriber, 0))
 	s.subMutex.Unlock()
 
 	// Stop gRPC server
@@ -169,27 +200,85 @@ func (s *Server) Stop() {
 	s.log.Info("gRPC server stopped", nil)
 }
 
+// SubscriberCount returns the number of active gRPC subscribers
+func (s *Server) SubscriberCount() uint64 {
+	return atomic.LoadUint64(&s.subscriberCount)
+}
+
+// buildCacheKey builds a 5-tuple cache key without fmt.Sprintf allocations
+func (s *Server) buildCacheKey(pkt *driver.ParsedPacket) string {
+	bufPtr := s.keyBufPool.Get().(*[]byte)
+	buf := (*bufPtr)[:0]
+
+	buf = append(buf, pkt.SrcIP.String()...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(pkt.SrcPort), 10)
+	buf = append(buf, ':')
+	buf = append(buf, pkt.DstIP.String()...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(pkt.DstPort), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(pkt.Protocol), 10)
+
+	key := string(buf) // single allocation for the final string
+	*bufPtr = buf
+	s.keyBufPool.Put(bufPtr)
+
+	return key
+}
+
+// CheckVerdictCache checks the verdict cache for a packet WITHOUT broadcasting.
+// Used on the fast path where we don't want to send packets over gRPC
+// but still want to enforce cached verdicts from the Firewall Engine.
+func (s *Server) CheckVerdictCache(pkt *driver.ParsedPacket) bool {
+	cacheKey := s.buildCacheKey(pkt)
+	if val, ok := s.verdictCache.Load(cacheKey); ok {
+		cv := val.(*CachedVerdict)
+		if time.Now().UnixNano() <= cv.ExpiresAt {
+			atomic.AddUint64(&cv.HitCount, 1)
+			if cv.Verdict != pb.VerdictType_ALLOW {
+				s.applyVerdictToPacket(pkt, cv)
+				return false
+			}
+			return true
+		}
+		s.verdictCache.Delete(cacheKey)
+		atomic.AddInt64(&s.cacheSize, -1)
+	}
+	return true
+}
+
 // BroadcastPacket broadcasts packet metadata to all subscribers
 func (s *Server) BroadcastPacket(pkt *driver.ParsedPacket) bool {
-	// FAST PATH: No subscribers = instant pass-through
-	s.subMutex.RLock()
-	hasSubscribers := len(s.subscribers) > 0
-	s.subMutex.RUnlock()
-
-	if !hasSubscribers {
-		return true // No subscribers, allow immediately
+	// FAST PATH: No subscribers = instant pass-through (atomic load, no mutex)
+	if atomic.LoadUint64(&s.subscriberCount) == 0 {
+		return true
 	}
 
-	// FAST PATH: Check verdict cache for established connections
-	cacheKey := s.getCacheKey(pkt)
-	if verdict := s.getCachedVerdict(cacheKey); verdict != nil {
-		atomic.AddUint64(&verdict.HitCount, 1)
-		return verdict.Verdict == pb.VerdictType_ALLOW
+	// FAST PATH: Check verdict cache (sync.Map = lock-free read)
+	cacheKey := s.buildCacheKey(pkt)
+	if val, ok := s.verdictCache.Load(cacheKey); ok {
+		cv := val.(*CachedVerdict)
+		// Check expiry with fast int64 comparison (no time.Time)
+		if time.Now().UnixNano() <= cv.ExpiresAt {
+			atomic.AddUint64(&cv.HitCount, 1)
+			if cv.Verdict != pb.VerdictType_ALLOW {
+				s.applyVerdictToPacket(pkt, cv)
+				return false
+			}
+			return true
+		}
+		// Expired - delete lazily
+		s.verdictCache.Delete(cacheKey)
+		atomic.AddInt64(&s.cacheSize, -1)
 	}
 
-	// SLOW PATH: Need to broadcast and get verdict
-	s.subMutex.RLock()
-	defer s.subMutex.RUnlock()
+	// SLOW PATH: Broadcast to subscribers
+	// Load atomic snapshot of subscribers (no mutex needed for reads)
+	subs := s.subscribers.Load().([]*Subscriber)
+	if len(subs) == 0 {
+		return true
+	}
 
 	// Generate unique packet ID
 	pktID := atomic.AddUint64(&s.nextPktID, 1)
@@ -198,12 +287,14 @@ func (s *Server) BroadcastPacket(pkt *driver.ParsedPacket) bool {
 	s.extractDomain(pkt)
 
 	// Convert to protobuf message
-	pbPkt := convertToProtobuf(pkt, pktID)
+	pbPkt := s.convertToProtobuf(pkt, pktID, cacheKey)
 
-	// Broadcast to all subscribers
-	for _, sub := range s.subscribers {
-		// Check filters
-		if !s.matchesFilters(pbPkt, sub.Filters) {
+	// Broadcast to all subscribers using snapshot (no lock)
+	for _, sub := range subs {
+		if sub.closed.Load() {
+			continue
+		}
+		if !sub.matchesPacket(pbPkt) {
 			continue
 		}
 
@@ -211,15 +302,50 @@ func (s *Server) BroadcastPacket(pkt *driver.ParsedPacket) bool {
 		case sub.Channel <- pbPkt:
 			// Sent successfully
 		default:
-			// Channel full, skip (non-blocking)
-			s.log.Warn("Subscriber channel full, dropping packet", map[string]interface{}{
-				"subscriber_id": sub.ID,
-			})
+			// Channel full — count the drop
+			dropped := atomic.AddUint64(&s.droppedPackets, 1)
+			// Log every 10K drops so operator sees the problem
+			if dropped%10000 == 0 {
+				s.log.Warn("Subscriber channel overflow", map[string]interface{}{
+					"subscriber_id":  sub.ID,
+					"total_dropped":  dropped,
+					"channel_cap":    cap(sub.Channel),
+				})
+			}
 		}
 	}
 
 	// Default: allow packet (no explicit verdict yet)
 	return true
+}
+
+// matchesPacket uses pre-computed filter flags for O(1) matching
+func (sub *Subscriber) matchesPacket(pkt *pb.PacketMetadata) bool {
+	if sub.acceptAll {
+		return true
+	}
+	if sub.acceptTCP && pkt.Protocol == 6 {
+		return true
+	}
+	if sub.acceptUDP && pkt.Protocol == 17 {
+		return true
+	}
+	if sub.acceptDNS && (pkt.IsDnsQuery || pkt.IsDnsResponse) {
+		return true
+	}
+	if sub.acceptHTTP && pkt.IsHttp {
+		return true
+	}
+	return false
+}
+
+// updateSubscriberSnapshot rebuilds the atomic subscriber slice (called under lock)
+func (s *Server) updateSubscriberSnapshot() {
+	subs := make([]*Subscriber, 0, len(s.subscriberMap))
+	for _, sub := range s.subscriberMap {
+		subs = append(subs, sub)
+	}
+	s.subscribers.Store(subs)
 }
 
 // StreamMetadata implements the gRPC streaming method
@@ -236,30 +362,50 @@ func (s *Server) StreamMetadata(req *pb.SubscribeRequest, stream pb.MetadataStre
 		"filters":       req.Filters,
 	})
 
-	// Create subscriber
+	// Create subscriber with pre-computed filter flags
 	subCtx, cancel := context.WithCancel(ctx)
 	sub := &Subscriber{
 		ID:      req.SubscriberId,
-		Channel: make(chan *pb.PacketMetadata, 10000), // Large buffer
+		Channel: make(chan *pb.PacketMetadata, 500000), // 500K buffer for high throughput
 		Cancel:  cancel,
 		Filters: req.Filters,
 	}
 
-	// Register subscriber
+	// Pre-compute filter flags
+	if len(req.Filters) == 0 {
+		sub.acceptAll = true
+	} else {
+		for _, f := range req.Filters {
+			switch f {
+			case "tcp":
+				sub.acceptTCP = true
+			case "udp":
+				sub.acceptUDP = true
+			case "dns":
+				sub.acceptDNS = true
+			case "http":
+				sub.acceptHTTP = true
+			}
+		}
+	}
+
+	// Register subscriber (mutex only held briefly during add)
 	s.subMutex.Lock()
-	s.subscribers[req.SubscriberId] = sub
+	s.subscriberMap[req.SubscriberId] = sub
 	atomic.AddUint64(&s.subscriberCount, 1)
+	s.updateSubscriberSnapshot()
 	s.subMutex.Unlock()
 
 	// Cleanup on disconnect
 	defer func() {
 		s.subMutex.Lock()
-		delete(s.subscribers, req.SubscriberId)
+		delete(s.subscriberMap, req.SubscriberId)
 		atomic.AddUint64(&s.subscriberCount, ^uint64(0)) // Decrement
+		s.updateSubscriberSnapshot()
 		s.subMutex.Unlock()
 
 		cancel()
-		close(sub.Channel)
+		sub.CloseChannel()
 
 		s.log.Info("Metadata subscriber disconnected", map[string]interface{}{
 			"subscriber_id": req.SubscriberId,
@@ -289,17 +435,16 @@ func (s *Server) StreamMetadata(req *pb.SubscribeRequest, stream pb.MetadataStre
 
 // ApplyVerdict implements the verdict enforcement method
 func (s *Server) ApplyVerdict(ctx context.Context, req *pb.VerdictRequest) (*pb.VerdictResponse, error) {
-	// Cache verdict if TTL > 0 (for established connections)
+	// Cache verdict if TTL > 0 (sync.Map Store = lock-free for readers)
 	if req.TtlSeconds > 0 && req.CacheKey != "" {
-		s.verdictMutex.Lock()
-		s.verdictCache[req.CacheKey] = &CachedVerdict{
+		s.verdictCache.Store(req.CacheKey, &CachedVerdict{
 			Verdict:   req.Verdict,
 			Reason:    req.Reason,
 			RuleID:    req.RuleId,
-			ExpiresAt: time.Now().Add(time.Duration(req.TtlSeconds) * time.Second),
+			ExpiresAt: time.Now().Add(time.Duration(req.TtlSeconds) * time.Second).UnixNano(),
 			HitCount:  0,
-		}
-		s.verdictMutex.Unlock()
+		})
+		atomic.AddInt64(&s.cacheSize, 1)
 
 		s.log.Debug("Verdict cached", map[string]interface{}{
 			"cache_key": req.CacheKey,
@@ -335,93 +480,73 @@ func (s *Server) GetStats(ctx context.Context, req *pb.StatsRequest) (*pb.StatsR
 	return &pb.StatsResponse{
 		PacketsRead:       read,
 		PacketsWritten:    written,
-		PacketsDropped:    dropped,
+		PacketsDropped:    dropped + atomic.LoadUint64(&s.droppedPackets),
 		ActiveSubscribers: atomic.LoadUint64(&s.subscriberCount),
 		VerdictsApplied:   atomic.LoadUint64(&s.verdictsApplied),
-		CachedVerdicts:    uint64(len(s.verdictCache)),
+		CachedVerdicts:    uint64(atomic.LoadInt64(&s.cacheSize)),
 	}, nil
 }
 
-// Helper methods
-
-func (s *Server) getCacheKey(pkt *driver.ParsedPacket) string {
-	return fmt.Sprintf("%s:%d:%s:%d:%d",
-		pkt.SrcIP.String(),
-		pkt.SrcPort,
-		pkt.DstIP.String(),
-		pkt.DstPort,
-		pkt.Protocol,
-	)
-}
-
-func (s *Server) getCachedVerdict(key string) *CachedVerdict {
-	s.verdictMutex.RLock()
-	defer s.verdictMutex.RUnlock()
-
-	verdict, exists := s.verdictCache[key]
-	if !exists {
-		return nil
+// applyVerdictToPacket enforces a cached verdict by sending RST/DNS inject/HTML block page
+func (s *Server) applyVerdictToPacket(pkt *driver.ParsedPacket, cv *CachedVerdict) {
+	// Extract MAC addresses from raw Ethernet header
+	var srcMAC, dstMAC [6]byte
+	data := pkt.RawBuffer.Buffer[:pkt.RawBuffer.Length]
+	if len(data) >= 14 {
+		copy(dstMAC[:], data[0:6])
+		copy(srcMAC[:], data[6:12])
 	}
 
-	// Check if expired
-	if time.Now().After(verdict.ExpiresAt) {
-		// Expired, will be cleaned up later
-		return nil
+	switch cv.Verdict {
+	case pb.VerdictType_BLOCK:
+		if pkt.Protocol == driver.ProtoTCP {
+			// For HTTP: inject block page before RST
+			if pkt.DstPort == 80 && s.verdictEngine != nil {
+				s.verdictEngine.InjectHTMLBlockPage(
+					pkt.AdapterHandle,
+					pkt.SrcIP, pkt.DstIP,
+					pkt.SrcPort, pkt.DstPort,
+					srcMAC, dstMAC,
+					cv.Reason, cv.RuleID,
+				)
+			}
+			// Send TCP RST to kill connection
+			if s.verdictEngine != nil {
+				s.verdictEngine.SendTCPReset(
+					pkt.AdapterHandle,
+					pkt.SrcIP, pkt.DstIP,
+					pkt.SrcPort, pkt.DstPort,
+					srcMAC, dstMAC,
+				)
+			}
+		}
+
+	case pb.VerdictType_REDIRECT:
+		if pkt.DstPort == 53 && pkt.Protocol == driver.ProtoUDP && s.verdictEngine != nil {
+			redirectIP := net.ParseIP("127.0.0.1")
+			s.verdictEngine.InjectDNSResponse(
+				pkt.AdapterHandle,
+				data,
+				pkt.Domain,
+				redirectIP,
+				srcMAC, dstMAC,
+			)
+		}
+
+	case pb.VerdictType_DROP:
+		// Silent drop - no action needed, packet just won't be reinjected
 	}
 
-	return verdict
-}
-
-func (s *Server) applyVerdictToPacket(pkt *driver.ParsedPacket, verdict pb.VerdictType) {
-	// This will be implemented in Phase 2 with actual packet manipulation
-	// For now, just log
-	s.log.Debug("Applying cached verdict", map[string]interface{}{
-		"verdict": verdict.String(),
+	s.log.Debug("Verdict enforced", map[string]interface{}{
+		"verdict": cv.Verdict.String(),
+		"reason":  cv.Reason,
 		"src_ip":  pkt.SrcIP.String(),
 		"dst_ip":  pkt.DstIP.String(),
 	})
 }
 
-func (s *Server) matchesFilters(pkt *pb.PacketMetadata, filters []string) bool {
-	if len(filters) == 0 {
-		return true // No filters, accept all
-	}
-
-	// Check protocol filters
-	for _, filter := range filters {
-		switch filter {
-		case "tcp":
-			if pkt.Protocol == 6 {
-				return true
-			}
-		case "udp":
-			if pkt.Protocol == 17 {
-				return true
-			}
-		case "dns":
-			if pkt.IsDnsQuery || pkt.IsDnsResponse {
-				return true
-			}
-		case "http":
-			if pkt.IsHttp {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-func convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64) *pb.PacketMetadata {
-	// Pre-compute cache key for verdict caching (5-tuple)
-	cacheKey := fmt.Sprintf("%s:%d:%s:%d:%d",
-		pkt.SrcIP.String(),
-		pkt.SrcPort,
-		pkt.DstIP.String(),
-		pkt.DstPort,
-		pkt.Protocol,
-	)
-
+// convertToProtobuf converts driver packet to protobuf (method to avoid extra cache key alloc)
+func (s *Server) convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64, cacheKey string) *pb.PacketMetadata {
 	pbPkt := &pb.PacketMetadata{
 		PacketId:     pktID,
 		Timestamp:    time.Now().UnixNano(),
@@ -434,7 +559,7 @@ func convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64) *pb.PacketMetadat
 		AdapterName:  pkt.AdapterName,
 		Domain:       pkt.Domain,
 		DomainSource: pkt.DomainSource,
-		CacheKey:     cacheKey, // Include pre-computed cache key
+		CacheKey:     cacheKey, // Reuse already-computed cache key
 	}
 
 	// Set direction
@@ -464,16 +589,15 @@ func convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64) *pb.PacketMetadat
 	}
 
 	if pkt.Protocol == 6 && len(pkt.Payload) > 4 {
-		payload := string(pkt.Payload[:min(100, len(pkt.Payload))])
-		if len(payload) > 0 {
-			if payload[0] == 'G' || payload[0] == 'P' || payload[0] == 'H' {
-				pbPkt.IsHttp = true
-				if len(payload) >= 3 {
-					if payload[:3] == "GET" {
-						pbPkt.HttpMethod = "GET"
-					} else if len(payload) >= 4 && payload[:4] == "POST" {
-						pbPkt.HttpMethod = "POST"
-					}
+		// Check first byte directly without string conversion
+		first := pkt.Payload[0]
+		if first == 'G' || first == 'P' || first == 'H' {
+			pbPkt.IsHttp = true
+			if len(pkt.Payload) >= 4 {
+				if pkt.Payload[0] == 'G' && pkt.Payload[1] == 'E' && pkt.Payload[2] == 'T' {
+					pbPkt.HttpMethod = "GET"
+				} else if pkt.Payload[0] == 'P' && pkt.Payload[1] == 'O' && pkt.Payload[2] == 'S' && pkt.Payload[3] == 'T' {
+					pbPkt.HttpMethod = "POST"
 				}
 			}
 		}
@@ -511,11 +635,4 @@ func (s *Server) extractDomain(pkt *driver.ParsedPacket) {
 			return
 		}
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

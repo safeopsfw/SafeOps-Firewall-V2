@@ -1,0 +1,40 @@
+# SafeOps Firewall Engine - GeoIP Configuration
+
+[policy]
+enabled = true
+mode = "deny_list"               # "deny_list" or "allow_list"
+log_blocked = true               # Log geo-blocked connections
+enrich_alerts = true             # Add geo info to all alerts
+
+[deny_list]
+# Countries to BLOCK (ISO 3166-1 alpha-2)
+countries = [
+    # Uncomment as needed:
+    # "CN",  # China
+    # "RU",  # Russia
+    # "KP",  # North Korea
+    # "IR",  # Iran
+]
+
+[allow_list]
+# Countries to ALLOW (all others blocked) - only used if mode = "allow_list"
+countries = []
+
+[asn_block]
+# Block specific ASNs (hostile networks)
+enabled = false
+blocked_asns = []
+
+[datacenter]
+# Flag traffic from datacenter/hosting IPs
+flag_foreign_datacenter = false   # Alert on foreign datacenter traffic
+home_country = "IN"               # Your country code
+
+[whitelist]
+# These IPs/CIDRs bypass ALL geo-blocking
+trusted_ips = []
+trusted_cidrs = [
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+]

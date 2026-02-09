@@ -1,0 +1,123 @@
+# SafeOps Firewall Engine - Blocklist Configuration
+# =============================================
+# This file is the single source of truth for blocking rules.
+# It can be edited manually or via the web UI (Phase 10).
+# Changes are picked up by hot-reload (Phase 7) without engine restart.
+
+# ============================================================================
+# [domains] - Domain-level blocking
+# ============================================================================
+[domains]
+# Master switch for all domain blocking (config list, categories, threat intel domains)
+enabled = true
+
+# Path to the plain-text domains file (relative to configs/ directory)
+# Each line = one domain. Lines starting with # or // are comments.
+# Auto-wildcard: "evil.com" also blocks "*.evil.com"
+domains_file = "domains.txt"
+
+# Block categories (toggle individual categories on/off)
+# Available: social_media, streaming, gaming, ads, trackers, adult, gambling, vpn_proxy
+[domains.categories]
+social_media = false
+streaming    = false
+gaming       = false
+ads          = false
+trackers     = false
+adult        = false
+gambling     = false
+vpn_proxy    = false
+
+# CDN-aware enforcement settings
+[domains.cdn]
+# When a blocked domain is behind a CDN (Cloudflare, CloudFront, etc.),
+# NEVER send TCP RST — only use DNS redirect.
+# This prevents collateral damage to thousands of sites sharing the CDN IP.
+enforce_dns_only = true
+
+# Allow custom CDN provider domains to be added at runtime
+# (Default providers like Cloudflare, CloudFront, Akamai are always loaded)
+custom_cdn_domains = []
+
+# ============================================================================
+# [ips] - IP-level blocking
+# ============================================================================
+[ips]
+# Master switch for all IP blocking (threat intel IPs, manual IPs)
+enabled = true
+
+# Manual IP blocklist (added from web UI or manually)
+# These are checked in addition to threat intel database IPs.
+blocked_ips = []
+
+# Manual CIDR blocklist
+blocked_cidrs = []
+
+# ============================================================================
+# [threat_intel] - Threat intelligence thresholds
+# ============================================================================
+[threat_intel]
+# Master switch for threat intel (IP + domain lookups from PostgreSQL cache)
+enabled = true
+
+# Minimum threat score (0-100) to block an IP or domain.
+# IPs/domains below this score are logged but not blocked.
+ip_block_threshold    = 50
+domain_block_threshold = 50
+
+# Block VPN/anonymizer IPs (Tor, VPN, proxy detected by threat intel)
+block_anonymizers = false
+
+# Anonymizer score threshold (0-100). Only blocks if score >= this.
+anonymizer_block_threshold = 70
+
+# ============================================================================
+# [geo] - GeoIP blocking overrides
+# ============================================================================
+# NOTE: The primary geo config is in geoip.toml (countries, ASNs, whitelist).
+# These settings provide quick-toggle overrides editable from the web UI.
+[geo]
+# Master switch — if false, geo blocking is completely disabled
+# regardless of geoip.toml settings.
+enabled = true
+
+# Quick-add blocked countries (merged with geoip.toml deny_list)
+# These are IN ADDITION to geoip.toml countries, not a replacement.
+extra_blocked_countries = []
+
+# Quick-add blocked ASNs (merged with geoip.toml)
+extra_blocked_asns = []
+
+# ============================================================================
+# [enforcement] - Global enforcement behavior
+# ============================================================================
+[enforcement]
+# DNS domain blocks: respond with this IP (redirect target)
+dns_redirect_ip = "127.0.0.1"
+
+# Default verdict cache TTL in seconds for blocked packets
+# Higher = fewer repeat DB lookups, lower = faster unblock propagation
+block_cache_ttl_seconds = 120
+
+# Log all blocked connections (in addition to alerts)
+log_all_blocks = true
+
+# ============================================================================
+# [whitelist] - Global bypass rules
+# ============================================================================
+# IPs and domains in these lists bypass ALL blocking checks.
+# This is the "emergency override" — if something gets false-positive blocked,
+# add it here to immediately unblock it.
+[whitelist]
+# Whitelisted IPs (bypass threat intel, geo, manual blocks)
+ips = []
+
+# Whitelisted CIDRs
+cidrs = [
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+]
+
+# Whitelisted domains (bypass domain blocking + threat intel domain check)
+domains = []

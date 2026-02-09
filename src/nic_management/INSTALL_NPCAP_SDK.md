@@ -40,8 +40,8 @@ If you don't want to set environment variables, copy the lib files:
 
 ```powershell
 # From SDK Lib\x64 folder, copy to:
-Copy-Item "C:\npcap-sdk\Lib\x64\Packet.lib" "C:\Users\02arj\.cargo\registry\src\index.crates.io-*\pnet-0.34.0\lib\x64\"
-Copy-Item "C:\npcap-sdk\Lib\x64\wpcap.lib" "C:\Users\02arj\.cargo\registry\src\index.crates.io-*\pnet-0.34.0\lib\x64\"
+Copy-Item "C:\npcap-sdk\Lib\x64\Packet.lib" "$env:USERPROFILE\.cargo\registry\src\index.crates.io-*\pnet-0.34.0\lib\x64\"
+Copy-Item "C:\npcap-sdk\Lib\x64\wpcap.lib" "$env:USERPROFILE\.cargo\registry\src\index.crates.io-*\pnet-0.34.0\lib\x64\"
 ```
 
 Then rebuild.

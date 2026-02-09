@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 // Client represents a gRPC client for SafeOps Engine
@@ -22,10 +24,15 @@ type Client struct {
 
 	subscriberID string
 	serverAddr   string
-	connected    bool
+	connected    atomic.Bool
+
+	// Async packet processing
+	packetChan chan *pb.PacketMetadata // Buffered channel for async processing
+	workerWg   sync.WaitGroup
 
 	// Statistics
 	packetsReceived uint64
+	packetsDropped  uint64
 	verdictsApplied uint64
 }
 
@@ -37,16 +44,16 @@ func NewClient(subscriberID, serverAddr string) *Client {
 	return &Client{
 		subscriberID: subscriberID,
 		serverAddr:   serverAddr,
+		packetChan:   make(chan *pb.PacketMetadata, 100000), // 100K buffer
 	}
 }
 
 // Connect establishes connection to SafeOps Engine gRPC server
 func (c *Client) Connect(ctx context.Context) error {
-	if c.connected {
+	if c.connected.Load() {
 		return nil
 	}
 
-	// Connect to gRPC server with retry
 	var conn *grpc.ClientConn
 	var err error
 
@@ -54,7 +61,14 @@ func (c *Client) Connect(ctx context.Context) error {
 		conn, err = grpc.NewClient(
 			c.serverAddr,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithBlock(),
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(10*1024*1024), // 10MB receive
+			),
+			grpc.WithKeepaliveParams(keepalive.ClientParameters{
+				Time:                10 * time.Second,
+				Timeout:             3 * time.Second,
+				PermitWithoutStream: true,
+			}),
 		)
 
 		if err == nil {
@@ -73,15 +87,15 @@ func (c *Client) Connect(ctx context.Context) error {
 
 	c.conn = conn
 	c.client = pb.NewMetadataStreamServiceClient(conn)
-	c.connected = true
+	c.connected.Store(true)
 
 	fmt.Printf("[gRPC Client] Connected to SafeOps Engine at %s\n", c.serverAddr)
 	return nil
 }
 
-// Subscribe subscribes to the metadata stream
+// Subscribe subscribes to the metadata stream with optional filters
 func (c *Client) Subscribe(ctx context.Context, filters []string) error {
-	if !c.connected {
+	if !c.connected.Load() {
 		return fmt.Errorf("not connected to SafeOps Engine")
 	}
 
@@ -96,20 +110,39 @@ func (c *Client) Subscribe(ctx context.Context, filters []string) error {
 	}
 
 	c.stream = stream
-	fmt.Printf("[gRPC Client] Subscribed to metadata stream (ID: %s)\n", c.subscriberID)
+	fmt.Printf("[gRPC Client] Subscribed to metadata stream (ID: %s, filters: %v)\n", c.subscriberID, filters)
 
 	return nil
 }
 
-// StartReceiving starts receiving packets from the stream
-func (c *Client) StartReceiving(ctx context.Context, handler PacketHandler) error {
+// StartReceiving starts the receive loop and worker pool
+// numWorkers controls how many goroutines process packets concurrently
+func (c *Client) StartReceiving(ctx context.Context, handler PacketHandler, numWorkers int) error {
 	if c.stream == nil {
 		return fmt.Errorf("not subscribed to metadata stream")
 	}
 
-	fmt.Println("[gRPC Client] Started receiving metadata stream")
+	if numWorkers < 1 {
+		numWorkers = 8
+	}
 
+	fmt.Printf("[gRPC Client] Starting %d workers for packet processing\n", numWorkers)
+
+	// Start worker pool - each worker reads from shared channel
+	for i := 0; i < numWorkers; i++ {
+		c.workerWg.Add(1)
+		go func() {
+			defer c.workerWg.Done()
+			for pkt := range c.packetChan {
+				handler(pkt)
+			}
+		}()
+	}
+
+	// Start receive goroutine - reads from gRPC stream into channel
 	go func() {
+		defer close(c.packetChan)
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -123,13 +156,20 @@ func (c *Client) StartReceiving(ctx context.Context, handler PacketHandler) erro
 				}
 				if err != nil {
 					fmt.Printf("[gRPC Client] Stream receive error: %v\n", err)
-					// Try to reconnect
-					c.handleReconnect(ctx, handler)
+					c.handleReconnect(ctx, handler, numWorkers)
 					return
 				}
 
 				atomic.AddUint64(&c.packetsReceived, 1)
-				handler(pkt)
+
+				// Non-blocking send to worker pool
+				select {
+				case c.packetChan <- pkt:
+					// Dispatched to worker
+				default:
+					// Channel full - drop packet instead of blocking network
+					atomic.AddUint64(&c.packetsDropped, 1)
+				}
 			}
 		}
 	}()
@@ -139,7 +179,7 @@ func (c *Client) StartReceiving(ctx context.Context, handler PacketHandler) erro
 
 // SendVerdict sends a verdict decision to SafeOps Engine
 func (c *Client) SendVerdict(ctx context.Context, pktID uint64, verdict pb.VerdictType, reason, ruleID string, ttl uint32, cacheKey string) error {
-	if !c.connected {
+	if !c.connected.Load() {
 		return fmt.Errorf("not connected to SafeOps Engine")
 	}
 
@@ -167,12 +207,11 @@ func (c *Client) SendVerdict(ctx context.Context, pktID uint64, verdict pb.Verdi
 
 // GetEngineStats retrieves statistics from SafeOps Engine
 func (c *Client) GetEngineStats(ctx context.Context) (*pb.StatsResponse, error) {
-	if !c.connected {
+	if !c.connected.Load() {
 		return nil, fmt.Errorf("not connected to SafeOps Engine")
 	}
 
-	req := &pb.StatsRequest{}
-	resp, err := c.client.GetStats(ctx, req)
+	resp, err := c.client.GetStats(ctx, &pb.StatsRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get engine stats: %w", err)
 	}
@@ -181,22 +220,29 @@ func (c *Client) GetEngineStats(ctx context.Context) (*pb.StatsResponse, error) 
 }
 
 // GetClientStats returns client-side statistics
-func (c *Client) GetClientStats() (packetsReceived, verdictsApplied uint64) {
-	return atomic.LoadUint64(&c.packetsReceived), atomic.LoadUint64(&c.verdictsApplied)
+func (c *Client) GetClientStats() (packetsReceived, packetsDropped, verdictsApplied uint64) {
+	return atomic.LoadUint64(&c.packetsReceived),
+		atomic.LoadUint64(&c.packetsDropped),
+		atomic.LoadUint64(&c.verdictsApplied)
 }
 
 // IsConnected returns connection status
 func (c *Client) IsConnected() bool {
-	return c.connected
+	return c.connected.Load()
 }
 
-// Disconnect closes the gRPC connection
+// Disconnect closes the gRPC connection and waits for workers to finish
 func (c *Client) Disconnect() error {
-	if !c.connected {
+	if !c.connected.Load() {
 		return nil
 	}
 
 	fmt.Println("[gRPC Client] Disconnecting from SafeOps Engine")
+
+	c.connected.Store(false)
+
+	// Wait for workers to drain
+	c.workerWg.Wait()
 
 	if c.conn != nil {
 		if err := c.conn.Close(); err != nil {
@@ -204,7 +250,6 @@ func (c *Client) Disconnect() error {
 		}
 	}
 
-	c.connected = false
 	c.stream = nil
 	c.client = nil
 
@@ -213,35 +258,43 @@ func (c *Client) Disconnect() error {
 }
 
 // handleReconnect attempts to reconnect to the gRPC server
-func (c *Client) handleReconnect(ctx context.Context, handler PacketHandler) {
+func (c *Client) handleReconnect(ctx context.Context, handler PacketHandler, numWorkers int) {
 	fmt.Println("[gRPC Client] Attempting to reconnect...")
 
-	// Mark as disconnected
-	c.connected = false
+	c.connected.Store(false)
 	if c.conn != nil {
 		c.conn.Close()
 	}
 
-	// Wait a bit before reconnecting
-	time.Sleep(5 * time.Second)
+	// Exponential backoff: 2s, 4s, 8s, 16s, 32s
+	for attempt := 0; attempt < 5; attempt++ {
+		backoff := time.Duration(2<<uint(attempt)) * time.Second
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
 
-	// Try to reconnect
-	if err := c.Connect(ctx); err != nil {
-		fmt.Printf("[gRPC Client] Reconnection failed: %v\n", err)
+		if err := c.Connect(ctx); err != nil {
+			fmt.Printf("[gRPC Client] Reconnection attempt %d failed: %v\n", attempt+1, err)
+			continue
+		}
+
+		if err := c.Subscribe(ctx, []string{"tcp", "udp"}); err != nil {
+			fmt.Printf("[gRPC Client] Re-subscription attempt %d failed: %v\n", attempt+1, err)
+			continue
+		}
+
+		// Create new packet channel for reconnected stream
+		c.packetChan = make(chan *pb.PacketMetadata, 100000)
+		if err := c.StartReceiving(ctx, handler, numWorkers); err != nil {
+			fmt.Printf("[gRPC Client] Failed to restart receiving: %v\n", err)
+			continue
+		}
+
+		fmt.Println("[gRPC Client] Reconnected successfully")
 		return
 	}
 
-	// Re-subscribe
-	if err := c.Subscribe(ctx, nil); err != nil {
-		fmt.Printf("[gRPC Client] Re-subscription failed: %v\n", err)
-		return
-	}
-
-	// Restart receiving
-	if err := c.StartReceiving(ctx, handler); err != nil {
-		fmt.Printf("[gRPC Client] Failed to restart receiving: %v\n", err)
-		return
-	}
-
-	fmt.Println("[gRPC Client] Reconnected successfully")
+	fmt.Println("[gRPC Client] All reconnection attempts failed")
 }

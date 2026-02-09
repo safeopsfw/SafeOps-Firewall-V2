@@ -1,0 +1,106 @@
+NDISAPI-GO v1.0.1 - EXACT METHOD SIGNATURES
+============================================
+
+Module: github.com/wiresock/ndisapi-go v1.0.1
+Location: /c/Users/02arj/go/pkg/mod/github.com/wiresock/ndisapi-go@v1.0.1
+
+CRITICAL METHOD: FlushAdapterPacketQueue (LINE 92 in ndisapi_adapter.go)
+========================================================================
+
+func (a *NdisApi) FlushAdapterPacketQueue(adapter Handle) error
+
+PURPOSE: Flushes the packet queue of the specified network adapter
+
+IMPLEMENTATION:
+    return a.DeviceIoControl(
+        IOCTL_NDISRD_FLUSH_ADAPTER_QUEUE,
+        unsafe.Pointer(&adapter),
+        uint32(len(adapter)),
+        nil,
+        0,
+        &a.bytesReturned,
+        nil,
+    )
+
+ADAPTER MANAGEMENT METHODS (from ndisapi_adapter.go)
+====================================================
+
+LINE 45:
+func (a *NdisApi) GetTcpipBoundAdaptersInfo() (*TcpAdapterList, error)
+
+LINE 66:
+func (a *NdisApi) SetAdapterMode(currentMode *AdapterMode) error
+
+LINE 79:
+func (a *NdisApi) GetAdapterMode(currentMode *AdapterMode) error
+
+LINE 105:
+func (a *NdisApi) GetAdapterPacketQueueSize(adapter Handle, size *uint32) error
+
+LINE 118:
+func (a *NdisApi) SetPacketEvent(adapter Handle, win32Event windows.Handle) error
+
+LINE 149:
+func (a *NdisApi) SetAdapterListChangeEvent(win32Event windows.Handle) error
+
+LINE 162:
+func (a *NdisApi) ConvertWindows2000AdapterName(adapterName string) string
+
+CORE NdisApi METHODS (from ndisapi.go)
+=======================================
+
+LINE 46:
+func NewNdisApi() (*NdisApi, error)
+
+LINE 88:
+func (a *NdisApi) Close()
+
+LINE 99:
+func (a *NdisApi) IsDriverLoaded() bool
+
+LINE 104:
+func (a *NdisApi) GetBytesReturned() uint32
+
+LINE 109:
+func (a *NdisApi) DeviceIoControl(service uint32, in unsafe.Pointer, sizeIn uint32, out unsafe.Pointer, sizeOut uint32, SizeRet *uint32, overlapped *windows.Overlapped) error
+
+LINE 127:
+func (a *NdisApi) GetVersion() (uint32, error)
+
+LINE 148:
+func (a *NdisApi) GetIntermediateBufferPoolSize(size uint32) error
+
+USAGE IN SAFEOPS PROJECT
+=========================
+
+File: src/safeops-engine/internal/driver/driver.go
+
+- SetAdapterMode is called to enable/disable filtering
+- Adapter cleanup disables filtering with Flags: 0
+- Multiple calls to SetAdapterMode in driver lifecycle
+
+MOCK INTERFACE
+==============
+
+File: mock/ndisapi.go - Line 177-188
+
+func (m *MockNdisApiInterface) FlushAdapterPacketQueue(adapter ndisapi.Handle) error
+func (mr *MockNdisApiInterfaceMockRecorder) FlushAdapterPacketQueue(adapter interface{}) *gomock.Call
+
+UNIT TESTS
+==========
+
+File: ndisapi_test.go - Line 132
+
+func TestNdisApi_FlushAdapterPacketQueue(t *testing.T)
+
+CONCLUSION
+==========
+
+✓ FlushAdapterPacketQueue IS REAL and WORKING
+✓ Part of NdisApiAdapter interface
+✓ Has mock implementation
+✓ Has unit tests
+✓ Takes only adapter Handle parameter
+✓ Returns error
+✓ Used for clearing packet queues from adapters

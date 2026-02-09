@@ -12,7 +12,7 @@ import (
 
 func main() {
 	fmt.Println("=== SafeOps Network Pipeline ===")
-	fmt.Println("Version: 3.0.0 (Metadata Stream)")
+	fmt.Println("Version: 4.0.0 (Fast/Slow Path + Control API)")
 	fmt.Println("Starting...")
 
 	// Initialize SafeOps Engine
@@ -24,8 +24,11 @@ func main() {
 	defer eng.Shutdown()
 
 	fmt.Println("\nSafeOps Engine is running")
-	fmt.Println("Metadata stream ready for subscribers (Firewall, IDS, IPS, etc.)")
-	fmt.Println("Press Ctrl+C to stop...\n")
+	fmt.Println("  gRPC metadata stream: 127.0.0.1:50051")
+	fmt.Println("  Control API:          127.0.0.1:50052")
+	fmt.Println("\nReady for subscribers (Firewall, IDS, IPS, etc.)")
+	fmt.Println("Press Ctrl+C to stop...")
+	fmt.Println()
 
 	// Stats logging every 30 seconds
 	go func() {

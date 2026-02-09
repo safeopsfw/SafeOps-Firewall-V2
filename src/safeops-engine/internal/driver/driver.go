@@ -463,19 +463,48 @@ func (d *Driver) GetStats() (read, written, dropped uint64) {
 		atomic.LoadUint64(&d.packetsDropped)
 }
 
+// GetAPI returns the underlying NDISAPI handle for verdict engine creation
+func (d *Driver) GetAPI() *ndisapi.NdisApi {
+	return d.api
+}
+
 // Close closes the driver
 func (d *Driver) Close() error {
 	d.log.Info("Closing WinpkFilter driver", nil)
 
-	// Reset all adapter modes
+	// Step 1: Reset all adapter modes FIRST (stops intercepting new packets)
 	for _, adapter := range d.adapters {
 		mode := ndisapi.AdapterMode{
 			AdapterHandle: adapter.Handle,
 			Flags:         0,
 		}
-		d.api.SetAdapterMode(&mode)
+		if err := d.api.SetAdapterMode(&mode); err != nil {
+			d.log.Warn("Failed to reset adapter mode", map[string]interface{}{
+				"adapter": adapter.Name,
+				"error":   err.Error(),
+			})
+		} else {
+			d.log.Info("Adapter mode reset (tunnel disabled)", map[string]interface{}{
+				"adapter": adapter.Name,
+			})
+		}
 	}
 
+	// Step 2: Flush queued packets (releases any packets still held by the driver)
+	for _, adapter := range d.adapters {
+		if err := d.api.FlushAdapterPacketQueue(adapter.Handle); err != nil {
+			d.log.Warn("Failed to flush adapter packet queue", map[string]interface{}{
+				"adapter": adapter.Name,
+				"error":   err.Error(),
+			})
+		} else {
+			d.log.Info("Adapter packet queue flushed", map[string]interface{}{
+				"adapter": adapter.Name,
+			})
+		}
+	}
+
+	// Step 3: Close the driver handle
 	if d.api != nil {
 		d.api.Close()
 	}

@@ -27,7 +27,7 @@ require (
 // NETWORK AND SYSTEM LIBRARIES
 // Low-level network interface access and system calls
 // =============================================================================
-require golang.org/x/sys v0.38.0
+require golang.org/x/sys v0.39.0
 
 // =============================================================================
 // INDIRECT DEPENDENCIES
@@ -47,8 +47,8 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
@@ -59,7 +59,8 @@ require (
 )
 
 require (
-	github.com/go-ole/go-ole v1.2.5 // indirect
-	github.com/rogpeppe/go-internal v1.10.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

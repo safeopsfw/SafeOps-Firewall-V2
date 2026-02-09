@@ -11,32 +11,40 @@ import (
 // SafeOpsGRPCClient provides gRPC-based connection to SafeOps Engine
 type SafeOpsGRPCClient struct {
 	grpcClient *grpcclient.Client
+	filters    []string
 }
 
 // NewSafeOpsGRPCClient creates a new gRPC-based SafeOps client
-func NewSafeOpsGRPCClient(subscriberID, serverAddr string) *SafeOpsGRPCClient {
+func NewSafeOpsGRPCClient(subscriberID, serverAddr string, filters []string) *SafeOpsGRPCClient {
+	if len(filters) == 0 {
+		filters = []string{"tcp", "udp"} // Default: TCP+UDP only, skip ICMP/other
+	}
 	return &SafeOpsGRPCClient{
 		grpcClient: grpcclient.NewClient(subscriberID, serverAddr),
+		filters:    filters,
 	}
 }
 
-// Connect establishes gRPC connection to SafeOps Engine
+// Connect establishes gRPC connection and subscribes with filters
 func (c *SafeOpsGRPCClient) Connect(ctx context.Context) error {
 	if err := c.grpcClient.Connect(ctx); err != nil {
 		return fmt.Errorf("gRPC connection failed: %w", err)
 	}
 
-	// Subscribe to metadata stream (no filters = all packets)
-	if err := c.grpcClient.Subscribe(ctx, nil); err != nil {
+	// Subscribe with filters (tcp+udp by default, not all packets)
+	if err := c.grpcClient.Subscribe(ctx, c.filters); err != nil {
 		return fmt.Errorf("subscription failed: %w", err)
 	}
 
 	return nil
 }
 
-// StartCapture starts receiving packets from gRPC stream
-func (c *SafeOpsGRPCClient) StartCapture(ctx context.Context, handler func(*pb.PacketMetadata)) error {
-	return c.grpcClient.StartReceiving(ctx, handler)
+// StartCapture starts receiving packets with worker pool
+func (c *SafeOpsGRPCClient) StartCapture(ctx context.Context, handler func(*pb.PacketMetadata), numWorkers int) error {
+	if numWorkers < 1 {
+		numWorkers = 8
+	}
+	return c.grpcClient.StartReceiving(ctx, handler, numWorkers)
 }
 
 // SendVerdict sends a firewall verdict back to SafeOps Engine
@@ -44,8 +52,8 @@ func (c *SafeOpsGRPCClient) SendVerdict(ctx context.Context, pktID uint64, verdi
 	return c.grpcClient.SendVerdict(ctx, pktID, verdict, reason, ruleID, ttl, cacheKey)
 }
 
-// GetStats returns client statistics
-func (c *SafeOpsGRPCClient) GetStats() (packetsReceived, verdictsApplied uint64) {
+// GetStats returns client statistics (received, dropped, verdicts)
+func (c *SafeOpsGRPCClient) GetStats() (packetsReceived, packetsDropped, verdictsApplied uint64) {
 	return c.grpcClient.GetClientStats()
 }
 

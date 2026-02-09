@@ -1,0 +1,17 @@
+go 1.25.5
+
+use (
+	./captive_portal
+	./dhcp_monitor
+	./firewall_engine
+	./launcher
+	./network_logger
+	./nic_management
+	./orchestrator
+	./requirements_setup
+	./safeops-engine
+	./shared
+	./shared/go
+	./siem-forwarder
+	./threat_intel
+)

@@ -1,6 +1,35 @@
 ﻿# SafeOps v2.0 - Git Ignore Configuration
 
 # =====================================
+# SECURITY: Sensitive Files & Secrets
+# =====================================
+# Step-CA secrets (CA keys, passwords, encryption keys)
+src/step-ca/secrets/
+bin/step-ca/secrets/
+**/secrets/password.txt
+**/secrets/*_key
+**/secrets/*.key
+
+# SIEM credentials config (contains hardcoded passwords)
+src/SIEM/config.yaml
+
+# Step-CA backup directories (may contain secrets)
+src/step-ca/backup_*/
+bin/step-ca/backup_*/
+
+# Config files with personal paths
+src/step-ca/config/ca.json.new
+bin/step-ca/config/ca.json.new
+
+# =====================================
+# AI/IDE Workspace Directories
+# =====================================
+.claude/
+.gemini/
+.cursor/
+.copilot/
+
+# =====================================
 # Build Outputs
 # =====================================
 build/

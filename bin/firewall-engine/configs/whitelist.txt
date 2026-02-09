@@ -1,0 +1,8 @@
+# IP/CIDR Whitelist - one entry per line
+# Lines starting with # are comments
+# These IPs bypass ALL firewall checks
+# This file is hot-reloadable
+#
+# Examples:
+# 192.168.1.1
+# 10.0.0.0/8
