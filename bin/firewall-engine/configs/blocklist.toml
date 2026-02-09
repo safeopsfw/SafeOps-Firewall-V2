@@ -53,6 +53,10 @@ blocked_ips = []
 # Manual CIDR blocklist
 blocked_cidrs = []
 
+# Plain-text file with IPs and CIDRs to block (one per line, # for comments)
+# This file is hot-reloadable — edits take effect without restart.
+blocked_ips_file = "blocked_ips.txt"
+
 # ============================================================================
 # [threat_intel] - Threat intelligence thresholds
 # ============================================================================
@@ -121,3 +125,7 @@ cidrs = [
 
 # Whitelisted domains (bypass domain blocking + threat intel domain check)
 domains = []
+
+# Plain-text file with whitelisted domains (one per line, # for comments)
+# Subdomains are automatically matched. Hot-reloadable.
+domains_file = "whitelist_domains.txt"

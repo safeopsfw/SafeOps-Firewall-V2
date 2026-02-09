@@ -90,10 +90,12 @@ func NewReloader(cfg ReloaderConfig) (*Reloader, error) {
 func (r *Reloader) Start(ctx context.Context) error {
 	// Register handlers for each config file
 	files := map[string]FileChangeHandler{
-		"domains.txt":    r.reloadDomains,
-		"blocklist.toml": r.reloadBlocklist,
-		"geoip.toml":     r.reloadGeoIP,
-		"detection.toml": r.reloadDetection,
+		"domains.txt":           r.reloadDomains,
+		"blocklist.toml":        r.reloadBlocklist,
+		"geoip.toml":            r.reloadGeoIP,
+		"detection.toml":        r.reloadDetection,
+		"blocked_ips.txt":       r.reloadBlocklist, // IP file changes trigger full blocklist reload
+		"whitelist_domains.txt": r.reloadBlocklist, // whitelist file changes trigger full blocklist reload
 	}
 
 	for filename, handler := range files {

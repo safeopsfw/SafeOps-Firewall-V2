@@ -25,6 +25,7 @@ type Client struct {
 	subscriberID string
 	serverAddr   string
 	connected    atomic.Bool
+	stopping     atomic.Bool // set true during graceful shutdown to suppress reconnect
 
 	// Async packet processing
 	packetChan chan *pb.PacketMetadata // Buffered channel for async processing
@@ -155,6 +156,15 @@ func (c *Client) StartReceiving(ctx context.Context, handler PacketHandler, numW
 					return
 				}
 				if err != nil {
+					// Don't reconnect if shutting down
+					if c.stopping.Load() || !c.connected.Load() {
+						return
+					}
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
 					fmt.Printf("[gRPC Client] Stream receive error: %v\n", err)
 					c.handleReconnect(ctx, handler, numWorkers)
 					return
@@ -231,6 +241,12 @@ func (c *Client) IsConnected() bool {
 	return c.connected.Load()
 }
 
+// SetStopping marks the client as shutting down, suppressing reconnect attempts.
+// Call this at the start of graceful shutdown, before canceling the context.
+func (c *Client) SetStopping() {
+	c.stopping.Store(true)
+}
+
 // Disconnect closes the gRPC connection and waits for workers to finish
 func (c *Client) Disconnect() error {
 	if !c.connected.Load() {
@@ -239,6 +255,7 @@ func (c *Client) Disconnect() error {
 
 	fmt.Println("[gRPC Client] Disconnecting from SafeOps Engine")
 
+	c.stopping.Store(true) // suppress reconnect attempts
 	c.connected.Store(false)
 
 	// Wait for workers to drain

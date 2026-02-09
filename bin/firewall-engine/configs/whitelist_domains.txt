@@ -1,0 +1,17 @@
+# Domain Whitelist - one domain per line
+# Lines starting with # or // are comments
+# Blank lines are ignored
+# Whitelisted domains bypass ALL domain blocking checks
+# Subdomains are automatically matched (whitelisting "example.com" also whitelists "sub.example.com")
+# This file is hot-reloadable - changes take effect without restart
+#
+# Examples:
+# trusted-site.com
+# my-company.internal
+
+# Netflix CDN domains (false positives in threat intel)
+nflxvideo.net
+netflix.com
+nflxext.com
+nflximg.net
+nflxso.net

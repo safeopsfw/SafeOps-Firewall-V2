@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -97,9 +98,10 @@ type BlocklistCDNConfig struct {
 
 // BlocklistIPsConfig controls IP-level blocking (manual + threat intel).
 type BlocklistIPsConfig struct {
-	Enabled      bool     `toml:"enabled"`
-	BlockedIPs   []string `toml:"blocked_ips"`
-	BlockedCIDRs []string `toml:"blocked_cidrs"`
+	Enabled        bool     `toml:"enabled"`
+	BlockedIPs     []string `toml:"blocked_ips"`
+	BlockedCIDRs   []string `toml:"blocked_cidrs"`
+	BlockedIPsFile string   `toml:"blocked_ips_file"` // plain-text file with IPs and CIDRs, one per line
 }
 
 // ============================================================================
@@ -155,9 +157,10 @@ type BlocklistEnforcementConfig struct {
 
 // BlocklistWhitelistConfig defines IPs, CIDRs, and domains that bypass ALL blocking.
 type BlocklistWhitelistConfig struct {
-	IPs     []string `toml:"ips"`
-	CIDRs   []string `toml:"cidrs"`
-	Domains []string `toml:"domains"`
+	IPs          []string `toml:"ips"`
+	CIDRs        []string `toml:"cidrs"`
+	Domains      []string `toml:"domains"`
+	DomainsFile  string   `toml:"domains_file"`  // plain-text file with whitelisted domains, one per line
 }
 
 // ============================================================================
@@ -175,9 +178,10 @@ type ParsedBlocklist struct {
 	CustomCDNDomains   []string
 
 	// IP blocking
-	IPsEnabled    bool
-	ManualIPs     map[string]bool // O(1) lookup for manually blocked IPs
-	ManualCIDRs   []*net.IPNet   // manually blocked CIDRs
+	IPsEnabled      bool
+	ManualIPs       map[string]bool // O(1) lookup for manually blocked IPs
+	ManualCIDRs     []*net.IPNet   // manually blocked CIDRs
+	BlockedIPsFile  string         // absolute path to blocked_ips.txt (for hot-reload)
 
 	// Threat intel thresholds
 	ThreatIntelEnabled       bool
@@ -197,9 +201,10 @@ type ParsedBlocklist struct {
 	LogAllBlocks         bool
 
 	// Whitelist (global bypass)
-	WhitelistIPs     map[string]bool
-	WhitelistCIDRs   []*net.IPNet
-	WhitelistDomains map[string]bool // normalized lowercase
+	WhitelistIPs          map[string]bool
+	WhitelistCIDRs        []*net.IPNet
+	WhitelistDomains      map[string]bool // normalized lowercase
+	WhitelistDomainsFile  string          // absolute path to whitelist_domains.txt (for hot-reload)
 }
 
 // Parse converts BlocklistConfig into ParsedBlocklist for fast runtime lookups.
@@ -269,6 +274,21 @@ func (b *BlocklistConfig) Parse(configDir string) (*ParsedBlocklist, error) {
 		pb.ManualCIDRs = append(pb.ManualCIDRs, ipNet)
 	}
 
+	// Load IPs/CIDRs from blocked_ips_file (if configured)
+	if b.IPs.BlockedIPsFile != "" {
+		pb.BlockedIPsFile = resolveRelativePath(configDir, b.IPs.BlockedIPsFile)
+		fileIPs, fileCIDRs, err := loadIPsFromFile(pb.BlockedIPsFile)
+		if err != nil {
+			// Non-fatal: log warning but continue
+			fmt.Printf("Warning: blocked_ips_file %s: %v\n", pb.BlockedIPsFile, err)
+		} else {
+			for ip := range fileIPs {
+				pb.ManualIPs[ip] = true
+			}
+			pb.ManualCIDRs = append(pb.ManualCIDRs, fileCIDRs...)
+		}
+	}
+
 	// Validate DNS redirect IP
 	if pb.DNSRedirectIP != "" {
 		if net.ParseIP(pb.DNSRedirectIP) == nil {
@@ -320,6 +340,19 @@ func (b *BlocklistConfig) Parse(configDir string) (*ParsedBlocklist, error) {
 		dom = strings.TrimSuffix(dom, ".")
 		if dom != "" {
 			pb.WhitelistDomains[dom] = true
+		}
+	}
+
+	// Load whitelist domains from file (if configured)
+	if b.Whitelist.DomainsFile != "" {
+		pb.WhitelistDomainsFile = resolveRelativePath(configDir, b.Whitelist.DomainsFile)
+		fileDomains, err := loadDomainsFromFile(pb.WhitelistDomainsFile)
+		if err != nil {
+			fmt.Printf("Warning: whitelist domains_file %s: %v\n", pb.WhitelistDomainsFile, err)
+		} else {
+			for dom := range fileDomains {
+				pb.WhitelistDomains[dom] = true
+			}
 		}
 	}
 
@@ -414,9 +447,10 @@ func DefaultBlocklistConfig() *BlocklistConfig {
 			},
 		},
 		IPs: BlocklistIPsConfig{
-			Enabled:      true,
-			BlockedIPs:   []string{},
-			BlockedCIDRs: []string{},
+			Enabled:        true,
+			BlockedIPs:     []string{},
+			BlockedCIDRs:   []string{},
+			BlockedIPsFile: "blocked_ips.txt",
 		},
 		ThreatIntel: BlocklistThreatIntelConfig{
 			Enabled:                  true,
@@ -436,9 +470,10 @@ func DefaultBlocklistConfig() *BlocklistConfig {
 			LogAllBlocks:         true,
 		},
 		Whitelist: BlocklistWhitelistConfig{
-			IPs:     []string{},
-			CIDRs:   []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"},
-			Domains: []string{},
+			IPs:         []string{},
+			CIDRs:       []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"},
+			Domains:     []string{},
+			DomainsFile: "whitelist_domains.txt",
 		},
 	}
 }
@@ -476,6 +511,77 @@ func clampThreshold(v int) int {
 		return 100
 	}
 	return v
+}
+
+// loadIPsFromFile reads a plain-text file with one IP or CIDR per line.
+// Lines starting with # or // are comments. Blank lines are skipped.
+// Returns separate maps for IPs and slice for CIDRs.
+func loadIPsFromFile(path string) (map[string]bool, []*net.IPNet, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil, nil // file missing = empty list, not an error
+		}
+		return nil, nil, err
+	}
+	defer f.Close()
+
+	ips := make(map[string]bool)
+	var cidrs []*net.IPNet
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
+			continue
+		}
+
+		// Check if it's a CIDR
+		if strings.Contains(line, "/") {
+			_, ipNet, err := net.ParseCIDR(line)
+			if err != nil {
+				continue // skip invalid CIDRs
+			}
+			cidrs = append(cidrs, ipNet)
+		} else {
+			parsed := net.ParseIP(line)
+			if parsed != nil {
+				ips[parsed.String()] = true
+			}
+		}
+	}
+
+	return ips, cidrs, scanner.Err()
+}
+
+// loadDomainsFromFile reads a plain-text file with one domain per line.
+// Lines starting with # or // are comments. Blank lines are skipped.
+// Domains are normalized to lowercase with trailing dots stripped.
+func loadDomainsFromFile(path string) (map[string]bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil // file missing = empty list
+		}
+		return nil, err
+	}
+	defer f.Close()
+
+	domains := make(map[string]bool)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
+			continue
+		}
+		dom := strings.ToLower(line)
+		dom = strings.TrimSuffix(dom, ".")
+		if dom != "" {
+			domains[dom] = true
+		}
+	}
+
+	return domains, scanner.Err()
 }
 
 // resolveRelativePath resolves a path relative to a base directory.

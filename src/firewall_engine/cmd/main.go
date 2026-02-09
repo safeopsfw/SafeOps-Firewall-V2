@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	oldlog "log"
 	"os"
 	"os/signal"
 	"strings"
@@ -101,7 +100,7 @@ func main() {
 		Str("config_dir", cfg.ConfigDir).
 		Msg("Configuration loaded")
 
-	legacyLogger := oldlog.New(os.Stdout, "[FIREWALL] ", oldlog.LstdFlags|oldlog.Lmicroseconds)
+	legacyLogger := log.New(os.Stdout, "[FIREWALL] ", log.LstdFlags|log.Lmicroseconds)
 	_ = legacyLogger
 
 	// ========================================================================
@@ -757,6 +756,7 @@ func main() {
 	<-sigCh
 
 	fmt.Println("\n\nShutting down Firewall Engine...")
+	grpcClient.SetStopping() // suppress gRPC reconnect attempts before cancel
 	cancel()
 
 	// Graceful shutdown in reverse order

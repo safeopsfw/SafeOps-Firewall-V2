@@ -1,7 +1,7 @@
 // Package blockpage serves a block page for DNS-redirected domains.
 // When a domain is blocked via DNS redirect to 127.0.0.1, the browser
 // connects here and receives an HTML page explaining why access was denied.
-// Serves on both HTTP (:80) and HTTPS (:443) with a self-signed certificate.
+// Serves on both HTTP (:80) and HTTPS (:443) with dynamic per-domain certificates.
 package blockpage
 
 import (
@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"sync"
 	"time"
 
 	"safeops-engine/internal/logger"
@@ -25,6 +26,7 @@ type Server struct {
 	log         *logger.Logger
 	httpServer  *http.Server
 	httpsServer *http.Server
+	ca          *blockPageCA
 }
 
 // NewServer creates a block page server on HTTP and HTTPS.
@@ -41,20 +43,21 @@ func NewServer(log *logger.Logger, httpAddr, httpsAddr string) *Server {
 		WriteTimeout: 5 * time.Second,
 	}
 
-	// Generate self-signed TLS certificate for HTTPS block page
-	tlsCert, err := generateSelfSignedCert()
+	// Generate block page CA for dynamic per-domain HTTPS certificates
+	ca, err := newBlockPageCA()
 	if err != nil {
-		log.Warn("Failed to generate self-signed cert for block page", map[string]interface{}{
+		log.Warn("Failed to generate block page CA", map[string]interface{}{
 			"error": err.Error(),
 		})
 	} else {
+		s.ca = ca
 		s.httpsServer = &http.Server{
 			Addr:         httpsAddr,
 			Handler:      mux,
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 5 * time.Second,
 			TLSConfig: &tls.Config{
-				Certificates: []tls.Certificate{tlsCert},
+				GetCertificate: ca.getCertificate,
 			},
 		}
 	}
@@ -76,13 +79,21 @@ func (s *Server) Start() error {
 		}
 	}()
 
-	// Start HTTPS server (port 443) if cert was generated
+	// Start HTTPS server (port 443) with dynamic SNI certs
 	if s.httpsServer != nil {
 		go func() {
 			s.log.Info("Block page server starting (HTTPS)", map[string]interface{}{
 				"address": s.httpsServer.Addr,
 			})
-			if err := s.httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			// ListenAndServeTLS with empty strings because TLSConfig.GetCertificate handles it
+			ln, err := tls.Listen("tcp", s.httpsServer.Addr, s.httpsServer.TLSConfig)
+			if err != nil {
+				s.log.Warn("Block page HTTPS listen error", map[string]interface{}{
+					"error": err.Error(),
+				})
+				return
+			}
+			if err := s.httpsServer.Serve(ln); err != nil && err != http.ErrServerClosed {
 				s.log.Warn("Block page HTTPS server error", map[string]interface{}{
 					"error": err.Error(),
 				})
@@ -125,12 +136,106 @@ func (s *Server) handleBlockPage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, blockPageHTML, domain, domain, timestamp)
 }
 
-// generateSelfSignedCert creates a self-signed TLS certificate in memory.
-// The cert covers 127.0.0.1 and localhost, valid for 10 years.
-func generateSelfSignedCert() (tls.Certificate, error) {
+// ============================================================================
+// Block page CA — generates per-domain TLS certificates dynamically
+// ============================================================================
+
+// blockPageCA holds a self-signed CA that dynamically generates
+// per-domain certificates when a blocked domain connects on HTTPS.
+// This means the browser sees a cert that matches the domain (e.g., facebook.com)
+// instead of a generic cert. The browser will still show a cert warning
+// because the CA is not trusted, but it won't be a hostname mismatch error.
+type blockPageCA struct {
+	caCert    *x509.Certificate
+	caKey     *ecdsa.PrivateKey
+	caCertDER []byte
+
+	// Cache generated certs to avoid re-generating for repeated requests
+	mu    sync.RWMutex
+	cache map[string]*tls.Certificate
+}
+
+// newBlockPageCA generates a self-signed CA for the block page server.
+func newBlockPageCA() (*blockPageCA, error) {
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("generate CA key: %w", err)
+	}
+
+	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+
+	caTemplate := &x509.Certificate{
+		SerialNumber: serial,
+		Subject: pkix.Name{
+			Organization: []string{"SafeOps Firewall"},
+			CommonName:   "SafeOps Block Page CA",
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		MaxPathLen:            0,
+	}
+
+	caCertDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
+	if err != nil {
+		return nil, fmt.Errorf("create CA cert: %w", err)
+	}
+
+	caCert, err := x509.ParseCertificate(caCertDER)
+	if err != nil {
+		return nil, fmt.Errorf("parse CA cert: %w", err)
+	}
+
+	return &blockPageCA{
+		caCert:    caCert,
+		caKey:     caKey,
+		caCertDER: caCertDER,
+		cache:     make(map[string]*tls.Certificate),
+	}, nil
+}
+
+// getCertificate is called by TLS for each incoming connection.
+// It generates (or returns cached) a certificate matching the requested SNI domain.
+func (ca *blockPageCA) getCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	domain := hello.ServerName
+	if domain == "" {
+		domain = "blocked.safeops.local"
+	}
+
+	// Check cache
+	ca.mu.RLock()
+	if cert, ok := ca.cache[domain]; ok {
+		ca.mu.RUnlock()
+		return cert, nil
+	}
+	ca.mu.RUnlock()
+
+	// Generate new cert for this domain
+	cert, err := ca.generateCertForDomain(domain)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache it (limit cache size to prevent unbounded growth)
+	ca.mu.Lock()
+	if len(ca.cache) > 10000 {
+		// Clear cache when it gets too large
+		ca.cache = make(map[string]*tls.Certificate)
+	}
+	ca.cache[domain] = &cert
+	ca.mu.Unlock()
+
+	return &cert, nil
+}
+
+// generateCertForDomain creates a TLS certificate valid for the given domain,
+// signed by the block page CA.
+func (ca *blockPageCA) generateCertForDomain(domain string) (tls.Certificate, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return tls.Certificate{}, fmt.Errorf("generate key: %w", err)
+		return tls.Certificate{}, err
 	}
 
 	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
@@ -138,23 +243,24 @@ func generateSelfSignedCert() (tls.Certificate, error) {
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			Organization: []string{"SafeOps Firewall"},
-			CommonName:   "SafeOps Block Page",
+			Organization: []string{"SafeOps Firewall - Blocked"},
+			CommonName:   domain,
 		},
+		DNSNames:              []string{domain},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(10 * 365 * 24 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
 
-	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	certDER, err := x509.CreateCertificate(rand.Reader, template, ca.caCert, &key.PublicKey, ca.caKey)
 	if err != nil {
-		return tls.Certificate{}, fmt.Errorf("create certificate: %w", err)
+		return tls.Certificate{}, err
 	}
 
 	return tls.Certificate{
-		Certificate: [][]byte{certDER},
+		Certificate: [][]byte{certDER, ca.caCertDER},
 		PrivateKey:  key,
 	}, nil
 }
@@ -165,7 +271,7 @@ const blockPageHTML = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blocked - %s</title>
+    <title>Access Blocked - %s</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {

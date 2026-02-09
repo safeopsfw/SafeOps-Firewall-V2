@@ -2,24 +2,29 @@ package alerting
 
 import (
 	"bufio"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 )
 
-// Writer handles alert log file output with daily rotation and buffered writes
+// Writer handles alert log file output with size-based rotation and gzip compression.
+// All alerts write to a single file: firewall-alerts.jsonl
+// When the file exceeds maxSize, it is compressed to firewall-alerts-<timestamp>.jsonl.gz
+// and a new firewall-alerts.jsonl is created.
 type Writer struct {
-	mu       sync.Mutex
-	dir      string
-	maxSize  int64 // max bytes per file before mid-day rotation
-	writer   *bufio.Writer
-	file     *os.File
-	curDate  string
-	curSize  int64
-	rotIndex int // index for mid-day rotations (e.g., -2, -3)
+	mu      sync.Mutex
+	dir     string
+	maxSize int64 // max bytes per file before rotation
+	writer  *bufio.Writer
+	file    *os.File
+	curSize int64
 }
+
+const activeFileName = "firewall-alerts.jsonl"
 
 // NewWriter creates an alert file writer
 // dir: directory for alert log files
@@ -34,7 +39,7 @@ func NewWriter(dir string, maxSizeMB int) (*Writer, error) {
 		maxSize: int64(maxSizeMB) * 1024 * 1024,
 	}
 
-	if err := w.rotate(); err != nil {
+	if err := w.openActive(); err != nil {
 		return nil, err
 	}
 
@@ -46,16 +51,8 @@ func (w *Writer) Write(data []byte) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	today := time.Now().Format("2006-01-02")
-	if today != w.curDate {
-		if err := w.rotate(); err != nil {
-			return err
-		}
-	}
-
-	// Check size-based rotation
+	// Check size-based rotation before writing
 	if w.maxSize > 0 && w.curSize+int64(len(data)+1) > w.maxSize {
-		w.rotIndex++
 		if err := w.rotate(); err != nil {
 			return err
 		}
@@ -93,29 +90,14 @@ func (w *Writer) Close() error {
 	return w.closeFile()
 }
 
-func (w *Writer) rotate() error {
-	if err := w.closeFile(); err != nil {
-		return err
-	}
-
-	today := time.Now().Format("2006-01-02")
-	if today != w.curDate {
-		w.curDate = today
-		w.rotIndex = 0
-	}
-
-	filename := fmt.Sprintf("firewall-alerts-%s.jsonl", w.curDate)
-	if w.rotIndex > 0 {
-		filename = fmt.Sprintf("firewall-alerts-%s-%d.jsonl", w.curDate, w.rotIndex)
-	}
-
-	path := filepath.Join(w.dir, filename)
+// openActive opens (or creates) the active alert file for appending
+func (w *Writer) openActive() error {
+	path := filepath.Join(w.dir, activeFileName)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open alert log %s: %w", path, err)
 	}
 
-	// Get current file size for size-based rotation tracking
 	info, err := f.Stat()
 	if err != nil {
 		f.Close()
@@ -127,6 +109,34 @@ func (w *Writer) rotate() error {
 	w.curSize = info.Size()
 
 	return nil
+}
+
+// rotate compresses the current file and opens a new one
+func (w *Writer) rotate() error {
+	// Flush and close current file
+	if err := w.closeFile(); err != nil {
+		return err
+	}
+
+	activePath := filepath.Join(w.dir, activeFileName)
+
+	// Generate timestamp-based archive name
+	ts := time.Now().Format("2006-01-02T150405")
+	archiveName := fmt.Sprintf("firewall-alerts-%s.jsonl.gz", ts)
+	archivePath := filepath.Join(w.dir, archiveName)
+
+	// Compress the active file to .gz archive
+	if err := compressFile(activePath, archivePath); err != nil {
+		// If compression fails, rename instead of losing data
+		fallback := filepath.Join(w.dir, fmt.Sprintf("firewall-alerts-%s.jsonl", ts))
+		os.Rename(activePath, fallback)
+	} else {
+		// Compression succeeded — remove the uncompressed original
+		os.Remove(activePath)
+	}
+
+	// Open a fresh active file
+	return w.openActive()
 }
 
 func (w *Writer) closeFile() error {
@@ -143,4 +153,33 @@ func (w *Writer) closeFile() error {
 		w.writer = nil
 	}
 	return nil
+}
+
+// compressFile gzip-compresses src into dst
+func compressFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	gz, err := gzip.NewWriterLevel(out, gzip.BestSpeed)
+	if err != nil {
+		return err
+	}
+	gz.Name = filepath.Base(src)
+	gz.ModTime = time.Now()
+
+	if _, err := io.Copy(gz, in); err != nil {
+		gz.Close()
+		return err
+	}
+
+	return gz.Close()
 }

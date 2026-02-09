@@ -263,7 +263,7 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 	// Step 3: Handle DNS queries - check redirect & domain blocking
 	if dstPort == 53 && pkt.Protocol == driver.ProtoUDP {
 		if e.dnsParser.IsDNSQuery(pkt.Payload) {
-			domain := e.dnsParser.ExtractDomain(pkt.Payload)
+			domain := strings.ToLower(e.dnsParser.ExtractDomain(pkt.Payload))
 			if domain != "" {
 				pkt.Domain = domain
 				pkt.DomainSource = "DNS"
@@ -289,16 +289,39 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 		// Just let it pass - we don't block CDN IPs
 	}
 
-	// Step 5: Extract domain from TLS SNI (port 443)
+	// Step 5: Extract domain from TLS SNI (port 443 TCP)
 	if dstPort == 443 && pkt.Protocol == driver.ProtoTCP {
-		sni := e.tlsParser.ExtractSNI(pkt.Payload)
+		sni := strings.ToLower(e.tlsParser.ExtractSNI(pkt.Payload))
 		if sni != "" {
 			pkt.Domain = sni
 			pkt.DomainSource = "SNI"
 
 			// Check domain blocklist - send RST for blocked HTTPS
+			// BUT: if dst is 127.0.0.1 (our block page server), let it through
+			// so the browser sees the block page instead of a connection reset.
 			if e.isDomainBlocked(sni) {
-				e.sendTCPReset(pkt)
+				dstStr := pkt.DstIP.String()
+				if dstStr == "127.0.0.1" || dstStr == "::1" {
+					// Let it through to block page server
+				} else {
+					e.sendTCPReset(pkt)
+					atomic.AddUint64(&e.domainsBlocked, 1)
+					return false
+				}
+			}
+		}
+	}
+
+	// Step 5b: Extract domain from QUIC Initial packet (UDP 443)
+	// QUIC Initial packets contain a TLS ClientHello with SNI
+	if dstPort == 443 && pkt.Protocol == driver.ProtoUDP {
+		sni := e.extractQUICSNI(pkt.Payload)
+		if sni != "" {
+			pkt.Domain = sni
+			pkt.DomainSource = "QUIC"
+
+			if e.isDomainBlocked(sni) {
+				// Can't RST UDP — just drop. The browser will fall back to TCP 443.
 				atomic.AddUint64(&e.domainsBlocked, 1)
 				return false
 			}
@@ -307,7 +330,7 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 
 	// Step 6: Extract domain from HTTP Host (port 80)
 	if dstPort == 80 && pkt.Protocol == driver.ProtoTCP {
-		host := e.httpParser.ExtractHost(pkt.Payload)
+		host := strings.ToLower(e.httpParser.ExtractHost(pkt.Payload))
 		if host != "" {
 			pkt.Domain = host
 			pkt.DomainSource = "HTTP"
@@ -336,9 +359,9 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 	return true
 }
 
-// isWebTraffic returns true for DNS/HTTP/HTTPS ports
+// isWebTraffic returns true for DNS/HTTP/HTTPS/QUIC ports
 func isWebTraffic(dstPort, srcPort uint16) bool {
-	return dstPort == 53 || dstPort == 80 || dstPort == 443 || srcPort == 53
+	return dstPort == 53 || dstPort == 80 || dstPort == 443 || srcPort == 53 || srcPort == 443
 }
 
 // handleVerdictAction executes the appropriate action for a verdict
@@ -386,6 +409,8 @@ func getMACAddresses(pkt *driver.ParsedPacket) (srcMAC, dstMAC [6]byte) {
 
 // isDomainBlocked checks if a domain (or its parent) is blocked
 func (e *Engine) isDomainBlocked(domain string) bool {
+	domain = strings.ToLower(domain)
+
 	// Exact match
 	if _, ok := e.blockedDomains.Load(domain); ok {
 		return true
@@ -437,12 +462,9 @@ func (e *Engine) injectDNSRedirect(pkt *driver.ParsedPacket, domain string, redi
 			"domain": domain,
 			"error":  err.Error(),
 		})
-	} else {
-		e.log.Info("DNS redirect injected", map[string]interface{}{
-			"domain":      domain,
-			"redirect_ip": redirectIP.String(),
-		})
 	}
+	// DNS redirect success is silent — the Firewall Engine handles domain block alerts.
+	// Only errors are logged to avoid flooding the SafeOps Engine terminal.
 }
 
 // injectHTMLBlockPage injects an HTML block page for HTTP traffic and sends RST
@@ -471,6 +493,80 @@ func (e *Engine) injectHTMLBlockPage(pkt *driver.ParsedPacket, domain string) {
 
 	// Also send RST to kill the connection
 	e.sendTCPReset(pkt)
+}
+
+// extractQUICSNI extracts SNI from a QUIC Initial packet.
+// QUIC Initial packets carry a TLS ClientHello inside the CRYPTO frame.
+// The QUIC header format: flags(1) + version(4) + DCID len(1) + DCID + SCID len(1) + SCID + ...
+// We look for the TLS ClientHello pattern inside the payload.
+func (e *Engine) extractQUICSNI(payload []byte) string {
+	if len(payload) < 50 {
+		return ""
+	}
+
+	// QUIC long header: first bit set, next bit is "fixed" bit
+	// Form bit (0x80) must be set for long header (Initial packet)
+	if payload[0]&0x80 == 0 {
+		return "" // Short header — not an Initial packet
+	}
+
+	// QUIC version is at bytes 1-4
+	// Skip version check - just look for TLS ClientHello inside
+
+	// Skip QUIC header to find TLS ClientHello
+	// Instead of fully parsing QUIC (complex with variable-length encoding),
+	// scan for the TLS ClientHello signature: 0x01 followed by valid length
+	// The ClientHello appears inside a CRYPTO frame in the QUIC payload.
+
+	// Look for TLS handshake marker (type=0x16 is TLS record, but in QUIC
+	// the ClientHello is directly embedded without TLS record header)
+	// Search for ClientHello type byte (0x01) followed by 3-byte length
+	for i := 5; i < len(payload)-50; i++ {
+		// ClientHello starts with handshake type 0x01
+		if payload[i] == 0x01 {
+			// Check if the next 3 bytes form a reasonable length
+			if i+4 > len(payload) {
+				continue
+			}
+			chLen := int(payload[i+1])<<16 | int(payload[i+2])<<8 | int(payload[i+3])
+			if chLen < 30 || chLen > len(payload)-i {
+				continue
+			}
+
+			// Try to parse as a ClientHello: version(2) + random(32) + sessionID(1+var) + ...
+			chStart := i + 4
+			if chStart+34 > len(payload) {
+				continue
+			}
+
+			// Version should be 0x0303 (TLS 1.2) or 0x0301 (TLS 1.0) for compat
+			ver := uint16(payload[chStart])<<8 | uint16(payload[chStart+1])
+			if ver != 0x0303 && ver != 0x0301 && ver != 0x0302 {
+				continue
+			}
+
+			// Build a synthetic TLS record for our existing parser:
+			// Record header: 0x16 + version(2) + length(2) + handshake data
+			syntheticLen := len(payload) - i
+			if syntheticLen > 4096 {
+				syntheticLen = 4096
+			}
+			synthetic := make([]byte, 5+syntheticLen)
+			synthetic[0] = 0x16                                // Content type: Handshake
+			synthetic[1] = 0x03                                // Version major
+			synthetic[2] = 0x03                                // Version minor
+			synthetic[3] = byte((syntheticLen) >> 8)           // Length high
+			synthetic[4] = byte((syntheticLen) & 0xFF)         // Length low
+			copy(synthetic[5:], payload[i:i+syntheticLen])
+
+			sni := e.tlsParser.ExtractSNI(synthetic)
+			if sni != "" {
+				return sni
+			}
+		}
+	}
+
+	return ""
 }
 
 // ============ Public API for rule management ============

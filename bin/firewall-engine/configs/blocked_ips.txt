@@ -1,0 +1,10 @@
+# IP Blocklist - one IP or CIDR per line
+# Lines starting with # or // are comments
+# Blank lines are ignored
+# This file is hot-reloadable - changes take effect without restart
+#
+# Examples:
+# 1.2.3.4
+# 10.0.0.0/24
+# 203.0.113.50
+

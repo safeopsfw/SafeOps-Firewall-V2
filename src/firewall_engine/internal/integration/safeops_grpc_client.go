@@ -67,6 +67,11 @@ func (c *SafeOpsGRPCClient) IsConnected() bool {
 	return c.grpcClient.IsConnected()
 }
 
+// SetStopping marks the client as shutting down, suppressing reconnect attempts.
+func (c *SafeOpsGRPCClient) SetStopping() {
+	c.grpcClient.SetStopping()
+}
+
 // Disconnect closes the gRPC connection
 func (c *SafeOpsGRPCClient) Disconnect() error {
 	return c.grpcClient.Disconnect()
