@@ -1,40 +1,45 @@
-{"timestamp":"2026-02-09T10:36:49.5803661Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
-{"timestamp":"2026-02-09T10:36:49.5825577Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
-{"timestamp":"2026-02-09T10:36:49.5847088Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
-{"timestamp":"2026-02-09T10:36:49.5852608Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
-{"timestamp":"2026-02-09T10:36:49.586369Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
-{"timestamp":"2026-02-09T10:36:49.5874254Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
-{"timestamp":"2026-02-09T10:36:49.5884587Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
-{"timestamp":"2026-02-09T10:36:49.5894922Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
-{"timestamp":"2026-02-09T10:36:49.5905224Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
-{"timestamp":"2026-02-09T10:36:49.5915757Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:09"}}
-{"timestamp":"2026-02-09T10:36:49.5921716Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
-{"timestamp":"2026-02-09T10:36:49.5943106Z","level":"INFO","message":"gRPC server created","data":{"address":"127.0.0.1:50051"}}
-{"timestamp":"2026-02-09T10:36:49.5959025Z","level":"INFO","message":"Loaded domain blocklist from file","data":{"count":17,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\domains.txt"}}
-{"timestamp":"2026-02-09T10:36:49.5969294Z","level":"INFO","message":"Domain blocklist loaded","data":{"count":17,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\domains.txt"}}
-{"timestamp":"2026-02-09T10:36:49.598036Z","level":"INFO","message":"Starting gRPC server","data":{"address":"127.0.0.1:50051"}}
-{"timestamp":"2026-02-09T10:36:49.5987278Z","level":"INFO","message":"Control API server starting","data":{"address":"127.0.0.1:50052"}}
-{"timestamp":"2026-02-09T10:36:49.5993317Z","level":"INFO","message":"Block page server starting (HTTP)","data":{"address":"127.0.0.1:80"}}
-{"timestamp":"2026-02-09T10:36:49.5993317Z","level":"INFO","message":"SafeOps Engine initialized","data":{"block_page":"127.0.0.1:80","control_listen":"127.0.0.1:50052","grpc_listen":"127.0.0.1:50051","mode":"fast-slow-path","version":"4.0.0"}}
-{"timestamp":"2026-02-09T10:36:49.5993317Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
-{"timestamp":"2026-02-09T10:36:49.5993317Z","level":"INFO","message":"Block page server starting (HTTPS)","data":{"address":"127.0.0.1:443"}}
-{"timestamp":"2026-02-09T10:36:49.6031451Z","level":"INFO","message":"Waiting for packets on all NICs..."}
-{"timestamp":"2026-02-09T10:36:53.8044702Z","level":"INFO","message":"New metadata subscriber","data":{"filters":["tcp","udp"],"subscriber_id":"firewall-engine"}}
-{"timestamp":"2026-02-09T10:37:33.6383196Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
-{"timestamp":"2026-02-09T10:37:36.2786355Z","level":"INFO","message":"Shutting down SafeOps Engine"}
-{"timestamp":"2026-02-09T10:37:36.2842622Z","level":"INFO","message":"Block page servers stopped"}
-{"timestamp":"2026-02-09T10:37:36.2855102Z","level":"INFO","message":"Control API server stopped"}
-{"timestamp":"2026-02-09T10:37:36.2878078Z","level":"INFO","message":"Stopping gRPC server"}
-{"timestamp":"2026-02-09T10:37:36.2891434Z","level":"INFO","message":"gRPC server stopped"}
-{"timestamp":"2026-02-09T10:37:36.2903953Z","level":"INFO","message":"Closing WinpkFilter driver"}
-{"timestamp":"2026-02-09T10:37:36.2911623Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Local Area Connection* 10"}}
-{"timestamp":"2026-02-09T10:37:36.2924988Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Local Area Connection* 9"}}
-{"timestamp":"2026-02-09T10:37:36.2938385Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Wi-Fi"}}
-{"timestamp":"2026-02-09T10:37:36.2951132Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Ethernet"}}
-{"timestamp":"2026-02-09T10:37:36.2963871Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Ethernet 2"}}
-{"timestamp":"2026-02-09T10:37:36.2976308Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Local Area Connection* 10"}}
-{"timestamp":"2026-02-09T10:37:36.2987207Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Local Area Connection* 9"}}
-{"timestamp":"2026-02-09T10:37:36.2998159Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Wi-Fi"}}
-{"timestamp":"2026-02-09T10:37:36.3009326Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Ethernet"}}
-{"timestamp":"2026-02-09T10:37:36.3025449Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Ethernet 2"}}
-{"timestamp":"2026-02-09T10:37:36.3046682Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":0,"packets_read":871953,"packets_written":871834}}
+{"timestamp":"2026-02-09T16:21:10.5045599Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-02-09T16:21:10.5068495Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-02-09T16:21:10.5091174Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 10","mac":"f6:26:79:73:6f:7c"}}
+{"timestamp":"2026-02-09T16:21:10.5101965Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Local Area Connection* 9","mac":"f4:26:79:73:6f:7d"}}
+{"timestamp":"2026-02-09T16:21:10.5107258Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 8"}}
+{"timestamp":"2026-02-09T16:21:10.5124394Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 7"}}
+{"timestamp":"2026-02-09T16:21:10.5130027Z","level":"INFO","message":"Skipping virtual adapter","data":{"name":"Local Area Connection* 6"}}
+{"timestamp":"2026-02-09T16:21:10.514133Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-02-09T16:21:10.5152361Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-02-09T16:21:10.5163196Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 2","mac":"0a:00:27:00:00:09"}}
+{"timestamp":"2026-02-09T16:21:10.5173852Z","level":"INFO","message":"Monitoring adapters","data":{"count":5}}
+{"timestamp":"2026-02-09T16:21:10.5191159Z","level":"INFO","message":"gRPC server created","data":{"address":"127.0.0.1:50051"}}
+{"timestamp":"2026-02-09T16:21:10.5333617Z","level":"INFO","message":"DNS cache flushed","data":{"output":"Windows IP Configuration\r\n\r\nSuccessfully flushed the DNS Resolver Cache."}}
+{"timestamp":"2026-02-09T16:21:10.5344554Z","level":"INFO","message":"Loaded domain blocklist from file","data":{"count":17,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\domains.txt"}}
+{"timestamp":"2026-02-09T16:21:10.5355743Z","level":"INFO","message":"Domain blocklist loaded","data":{"count":17,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\domains.txt"}}
+{"timestamp":"2026-02-09T16:21:10.5370606Z","level":"INFO","message":"Loaded DoH server blocklist from file","data":{"count":27,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\doh_servers.txt"}}
+{"timestamp":"2026-02-09T16:21:10.5380803Z","level":"INFO","message":"DoH server blocklist loaded","data":{"count":27,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\doh_servers.txt"}}
+{"timestamp":"2026-02-09T16:21:10.5397692Z","level":"INFO","message":"Loaded blocked ports from file","data":{"count":16,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\blocked_ports.txt"}}
+{"timestamp":"2026-02-09T16:21:10.5408969Z","level":"INFO","message":"VPN port blocklist loaded","data":{"count":16,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\blocked_ports.txt"}}
+{"timestamp":"2026-02-09T16:21:10.5419842Z","level":"INFO","message":"Starting gRPC server","data":{"address":"127.0.0.1:50051"}}
+{"timestamp":"2026-02-09T16:21:10.5430699Z","level":"INFO","message":"Control API server starting","data":{"address":"127.0.0.1:50052"}}
+{"timestamp":"2026-02-09T16:21:10.5436126Z","level":"INFO","message":"SafeOps Engine initialized","data":{"block_page":"127.0.0.1:80","control_listen":"127.0.0.1:50052","grpc_listen":"127.0.0.1:50051","mode":"fast-slow-path","version":"4.0.0"}}
+{"timestamp":"2026-02-09T16:21:10.5436126Z","level":"INFO","message":"Block page server starting (HTTPS)","data":{"address":"127.0.0.1:443"}}
+{"timestamp":"2026-02-09T16:21:10.5436126Z","level":"INFO","message":"Block page server starting (HTTP)","data":{"address":"127.0.0.1:80"}}
+{"timestamp":"2026-02-09T16:21:10.544133Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":5}}
+{"timestamp":"2026-02-09T16:21:10.5485412Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-02-09T16:21:12.8772049Z","level":"INFO","message":"New metadata subscriber","data":{"filters":["tcp","udp"],"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-02-09T16:22:53.0048075Z","level":"INFO","message":"Shutting down SafeOps Engine"}
+{"timestamp":"2026-02-09T16:22:53.0086896Z","level":"INFO","message":"Block page servers stopped"}
+{"timestamp":"2026-02-09T16:22:53.0225458Z","level":"INFO","message":"Control API server stopped"}
+{"timestamp":"2026-02-09T16:22:53.0247409Z","level":"INFO","message":"Stopping gRPC server"}
+{"timestamp":"2026-02-09T16:22:53.0259919Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-02-09T16:22:53.0276509Z","level":"INFO","message":"gRPC server stopped"}
+{"timestamp":"2026-02-09T16:22:53.0288642Z","level":"INFO","message":"Closing WinpkFilter driver"}
+{"timestamp":"2026-02-09T16:22:53.0300388Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Local Area Connection* 10"}}
+{"timestamp":"2026-02-09T16:22:53.0310707Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Local Area Connection* 9"}}
+{"timestamp":"2026-02-09T16:22:53.0318706Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Wi-Fi"}}
+{"timestamp":"2026-02-09T16:22:53.0335532Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Ethernet"}}
+{"timestamp":"2026-02-09T16:22:53.034059Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Ethernet 2"}}
+{"timestamp":"2026-02-09T16:22:53.0352915Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Local Area Connection* 10"}}
+{"timestamp":"2026-02-09T16:22:53.0369794Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Local Area Connection* 9"}}
+{"timestamp":"2026-02-09T16:22:53.0380664Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Wi-Fi"}}
+{"timestamp":"2026-02-09T16:22:53.0386102Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Ethernet"}}
+{"timestamp":"2026-02-09T16:22:53.0402138Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Ethernet 2"}}
+{"timestamp":"2026-02-09T16:22:53.0408074Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":75,"packets_read":1311425,"packets_written":1311060}}

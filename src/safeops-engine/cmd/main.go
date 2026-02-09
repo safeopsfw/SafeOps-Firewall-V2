@@ -12,7 +12,7 @@ import (
 
 func main() {
 	fmt.Println("=== SafeOps Network Pipeline ===")
-	fmt.Println("Version: 4.0.0 (Fast/Slow Path + Control API)")
+	fmt.Println("Version: 5.0.0 (Enterprise Domain Blocking + VPN/DoH Defense)")
 	fmt.Println("Starting...")
 
 	// Initialize SafeOps Engine
@@ -36,8 +36,10 @@ func main() {
 		defer ticker.Stop()
 		for {
 			<-ticker.C
-			read, written, dropped := eng.GetStats()
-			fmt.Printf("\n[STATS] Read=%d Written=%d Dropped=%d\n\n", read, written, dropped)
+			stats := eng.GetEnhancedStats()
+			fmt.Printf("\n[STATS] Read=%v Written=%v Dropped=%v | Domains blocked=%v DoH blocked=%v VPN blocked=%v\n\n",
+				stats["packets_read"], stats["packets_written"], stats["packets_dropped"],
+				stats["domains_blocked"], stats["doh_blocked"], stats["vpn_blocked"])
 		}
 	}()
 
@@ -50,11 +52,16 @@ func main() {
 	time.Sleep(1 * time.Second)
 
 	// Final stats
-	read, written, dropped := eng.GetStats()
+	stats := eng.GetEnhancedStats()
 	fmt.Printf("\nFinal Statistics:\n")
-	fmt.Printf("  Packets Read: %d\n", read)
-	fmt.Printf("  Packets Written: %d\n", written)
-	fmt.Printf("  Packets Dropped: %d\n", dropped)
+	fmt.Printf("  Packets Read:     %v\n", stats["packets_read"])
+	fmt.Printf("  Packets Written:  %v\n", stats["packets_written"])
+	fmt.Printf("  Packets Dropped:  %v\n", stats["packets_dropped"])
+	fmt.Printf("  Fast Path:        %v\n", stats["fast_path_packets"])
+	fmt.Printf("  Slow Path:        %v\n", stats["slow_path_packets"])
+	fmt.Printf("  Domains Blocked:  %v\n", stats["domains_blocked"])
+	fmt.Printf("  DoH Blocked:      %v\n", stats["doh_blocked"])
+	fmt.Printf("  VPN Blocked:      %v\n", stats["vpn_blocked"])
 
 	fmt.Println("\nSafeOps Engine stopped.")
 }

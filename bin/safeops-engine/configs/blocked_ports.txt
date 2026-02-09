@@ -1,0 +1,44 @@
+# SafeOps VPN Port Blocklist
+# Format: port/protocol  # comment
+# Protocol: tcp, udp, or both (blocks on both TCP and UDP)
+# Blank lines and comments (lines starting with #) are ignored
+
+# OpenVPN
+1194/both  # OpenVPN - default port
+# NOTE: 443/udp NOT blocked — it would kill ALL QUIC/HTTP3 traffic.
+# QUIC domain blocking is handled by SNI extraction in the engine.
+
+# WireGuard
+51820/udp  # WireGuard - default port
+
+# IPSec/IKEv2
+500/udp    # IKE (Internet Key Exchange)
+4500/udp   # NAT Traversal (IPSec over NAT)
+1701/udp   # L2TP (Layer 2 Tunneling Protocol)
+
+# PPTP
+1723/tcp   # PPTP - Point-to-Point Tunneling Protocol (legacy)
+
+# SoftEther
+5555/tcp   # SoftEther VPN
+
+# Shadowsocks
+8388/both  # Shadowsocks - default port
+
+# V2Ray/VMess
+10086/tcp  # V2Ray/VMess - common default port
+
+# Tor
+9050/tcp   # Tor SOCKS proxy
+9051/tcp   # Tor control port
+9001/tcp   # Tor OR port (Bridge)
+9030/tcp   # Tor directory port (Bridge)
+
+# Psiphon
+3000/tcp   # Psiphon - example default range
+
+# ZeroTier
+9993/udp   # ZeroTier - peer-to-peer networking
+
+# Tailscale
+41641/udp  # Tailscale - VPN service

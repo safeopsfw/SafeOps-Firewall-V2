@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -29,6 +31,13 @@ var (
 	mu           sync.RWMutex
 )
 
+// blockedPort represents a port+protocol pair to block
+type blockedPort struct {
+	port     uint16
+	blockTCP bool
+	blockUDP bool
+}
+
 // Engine represents the SafeOps Engine instance
 type Engine struct {
 	log         *logger.Logger
@@ -49,6 +58,15 @@ type Engine struct {
 	// Domain blocklist (domain -> true)
 	blockedDomains sync.Map
 
+	// DoH server IPs (known DNS-over-HTTPS resolvers to block)
+	// These are dedicated DNS resolver IPs, NOT shared hosting IPs.
+	// Blocking DoH forces browsers to use system DNS where our redirect works.
+	// Key: IP string, Value: true
+	dohServers sync.Map
+
+	// VPN port blocklist
+	blockedPorts []blockedPort
+
 	// MAC address cache for RST/injection (IP string -> [6]byte)
 	macCache sync.Map
 
@@ -56,6 +74,8 @@ type Engine struct {
 	fastPathPackets uint64
 	slowPathPackets uint64
 	domainsBlocked  uint64
+	dohBlocked      uint64
+	vpnBlocked      uint64
 	sampledPackets  uint64
 
 	// Sampling: send every Nth fast-path packet to Firewall Engine
@@ -131,6 +151,10 @@ func Initialize() (*Engine, error) {
 			httpParser:  parser.NewHTTPParser(),
 		}
 
+		// Flush Windows DNS cache on startup — critical for defeating DoH bypass.
+		// When engine restarts, stale DNS cache entries let browsers reach blocked sites.
+		flushDNSCache(log)
+
 		// Load domain blocklist from file (if found)
 		domainsPath := resolveDomainsFile()
 		if domainsPath != "" {
@@ -150,6 +174,42 @@ func Initialize() (*Engine, error) {
 		} else {
 			log.Info("No domains.txt found — domain blocking via file disabled", nil)
 			fmt.Println("  Domain blocklist: no domains.txt found (use control API to add domains)")
+		}
+
+		// Load DoH server blocklist — blocks DNS-over-HTTPS to force system DNS
+		dohPath := resolveConfigFile("doh_servers.txt")
+		if dohPath != "" {
+			dohCount, dohErr := eng.LoadDoHServersFromFile(dohPath)
+			if dohErr != nil {
+				log.Warn("Failed to load DoH servers file", map[string]interface{}{
+					"path":  dohPath,
+					"error": dohErr.Error(),
+				})
+			} else {
+				log.Info("DoH server blocklist loaded", map[string]interface{}{
+					"path":  dohPath,
+					"count": dohCount,
+				})
+				fmt.Printf("  DoH blocklist:    %d DoH resolver IPs blocked\n", dohCount)
+			}
+		}
+
+		// Load VPN port blocklist
+		vpnPath := resolveConfigFile("blocked_ports.txt")
+		if vpnPath != "" {
+			vpnCount, vpnErr := eng.LoadBlockedPortsFromFile(vpnPath)
+			if vpnErr != nil {
+				log.Warn("Failed to load blocked ports file", map[string]interface{}{
+					"path":  vpnPath,
+					"error": vpnErr.Error(),
+				})
+			} else {
+				log.Info("VPN port blocklist loaded", map[string]interface{}{
+					"path":  vpnPath,
+					"count": vpnCount,
+				})
+				fmt.Printf("  VPN port blocks:  %d port rules loaded\n", vpnCount)
+			}
 		}
 
 		// Set packet handler with fast-path / slow-path split
@@ -208,6 +268,32 @@ func Initialize() (*Engine, error) {
 func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 	dstPort := pkt.DstPort
 	srcPort := pkt.SrcPort
+
+	// ============ VPN PORT BLOCKING (before fast/slow split) ============
+	// Check blocked ports — VPN/tunnel protocols. ONLY for non-local destinations
+	// to avoid killing LAN traffic (DHCP, IPSec for network auth, etc.)
+	if !isLocalIP(pkt.DstIP) && e.isPortBlocked(dstPort, pkt.Protocol) {
+		atomic.AddUint64(&e.vpnBlocked, 1)
+		if pkt.Protocol == driver.ProtoTCP {
+			e.sendTCPReset(pkt)
+		}
+		return false
+	}
+
+	// ============ DoH BLOCKING (before DNS interception) ============
+	// Block connections to known DNS-over-HTTPS resolver IPs on port 443.
+	// This forces browsers to fall back to system DNS where our redirect works.
+	// Only block outbound (non-local dst) to avoid interfering with LAN.
+	if dstPort == 443 && !isLocalIP(pkt.DstIP) {
+		dstStr := pkt.DstIP.String()
+		if _, isDoH := e.dohServers.Load(dstStr); isDoH {
+			atomic.AddUint64(&e.dohBlocked, 1)
+			if pkt.Protocol == driver.ProtoTCP {
+				e.sendTCPReset(pkt)
+			}
+			return false // drop DoH UDP (QUIC) too
+		}
+	}
 
 	// ============ FAST PATH: Non-web traffic ============
 	// O(1) port check - if not web traffic, minimal processing
@@ -359,9 +445,61 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 	return true
 }
 
-// isWebTraffic returns true for DNS/HTTP/HTTPS/QUIC ports
+// isWebTraffic returns true for OUTBOUND DNS/HTTP/HTTPS/QUIC traffic.
+// Only outbound has extractable domain info:
+//   dstPort 53:  DNS queries   → intercept & redirect
+//   dstPort 80:  HTTP requests → extract Host header, block page
+//   dstPort 443: HTTPS/QUIC    → extract SNI from ClientHello
+//
+// Response packets (srcPort 53/443) do NOT need slow-path processing —
+// DNS responses don't need re-parsing (query already redirected), and
+// TLS ServerHello has no SNI. Processing every response packet wastes
+// CPU and causes packet queue backlog that kills LAN adapters.
 func isWebTraffic(dstPort, srcPort uint16) bool {
-	return dstPort == 53 || dstPort == 80 || dstPort == 443 || srcPort == 53 || srcPort == 443
+	_ = srcPort // explicitly unused — responses skip slow path
+	return dstPort == 53 || dstPort == 80 || dstPort == 443
+}
+
+// isLocalIP returns true for loopback, private (RFC1918), link-local, and multicast addresses.
+// Used to skip VPN/DoH blocking for LAN traffic — blocking local IPs kills
+// Ethernet, DHCP, network discovery, IPSec auth, etc.
+func isLocalIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	// Loopback
+	if ip.IsLoopback() {
+		return true
+	}
+	// Link-local
+	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+	// Multicast
+	if ip.IsMulticast() {
+		return true
+	}
+	// Private ranges (RFC 1918)
+	ip4 := ip.To4()
+	if ip4 != nil {
+		// 10.0.0.0/8
+		if ip4[0] == 10 {
+			return true
+		}
+		// 172.16.0.0/12
+		if ip4[0] == 172 && ip4[1] >= 16 && ip4[1] <= 31 {
+			return true
+		}
+		// 192.168.0.0/16
+		if ip4[0] == 192 && ip4[1] == 168 {
+			return true
+		}
+		// 169.254.0.0/16 (APIPA / link-local)
+		if ip4[0] == 169 && ip4[1] == 254 {
+			return true
+		}
+	}
+	return false
 }
 
 // handleVerdictAction executes the appropriate action for a verdict
@@ -650,12 +788,18 @@ func (e *Engine) LoadDomainsFromFile(path string) (int, error) {
 // resolveDomainsFile searches for domains.txt relative to the binary location.
 // Search order: <exeDir>/configs/domains.txt, <exeDir>/../configs/domains.txt, ./configs/domains.txt
 func resolveDomainsFile() string {
+	return resolveConfigFile("domains.txt")
+}
+
+// resolveConfigFile searches for a config file relative to the binary location.
+// Search order: <exeDir>/configs/<name>, <exeDir>/../configs/<name>, ./configs/<name>
+func resolveConfigFile(name string) string {
 	exePath, err := os.Executable()
 	if err == nil {
 		exeDir := filepath.Dir(exePath)
 		candidates := []string{
-			filepath.Join(exeDir, "configs", "domains.txt"),
-			filepath.Join(exeDir, "..", "configs", "domains.txt"),
+			filepath.Join(exeDir, "configs", name),
+			filepath.Join(exeDir, "..", "configs", name),
 		}
 		for _, c := range candidates {
 			if _, err := os.Stat(c); err == nil {
@@ -664,10 +808,142 @@ func resolveDomainsFile() string {
 		}
 	}
 	// Fallback: current directory
-	if _, err := os.Stat(filepath.Join("configs", "domains.txt")); err == nil {
-		return filepath.Join("configs", "domains.txt")
+	if _, err := os.Stat(filepath.Join("configs", name)); err == nil {
+		return filepath.Join("configs", name)
 	}
 	return ""
+}
+
+// flushDNSCache flushes the Windows DNS resolver cache.
+// This is critical on engine restart — stale cached DNS entries let browsers
+// connect to blocked domains without going through our DNS redirect.
+func flushDNSCache(log *logger.Logger) {
+	cmd := exec.Command("ipconfig", "/flushdns")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Warn("Failed to flush DNS cache", map[string]interface{}{
+			"error": err.Error(),
+		})
+		fmt.Println("  DNS cache flush:  FAILED (run as admin)")
+	} else {
+		log.Info("DNS cache flushed", map[string]interface{}{
+			"output": strings.TrimSpace(string(output)),
+		})
+		fmt.Println("  DNS cache flush:  OK (stale entries cleared)")
+	}
+}
+
+// LoadDoHServersFromFile reads a doh_servers.txt file and adds all IPs to the DoH blocklist.
+func (e *Engine) LoadDoHServersFromFile(path string) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, fmt.Errorf("open DoH servers file: %w", err)
+	}
+	defer f.Close()
+
+	count := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		// Validate it's a real IP
+		if net.ParseIP(line) == nil {
+			continue
+		}
+		e.dohServers.Store(line, true)
+		count++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return count, fmt.Errorf("reading DoH servers file: %w", err)
+	}
+
+	e.log.Info("Loaded DoH server blocklist from file", map[string]interface{}{
+		"path":  path,
+		"count": count,
+	})
+	return count, nil
+}
+
+// LoadBlockedPortsFromFile reads a blocked_ports.txt file.
+// Format: port/protocol  # comment
+// Protocol: tcp, udp, or both
+func (e *Engine) LoadBlockedPortsFromFile(path string) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, fmt.Errorf("open blocked ports file: %w", err)
+	}
+	defer f.Close()
+
+	var ports []blockedPort
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Remove inline comment
+		if idx := strings.Index(line, "#"); idx >= 0 {
+			line = strings.TrimSpace(line[:idx])
+		}
+
+		// Parse "port/protocol"
+		parts := strings.SplitN(line, "/", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		portNum, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+		if err != nil || portNum < 1 || portNum > 65535 {
+			continue
+		}
+
+		proto := strings.ToLower(strings.TrimSpace(parts[1]))
+		bp := blockedPort{port: uint16(portNum)}
+		switch proto {
+		case "tcp":
+			bp.blockTCP = true
+		case "udp":
+			bp.blockUDP = true
+		case "both":
+			bp.blockTCP = true
+			bp.blockUDP = true
+		default:
+			continue
+		}
+
+		ports = append(ports, bp)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return len(ports), fmt.Errorf("reading blocked ports file: %w", err)
+	}
+
+	e.blockedPorts = ports
+
+	e.log.Info("Loaded blocked ports from file", map[string]interface{}{
+		"path":  path,
+		"count": len(ports),
+	})
+	return len(ports), nil
+}
+
+// isPortBlocked checks if a destination port is in the VPN port blocklist
+func (e *Engine) isPortBlocked(port uint16, protocol uint8) bool {
+	for _, bp := range e.blockedPorts {
+		if bp.port == port {
+			if protocol == driver.ProtoTCP && bp.blockTCP {
+				return true
+			}
+			if protocol == driver.ProtoUDP && bp.blockUDP {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // GetVerdictEngine returns the verdict engine for external control
@@ -685,17 +961,27 @@ func (e *Engine) GetEnhancedStats() map[string]interface{} {
 		return true
 	})
 
+	dohCount := 0
+	e.dohServers.Range(func(_, _ interface{}) bool {
+		dohCount++
+		return true
+	})
+
 	stats := map[string]interface{}{
-		"packets_read":       read,
-		"packets_written":    written,
-		"packets_dropped":    dropped,
-		"fast_path_packets":  atomic.LoadUint64(&e.fastPathPackets),
-		"slow_path_packets":  atomic.LoadUint64(&e.slowPathPackets),
-		"sampled_packets":    atomic.LoadUint64(&e.sampledPackets),
-		"sample_rate":        e.sampleRate,
-		"domains_blocked":    atomic.LoadUint64(&e.domainsBlocked),
+		"packets_read":         read,
+		"packets_written":      written,
+		"packets_dropped":      dropped,
+		"fast_path_packets":    atomic.LoadUint64(&e.fastPathPackets),
+		"slow_path_packets":    atomic.LoadUint64(&e.slowPathPackets),
+		"sampled_packets":      atomic.LoadUint64(&e.sampledPackets),
+		"sample_rate":          e.sampleRate,
+		"domains_blocked":      atomic.LoadUint64(&e.domainsBlocked),
+		"doh_blocked":          atomic.LoadUint64(&e.dohBlocked),
+		"vpn_blocked":          atomic.LoadUint64(&e.vpnBlocked),
 		"blocked_domain_count": blockedDomainCount,
-		"grpc_subscribers":   e.grpcServer.SubscriberCount(),
+		"doh_server_count":     dohCount,
+		"vpn_port_rules":       len(e.blockedPorts),
+		"grpc_subscribers":     e.grpcServer.SubscriberCount(),
 	}
 
 	// Merge verdict engine stats
