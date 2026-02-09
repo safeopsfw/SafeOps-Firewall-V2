@@ -15,13 +15,13 @@
     "updated_at": 1769254602
   },
   "D:\\SafeOpsFV2\\bin\\logs\\netflow\\east_west.log": {
-    "offset": 117342,
-    "inode": 1769191928373687300,
-    "updated_at": 1769254593
+    "offset": 299630,
+    "inode": 1769706258000000000,
+    "updated_at": 1770633135
   },
   "D:\\SafeOpsFV2\\bin\\logs\\netflow\\north_south.log": {
-    "offset": 330412,
-    "inode": 1769191928373687300,
-    "updated_at": 1769254593
+    "offset": 1052368,
+    "inode": 1769706258000000000,
+    "updated_at": 1770633135
   }
 }

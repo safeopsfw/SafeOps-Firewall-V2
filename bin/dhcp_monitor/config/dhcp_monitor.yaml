@@ -13,7 +13,7 @@ database:
   port: ${DB_PORT:-5432}
   name: "${DB_NAME:-safeops}"
   user: "${DB_USER:-postgres}"
-  password: "${DB_PASSWORD:-postgres}"
+  password: "${DB_PASSWORD:-admin}"
   sslmode: "${DB_SSLMODE:-disable}"  # disable, require, verify-ca, verify-full
   
   # Connection pool settings

@@ -27,7 +27,7 @@ func DefaultConfig() Config {
 		Port:     5432,
 		Database: "threat_intel_db",
 		User:     "postgres",
-		Password: "postgres",
+		Password: "admin",
 	}
 }
 
