@@ -139,26 +139,43 @@ func (d *Driver) GetAdapters() ([]Adapter, error) {
 	return adapters, nil
 }
 
-// isPhysicalAdapter checks if an adapter is physical (not virtual)
+// isPhysicalAdapter checks if an adapter is physical (not virtual).
+// Must work on ANY system — no hardcoded adapter names.
+// Filters by name patterns AND MAC OUI prefixes (for adapters with
+// generic names like "Ethernet 2" that are actually VirtualBox).
 func isPhysicalAdapter(adapter Adapter) bool {
 	// Skip adapters with null MAC (disabled/virtual)
 	if adapter.MAC == "00:00:00:00:00:00" {
 		return false
 	}
 
-	// Skip known virtual adapter prefixes
-	virtualPrefixes := []string{
-		"VMware",
-		"VirtualBox",
-		"vEthernet",
-		"Hyper-V",
-		"Loopback",
-		"Bluetooth",
-		"WAN Miniport",
+	// Skip known virtual adapter name patterns
+	virtualPatterns := []string{
+		"VMware", "VirtualBox", "vEthernet", "Hyper-V",
+		"Loopback", "Bluetooth", "WAN Miniport",
+		"Teredo", "ISATAP", "6to4",
+	}
+	for _, pattern := range virtualPatterns {
+		if strings.Contains(adapter.Name, pattern) {
+			return false
+		}
 	}
 
-	for _, prefix := range virtualPrefixes {
-		if strings.Contains(adapter.Name, prefix) {
+	// Skip "Local Area Connection*" — Windows auto-generated virtual adapters
+	if strings.HasPrefix(strings.ToLower(adapter.Name), "local area connection*") {
+		return false
+	}
+
+	// Skip virtual adapters by MAC OUI (first 3 bytes).
+	// Catches adapters with generic names like "Ethernet 2" that are actually virtual.
+	virtualMACs := []string{
+		"0a:00:27", "08:00:27", // VirtualBox
+		"00:50:56", "00:0c:29", // VMware
+		"00:15:5d",             // Hyper-V
+		"00:03:ff",             // Microsoft virtual
+	}
+	for _, prefix := range virtualMACs {
+		if strings.HasPrefix(adapter.MAC, prefix) {
 			return false
 		}
 	}
@@ -177,7 +194,11 @@ func (d *Driver) SetTunnelModeAll() error {
 
 	for _, adapter := range allAdapters {
 		if !isPhysicalAdapter(adapter) {
-			d.log.Info("Skipping virtual adapter", map[string]interface{}{"name": adapter.Name})
+			d.log.Info("Skipping virtual adapter", map[string]interface{}{
+				"name": adapter.Name,
+				"mac":  adapter.MAC,
+			})
+			fmt.Printf("  Skipping adapter: %s [%s] (virtual)\n", adapter.Name, adapter.MAC)
 			continue
 		}
 
@@ -198,6 +219,7 @@ func (d *Driver) SetTunnelModeAll() error {
 			"adapter": adapter.Name,
 			"mac":     adapter.MAC,
 		})
+		fmt.Printf("  Tunneled adapter: %s [%s]\n", adapter.Name, adapter.MAC)
 		d.adapters = append(d.adapters, adapter)
 	}
 

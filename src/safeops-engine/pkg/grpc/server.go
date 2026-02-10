@@ -607,8 +607,14 @@ func (s *Server) convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64, cache
 }
 
 // extractDomain extracts domain from DNS/HTTP/HTTPS packets
-// Only called for new connections (not cached), so minimal performance impact
+// Only called for new connections (not cached), so minimal performance impact.
+// Skips extraction if domain was already set by the engine's slow path.
 func (s *Server) extractDomain(pkt *driver.ParsedPacket) {
+	// If domain was already extracted by engine.go slow path, skip re-extraction
+	if pkt.Domain != "" {
+		return
+	}
+
 	// DNS query (UDP port 53)
 	if pkt.Protocol == 17 && pkt.DstPort == 53 {
 		if domain := s.dnsParser.ExtractDomain(pkt.Payload); domain != "" {

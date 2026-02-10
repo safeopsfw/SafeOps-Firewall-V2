@@ -106,18 +106,19 @@ func (e *Engine) RemoveDNSRedirect(domain string) {
 
 // SendTCPReset injects TCP RST packets to kill a connection
 func (e *Engine) SendTCPReset(adapterHandle ndisapi.Handle, srcIP, dstIP net.IP, srcPort, dstPort uint16, srcMAC, dstMAC [6]byte) error {
-	// Build RST packet to client
+	// Build RST packet to client (goes UP to TCP/IP stack — appears as incoming from server)
 	rstToClient := e.buildTCPRst(dstMAC, srcMAC, dstIP, srcIP, dstPort, srcPort)
 
-	// Build RST packet to server
+	// Build RST packet to server (goes OUT to network — outbound to remote)
 	rstToServer := e.buildTCPRst(srcMAC, dstMAC, srcIP, dstIP, srcPort, dstPort)
 
-	// Send both RST packets
-	if err := e.sendPacket(adapterHandle, rstToClient); err != nil {
+	// RST to client → MSTCP (inbound to local browser/app)
+	if err := e.sendPacketToMstcp(adapterHandle, rstToClient); err != nil {
 		return fmt.Errorf("failed to send RST to client: %w", err)
 	}
 
-	if err := e.sendPacket(adapterHandle, rstToServer); err != nil {
+	// RST to server → Adapter (outbound to remote)
+	if err := e.sendPacketToAdapter(adapterHandle, rstToServer); err != nil {
 		return fmt.Errorf("failed to send RST to server: %w", err)
 	}
 
@@ -187,8 +188,8 @@ func (e *Engine) InjectDNSResponse(adapterHandle ndisapi.Handle, queryPacket []b
 	// Build DNS response
 	response := e.buildDNSResponse(dstMAC, srcMAC, dstIP, srcIP, dstPort, srcPort, dnsQuery, fakeIP)
 
-	// Send response
-	if err := e.sendPacket(adapterHandle, response); err != nil {
+	// Send response UP to MSTCP — browser receives the fake DNS answer
+	if err := e.sendPacketToMstcp(adapterHandle, response); err != nil {
 		return fmt.Errorf("failed to inject DNS response: %w", err)
 	}
 
@@ -280,8 +281,9 @@ func (e *Engine) buildDNSResponse(srcMAC, dstMAC [6]byte, srcIP, dstIP net.IP, s
 	return packet
 }
 
-// sendPacket sends a raw packet via NDISAPI
-func (e *Engine) sendPacket(adapterHandle ndisapi.Handle, packet []byte) error {
+// sendPacketToAdapter sends a raw packet OUT to the network (outbound direction).
+// Use for: RST packets to remote servers, outbound injections.
+func (e *Engine) sendPacketToAdapter(adapterHandle ndisapi.Handle, packet []byte) error {
 	buffer := &ndisapi.IntermediateBuffer{}
 	buffer.DeviceFlags = ndisapi.PACKET_FLAG_ON_SEND
 	buffer.Length = uint32(len(packet))
@@ -293,6 +295,23 @@ func (e *Engine) sendPacket(adapterHandle ndisapi.Handle, packet []byte) error {
 	}
 
 	return e.api.SendPacketToAdapter(request)
+}
+
+// sendPacketToMstcp sends a raw packet UP to the TCP/IP stack (inbound direction).
+// Use for: fake DNS responses, HTTP block pages, RST packets to local browser.
+// These appear to the OS as if they arrived from the network.
+func (e *Engine) sendPacketToMstcp(adapterHandle ndisapi.Handle, packet []byte) error {
+	buffer := &ndisapi.IntermediateBuffer{}
+	buffer.DeviceFlags = ndisapi.PACKET_FLAG_ON_RECEIVE
+	buffer.Length = uint32(len(packet))
+	copy(buffer.Buffer[:], packet)
+
+	request := &ndisapi.EtherRequest{
+		AdapterHandle:  adapterHandle,
+		EthernetPacket: ndisapi.EthernetPacket{Buffer: buffer},
+	}
+
+	return e.api.SendPacketToMstcp(request)
 }
 
 // calculateChecksum calculates IP checksum

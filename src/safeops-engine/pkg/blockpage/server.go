@@ -12,9 +12,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -67,6 +71,18 @@ func NewServer(log *logger.Logger, httpAddr, httpsAddr string) *Server {
 
 // Start starts both HTTP and HTTPS block page servers in the background.
 func (s *Server) Start() error {
+	// Install CA cert into Windows trusted root store (so Chrome accepts our block page certs)
+	if s.ca != nil {
+		if err := s.ca.installCAToCertStore(s.log); err != nil {
+			s.log.Warn("Failed to install block page CA to cert store", map[string]interface{}{
+				"error": err.Error(),
+			})
+			fmt.Println("  Block page CA:    NOT installed (run as admin to install)")
+		} else {
+			fmt.Println("  Block page CA:    installed in Windows trusted root store")
+		}
+	}
+
 	// Start HTTP server (port 80)
 	go func() {
 		s.log.Info("Block page server starting (HTTP)", map[string]interface{}{
@@ -263,6 +279,53 @@ func (ca *blockPageCA) generateCertForDomain(domain string) (tls.Certificate, er
 		Certificate: [][]byte{certDER, ca.caCertDER},
 		PrivateKey:  key,
 	}, nil
+}
+
+// installCAToCertStore exports the CA cert to a PEM file and installs it
+// into the Windows trusted root certificate store using certutil.
+// This makes Chrome accept our dynamically generated per-domain certs
+// for blocked HTTPS sites (including HSTS sites like Facebook).
+func (ca *blockPageCA) installCAToCertStore(log *logger.Logger) error {
+	// Export CA cert to temp PEM file
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("get executable path: %w", err)
+	}
+	certPath := filepath.Join(filepath.Dir(exePath), "safeops-blockpage-ca.crt")
+
+	pemData := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: ca.caCertDER,
+	})
+
+	if err := os.WriteFile(certPath, pemData, 0644); err != nil {
+		return fmt.Errorf("write CA cert: %w", err)
+	}
+
+	// Check if already installed by looking for our cert in the root store
+	checkCmd := exec.Command("certutil", "-store", "Root", "SafeOps Block Page CA")
+	if checkOutput, checkErr := checkCmd.CombinedOutput(); checkErr == nil {
+		// Found existing cert — check if it matches by looking for our serial
+		if len(checkOutput) > 0 {
+			log.Info("Block page CA already in cert store, replacing", nil)
+			// Delete old one first
+			delCmd := exec.Command("certutil", "-delstore", "Root", "SafeOps Block Page CA")
+			delCmd.Run() // Ignore errors
+		}
+	}
+
+	// Install into trusted root store
+	cmd := exec.Command("certutil", "-addstore", "Root", certPath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("certutil -addstore failed: %w (output: %s)", err, string(output))
+	}
+
+	log.Info("Block page CA installed in trusted root store", map[string]interface{}{
+		"cert_path": certPath,
+	})
+
+	return nil
 }
 
 // blockPageHTML is the HTML template for the block page.

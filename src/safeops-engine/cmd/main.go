@@ -12,7 +12,7 @@ import (
 
 func main() {
 	fmt.Println("=== SafeOps Network Pipeline ===")
-	fmt.Println("Version: 5.0.0 (Enterprise Domain Blocking + VPN/DoH Defense)")
+	fmt.Println("Version: 6.0.0 (v9 base + injection fix + adapter filter)")
 	fmt.Println("Starting...")
 
 	// Initialize SafeOps Engine
@@ -37,8 +37,18 @@ func main() {
 		for {
 			<-ticker.C
 			stats := eng.GetEnhancedStats()
-			fmt.Printf("\n[STATS] Read=%v Written=%v Dropped=%v | Domains blocked=%v DoH blocked=%v VPN blocked=%v\n\n",
+			fast := stats["fast_path_packets"].(uint64)
+			slow := stats["slow_path_packets"].(uint64)
+			tot := fast + slow
+			fastPct := 0.0
+			slowPct := 0.0
+			if tot > 0 {
+				fastPct = float64(fast) / float64(tot) * 100
+				slowPct = float64(slow) / float64(tot) * 100
+			}
+			fmt.Printf("\n[STATS] Read=%v Written=%v Dropped=%v | Fast=%.0f%% Slow=%.0f%% | Domain=%v DoH=%v VPN=%v\n",
 				stats["packets_read"], stats["packets_written"], stats["packets_dropped"],
+				fastPct, slowPct,
 				stats["domains_blocked"], stats["doh_blocked"], stats["vpn_blocked"])
 		}
 	}()

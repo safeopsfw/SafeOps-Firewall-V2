@@ -44,14 +44,14 @@ func (e *Engine) InjectHTMLBlockPage(
 		[]byte(httpResponse),
 	)
 
-	// Send response packet
-	if err := e.sendPacket(adapterHandle, packet); err != nil {
+	// Send response packet UP to MSTCP — browser receives the block page
+	if err := e.sendPacketToMstcp(adapterHandle, packet); err != nil {
 		return fmt.Errorf("failed to inject HTML block page: %w", err)
 	}
 
-	// Send TCP FIN to close connection gracefully
+	// Send TCP FIN to close connection gracefully (to browser via MSTCP)
 	finPacket := e.buildTCPFinPacket(dstMAC, srcMAC, dstIP, srcIP, dstPort, srcPort)
-	if err := e.sendPacket(adapterHandle, finPacket); err != nil {
+	if err := e.sendPacketToMstcp(adapterHandle, finPacket); err != nil {
 		return fmt.Errorf("failed to send FIN: %w", err)
 	}
 
