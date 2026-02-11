@@ -12,7 +12,7 @@ import (
 
 func main() {
 	fmt.Println("=== SafeOps Network Pipeline ===")
-	fmt.Println("Version: 6.0.0 (v9 base + injection fix + adapter filter)")
+	fmt.Println("Version: 6.1.0 (full gRPC broadcast + pre-block alerts)")
 	fmt.Println("Starting...")
 
 	// Initialize SafeOps Engine

@@ -145,7 +145,7 @@ func Initialize() (*Engine, error) {
 			grpcServer:  grpcSrv,
 			ctx:         ctx,
 			cancel:      cancel,
-			sampleRate:  10, // Send 1 in 10 fast-path packets to Firewall Engine
+			sampleRate:  1, // Send every fast-path packet to Firewall Engine for security checks
 			dnsParser:   parser.NewDNSParser(),
 			tlsParser:   parser.NewTLSParser(),
 			httpParser:  parser.NewHTTPParser(),
@@ -274,6 +274,8 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 	// to avoid killing LAN traffic (DHCP, IPSec for network auth, etc.)
 	if !isLocalIP(pkt.DstIP) && e.isPortBlocked(dstPort, pkt.Protocol) {
 		atomic.AddUint64(&e.vpnBlocked, 1)
+		// Broadcast to Firewall Engine before blocking (so it can generate alerts)
+		e.grpcServer.BroadcastPacket(pkt)
 		if pkt.Protocol == driver.ProtoTCP {
 			e.sendTCPReset(pkt)
 		}
@@ -288,6 +290,8 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 		dstStr := pkt.DstIP.String()
 		if _, isDoH := e.dohServers.Load(dstStr); isDoH {
 			atomic.AddUint64(&e.dohBlocked, 1)
+			// Broadcast to Firewall Engine before blocking (so it can generate alerts)
+			e.grpcServer.BroadcastPacket(pkt)
 			if pkt.Protocol == driver.ProtoTCP {
 				e.sendTCPReset(pkt)
 			}
@@ -296,10 +300,9 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 	}
 
 	// ============ FAST PATH: Non-web traffic ============
-	// O(1) port check - if not web traffic, minimal processing
-	// Fast path does NOT broadcast to gRPC — millions of packets/sec would
-	// overflow any gRPC channel. Only web traffic (DNS/HTTP/HTTPS) goes to
-	// the Firewall Engine for domain-based policy decisions.
+	// O(1) port check - if not web traffic, skip domain extraction
+	// but still broadcast to Firewall Engine for security checks
+	// (DDoS, rate limiting, port scan, brute force, GeoIP, threat intel).
 	if !isWebTraffic(dstPort, srcPort) {
 		atomic.AddUint64(&e.fastPathPackets, 1)
 
@@ -320,9 +323,8 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 			return false
 		}
 
-		// Sample: send every Nth fast-path packet to Firewall Engine
-		// for security checks (DDoS, rate limiting, port scan, GeoIP).
-		// Non-blocking — if channel is full, sample is silently dropped.
+		// Broadcast to Firewall Engine for security checks.
+		// Non-blocking — if channel is full, packet is silently dropped.
 		if e.sampleRate > 0 {
 			count := atomic.LoadUint64(&e.fastPathPackets)
 			if count%e.sampleRate == 0 {
@@ -356,6 +358,8 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 
 				// Check domain blocklist
 				if e.isDomainBlocked(domain) {
+					// Broadcast to Firewall Engine before blocking (so it can track/alert)
+					e.grpcServer.BroadcastPacket(pkt)
 					e.injectDNSRedirect(pkt, domain, net.ParseIP("127.0.0.1"))
 					atomic.AddUint64(&e.domainsBlocked, 1)
 					return false
@@ -390,6 +394,8 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 				if dstStr == "127.0.0.1" || dstStr == "::1" {
 					// Let it through to block page server
 				} else {
+					// Broadcast to Firewall Engine before blocking
+					e.grpcServer.BroadcastPacket(pkt)
 					e.sendTCPReset(pkt)
 					atomic.AddUint64(&e.domainsBlocked, 1)
 					return false
@@ -407,6 +413,8 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 			pkt.DomainSource = "QUIC"
 
 			if e.isDomainBlocked(sni) {
+				// Broadcast to Firewall Engine before blocking
+				e.grpcServer.BroadcastPacket(pkt)
 				// Can't RST UDP — just drop. The browser will fall back to TCP 443.
 				atomic.AddUint64(&e.domainsBlocked, 1)
 				return false
@@ -423,6 +431,8 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 
 			// Check domain blocklist - inject HTML block page for HTTP
 			if e.isDomainBlocked(host) {
+				// Broadcast to Firewall Engine before blocking
+				e.grpcServer.BroadcastPacket(pkt)
 				e.injectHTMLBlockPage(pkt, host)
 				atomic.AddUint64(&e.domainsBlocked, 1)
 				return false

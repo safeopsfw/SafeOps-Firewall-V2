@@ -466,18 +466,19 @@ func main() {
 			bl := liveBlocklist.Load()
 			blockCacheTTL := uint32(bl.BlockCacheTTLSeconds)
 
-			// Step 0: Global whitelist bypass (blocklist.toml [whitelist])
-			// Whitelisted IPs bypass ALL blocking checks (manual, threat intel, geo).
-			if bl.IsIPWhitelisted(pkt.SrcIp) || bl.IsIPWhitelisted(pkt.DstIp) {
-				// Skip all blocking — go straight to packet inspector
-				goto inspectPacket
-			}
+			// Step 0: Determine whitelist status (blocklist.toml [whitelist])
+			// Whitelisted IPs bypass BLOCKING checks (threat intel, manual IP, geo, domain)
+			// but NOT security MONITORING (DDoS, port scan, brute force, anomaly).
+			// Security monitoring always runs so we detect attacks from/to any IP.
+			isWhitelisted := bl.IsIPWhitelisted(pkt.SrcIp) || bl.IsIPWhitelisted(pkt.DstIp)
 
 			{
-				// Security check (O(1) ban check + rate limit + DDoS — fastest)
+				// Security monitoring (ALWAYS runs — even for whitelisted IPs)
+				// DDoS detection, rate limiting, port scan, brute force, anomaly
+				// These generate alerts but only send DROP verdicts for non-whitelisted traffic.
 				protocol := protocolName(pkt.Protocol)
 				verdict := securityMgr.Check(pkt.SrcIp, protocol, uint8(pkt.TcpFlags), int(pkt.PacketSize))
-				if !verdict.Allowed {
+				if !verdict.Allowed && !isWhitelisted {
 					go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
 						verdict.Reason, verdict.DetectorName, 60, pkt.CacheKey)
 					return
@@ -486,11 +487,16 @@ func main() {
 				// Port scan check (for SYN packets to new destinations)
 				if protocol == "TCP" && pkt.TcpFlags&0x02 != 0 && pkt.TcpFlags&0x10 == 0 {
 					scanVerdict := securityMgr.CheckPortScan(pkt.SrcIp, uint16(pkt.DstPort))
-					if !scanVerdict.Allowed {
+					if !scanVerdict.Allowed && !isWhitelisted {
 						go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
 							scanVerdict.Reason, scanVerdict.DetectorName, 300, pkt.CacheKey)
 						return
 					}
+				}
+
+				// Whitelisted IPs skip all blocking checks below
+				if isWhitelisted {
+					goto inspectPacket
 				}
 
 				// Manual IP blocklist check (blocklist.toml [ips])

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeOps Firewall — Dashboard</title>
+    <meta name="description"
+        content="SafeOps Firewall Management Dashboard — Real-time security monitoring and threat management">
+    <link rel="stylesheet" href="index.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+
+<body>
+
+    <!-- ================================================================ -->
+    <!-- LOGIN PAGE                                                       -->
+    <!-- ================================================================ -->
+    <div id="login-page" class="login-page">
+        <div class="login-card">
+            <div class="logo">
+                <h1>🛡️ SafeOps</h1>
+                <p>Firewall Management Console</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-user">Username</label>
+                    <input type="text" id="login-user" class="form-input" placeholder="admin" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="login-pass">Password / API Key</label>
+                    <input type="password" id="login-pass" class="form-input" placeholder="Enter API key or password"
+                        autocomplete="current-password">
+                </div>
+                <div id="login-error" class="hidden"
+                    style="color: var(--accent-red); font-size: 0.82rem; margin-bottom: 0.75rem;"></div>
+                <button type="submit" class="btn btn-primary btn-full" id="login-btn">Sign In</button>
+            </form>
+            <p style="text-align:center; margin-top:1.25rem; font-size:0.75rem; color:var(--text-muted);">
+                Protected by SafeOps Firewall Engine
+            </p>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- APP LAYOUT (shown after login)                                   -->
+    <!-- ================================================================ -->
+    <div id="app-layout" class="app-layout hidden">
+
+        <!-- ---- Sidebar ---- -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-icon">🛡️</div>
+                <div class="logo-text">
+                    <h2>SafeOps</h2>
+                    <span>Firewall Console</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-label">Overview</div>
+                    <a href="#/dashboard" class="nav-item active" data-page="dashboard">
+                        <span class="nav-icon">📊</span>
+                        Dashboard
+                    </a>
+                    <a href="#/alerts" class="nav-item" data-page="alerts">
+                        <span class="nav-icon">🔔</span>
+                        Alerts & Triage
+                        <span class="nav-badge" id="alert-badge" style="display:none">0</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-label">Rules & Config</div>
+                    <a href="#/rules/domains" class="nav-item" data-page="rules-domains">
+                        <span class="nav-icon">🌐</span>
+                        Domain Rules
+                    </a>
+                    <a href="#/rules/ips" class="nav-item" data-page="rules-ips">
+                        <span class="nav-icon">🔗</span>
+                        IP Rules
+                    </a>
+                    <a href="#/rules/geoip" class="nav-item" data-page="rules-geoip">
+                        <span class="nav-icon">🌍</span>
+                        GeoIP Policy
+                    </a>
+                    <a href="#/rules/detection" class="nav-item" data-page="rules-detection">
+                        <span class="nav-icon">🔍</span>
+                        Detection Config
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-label">Management</div>
+                    <a href="#/bans" class="nav-item" data-page="bans">
+                        <span class="nav-icon">🚫</span>
+                        Active Bans
+                    </a>
+                    <a href="#/tickets" class="nav-item" data-page="tickets">
+                        <span class="nav-icon">🎫</span>
+                        Tickets
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-label">System</div>
+                    <a href="#/system" class="nav-item" data-page="system">
+                        <span class="nav-icon">⚙️</span>
+                        System Status
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot" id="engine-status-dot"></span>
+                    <span>Engine <span id="engine-status-text">Online</span></span>
+                </div>
+                <div style="margin-top:0.5rem; display:flex; align-items:center; justify-content:space-between;">
+                    <span style="font-size:0.72rem; color:var(--text-muted);" id="uptime-display">Uptime: —</span>
+                    <button class="btn btn-ghost btn-sm" id="logout-btn" title="Sign Out">🚪</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ---- Main Content ---- -->
+        <main class="main-content" id="main-content">
+
+            <!-- ============ DASHBOARD PAGE ============ -->
+            <div id="page-dashboard" class="page">
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                    <p>Real-time security overview</p>
+                </div>
+                <div class="page-body">
+                    <!-- KPI Stats -->
+                    <div class="stats-grid mb-3" id="dashboard-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">🔔</div>
+                            <div class="stat-value" id="stat-total-alerts">—</div>
+                            <div class="stat-label">Total Alerts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">🚫</div>
+                            <div class="stat-value" id="stat-active-bans">—</div>
+                            <div class="stat-label">Active Bans</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon amber">⚡</div>
+                            <div class="stat-value" id="stat-rate-limited">—</div>
+                            <div class="stat-label">Rate Limited</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">🌐</div>
+                            <div class="stat-value" id="stat-domains-blocked">—</div>
+                            <div class="stat-label">Domains Blocked</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon cyan">🌍</div>
+                            <div class="stat-value" id="stat-geo-checks">—</div>
+                            <div class="stat-label">Geo Checks</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">🔄</div>
+                            <div class="stat-value" id="stat-hot-reloads">—</div>
+                            <div class="stat-label">Hot Reloads</div>
+                        </div>
+                    </div>
+
+                    <!-- Security + Threat Feed -->
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Security Subsystems</div>
+                                    <div class="card-subtitle">Detection engine stats</div>
+                                </div>
+                            </div>
+                            <div id="security-subsystems">
+                                <div class="rule-item"><span>DDoS Detections</span> <span class="mono"
+                                        id="sec-ddos">—</span></div>
+                                <div class="rule-item"><span>Brute Force</span> <span class="mono"
+                                        id="sec-brute">—</span></div>
+                                <div class="rule-item"><span>Port Scans</span> <span class="mono"
+                                        id="sec-portscan">—</span></div>
+                                <div class="rule-item"><span>Anomalies</span> <span class="mono"
+                                        id="sec-anomaly">—</span></div>
+                                <div class="rule-item"><span>Baseline Deviations</span> <span class="mono"
+                                        id="sec-baseline">—</span></div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <div class="card-title">Live Threat Feed</div>
+                                    <div class="card-subtitle">Recent alerts and bans</div>
+                                </div>
+                            </div>
+                            <div class="threat-feed" id="threat-feed">
+                                <div class="empty-state">
+                                    <div class="empty-icon">🛡️</div>
+                                    <h3>All Clear</h3>
+                                    <p>No recent threats detected</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ ALERTS PAGE ============ -->
+            <div id="page-alerts" class="page hidden">
+                <div class="page-header">
+                    <h1>Alerts & Triage</h1>
+                    <p>Security alerts with threat intelligence enrichment</p>
+                    <div class="page-header-actions">
+                        <div class="filter-bar" style="width:100%">
+                            <input type="text" class="search-input" id="alert-search"
+                                placeholder="Search alerts by IP, domain, or description...">
+                            <select class="filter-select" id="alert-severity-filter">
+                                <option value="">All Severities</option>
+                                <option value="CRITICAL">Critical</option>
+                                <option value="HIGH">High</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LOW">Low</option>
+                                <option value="INFO">Info</option>
+                            </select>
+                            <select class="filter-select" id="alert-type-filter">
+                                <option value="">All Types</option>
+                                <option value="PROTOCOL_VIOLATION">Protocol Violation</option>
+                                <option value="DOMAIN_BLOCK">Domain Block</option>
+                                <option value="PORT_SCAN">Port Scan</option>
+                                <option value="BRUTE_FORCE">Brute Force</option>
+                                <option value="DDOS">DDoS</option>
+                                <option value="GEO_BLOCK">Geo Block</option>
+                                <option value="RATE_LIMIT">Rate Limit</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="page-body">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Severity</th>
+                                    <th>Type</th>
+                                    <th>Source IP</th>
+                                    <th>Details</th>
+                                    <th>Action</th>
+                                    <th>Triage</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alerts-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="alerts-empty" class="empty-state hidden">
+                        <div class="empty-icon">🔔</div>
+                        <h3>No Alerts</h3>
+                        <p>No security alerts match your filters</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ DOMAIN RULES PAGE ============ -->
+            <div id="page-rules-domains" class="page hidden">
+                <div class="page-header">
+                    <h1>Domain Rules</h1>
+                    <p>Manage blocked domains, whitelisted domains, and category filters</p>
+                </div>
+                <div class="page-body">
+                    <div class="tab-bar">
+                        <div class="tab-item active" data-tab="blocked-domains">Blocked Domains</div>
+                        <div class="tab-item" data-tab="whitelist-domains">Whitelisted Domains</div>
+                        <div class="tab-item" data-tab="categories">Categories</div>
+                    </div>
+
+                    <!-- Blocked Domains Tab -->
+                    <div id="tab-blocked-domains">
+                        <div class="flex items-center justify-between mb-2">
+                            <input type="text" class="search-input" id="domain-search" placeholder="Search domains..."
+                                style="max-width:350px;">
+                            <div class="flex gap-1">
+                                <input type="text" class="form-input" id="add-domain-input" placeholder="example.com"
+                                    style="width:220px;">
+                                <button class="btn btn-primary btn-sm" id="add-domain-btn">+ Add Domain</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="rule-list" id="blocked-domains-list">
+                                <div class="empty-state">
+                                    <p>Loading domains...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Whitelist Domains Tab -->
+                    <div id="tab-whitelist-domains" class="hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-secondary" style="font-size:0.85rem;">Whitelisted domains bypass all
+                                blocking rules</span>
+                            <div class="flex gap-1">
+                                <input type="text" class="form-input" id="add-wl-domain-input" placeholder="trusted.com"
+                                    style="width:220px;">
+                                <button class="btn btn-primary btn-sm" id="add-wl-domain-btn">+ Whitelist</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="rule-list" id="whitelist-domains-list">
+                                <div class="empty-state">
+                                    <p>Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Categories Tab -->
+                    <div id="tab-categories" class="hidden">
+                        <p class="text-secondary mb-2" style="font-size:0.85rem;">Toggle website categories to block or
+                            allow</p>
+                        <div class="card">
+                            <div id="categories-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ IP RULES PAGE ============ -->
+            <div id="page-rules-ips" class="page hidden">
+                <div class="page-header">
+                    <h1>IP Rules</h1>
+                    <p>Manage blocked IPs, CIDRs, and IP whitelist</p>
+                </div>
+                <div class="page-body">
+                    <div class="tab-bar">
+                        <div class="tab-item active" data-tab="blocked-ips">Blocked IPs</div>
+                        <div class="tab-item" data-tab="whitelist-ips">Whitelisted IPs</div>
+                    </div>
+
+                    <div id="tab-blocked-ips">
+                        <div class="flex items-center justify-between mb-2">
+                            <input type="text" class="search-input" id="ip-search" placeholder="Search IPs..."
+                                style="max-width:300px;">
+                            <div class="flex gap-1">
+                                <input type="text" class="form-input" id="add-ip-input"
+                                    placeholder="192.168.1.100 or 10.0.0.0/8" style="width:240px;">
+                                <button class="btn btn-primary btn-sm" id="add-ip-btn">+ Block IP</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="rule-list" id="blocked-ips-list">
+                                <div class="empty-state">
+                                    <p>Loading IPs...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-whitelist-ips" class="hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-secondary" style="font-size:0.85rem;">Whitelisted IPs bypass all security
+                                checks</span>
+                            <div class="flex gap-1">
+                                <input type="text" class="form-input" id="add-wl-ip-input" placeholder="192.168.1.1"
+                                    style="width:220px;">
+                                <button class="btn btn-primary btn-sm" id="add-wl-ip-btn">+ Whitelist</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="rule-list" id="whitelist-ips-list">
+                                <div class="empty-state">
+                                    <p>Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ GEOIP PAGE ============ -->
+            <div id="page-rules-geoip" class="page hidden">
+                <div class="page-header">
+                    <h1>GeoIP Policy</h1>
+                    <p>Country-level and ASN-level traffic policies</p>
+                </div>
+                <div class="page-body">
+                    <div class="grid-2 mb-3">
+                        <div class="stat-card">
+                            <div class="stat-icon cyan">🌍</div>
+                            <div class="stat-value" id="geo-total-checks">—</div>
+                            <div class="stat-label">Total Checks</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">⛔</div>
+                            <div class="stat-value" id="geo-blocked-count">—</div>
+                            <div class="stat-label">Blocked by Geo</div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-2">
+                        <div class="card-header">
+                            <div class="card-title">Policy Configuration</div>
+                            <span class="badge badge-info" id="geo-mode-badge">—</span>
+                        </div>
+                        <div id="geoip-config-body">
+                            <div class="empty-state">
+                                <p>Loading GeoIP configuration...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ DETECTION CONFIG PAGE ============ -->
+            <div id="page-rules-detection" class="page hidden">
+                <div class="page-header">
+                    <h1>Detection Configuration</h1>
+                    <p>Fine-tune DDoS, rate limiting, brute force, and anomaly detection</p>
+                </div>
+                <div class="page-body">
+                    <div class="card mb-2">
+                        <div class="card-header">
+                            <div class="card-title">Detection Modules</div>
+                        </div>
+                        <div id="detection-config-body">
+                            <div class="empty-state">
+                                <p>Loading detection configuration...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ BANS PAGE ============ -->
+            <div id="page-bans" class="page hidden">
+                <div class="page-header">
+                    <h1>Active Bans</h1>
+                    <p>Currently banned IP addresses</p>
+                    <div class="page-header-actions">
+                        <input type="text" class="search-input" id="ban-search" placeholder="Search banned IPs..."
+                            style="max-width:300px;">
+                        <button class="btn btn-danger btn-sm" id="manual-ban-btn">+ Manual Ban</button>
+                    </div>
+                </div>
+                <div class="page-body">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Reason</th>
+                                    <th>Banned At</th>
+                                    <th>Time Left</th>
+                                    <th>Level</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bans-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div id="bans-empty" class="empty-state hidden">
+                        <div class="empty-icon">✅</div>
+                        <h3>No Active Bans</h3>
+                        <p>All IPs are currently unbanned</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ TICKETS PAGE ============ -->
+            <div id="page-tickets" class="page hidden">
+                <div class="page-header">
+                    <h1>Tickets</h1>
+                    <p>Security incident tracking and investigation</p>
+                    <div class="page-header-actions">
+                        <select class="filter-select" id="ticket-status-filter">
+                            <option value="">All Status</option>
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" id="create-ticket-btn">+ New Ticket</button>
+                    </div>
+                </div>
+                <div class="page-body">
+                    <div class="stats-grid mb-3" id="ticket-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon amber">📬</div>
+                            <div class="stat-value" id="ticket-open-count">0</div>
+                            <div class="stat-label">Open</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon blue">🔧</div>
+                            <div class="stat-value" id="ticket-progress-count">0</div>
+                            <div class="stat-label">In Progress</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">✅</div>
+                            <div class="stat-value" id="ticket-resolved-count">0</div>
+                            <div class="stat-label">Resolved</div>
+                        </div>
+                    </div>
+                    <div id="tickets-list" class="flex flex-col gap-1">
+                        <div class="empty-state">
+                            <div class="empty-icon">🎫</div>
+                            <h3>No Tickets</h3>
+                            <p>Create a ticket to track security incidents</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ SYSTEM PAGE ============ -->
+            <div id="page-system" class="page hidden">
+                <div class="page-header">
+                    <h1>System Status</h1>
+                    <p>Engine health, memory, and component status</p>
+                </div>
+                <div class="page-body">
+                    <div class="stats-grid mb-3">
+                        <div class="stat-card">
+                            <div class="stat-icon green">💚</div>
+                            <div class="stat-value" id="sys-status">—</div>
+                            <div class="stat-label">Status</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon blue">⏱️</div>
+                            <div class="stat-value" id="sys-uptime">—</div>
+                            <div class="stat-label">Uptime</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">🧠</div>
+                            <div class="stat-value" id="sys-memory">—</div>
+                            <div class="stat-label">Memory (MB)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon cyan">🔗</div>
+                            <div class="stat-value" id="sys-goroutines">—</div>
+                            <div class="stat-label">Goroutines</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">Component Health</div>
+                        </div>
+                        <div id="component-health">
+                            <div class="empty-state">
+                                <p>Loading component status...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ============ MODALS ============ -->
+
+    <!-- Alert Detail Modal -->
+    <div id="alert-detail-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Alert Details</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('alert-detail-modal')">✕</button>
+            </div>
+            <div id="alert-detail-body"></div>
+        </div>
+    </div>
+
+    <!-- Manual Ban Modal -->
+    <div id="ban-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Manual Ban</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('ban-modal')">✕</button>
+            </div>
+            <form id="ban-form">
+                <div class="form-group">
+                    <label>IP Address</label>
+                    <input type="text" class="form-input" id="ban-ip-input" placeholder="192.168.1.100" required>
+                </div>
+                <div class="form-group">
+                    <label>Reason</label>
+                    <input type="text" class="form-input" id="ban-reason-input" placeholder="Manual ban from Web UI">
+                </div>
+                <div class="form-group">
+                    <label>Duration (leave empty for auto-escalate)</label>
+                    <input type="text" class="form-input" id="ban-duration-input" placeholder="30m, 2h, 24h">
+                </div>
+                <button type="submit" class="btn btn-danger btn-full">Ban IP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Ticket Modal -->
+    <div id="ticket-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create Ticket</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('ticket-modal')">✕</button>
+            </div>
+            <form id="ticket-form">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" class="form-input" id="ticket-title-input" placeholder="Incident title" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea class="form-input" id="ticket-desc-input" rows="3"
+                        placeholder="Describe the incident..."></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Severity</label>
+                        <select class="filter-select" id="ticket-severity-input" style="width:100%">
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                            <option value="info">Info</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Assignee</label>
+                        <input type="text" class="form-input" id="ticket-assignee-input" placeholder="Team member">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Create Ticket</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

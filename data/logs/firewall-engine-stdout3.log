@@ -1,0 +1,131 @@
+=== SafeOps Firewall Engine ===
+Initializing...
+Config loaded from: D:\SafeOpsFV2\bin\firewall-engine\configs
+Data directory:     D:\SafeOpsFV2\bin\firewall-engine\data
+Blocklist loaded:   D:\SafeOpsFV2\bin\firewall-engine\configs\blocklist.toml
+[90m10:37:06[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mConfiguration loaded[0m [36mconfig_dir=[0m"D:\\SafeOpsFV2\\bin\\firewall-engine\\configs" [36mversion=[0m5.1.0
+[90m10:37:06[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mAlert Manager started[0m [36mdir=[0m"D:\\SafeOpsFV2\\bin\\firewall-engine\\data\\data\\logs\\firewall-alerts"
+[90m10:37:06[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mThreat intel DB connected[0m [36mdb=[0mthreat_intel_db [36mdsn_host=[0mlocalhost
+[90m10:37:06[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mIP blacklist loaded[0m [36mcount=[0m47798
+[90m10:37:06[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mVPN/anonymizer IPs loaded[0m [36mcount=[0m0
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mDomain blocklist loaded[0m [36mcount=[0m1281696
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mThreat intel pipeline ready[0m [36mdomains=[0m1281696 [36mips=[0m47798 [36mrefresh_min=[0m5 [36mvpns=[0m0
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mSecurity Manager initialized[0m [36manomaly=[0mtrue [36mbaseline=[0mtrue [36mbrute_force=[0mtrue [36mddos=[0mtrue [36mport_scan=[0mtrue [36mrate_limit=[0mtrue
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mDomain filter: threat intel domain cache connected[0m
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mDomain Filter initialized[0m [36mcategories=[0m0 [36mcdn_providers=[0m12 [36mconfig_domains=[0m34 [36menabled_categories=[0m[] [36mfile=[0m"D:\\SafeOpsFV2\\bin\\firewall-engine\\configs\\domains.txt" [36mthreat_intel=[0mtrue
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mGeoIP Checker initialized[0m [36mblocked_asns=[0m0 [36mcountries=[0m0 [36menrich_alerts=[0mtrue [36mmode=[0mdeny_list
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mVerdict Cache initialized[0m [36mcapacity=[0m100000 [36mttl=[0m60000
+[TTL-MGR] 2026/02/11 10:37:08.610760 TTL manager started (interval=10s, batch=1000)
+[CACHE] 2026/02/11 10:37:08.610760 Cache started (capacity=100000, ttl=1m0s)
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mConnection Tracker initialized[0m [36mcapacity=[0m500000
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mFast-Path Evaluator initialized[0m [36mgaming_bypass=[0mtrue [36mvoip_bypass=[0mtrue
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mEnforcement Handler initialized[0m [36mfail_open=[0mtrue
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mPacket Inspector initialized[0m [36mfail_open=[0mtrue [36mworkers=[0m8
+[INSPECTOR] 2026/02/11 10:37:08.610760 Inspector started
+2026/02/11 10:37:08 [DEBUG] WFP: State changed: closed -> opening
+2026/02/11 10:37:08 [INFO] WFP: Opening WFP engine...
+2026/02/11 10:37:08 [DEBUG] WFP: State changed: opening -> open
+2026/02/11 10:37:08 [INFO] WFP: WFP engine opened successfully
+2026/02/11 10:37:08 [DEBUG] WFP: Health monitor started (interval: 30s)
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mWFP Engine initialized[0m
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mDual-Engine Coordinator started[0m [36mmode=[0mBOTH
+[gRPC Client] Connected to SafeOps Engine at 127.0.0.1:50051
+[gRPC Client] Subscribed to metadata stream (ID: firewall-engine, filters: [tcp udp])
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mConnected to SafeOps Engine[0m [36maddress=[0m127.0.0.1:50051 [36mfilters=[0m["tcp","udp"]
+[gRPC Client] Starting 8 workers for packet processing
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mPacket capture stream started[0m [36mworkers=[0m8
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mPrometheus metrics started[0m [36maddress=[0m:9090
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mHealth server started[0m [36maddress=[0m:8085
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mManagement gRPC server started (async)[0m [36maddress=[0m:50054 [36mreflection=[0mtrue
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mgRPC management server started[0m [36maddress=[0m:50054
+
+============================================================
+Firewall Engine 5.1.0 is RUNNING
+============================================================
+  Config:             D:\SafeOpsFV2\bin\firewall-engine\configs
+  Data:               D:\SafeOpsFV2\bin\firewall-engine\data
+  Alerts:             D:\SafeOpsFV2\bin\firewall-engine\data\data\logs\firewall-alerts
+============================================================
+Dual-Engine Mode:
+  Mode:               BOTH
+  SafeOps Engine:     ACTIVE (kernel-level)
+  WFP Engine:         ACTIVE (OS-level)
+============================================================
+Components:
+  Verdict Cache:      100K entries, 60s TTL
+  Connection Tracker: 500K connections
+  Fast-Path:          Gaming/VoIP bypass enabled
+  Inspector:          8 workers, fail-open
+  Enforcement:        DROP/BLOCK/REDIRECT/REJECT
+============================================================
+gRPC Pipeline:
+  SafeOps Engine:     127.0.0.1:50051
+  Filters:            tcp + udp
+  Worker Pool:        8 async workers
+  Packet Buffer:      100K non-blocking
+============================================================
+Threat Intel:
+  Malicious IPs:      47798
+  VPN/Anonymizers:    0
+  Malicious Domains:  1281696
+  Refresh Interval:   5 min
+============================================================
+Domain Filtering:
+  Config Blocklist:   34 domains
+  Categories Active:  0
+  CDN Providers:      12 (IP-block protected)
+  Threat Intel:       true
+  Enforcement:        DNS→REDIRECT, SNI→BLOCK, HTTP→BLOCK
+============================================================
+GeoIP Blocking:
+  Mode:               deny_list
+  Countries:          0 configured
+  Blocked ASNs:       0
+  Alert Enrichment:   true
+============================================================
+Blocklist Config (blocklist.toml):
+  Domain Blocking:    true
+  IP Blocking:        true (manual IPs: 0, CIDRs: 0)
+  Threat Intel:       true (IP threshold: 50, domain: 50)
+  Block Anonymizers:  false (threshold: 70)
+  GeoIP Override:     true (extra countries: 0, extra ASNs: 0)
+  Categories:         0 enabled ()
+  DNS Redirect:       127.0.0.1
+  Block Cache TTL:    120s
+  Whitelist IPs:      0, CIDRs: 3, Domains: 5
+============================================================
+Security:
+  Rate Limiting:      true (per-IP: 1000/s, global: 100000/s)
+  DDoS Protection:    true (SYN:1000 UDP:5000 ICMP:100 /10s)
+  Brute Force:        true (7 services monitored)
+  Port Scan:          true (threshold: 100 ports/10s)
+  Anomaly Detection:  true (protocol/size/beaconing)
+  Traffic Baseline:   true (EMA window: 60 min)
+  Ban Escalation:     30m → 120m → 480m → ... (max 720h)
+============================================================
+Servers:
+  Metrics:            http://localhost:9090/metrics
+  Health:             http://localhost:8085/health
+  gRPC Management:    grpc://localhost:50054
+============================================================
+
+Press Ctrl+C to stop...
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mHot-reload started[0m [36mconfig_dir=[0m"D:\\SafeOpsFV2\\bin\\firewall-engine\\configs" [36mfiles=[0m6
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mHot-reload watcher active[0m [36mconfig_dir=[0m"D:\\SafeOpsFV2\\bin\\firewall-engine\\configs"
+[90m10:37:08[0m [32mINF[0m [1mD:/SafeOpsFV2/src/firewall_engine/internal/logging/zerolog.go:586[0m[36m >[0m [1mHot-reload watcher started[0m
+[FIREWALL] 2026/02/11 10:37:38.616130 [STATS] Packets: recv=911 proc=911 | Cache: hit=0.0% size=0 | Conn: 287 | gRPC: recv=911 drop=0 verdict=911 | Alerts: total=0 written=0 throttled=0 | Security: bans=0 rl=30/0 ddos=0/0/0 bf=0 ps=0 | Domain: checks=0 blocks=0 dns=0 sni=0 http=0 threat=0 cdn=0 | Geo: checks=1 blocks=0 cache=0
+[CONN-TRACKER] 2026/02/11 10:38:08.611879 Cleanup: removed 276 expired connections
+[INSPECTOR] 2026/02/11 10:38:08.611879 Stats: received=3052 processed=3052 allow=3052 block=0 drop=0 cache_hit=0%
+[FIREWALL] 2026/02/11 10:38:08.616420 [STATS] Packets: recv=3052 proc=3052 | Cache: hit=0.0% size=0 | Conn: 1414 | gRPC: recv=3052 drop=0 verdict=3052 | Alerts: total=0 written=0 throttled=0 | Security: bans=0 rl=40/0 ddos=0/0/0 bf=0 ps=0 | Domain: checks=0 blocks=0 dns=0 sni=0 http=0 threat=0 cdn=0 | Geo: checks=1 blocks=0 cache=0
+[CONN-TRACKER] 2026/02/11 10:38:38.611838 Cleanup: removed 1401 expired connections
+[FIREWALL] 2026/02/11 10:38:38.616446 [STATS] Packets: recv=3147 proc=3147 | Cache: hit=0.0% size=0 | Conn: 49 | gRPC: recv=3147 drop=0 verdict=3147 | Alerts: total=1 written=1 throttled=0 | Security: bans=0 rl=67/0 ddos=0/0/0 bf=0 ps=0 | Domain: checks=0 blocks=0 dns=0 sni=0 http=0 threat=0 cdn=0 | Geo: checks=3 blocks=0 cache=0
+[CONN-TRACKER] 2026/02/11 10:39:08.807604 Cleanup: removed 25 expired connections
+[INSPECTOR] 2026/02/11 10:39:08.807604 Stats: received=3233 processed=3233 allow=3233 block=0 drop=0 cache_hit=0%
+[FIREWALL] 2026/02/11 10:39:09.013232 [STATS] Packets: recv=3233 proc=3233 | Cache: hit=0.0% size=0 | Conn: 39 | gRPC: recv=3233 drop=0 verdict=3233 | Alerts: total=7 written=3 throttled=4 | Security: bans=0 rl=107/0 ddos=0/0/0 bf=0 ps=0 | Domain: checks=0 blocks=0 dns=0 sni=0 http=0 threat=0 cdn=0 | Geo: checks=3 blocks=0 cache=0
+[CONN-TRACKER] 2026/02/11 10:39:38.610930 Cleanup: removed 31 expired connections
+[FIREWALL] 2026/02/11 10:39:38.616356 [STATS] Packets: recv=3751 proc=3751 | Cache: hit=0.0% size=0 | Conn: 29 | gRPC: recv=3751 drop=0 verdict=3751 | Alerts: total=9 written=5 throttled=4 | Security: bans=0 rl=209/0 ddos=0/0/0 bf=0 ps=0 | Domain: checks=0 blocks=0 dns=0 sni=0 http=0 threat=0 cdn=0 | Geo: checks=4 blocks=0 cache=0
+[INSPECTOR] 2026/02/11 10:40:08.611340 Stats: received=3830 processed=3830 allow=3830 block=0 drop=0 cache_hit=0%
+[CONN-TRACKER] 2026/02/11 10:40:08.611340 Cleanup: removed 19 expired connections
+[FIREWALL] 2026/02/11 10:40:08.617440 [STATS] Packets: recv=3830 proc=3830 | Cache: hit=0.0% size=0 | Conn: 29 | gRPC: recv=3830 drop=0 verdict=3830 | Alerts: total=9 written=5 throttled=4 | Security: bans=0 rl=224/0 ddos=0/0/0 bf=0 ps=0 | Domain: checks=0 blocks=0 dns=0 sni=0 http=0 threat=0 cdn=0 | Geo: checks=4 blocks=0 cache=0
+[gRPC Client] Stream receive error: rpc error: code = Unavailable desc = error reading from server: read tcp 127.0.0.1:58899->127.0.0.1:50051: wsarecv: An existing connection was forcibly closed by the remote host.
+[gRPC Client] Attempting to reconnect...

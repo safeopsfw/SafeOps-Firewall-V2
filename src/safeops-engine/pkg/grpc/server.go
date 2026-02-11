@@ -569,9 +569,10 @@ func (s *Server) convertToProtobuf(pkt *driver.ParsedPacket, pktID uint64, cache
 		pbPkt.Direction = "OUTBOUND"
 	}
 
-	// Parse TCP flags if TCP
-	if pkt.Protocol == 6 && len(pkt.Payload) > 13 {
-		flags := pkt.Payload[13]
+	// Parse TCP flags from raw packet buffer (NOT pkt.Payload which is application data)
+	// TCP flags byte is at offset 47: Ethernet(14) + IP(20) + TCP offset 13
+	if pkt.Protocol == 6 && pkt.RawBuffer != nil && pkt.RawBuffer.Length >= 48 {
+		flags := pkt.RawBuffer.Buffer[47]
 		pbPkt.TcpFlags = uint32(flags)
 		pbPkt.IsSyn = (flags & 0x02) != 0
 		pbPkt.IsAck = (flags & 0x10) != 0
