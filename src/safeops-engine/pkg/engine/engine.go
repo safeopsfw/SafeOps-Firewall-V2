@@ -316,21 +316,23 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 			return false
 		}
 
-		// Check gRPC verdict cache (cached verdicts from Firewall Engine
-		// still apply to fast-path traffic without re-broadcasting)
-		shouldAllow := e.grpcServer.CheckVerdictCache(pkt)
-		if !shouldAllow {
-			return false
-		}
-
-		// Broadcast to Firewall Engine for security checks.
-		// Non-blocking — if channel is full, packet is silently dropped.
+		// Broadcast to Firewall Engine for security monitoring (DDoS, rate limit, etc.).
+		// Uses NoCache variant so flood/DDoS counters always increment even when
+		// a cached DROP verdict exists. Without this, cached verdicts prevent
+		// flood detection from ever reaching the threshold.
 		if e.sampleRate > 0 {
 			count := atomic.LoadUint64(&e.fastPathPackets)
 			if count%e.sampleRate == 0 {
 				atomic.AddUint64(&e.sampledPackets, 1)
-				e.grpcServer.BroadcastPacket(pkt)
+				e.grpcServer.BroadcastPacketNoCache(pkt)
 			}
+		}
+
+		// Check gRPC verdict cache (cached verdicts from Firewall Engine
+		// still apply to fast-path traffic for enforcement)
+		shouldAllow := e.grpcServer.CheckVerdictCache(pkt)
+		if !shouldAllow {
+			return false
 		}
 
 		return true

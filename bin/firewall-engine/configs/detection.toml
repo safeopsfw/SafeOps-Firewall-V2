@@ -57,16 +57,14 @@ update_interval_seconds = 10     # How often to update baseline
 
 [whitelist]
 # IPs and CIDRs that bypass ALL detection (rate limit, DDoS, brute force, scan)
+# NOTE: Private ranges (192.168.x, 10.x, 172.16.x) are NOT whitelisted here
+# because internal/LAN attacks are a real threat. Only loopback is trusted.
 trusted_ips = [
     "127.0.0.1",
     "::1",
 ]
-trusted_cidrs = [
-    "10.0.0.0/8",
-    "172.16.0.0/12",
-    "192.168.0.0/16",
-]
-# CDN provider CIDRs (bypass rate limiting)
+trusted_cidrs = []
+# CDN provider CIDRs (bypass rate limiting only)
 cdn_cidrs = [
     "103.21.244.0/22",   # Cloudflare
     "103.22.200.0/22",   # Cloudflare

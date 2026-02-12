@@ -29,6 +29,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -113,17 +114,20 @@ func main() {
 
 	duration := time.Duration(*durationFlag) * time.Second
 
+	// Test order matters: DDoS floods and rule-engine tests run FIRST because
+	// port scan and brute force tests trigger IP bans, which would cause all
+	// subsequent tests from the same source IP to be dropped at the ban check.
 	tests := []testCase{
-		{"syn-flood", "SYN Flood DDoS — 1100+ SYN/sec (threshold: 1000)", func() testResult { return testSYNFlood(targetIP, duration) }},
-		{"udp-flood", "UDP Flood DDoS — 5500+ UDP/sec (threshold: 5000)", func() testResult { return testUDPFlood(targetIP2, duration) }},
-		{"port-scan", "Port Scan — 150 unique ports in <10s (threshold: 100)", func() testResult { return testPortScan(targetIP3) }},
-		{"seq-scan", "Sequential Port Scan — 30 sequential (threshold: 20)", func() testResult { return testSequentialScan(targetIP4) }},
-		{"ssh-brute", "SSH Brute Force — 7 attempts on port 22 (threshold: 5/120s)", func() testResult { return testBruteForce(targetIP5, 22, "SSH", 7) }},
-		{"rdp-brute", "RDP Brute Force — 5 attempts on port 3389 (threshold: 3/60s)", func() testResult { return testBruteForce(targetIP6, 3389, "RDP", 5) }},
 		{"vpn-ports", "VPN Port Access — connect to blocked VPN/Tor ports", func() testResult { return testVPNPorts() }},
 		{"doh-bypass", "DoH Bypass — connect to known DoH resolver IPs on 443", func() testResult { return testDoHBypass() }},
 		{"dns-block", "Blocked Domain DNS — resolve blocked domains", func() testResult { return testBlockedDomains() }},
+		{"udp-flood", "UDP Flood DDoS — 5500+ UDP/sec (threshold: 5000)", func() testResult { return testUDPFlood(targetIP2, duration) }},
+		{"syn-flood", "SYN Flood DDoS — 1100+ SYN/sec (threshold: 1000)", func() testResult { return testSYNFlood(targetIP, duration) }},
+		{"ssh-brute", "SSH Brute Force — 7 attempts on port 22 (threshold: 5/120s)", func() testResult { return testBruteForce(targetIP5, 22, "SSH", 7) }},
+		{"rdp-brute", "RDP Brute Force — 5 attempts on port 3389 (threshold: 3/60s)", func() testResult { return testBruteForce(targetIP6, 3389, "RDP", 5) }},
 		{"rapid-conn", "Rapid Connections — 500 connections in burst (rate limiting)", func() testResult { return testRapidConnections(targetIP7) }},
+		{"port-scan", "Port Scan — 150 unique ports in <10s (threshold: 100)", func() testResult { return testPortScan(targetIP3) }},
+		{"seq-scan", "Sequential Port Scan — 30 sequential (threshold: 20)", func() testResult { return testSequentialScan(targetIP4) }},
 		{"multi-proto", "Multi-Protocol Burst — TCP+UDP from same IP simultaneously", func() testResult { return testMultiProtoBurst(targetIP8, duration) }},
 	}
 
@@ -201,25 +205,34 @@ func main() {
 // sends them via gRPC to Firewall Engine, which detects SYN flood.
 // ============================================================================
 func testSYNFlood(target string, duration time.Duration) testResult {
-	sent := 0
+	var sent int64
 	start := time.Now()
+	var wg sync.WaitGroup
+
+	// Use a SINGLE port to avoid triggering port scan detection.
+	// Real SYN floods target a specific service port (e.g., 80, 443).
+	floodPort := 80
 
 	for time.Since(start) < duration {
-		// Open TCP connections rapidly — each generates a SYN packet
-		// that flows through SafeOps Engine tunnel
-		for i := 0; i < 110; i++ { // ~1100/sec in batches of 110 per 100ms
-			port := rand.Intn(65534) + 1
-			conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", target, port), 10*time.Millisecond)
-			if err == nil {
-				conn.Close()
-			}
-			// Whether it connects or times out, a SYN packet was sent
-			sent++
+		// Launch 200 concurrent TCP dials per batch — each generates a SYN packet.
+		// Using goroutines because DialTimeout blocks waiting for SYN-ACK from
+		// a non-routable IP, so sequential dialing is too slow.
+		for i := 0; i < 200; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", target, floodPort), 10*time.Millisecond)
+				if err == nil {
+					conn.Close()
+				}
+				atomic.AddInt64(&sent, 1)
+			}()
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
+	wg.Wait()
 
-	return testResult{true, sent, fmt.Sprintf("SYN flood: %d SYN packets in %v", sent, duration)}
+	return testResult{true, int(sent), fmt.Sprintf("SYN flood: %d SYN packets to port %d in %v", sent, floodPort, duration)}
 }
 
 // ============================================================================
@@ -423,7 +436,7 @@ func testRapidConnections(target string) testResult {
 // Sends TCP + UDP simultaneously from the same source IP to stress test.
 // ============================================================================
 func testMultiProtoBurst(target string, duration time.Duration) testResult {
-	sent := int64(0)
+	var sent int64
 	start := time.Now()
 	var wg sync.WaitGroup
 
@@ -438,7 +451,7 @@ func testMultiProtoBurst(target string, duration time.Duration) testResult {
 				if err == nil {
 					conn.Close()
 				}
-				sent++ // not perfectly atomic but ok for display
+				atomic.AddInt64(&sent, 1)
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -459,7 +472,7 @@ func testMultiProtoBurst(target string, duration time.Duration) testResult {
 		for time.Since(start) < duration {
 			for i := 0; i < 200; i++ {
 				conn.Write(payload)
-				sent++
+				atomic.AddInt64(&sent, 1)
 			}
 			time.Sleep(100 * time.Millisecond)
 		}

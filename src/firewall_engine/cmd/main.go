@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -27,6 +28,7 @@ import (
 	"firewall_engine/internal/logging"
 	"firewall_engine/internal/metrics"
 	"firewall_engine/internal/objects"
+	"firewall_engine/internal/rules"
 	"firewall_engine/internal/security"
 	"firewall_engine/internal/threatintel"
 	"firewall_engine/internal/wfp"
@@ -312,6 +314,21 @@ func main() {
 	}
 
 	// ========================================================================
+	// 2f. Initialize Custom Rule Engine (rules.toml)
+	// ========================================================================
+	rulesConfigPath := filepath.Join(cfg.ConfigDir, "rules.toml")
+	ruleEngine, err := rules.NewEngine(rulesConfigPath, alertMgr, securityMgr.BanMgr)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to load rule engine config - rules disabled")
+		ruleEngine = nil
+	} else {
+		logger.Info().
+			Int("rules", ruleEngine.RuleCount()).
+			Str("config", rulesConfigPath).
+			Msg("Custom Rule Engine initialized")
+	}
+
+	// ========================================================================
 	// 3. Initialize Verdict Cache (config-driven)
 	// ========================================================================
 	cacheConfig := cache.DefaultCacheConfig()
@@ -491,6 +508,39 @@ func main() {
 						go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
 							scanVerdict.Reason, scanVerdict.DetectorName, 300, pkt.CacheKey)
 						return
+					}
+				}
+
+				// Brute force check (for TCP SYN to monitored service ports: SSH, RDP, FTP, etc.)
+				if protocol == "TCP" && pkt.TcpFlags&0x02 != 0 && pkt.TcpFlags&0x10 == 0 {
+					if securityMgr.BruteForce.IsMonitoredPort(int(pkt.DstPort)) {
+						bfVerdict := securityMgr.CheckBruteForce(pkt.SrcIp, int(pkt.DstPort))
+						if !bfVerdict.Allowed && !isWhitelisted {
+							go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
+								bfVerdict.Reason, bfVerdict.DetectorName, 300, pkt.CacheKey)
+							return
+						}
+					}
+				}
+
+				// Custom rule engine evaluation (config-driven detection rules from rules.toml)
+				if ruleEngine != nil && ruleEngine.RuleCount() > 0 {
+					ruleMatches := ruleEngine.Evaluate(rules.PacketInfo{
+						SrcIP:    pkt.SrcIp,
+						DstIP:    pkt.DstIp,
+						SrcPort:  pkt.SrcPort,
+						DstPort:  pkt.DstPort,
+						Protocol: protocol,
+						Domain:   pkt.Domain,
+						TCPFlags: uint8(pkt.TcpFlags),
+						Size:     int(pkt.PacketSize),
+					})
+					for _, rm := range ruleMatches {
+						if rm.Rule != nil && strings.ToUpper(rm.Rule.Action) == "DROP" && !isWhitelisted {
+							go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
+								rm.Description, "rule_engine", 60, pkt.CacheKey)
+							return
+						}
 					}
 				}
 
@@ -729,6 +779,15 @@ func main() {
 	// ========================================================================
 	printBanner(cfg, dualEngine, wfpEngine, alertDir, threatRefresher, securityMgr, domainFilter, geoChecker, parsedBlocklist)
 
+	if ruleEngine != nil {
+		sep := strings.Repeat("=", 60)
+		fmt.Println("Custom Rule Engine:")
+		fmt.Printf("  Enabled Rules:      %d\n", ruleEngine.RuleCount())
+		fmt.Printf("  Config:             %s\n", rulesConfigPath)
+		fmt.Printf("  Hot-Reload:         enabled\n")
+		fmt.Println(sep)
+	}
+
 	// ========================================================================
 	// 16. Initialize Hot-Reload Watcher
 	// ========================================================================
@@ -739,6 +798,7 @@ func main() {
 		DomainFilter:     domainFilter,
 		GeoChecker:       geoChecker,
 		SecurityMgr:      securityMgr,
+		RuleEngine:       ruleEngine,
 		InitialBlocklist: parsedBlocklist,
 		OnBlocklistReload: func(newBL *config.ParsedBlocklist) {
 			liveBlocklist.Store(newBL)

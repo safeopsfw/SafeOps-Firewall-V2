@@ -248,7 +248,9 @@ func (s *Server) CheckVerdictCache(pkt *driver.ParsedPacket) bool {
 	return true
 }
 
-// BroadcastPacket broadcasts packet metadata to all subscribers
+// BroadcastPacket broadcasts packet metadata to all subscribers.
+// Checks the verdict cache first — if a cached verdict exists, it's applied
+// without re-broadcasting. Use BroadcastPacketNoCache for forced broadcast.
 func (s *Server) BroadcastPacket(pkt *driver.ParsedPacket) bool {
 	// FAST PATH: No subscribers = instant pass-through (atomic load, no mutex)
 	if atomic.LoadUint64(&s.subscriberCount) == 0 {
@@ -273,6 +275,22 @@ func (s *Server) BroadcastPacket(pkt *driver.ParsedPacket) bool {
 		atomic.AddInt64(&s.cacheSize, -1)
 	}
 
+	return s.broadcastToSubscribers(pkt, cacheKey)
+}
+
+// BroadcastPacketNoCache broadcasts packet metadata to all subscribers
+// WITHOUT checking the verdict cache. Used for fast-path security monitoring
+// where DDoS/flood counters must always be incremented regardless of cached verdicts.
+func (s *Server) BroadcastPacketNoCache(pkt *driver.ParsedPacket) {
+	if atomic.LoadUint64(&s.subscriberCount) == 0 {
+		return
+	}
+	cacheKey := s.buildCacheKey(pkt)
+	s.broadcastToSubscribers(pkt, cacheKey)
+}
+
+// broadcastToSubscribers sends packet to all matching subscribers.
+func (s *Server) broadcastToSubscribers(pkt *driver.ParsedPacket, cacheKey string) bool {
 	// SLOW PATH: Broadcast to subscribers
 	// Load atomic snapshot of subscribers (no mutex needed for reads)
 	subs := s.subscribers.Load().([]*Subscriber)

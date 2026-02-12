@@ -117,7 +117,15 @@ func (m *Manager) Check(srcIP string, protocol string, tcpFlags uint8, packetSiz
 		return SecurityVerdict{Allowed: true}
 	}
 
-	// 3. Rate limiting
+	// 3. DDoS detection (protocol-specific) — run BEFORE rate limiting
+	// so that flood counters always increment even if rate limited
+	if ddosResult := m.checkDDoS(srcIP, protocol); ddosResult.IsDDoS {
+		// Auto-ban on DDoS detection
+		m.BanMgr.Ban(srcIP, ddosResult.Reason)
+		return ddosResult
+	}
+
+	// 4. Rate limiting
 	if !m.RateLimiter.Allow(srcIP) {
 		return SecurityVerdict{
 			Allowed:       false,
@@ -125,13 +133,6 @@ func (m *Manager) Check(srcIP string, protocol string, tcpFlags uint8, packetSiz
 			DetectorName:  "rate_limiter",
 			IsRateLimited: true,
 		}
-	}
-
-	// 4. DDoS detection (protocol-specific)
-	if ddosResult := m.checkDDoS(srcIP, protocol); ddosResult.IsDDoS {
-		// Auto-ban on DDoS detection
-		m.BanMgr.Ban(srcIP, ddosResult.Reason)
-		return ddosResult
 	}
 
 	// 5. Protocol anomaly detection (TCP flags)

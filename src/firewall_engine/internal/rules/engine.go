@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -326,8 +325,8 @@ func (e *Engine) fireAlert(rule *Rule, pkt PacketInfo) {
 	}
 
 	// Determine alert type
-	alertType := rule.AlertType
-	if alertType == "" {
+	alertType := alerting.AlertType(rule.AlertType)
+	if rule.AlertType == "" {
 		alertType = "CUSTOM_RULE"
 	}
 
@@ -335,23 +334,23 @@ func (e *Engine) fireAlert(rule *Rule, pkt PacketInfo) {
 	var severity alerting.Severity
 	switch strings.ToUpper(rule.Severity) {
 	case "CRITICAL":
-		severity = alerting.CRITICAL
+		severity = alerting.SeverityCritical
 	case "HIGH":
-		severity = alerting.HIGH
+		severity = alerting.SeverityHigh
 	case "MEDIUM":
-		severity = alerting.MEDIUM
+		severity = alerting.SeverityMedium
 	case "LOW":
-		severity = alerting.LOW
+		severity = alerting.SeverityLow
 	default:
-		severity = alerting.MEDIUM
+		severity = alerting.SeverityMedium
 	}
 
 	// Build alert details
-	details := fmt.Sprintf("%s | Packet: %s:%d -> %s:%d (%s %s) | Size: %d bytes",
+	details := fmt.Sprintf("%s | Packet: %s:%d -> %s:%d (%s) | Size: %d bytes",
 		rule.Description,
 		pkt.SrcIP, pkt.SrcPort,
 		pkt.DstIP, pkt.DstPort,
-		pkt.Protocol, pkt.Direction,
+		pkt.Protocol,
 		pkt.Size,
 	)
 
@@ -359,31 +358,24 @@ func (e *Engine) fireAlert(rule *Rule, pkt PacketInfo) {
 		details += fmt.Sprintf(" | Domain: %s", pkt.Domain)
 	}
 
-	// Create metadata
-	metadata := map[string]interface{}{
-		"rule_name":   rule.Name,
-		"src_ip":      pkt.SrcIP,
-		"src_port":    pkt.SrcPort,
-		"dst_ip":      pkt.DstIP,
-		"dst_port":    pkt.DstPort,
-		"protocol":    pkt.Protocol,
-		"direction":   pkt.Direction,
-		"domain":      pkt.Domain,
-		"tcp_flags":   pkt.TCPFlags,
-		"packet_size": pkt.Size,
-		"action":      rule.Action,
+	// Build and send alert using the AlertBuilder API
+	builder := alerting.NewAlert(alertType, severity).
+		WithSource(pkt.SrcIP, uint16(pkt.SrcPort)).
+		WithDestination(pkt.DstIP, uint16(pkt.DstPort)).
+		WithProtocol(pkt.Protocol).
+		WithDetails(details).
+		WithRule(rule.Name).
+		WithAction(alerting.ActionLogged).
+		WithMeta("rule_name", rule.Name).
+		WithMeta("action", rule.Action).
+		WithMeta("dst_port", fmt.Sprintf("%d", pkt.DstPort)).
+		WithMeta("packet_size", fmt.Sprintf("%d", pkt.Size))
+
+	if pkt.Domain != "" {
+		builder.WithDomain(pkt.Domain)
 	}
 
-	// Send alert
-	alert := alerting.Alert{
-		Type:      alertType,
-		Severity:  severity,
-		Details:   details,
-		Metadata:  metadata,
-		Timestamp: time.Now(),
-	}
-
-	e.alertMgr.Send(alert)
+	e.alertMgr.Alert(builder.Build())
 }
 
 // executeAction performs the configured action for a matched rule.
@@ -404,7 +396,7 @@ func (e *Engine) executeAction(rule *Rule, pkt PacketInfo) {
 
 		// Ban the source IP
 		reason := fmt.Sprintf("Rule '%s': %s", rule.Name, rule.Description)
-		e.banMgr.BanIP(pkt.SrcIP, duration, reason)
+		e.banMgr.BanWithDuration(pkt.SrcIP, reason, duration)
 
 	case "DROP":
 		// DROP action is handled by the caller (firewall engine)

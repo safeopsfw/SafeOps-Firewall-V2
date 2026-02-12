@@ -1,2 +1,2 @@
-{"timestamp":"2026-02-11T05:35:45.0332007Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
-{"timestamp":"2026-02-11T05:35:52.8554484Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-02-11T10:14:03.887008Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
+{"timestamp":"2026-02-11T10:15:42.1256208Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}

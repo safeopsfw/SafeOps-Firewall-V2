@@ -12,6 +12,7 @@ import (
 	"firewall_engine/internal/domain"
 	"firewall_engine/internal/geoip"
 	"firewall_engine/internal/logging"
+	"firewall_engine/internal/rules"
 	"firewall_engine/internal/security"
 )
 
@@ -27,6 +28,7 @@ type Reloader struct {
 	geoChecker   *geoip.Checker
 	securityMgr  *security.Manager
 	alertMgr     *alerting.Manager
+	ruleEngine   *rules.Engine
 
 	// Current parsed blocklist (atomic swap)
 	parsedBlocklist atomic.Pointer[config.ParsedBlocklist]
@@ -58,6 +60,9 @@ type ReloaderConfig struct {
 	// Called when blocklist.toml is reloaded with the new ParsedBlocklist.
 	// The callback should update the packet handler's reference.
 	OnBlocklistReload func(*config.ParsedBlocklist)
+
+	// Rule engine for hot-reload of rules.toml
+	RuleEngine *rules.Engine
 }
 
 // NewReloader creates a hot-reload orchestrator.
@@ -76,6 +81,7 @@ func NewReloader(cfg ReloaderConfig) (*Reloader, error) {
 		securityMgr:       cfg.SecurityMgr,
 		alertMgr:          cfg.AlertMgr,
 		onBlocklistReload: cfg.OnBlocklistReload,
+		ruleEngine:        cfg.RuleEngine,
 	}
 
 	if cfg.InitialBlocklist != nil {
@@ -94,6 +100,7 @@ func (r *Reloader) Start(ctx context.Context) error {
 		"blocklist.toml":        r.reloadBlocklist,
 		"geoip.toml":            r.reloadGeoIP,
 		"detection.toml":        r.reloadDetection,
+		"rules.toml":            r.reloadRules,
 		"blocked_ips.txt":       r.reloadBlocklist, // IP file changes trigger full blocklist reload
 		"whitelist_domains.txt": r.reloadBlocklist, // whitelist file changes trigger full blocklist reload
 	}
@@ -325,6 +332,30 @@ func (r *Reloader) reloadDetection(path string) {
 		"rate_limit=%v ddos=%v brute_force=%v port_scan=%v",
 		newDet.RateLimit.Enabled, newDet.DDoS.Enabled,
 		newDet.BruteForce.Enabled, newDet.PortScan.Enabled))
+}
+
+// reloadRules handles changes to rules.toml
+func (r *Reloader) reloadRules(path string) {
+	if r.ruleEngine == nil {
+		r.logger.Warn().Msg("Hot-reload: rule engine not initialized, skipping rules.toml reload")
+		return
+	}
+
+	if err := r.ruleEngine.Reload(path); err != nil {
+		r.failCount.Add(1)
+		r.lastError.Store(fmt.Sprintf("rules.toml: %v", err))
+		r.logger.Error().Err(err).Msg("Hot-reload: rules.toml reload failed — keeping old rules")
+		r.fireAlert("rules.toml", false, err.Error())
+		return
+	}
+
+	r.successCount.Add(1)
+	r.lastReload.Store(time.Now())
+	r.logger.Info().
+		Int("rules", r.ruleEngine.RuleCount()).
+		Msg("Hot-reload: rules.toml reloaded successfully")
+
+	r.fireAlert("rules.toml", true, fmt.Sprintf("%d rules loaded", r.ruleEngine.RuleCount()))
 }
 
 // fireAlert sends a reload event as an alert.
