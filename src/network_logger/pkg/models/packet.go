@@ -17,15 +17,17 @@ type GeoInfo struct {
 type PacketLog struct {
 	PacketID          string            `json:"packet_id"`
 	Timestamp         Timestamp         `json:"timestamp"`
+	EventType         string            `json:"event_type,omitempty"`  // "packet" for master log
+	CommunityID       string            `json:"community_id,omitempty"` // Community ID v1 for cross-tool correlation
+	Direction         string            `json:"direction,omitempty"`   // "inbound"/"outbound"/"internal"
+	AppProto          string            `json:"app_proto,omitempty"`   // Clean protocol name: dns/http/tls/ssh/etc
 	CaptureInfo       CaptureInfo       `json:"capture_info"`
 	Layers            Layers            `json:"layers"`
 	ParsedApplication ParsedApplication `json:"parsed_application"`
 	FlowContext       *FlowContext      `json:"flow_context,omitempty"`
-	SessionTracking   *SessionTracking  `json:"session_tracking,omitempty"`
 	HotspotDevice     *HotspotDevice    `json:"hotspot_device,omitempty"`
 	SrcGeo            *GeoInfo          `json:"src_geo,omitempty"`
 	DstGeo            *GeoInfo          `json:"dst_geo,omitempty"`
-	Deduplication     Deduplication     `json:"deduplication"`
 }
 
 // Timestamp represents packet capture time
@@ -46,6 +48,8 @@ type Layers struct {
 	Datalink  *DatalinkLayer  `json:"datalink,omitempty"`
 	Network   *NetworkLayer   `json:"network,omitempty"`
 	Transport *TransportLayer `json:"transport,omitempty"`
+	ICMP      *ICMPLayer      `json:"icmp,omitempty"`
+	ARP       *ARPLayer       `json:"arp,omitempty"`
 	Payload   *PayloadLayer   `json:"payload,omitempty"`
 }
 
@@ -83,6 +87,25 @@ type NetworkLayer struct {
 	HopLimit      uint8  `json:"hop_limit,omitempty"`
 }
 
+// ICMPLayer represents ICMP protocol data
+type ICMPLayer struct {
+	Type     uint8  `json:"type"`
+	Code     uint8  `json:"code"`
+	Checksum uint16 `json:"checksum,omitempty"`
+	ID       uint16 `json:"id,omitempty"`
+	Seq      uint16 `json:"seq,omitempty"`
+}
+
+// ARPLayer represents ARP protocol data
+type ARPLayer struct {
+	Operation       uint16 `json:"operation"`         // 1=request, 2=reply
+	OperationString string `json:"operation_str,omitempty"`
+	SenderMAC       string `json:"sender_mac,omitempty"`
+	SenderIP        string `json:"sender_ip,omitempty"`
+	TargetMAC       string `json:"target_mac,omitempty"`
+	TargetIP        string `json:"target_ip,omitempty"`
+}
+
 // TransportLayer represents Layer 4 (TCP/UDP)
 type TransportLayer struct {
 	Protocol      uint8       `json:"protocol"`
@@ -102,15 +125,15 @@ type TransportLayer struct {
 
 // TCPFlags represents TCP control flags
 type TCPFlags struct {
-	FIN bool `json:"fin"`
-	SYN bool `json:"syn"`
-	RST bool `json:"rst"`
-	PSH bool `json:"psh"`
-	ACK bool `json:"ack"`
-	URG bool `json:"urg"`
-	ECE bool `json:"ece"`
-	CWR bool `json:"cwr"`
-	NS  int  `json:"ns"`
+	FIN bool `json:"fin,omitempty"`
+	SYN bool `json:"syn,omitempty"`
+	RST bool `json:"rst,omitempty"`
+	PSH bool `json:"psh,omitempty"`
+	ACK bool `json:"ack,omitempty"`
+	URG bool `json:"urg,omitempty"`
+	ECE bool `json:"ece,omitempty"`
+	CWR bool `json:"cwr,omitempty"`
+	NS  int  `json:"ns,omitempty"`
 }
 
 // TCPOption represents a TCP option
@@ -140,16 +163,17 @@ type ParsedApplication struct {
 
 // DNSData represents DNS protocol data
 type DNSData struct {
-	TransactionID uint16      `json:"transaction_id"`
-	Flags         uint16      `json:"flags"`
+	TransactionID uint16      `json:"transaction_id,omitempty"`
+	Flags         uint16      `json:"flags,omitempty"`
 	QR            uint8       `json:"qr"`
-	Opcode        uint8       `json:"opcode"`
-	AA            uint8       `json:"aa"`
-	TC            uint8       `json:"tc"`
-	RD            uint8       `json:"rd"`
-	RA            uint8       `json:"ra"`
-	Z             uint8       `json:"z"`
-	Rcode         uint8       `json:"rcode"`
+	Opcode        uint8       `json:"opcode,omitempty"`
+	AA            uint8       `json:"aa,omitempty"`
+	TC            uint8       `json:"tc,omitempty"`
+	RD            uint8       `json:"rd,omitempty"`
+	RA            uint8       `json:"ra,omitempty"`
+	Z             uint8       `json:"z,omitempty"`
+	Rcode         uint8       `json:"rcode,omitempty"`
+	RcodeString   string      `json:"rcode_str,omitempty"` // "NOERROR","NXDOMAIN","SERVFAIL"
 	Queries       []DNSQuery  `json:"queries,omitempty"`
 	Answers       []DNSAnswer `json:"answers,omitempty"`
 }
@@ -158,21 +182,21 @@ type DNSData struct {
 type DNSQuery struct {
 	Name  string `json:"name"`
 	Type  string `json:"type"`
-	Class string `json:"class"`
+	Class string `json:"class,omitempty"`
 }
 
 // DNSAnswer represents a DNS answer
 type DNSAnswer struct {
-	Name  string `json:"name"`
+	Name  string `json:"name,omitempty"`
 	Type  string `json:"type"`
-	Class string `json:"class"`
-	TTL   uint32 `json:"ttl"`
+	Class string `json:"class,omitempty"`
+	TTL   uint32 `json:"ttl,omitempty"`
 	Data  string `json:"data"`
 }
 
 // HTTPData represents HTTP protocol data
 type HTTPData struct {
-	Type          string            `json:"type"` // "request" or "response"
+	Type          string            `json:"type,omitempty"`  // "request" or "response"
 	Method        string            `json:"method,omitempty"`
 	URI           string            `json:"uri,omitempty"`
 	Version       string            `json:"version,omitempty"`
@@ -191,26 +215,34 @@ type HTTPData struct {
 type TLSData struct {
 	ClientHello         *TLSClientHello `json:"client_hello,omitempty"`
 	ServerHello         *TLSServerHello `json:"server_hello,omitempty"`
+	JA3Hash             string          `json:"ja3,omitempty"`   // JA3 fingerprint from ClientHello
+	JA3SHash            string          `json:"ja3s,omitempty"`  // JA3S fingerprint from ServerHello
 	CertificatesPresent bool            `json:"certificates_present,omitempty"`
 	Decryption          *TLSDecryption  `json:"decryption,omitempty"`
 }
 
 // TLSClientHello represents TLS ClientHello message
 type TLSClientHello struct {
-	Version      string   `json:"version"`
-	Random       string   `json:"random"`
-	CipherSuites []string `json:"cipher_suites"`
-	SNI          string   `json:"sni,omitempty"`
-	ALPN         []string `json:"alpn,omitempty"`
-	Extensions   []TLSExt `json:"extensions,omitempty"`
+	Version        string   `json:"version"`
+	Random         string   `json:"random,omitempty"`
+	CipherSuites   []string `json:"cipher_suites,omitempty"`
+	CipherSuiteIDs []uint16 `json:"cipher_suite_ids,omitempty"` // Raw IDs for JA3
+	SNI            string   `json:"sni,omitempty"`
+	ALPN           []string `json:"alpn,omitempty"`
+	Extensions     []TLSExt `json:"extensions,omitempty"`
+	ExtensionIDs   []uint16 `json:"extension_ids,omitempty"`   // Raw extension type IDs for JA3
+	ECCurves       []uint16 `json:"ec_curves,omitempty"`       // Supported elliptic curves for JA3
+	ECPointFormats []uint8  `json:"ec_point_formats,omitempty"` // EC point formats for JA3
 }
 
 // TLSServerHello represents TLS ServerHello message
 type TLSServerHello struct {
-	Version     string   `json:"version"`
-	Random      string   `json:"random"`
-	CipherSuite string   `json:"cipher_suite"`
-	Extensions  []TLSExt `json:"extensions,omitempty"`
+	Version       string   `json:"version"`
+	Random        string   `json:"random,omitempty"`
+	CipherSuite   string   `json:"cipher_suite,omitempty"`
+	CipherSuiteID uint16   `json:"cipher_suite_id,omitempty"` // Raw ID for JA3S
+	Extensions    []TLSExt `json:"extensions,omitempty"`
+	ExtensionIDs  []uint16 `json:"extension_ids,omitempty"`  // Raw extension type IDs for JA3S
 }
 
 // TLSExt represents a TLS extension
@@ -222,7 +254,7 @@ type TLSExt struct {
 // TLSDecryption represents TLS decryption status and data
 type TLSDecryption struct {
 	Decrypted        bool      `json:"decrypted"`
-	KeyAvailable     bool      `json:"key_available"`
+	KeyAvailable     bool      `json:"key_available,omitempty"`
 	Cipher           string    `json:"cipher,omitempty"`
 	DecryptedLength  int       `json:"decrypted_length,omitempty"`
 	DecryptedHex     string    `json:"decrypted_payload_hex,omitempty"`
@@ -235,39 +267,31 @@ type TLSDecryption struct {
 
 // GamingData represents gaming protocol detection
 type GamingData struct {
-	Service   string `json:"service"`
-	Detected  bool   `json:"detected"`
+	Service   string `json:"service,omitempty"`
+	Detected  bool   `json:"detected,omitempty"`
 	Signature string `json:"signature,omitempty"`
 }
 
 // FlowContext represents bidirectional flow tracking
 type FlowContext struct {
 	FlowID          string       `json:"flow_id"`
-	Direction       string       `json:"direction"`
-	PacketsForward  int          `json:"packets_forward"`
-	PacketsBackward int          `json:"packets_backward"`
-	BytesForward    int64        `json:"bytes_forward"`
-	BytesBackward   int64        `json:"bytes_backward"`
-	FlowStartTime   float64      `json:"flow_start_time"`
-	FlowDuration    float64      `json:"flow_duration"`
-	FlowState       string       `json:"flow_state"`
+	Direction       string       `json:"direction,omitempty"`
+	PacketsForward  int          `json:"packets_forward,omitempty"`
+	PacketsBackward int          `json:"packets_backward,omitempty"`
+	BytesForward    int64        `json:"bytes_forward,omitempty"`
+	BytesBackward   int64        `json:"bytes_backward,omitempty"`
+	FlowStartTime   float64      `json:"flow_start_time,omitempty"`
+	FlowDuration    float64      `json:"flow_duration,omitempty"`
+	FlowState       string       `json:"flow_state,omitempty"`
 	TCPState        string       `json:"tcp_state,omitempty"`
 	ProcessInfo     *ProcessInfo `json:"process,omitempty"`
 }
 
-// SessionTracking represents session-level tracking
-type SessionTracking struct {
-	SessionID    string  `json:"session_id"`
-	TotalPackets int     `json:"total_packets"`
-	TotalBytes   int64   `json:"total_bytes"`
-	Duration     float64 `json:"duration"`
-}
-
 // ProcessInfo represents Windows process information
 type ProcessInfo struct {
-	PID     int32  `json:"pid"`
-	Name    string `json:"name"`
-	Exe     string `json:"exe"`
+	PID     int32  `json:"pid,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Exe     string `json:"exe,omitempty"`
 	Cmdline string `json:"cmdline,omitempty"`
 }
 
@@ -275,19 +299,19 @@ type ProcessInfo struct {
 type HotspotDevice struct {
 	IP          string    `json:"ip"`
 	MAC         string    `json:"mac"`
-	Vendor      string    `json:"vendor"`
-	DeviceType  string    `json:"device_type"` // "mobile", "laptop", "tablet", "unknown"
+	Vendor      string    `json:"vendor,omitempty"`
+	DeviceType  string    `json:"device_type,omitempty"`
 	Hostname    string    `json:"hostname,omitempty"`
 	Interface   string    `json:"interface,omitempty"`
-	BytesSent   int64     `json:"bytes_sent"`
-	BytesRecv   int64     `json:"bytes_recv"`
-	PacketsSent int64     `json:"packets_sent"`
-	PacketsRecv int64     `json:"packets_recv"`
+	BytesSent   int64     `json:"bytes_sent,omitempty"`
+	BytesRecv   int64     `json:"bytes_recv,omitempty"`
+	PacketsSent int64     `json:"packets_sent,omitempty"`
+	PacketsRecv int64     `json:"packets_recv,omitempty"`
 	FirstSeen   time.Time `json:"first_seen"`
 	LastSeen    time.Time `json:"last_seen"`
 }
 
-// Deduplication represents deduplication status
+// Deduplication represents deduplication status (internal use only, not written to logs)
 type Deduplication struct {
 	Unique bool   `json:"unique"`
 	Reason string `json:"reason"`

@@ -1,219 +1,395 @@
 package collectors
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/safeops/network_logger/internal/writer"
 	"github.com/safeops/network_logger/pkg/models"
 )
 
-// IDSLog represents a compact IDS alert log
-type IDSLog struct {
-	TimestampIST string           `json:"timestamp_ist"`
-	PacketID     string           `json:"packet_id"`
-	FlowID       string           `json:"flow_id"` // For cross-log correlation with firewall/netflow
-	SrcIP        string           `json:"src_ip"`
-	DstIP        string           `json:"dst_ip"`
-	SrcPort      uint16           `json:"src_port,omitempty"`
-	DstPort      uint16           `json:"dst_port,omitempty"`
-	Protocol     string           `json:"protocol"`
-	SrcGeo       *models.GeoInfo  `json:"src_geo,omitempty"`
-	DstGeo       *models.GeoInfo  `json:"dst_geo,omitempty"`
-	HTTP         *models.HTTPData `json:"http,omitempty"`
-	DNS          *models.DNSData  `json:"dns,omitempty"`
-	TLS          *TLSCompact      `json:"tls,omitempty"`
-	TCPFlags     string           `json:"tcp_flags,omitempty"`
+// EVEEvent represents a Suricata-compatible EVE JSON event
+type EVEEvent struct {
+	Timestamp   string              `json:"timestamp"`
+	EventType   string              `json:"event_type"`
+	SrcIP       string              `json:"src_ip"`
+	SrcPort     uint16              `json:"src_port,omitempty"`
+	DstIP       string              `json:"dst_ip"`
+	DstPort     uint16              `json:"dst_port,omitempty"`
+	Proto       string              `json:"proto"`
+	CommunityID string              `json:"community_id,omitempty"`
+	FlowID      string              `json:"flow_id,omitempty"`
+	AppProto    string              `json:"app_proto,omitempty"`
+	Direction   string              `json:"direction,omitempty"`
+	DNS         *EVEDns             `json:"dns,omitempty"`
+	HTTP        *EVEHTTP            `json:"http,omitempty"`
+	TLS         *EVETLS             `json:"tls,omitempty"`
+	Flow        *EVEFlow            `json:"flow,omitempty"`
+	Process     *models.ProcessInfo `json:"process,omitempty"`
+	SrcGeo      *models.GeoInfo     `json:"src_geo,omitempty"`
+	DstGeo      *models.GeoInfo     `json:"dst_geo,omitempty"`
 }
 
-// TLSCompact is a compact TLS representation for IDS logs
-type TLSCompact struct {
-	SNI     string `json:"sni,omitempty"`
-	Version string `json:"version,omitempty"`
+// EVEDns represents DNS event data in EVE format
+type EVEDns struct {
+	Type    string         `json:"type"`
+	ID      uint16         `json:"id,omitempty"`
+	RRName  string         `json:"rrname,omitempty"`
+	RRType  string         `json:"rrtype,omitempty"`
+	Rcode   string         `json:"rcode,omitempty"`
+	Answers []EVEDnsAnswer `json:"answers,omitempty"`
 }
 
-// IDSCollector processes packets into IDS alerts
+// EVEDnsAnswer represents a DNS answer in EVE format
+type EVEDnsAnswer struct {
+	RRName string `json:"rrname"`
+	RRType string `json:"rrtype"`
+	TTL    uint32 `json:"ttl,omitempty"`
+	RData  string `json:"rdata"`
+}
+
+// EVEHTTP represents HTTP event data in EVE format
+type EVEHTTP struct {
+	Hostname      string `json:"hostname,omitempty"`
+	URL           string `json:"url,omitempty"`
+	HTTPMethod    string `json:"http_method,omitempty"`
+	HTTPUserAgent string `json:"http_user_agent,omitempty"`
+	HTTPReferer   string `json:"http_refer,omitempty"`
+	Protocol      string `json:"protocol,omitempty"`
+	Status        int    `json:"status,omitempty"`
+	Length        int    `json:"length,omitempty"`
+}
+
+// EVETLS represents TLS event data in EVE format
+type EVETLS struct {
+	SNI         string `json:"sni,omitempty"`
+	Version     string `json:"version,omitempty"`
+	JA3         string `json:"ja3,omitempty"`
+	JA3S        string `json:"ja3s,omitempty"`
+	Certificate bool   `json:"certificate,omitempty"`
+}
+
+// EVEFlow represents flow event data in EVE format
+type EVEFlow struct {
+	PktsToServer  int    `json:"pkts_toserver"`
+	PktsToClient  int    `json:"pkts_toclient"`
+	BytesToServer int64  `json:"bytes_toserver"`
+	BytesToClient int64  `json:"bytes_toclient"`
+	Start         string `json:"start,omitempty"`
+	End           string `json:"end,omitempty"`
+	State         string `json:"state,omitempty"`
+	Reason        string `json:"reason,omitempty"`
+}
+
+// idsFlowState tracks a flow for EVE flow-end events
+type idsFlowState struct {
+	FlowID        string
+	SrcIP         string
+	DstIP         string
+	SrcPort       uint16
+	DstPort       uint16
+	Proto         string
+	CommunityID   string
+	Direction     string
+	AppProto      string
+	PktsToServer  int
+	PktsToClient  int
+	BytesToServer int64
+	BytesToClient int64
+	FirstSeen     time.Time
+	LastSeen      time.Time
+	TCPFlags      map[string]bool
+	State         string
+	Process       *models.ProcessInfo
+	SrcGeo        *models.GeoInfo
+	DstGeo        *models.GeoInfo
+}
+
+// IDSCollector produces Suricata EVE JSON-compatible event logs
 type IDSCollector struct {
-	logPath       string
-	batchQueue    chan *IDSLog
-	mu            sync.Mutex
-	file          *os.File
-	writer        *bufio.Writer
-	batchSize     int
-	logsWritten   int64
-	logsFiltered  int64 // Deduplication stats
-	cycleInterval time.Duration
-	dedupFilter   *DuplicateFilter // Multi-layer deduplication
+	writer      *writer.RotatingWriter
+	dedupFilter *DuplicateFilter
+	flows       map[string]*idsFlowState
+	flowsMu     sync.RWMutex
+	flowTimeout time.Duration
 }
 
-// NewIDSCollector creates a new IDS collector
-func NewIDSCollector(logPath string, cycleInterval time.Duration) *IDSCollector {
+// NewIDSCollector creates a new EVE JSON IDS collector
+func NewIDSCollector(logPath string, _ time.Duration) *IDSCollector {
 	return &IDSCollector{
-		logPath:       logPath,
-		batchQueue:    make(chan *IDSLog, 5000),
-		batchSize:     50,
-		cycleInterval: cycleInterval,
-		dedupFilter:   NewDuplicateFilter(),
+		writer:      writer.NewRotatingWriter(logPath, 50*1024*1024, 3),
+		dedupFilter: NewDuplicateFilter(),
+		flows:       make(map[string]*idsFlowState),
+		flowTimeout: 60 * time.Second,
 	}
 }
 
 // Start begins the IDS collector
 func (c *IDSCollector) Start(ctx context.Context) {
-	c.openFile()
-	go c.batchWriter(ctx)
-	go c.cycleLoop(ctx)
+	c.writer.Start(ctx)
+	go c.flowCleanupLoop(ctx)
 }
 
-// Process processes a packet and generates IDS log if applicable
+// Process processes a packet and generates EVE events
 func (c *IDSCollector) Process(pkt *models.PacketLog) {
-	// Only log packets with application layer data
-	if !c.hasAppLayerData(pkt) {
-		return
-	}
-
-	// Skip TCP handshakes and pure ACKs
-	if c.isTCPControl(pkt) {
-		return
-	}
-
-	// Convert to IDS log
-	idsLog := c.toIDSLog(pkt)
-	if idsLog == nil {
-		return
-	}
-
-	// Deduplication check (connection + payload hash)
-	if isDup, _ := c.dedupFilter.IsDuplicate(idsLog); isDup {
-		c.mu.Lock()
-		c.logsFiltered++
-		c.mu.Unlock()
-		return
-	}
-
-	select {
-	case c.batchQueue <- idsLog:
-	default:
-		// Queue full, drop
-	}
-}
-
-// hasAppLayerData checks if packet has ACTUAL meaningful app layer content
-// Only returns true if there's a domain, host, query, or SNI to log
-func (c *IDSCollector) hasAppLayerData(pkt *models.PacketLog) bool {
-	app := pkt.ParsedApplication
-
-	// HTTP: must have host or method
-	if app.HTTP != nil && (app.HTTP.Host != "" || app.HTTP.Method != "") {
-		return true
-	}
-
-	// DNS: must have query
-	if app.DNS != nil && len(app.DNS.Queries) > 0 {
-		return true
-	}
-
-	// TLS: must have SNI
-	if app.TLS != nil && app.TLS.ClientHello != nil && app.TLS.ClientHello.SNI != "" {
-		return true
-	}
-
-	// SSH/FTP/SMTP: any parsed data
-	if app.DetectedProtocol == "ssh" || app.DetectedProtocol == "ftp" || app.DetectedProtocol == "smtp" {
-		return true
-	}
-
-	return false
-}
-
-// isTCPControl checks if packet is TCP control (handshake/close)
-func (c *IDSCollector) isTCPControl(pkt *models.PacketLog) bool {
-	if pkt.Layers.Transport == nil || pkt.Layers.Transport.TCPFlags == nil {
-		return false
-	}
-	flags := pkt.Layers.Transport.TCPFlags
-
-	// Skip SYN, SYN-ACK, FIN, RST
-	if flags.SYN || flags.FIN || flags.RST {
-		return true
-	}
-	// Skip pure ACKs (no PSH)
-	if flags.ACK && !flags.PSH && !flags.SYN && !flags.FIN && !flags.RST {
-		return true
-	}
-	return false
-}
-
-// toIDSLog converts a packet to IDS log format
-func (c *IDSCollector) toIDSLog(pkt *models.PacketLog) *IDSLog {
 	if pkt.Layers.Network == nil {
-		return nil
+		return
 	}
 
-	// IST timestamp (UTC+5:30)
-	ist := pkt.Timestamp.ISO8601 // Already has timezone
-
-	// Generate flow ID for cross-log correlation
-	flowID := c.generateFlowID(pkt)
-
-	idsLog := &IDSLog{
-		TimestampIST: ist,
-		PacketID:     pkt.PacketID,
-		FlowID:       flowID,
-		SrcIP:        pkt.Layers.Network.SrcIP,
-		DstIP:        pkt.Layers.Network.DstIP,
-		SrcGeo:       pkt.SrcGeo,
-		DstGeo:       pkt.DstGeo,
+	switch {
+	case pkt.ParsedApplication.DNS != nil:
+		c.processDNS(pkt)
+	case pkt.ParsedApplication.HTTP != nil:
+		c.processHTTP(pkt)
+	case pkt.ParsedApplication.TLS != nil && pkt.ParsedApplication.TLS.ClientHello != nil:
+		c.processTLS(pkt)
 	}
 
-	// Protocol
+	if pkt.Layers.Transport != nil {
+		c.updateFlow(pkt)
+	}
+}
+
+func (c *IDSCollector) processDNS(pkt *models.PacketLog) {
+	dns := pkt.ParsedApplication.DNS
+	if dns == nil || len(dns.Queries) == 0 {
+		return
+	}
+
+	for _, q := range dns.Queries {
+		evt := c.baseEvent(pkt, "dns")
+		evt.AppProto = "dns"
+
+		eveDns := &EVEDns{
+			ID:     dns.TransactionID,
+			RRName: q.Name,
+			RRType: q.Type,
+		}
+
+		if dns.QR == 0 {
+			eveDns.Type = "query"
+		} else {
+			eveDns.Type = "answer"
+			eveDns.Rcode = dns.RcodeString
+			for _, a := range dns.Answers {
+				eveDns.Answers = append(eveDns.Answers, EVEDnsAnswer{
+					RRName: a.Name, RRType: a.Type, TTL: a.TTL, RData: a.Data,
+				})
+			}
+		}
+
+		evt.DNS = eveDns
+		c.writer.WriteJSON(evt)
+	}
+}
+
+func (c *IDSCollector) processHTTP(pkt *models.PacketLog) {
+	http := pkt.ParsedApplication.HTTP
+	if http == nil {
+		return
+	}
+
+	dedupKey := fmt.Sprintf("http:%s:%s:%s", http.Host, http.Method, http.URI)
+	if c.isDuplicate(pkt, dedupKey) {
+		return
+	}
+
+	evt := c.baseEvent(pkt, "http")
+	evt.AppProto = "http"
+	evt.HTTP = &EVEHTTP{
+		Hostname: http.Host, URL: http.URI,
+		HTTPMethod: http.Method, HTTPUserAgent: http.UserAgent,
+		HTTPReferer: http.Referer, Protocol: http.Version,
+		Status: http.StatusCode, Length: http.BodyLength,
+	}
+	c.writer.WriteJSON(evt)
+}
+
+func (c *IDSCollector) processTLS(pkt *models.PacketLog) {
+	tls := pkt.ParsedApplication.TLS
+	if tls == nil || tls.ClientHello == nil {
+		return
+	}
+
+	sni := tls.ClientHello.SNI
+	dedupKey := fmt.Sprintf("tls:%s", sni)
+	if c.isDuplicate(pkt, dedupKey) {
+		return
+	}
+
+	evt := c.baseEvent(pkt, "tls")
+	evt.AppProto = "tls"
+	evt.TLS = &EVETLS{
+		SNI: sni, Version: tls.ClientHello.Version,
+		JA3: tls.JA3Hash, JA3S: tls.JA3SHash,
+		Certificate: tls.CertificatesPresent,
+	}
+	c.writer.WriteJSON(evt)
+}
+
+func (c *IDSCollector) baseEvent(pkt *models.PacketLog, eventType string) *EVEEvent {
+	evt := &EVEEvent{
+		Timestamp: pkt.Timestamp.ISO8601, EventType: eventType,
+		SrcIP: pkt.Layers.Network.SrcIP, DstIP: pkt.Layers.Network.DstIP,
+		CommunityID: pkt.CommunityID, Direction: pkt.Direction,
+		SrcGeo: pkt.SrcGeo, DstGeo: pkt.DstGeo,
+	}
+
 	switch pkt.Layers.Network.Protocol {
 	case 6:
-		idsLog.Protocol = "TCP"
+		evt.Proto = "TCP"
 	case 17:
-		idsLog.Protocol = "UDP"
+		evt.Proto = "UDP"
 	case 1:
-		idsLog.Protocol = "ICMP"
+		evt.Proto = "ICMP"
 	default:
-		idsLog.Protocol = "OTHER"
+		evt.Proto = fmt.Sprintf("%d", pkt.Layers.Network.Protocol)
 	}
 
-	// Ports
 	if pkt.Layers.Transport != nil {
-		idsLog.SrcPort = pkt.Layers.Transport.SrcPort
-		idsLog.DstPort = pkt.Layers.Transport.DstPort
-
-		// TCP flags
-		if pkt.Layers.Transport.TCPFlags != nil {
-			idsLog.TCPFlags = formatTCPFlags(pkt.Layers.Transport.TCPFlags)
-		}
+		evt.SrcPort = pkt.Layers.Transport.SrcPort
+		evt.DstPort = pkt.Layers.Transport.DstPort
 	}
 
-	// App layer data
-	if pkt.ParsedApplication.HTTP != nil {
-		idsLog.HTTP = pkt.ParsedApplication.HTTP
-	}
-	if pkt.ParsedApplication.DNS != nil {
-		idsLog.DNS = pkt.ParsedApplication.DNS
-	}
-	if pkt.ParsedApplication.TLS != nil && pkt.ParsedApplication.TLS.ClientHello != nil {
-		idsLog.TLS = &TLSCompact{
-			SNI:     pkt.ParsedApplication.TLS.ClientHello.SNI,
-			Version: pkt.ParsedApplication.TLS.ClientHello.Version,
-		}
+	if pkt.FlowContext != nil {
+		evt.FlowID = pkt.FlowContext.FlowID
+		evt.Process = pkt.FlowContext.ProcessInfo
 	}
 
-	return idsLog
+	return evt
 }
 
-// generateFlowID creates a normalized bidirectional flow ID
-// Uses same format as FirewallCollector and BiflowCollector for cross-log correlation
-func (c *IDSCollector) generateFlowID(pkt *models.PacketLog) string {
+func (c *IDSCollector) updateFlow(pkt *models.PacketLog) {
+	flowKey := c.generateFlowKey(pkt)
+
+	c.flowsMu.Lock()
+	defer c.flowsMu.Unlock()
+
+	now := time.Now()
+	flow, exists := c.flows[flowKey]
+	pktSize := int64(pkt.CaptureInfo.WireLength)
+
+	if !exists {
+		proto := "TCP"
+		switch pkt.Layers.Network.Protocol {
+		case 17:
+			proto = "UDP"
+		case 1:
+			proto = "ICMP"
+		}
+
+		flow = &idsFlowState{
+			FlowID: flowKey, SrcIP: pkt.Layers.Network.SrcIP, DstIP: pkt.Layers.Network.DstIP,
+			Proto: proto, CommunityID: pkt.CommunityID, Direction: pkt.Direction,
+			AppProto: pkt.AppProto, FirstSeen: now, LastSeen: now,
+			TCPFlags: make(map[string]bool), State: "new",
+			SrcGeo: pkt.SrcGeo, DstGeo: pkt.DstGeo,
+		}
+		if pkt.Layers.Transport != nil {
+			flow.SrcPort = pkt.Layers.Transport.SrcPort
+			flow.DstPort = pkt.Layers.Transport.DstPort
+		}
+		c.flows[flowKey] = flow
+	}
+
+	flow.LastSeen = now
+	if pkt.FlowContext != nil && pkt.FlowContext.ProcessInfo != nil {
+		flow.Process = pkt.FlowContext.ProcessInfo
+	}
+	if flow.AppProto == "" && pkt.AppProto != "" {
+		flow.AppProto = pkt.AppProto
+	}
+
+	isForward := pkt.Layers.Network.SrcIP == flow.SrcIP
+	if isForward {
+		flow.PktsToServer++
+		flow.BytesToServer += pktSize
+	} else {
+		flow.PktsToClient++
+		flow.BytesToClient += pktSize
+	}
+
+	if pkt.Layers.Transport != nil && pkt.Layers.Transport.TCPFlags != nil {
+		flags := pkt.Layers.Transport.TCPFlags
+		if flags.SYN {
+			flow.TCPFlags["SYN"] = true
+		}
+		if flags.ACK {
+			flow.TCPFlags["ACK"] = true
+			flow.State = "established"
+		}
+		if flags.FIN {
+			flow.TCPFlags["FIN"] = true
+			flow.State = "closed"
+			c.emitFlowEnd(flow, "fin")
+			delete(c.flows, flowKey)
+		}
+		if flags.RST {
+			flow.TCPFlags["RST"] = true
+			flow.State = "closed"
+			c.emitFlowEnd(flow, "rst")
+			delete(c.flows, flowKey)
+		}
+	}
+}
+
+func (c *IDSCollector) emitFlowEnd(flow *idsFlowState, reason string) {
+	evt := &EVEEvent{
+		Timestamp: time.Now().Format(time.RFC3339Nano), EventType: "flow",
+		SrcIP: flow.SrcIP, DstIP: flow.DstIP, SrcPort: flow.SrcPort, DstPort: flow.DstPort,
+		Proto: flow.Proto, CommunityID: flow.CommunityID, FlowID: flow.FlowID,
+		AppProto: flow.AppProto, Direction: flow.Direction,
+		Process: flow.Process, SrcGeo: flow.SrcGeo, DstGeo: flow.DstGeo,
+		Flow: &EVEFlow{
+			PktsToServer: flow.PktsToServer, PktsToClient: flow.PktsToClient,
+			BytesToServer: flow.BytesToServer, BytesToClient: flow.BytesToClient,
+			Start: flow.FirstSeen.Format(time.RFC3339Nano),
+			End: flow.LastSeen.Format(time.RFC3339Nano),
+			State: flow.State, Reason: reason,
+		},
+	}
+	c.writer.WriteJSON(evt)
+}
+
+func (c *IDSCollector) flowCleanupLoop(ctx context.Context) {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			c.flushAllFlows()
+			return
+		case <-ticker.C:
+			c.cleanupExpiredFlows()
+		}
+	}
+}
+
+func (c *IDSCollector) cleanupExpiredFlows() {
+	now := time.Now()
+	c.flowsMu.Lock()
+	defer c.flowsMu.Unlock()
+	for key, flow := range c.flows {
+		if now.Sub(flow.LastSeen) > c.flowTimeout {
+			c.emitFlowEnd(flow, "timeout")
+			delete(c.flows, key)
+		}
+	}
+}
+
+func (c *IDSCollector) flushAllFlows() {
+	c.flowsMu.Lock()
+	defer c.flowsMu.Unlock()
+	for key, flow := range c.flows {
+		c.emitFlowEnd(flow, "shutdown")
+		delete(c.flows, key)
+	}
+}
+
+func (c *IDSCollector) generateFlowKey(pkt *models.PacketLog) string {
 	srcIP := pkt.Layers.Network.SrcIP
 	dstIP := pkt.Layers.Network.DstIP
 	var srcPort, dstPort uint16
@@ -223,7 +399,6 @@ func (c *IDSCollector) generateFlowID(pkt *models.PacketLog) string {
 		srcPort = pkt.Layers.Transport.SrcPort
 		dstPort = pkt.Layers.Transport.DstPort
 	}
-
 	switch pkt.Layers.Network.Protocol {
 	case 6:
 		proto = "TCP"
@@ -233,133 +408,69 @@ func (c *IDSCollector) generateFlowID(pkt *models.PacketLog) string {
 		proto = "ICMP"
 	}
 
-	// Normalize: smaller IP first for consistent bidirectional matching
-	// This matches FirewallCollector and BiflowCollector normalization
 	if srcIP > dstIP || (srcIP == dstIP && srcPort > dstPort) {
 		srcIP, dstIP = dstIP, srcIP
 		srcPort, dstPort = dstPort, srcPort
 	}
-
 	return fmt.Sprintf("%s:%d-%s:%d/%s", srcIP, srcPort, dstIP, dstPort, proto)
 }
 
-func (c *IDSCollector) openFile() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.file != nil {
-		if c.writer != nil {
-			c.writer.Flush()
-		}
-		c.file.Close()
-	}
-
-	// Note: log directory is created by main.go with absolute path
-
-	file, err := os.OpenFile(c.logPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-
-	c.file = file
-	c.writer = bufio.NewWriter(file)
-	c.logsWritten = 0
-	return nil
-}
-
-func (c *IDSCollector) batchWriter(ctx context.Context) {
-	batch := make([]*IDSLog, 0, c.batchSize)
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			if len(batch) > 0 {
-				c.writeBatch(batch)
-			}
-			c.closeFile()
-			return
-		case log := <-c.batchQueue:
-			batch = append(batch, log)
-			if len(batch) >= c.batchSize {
-				c.writeBatch(batch)
-				batch = make([]*IDSLog, 0, c.batchSize)
-			}
-		case <-ticker.C:
-			if len(batch) > 0 {
-				c.writeBatch(batch)
-				batch = make([]*IDSLog, 0, c.batchSize)
-			}
-		}
-	}
-}
-
-func (c *IDSCollector) writeBatch(batch []*IDSLog) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.writer == nil {
-		return
-	}
-
-	for _, log := range batch {
-		data, err := json.Marshal(log)
-		if err != nil {
-			continue
-		}
-		c.writer.Write(data)
-		c.writer.WriteByte('\n')
-		c.logsWritten++
-	}
-	c.writer.Flush()
-}
-
-func (c *IDSCollector) cycleLoop(ctx context.Context) {
-	ticker := time.NewTicker(c.cycleInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			log.Printf("🔄 IDS log cycled (5-min rotation)")
-			c.openFile()
-		}
-	}
-}
-
-func (c *IDSCollector) closeFile() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.writer != nil {
-		c.writer.Flush()
-		c.writer = nil
-	}
-	if c.file != nil {
-		c.file.Close()
-		c.file = nil
-	}
+func (c *IDSCollector) isDuplicate(pkt *models.PacketLog, dedupKey string) bool {
+	idsLog := &IDSLog{FlowID: c.generateFlowKey(pkt), Protocol: dedupKey}
+	isDup, _ := c.dedupFilter.IsDuplicate(idsLog)
+	return isDup
 }
 
 // GetStats returns collector statistics
 func (c *IDSCollector) GetStats() map[string]interface{} {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	dedupStats := c.dedupFilter.GetStats()
+	c.flowsMu.RLock()
+	activeFlows := len(c.flows)
+	c.flowsMu.RUnlock()
+	writerStats := c.writer.GetStats()
 	return map[string]interface{}{
-		"logs_written":     c.logsWritten,
-		"logs_filtered":    c.logsFiltered,
-		"queue_size":       len(c.batchQueue),
-		"dedup_total":      dedupStats.TotalPackets,
-		"dedup_duplicates": dedupStats.PayloadDuplicates,
-		"dedup_unique":     dedupStats.UniqueLogged,
+		"active_flows":  activeFlows,
+		"lines_written": writerStats["lines_written"],
 	}
 }
 
-// formatTCPFlags formats TCP flags as a string
+func isPrivateIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	privateRanges := []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16"}
+	for _, cidr := range privateRanges {
+		_, network, _ := net.ParseCIDR(cidr)
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// IDSLog kept for DuplicateFilter compatibility
+type IDSLog struct {
+	TimestampIST string           `json:"timestamp_ist,omitempty"`
+	PacketID     string           `json:"packet_id,omitempty"`
+	FlowID       string           `json:"flow_id"`
+	SrcIP        string           `json:"src_ip,omitempty"`
+	DstIP        string           `json:"dst_ip,omitempty"`
+	SrcPort      uint16           `json:"src_port,omitempty"`
+	DstPort      uint16           `json:"dst_port,omitempty"`
+	Protocol     string           `json:"protocol,omitempty"`
+	SrcGeo       *models.GeoInfo  `json:"src_geo,omitempty"`
+	DstGeo       *models.GeoInfo  `json:"dst_geo,omitempty"`
+	HTTP         *models.HTTPData `json:"http,omitempty"`
+	DNS          *models.DNSData  `json:"dns,omitempty"`
+	TLS          *TLSCompact      `json:"tls,omitempty"`
+	TCPFlags     string           `json:"tcp_flags,omitempty"`
+}
+
+type TLSCompact struct {
+	SNI     string `json:"sni,omitempty"`
+	Version string `json:"version,omitempty"`
+}
+
 func formatTCPFlags(f *models.TCPFlags) string {
 	if f == nil {
 		return ""
@@ -384,23 +495,4 @@ func formatTCPFlags(f *models.TCPFlags) string {
 		flags += "U"
 	}
 	return flags
-}
-
-// isPrivateIP checks if IP is private
-func isPrivateIP(ipStr string) bool {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return false
-	}
-	privateRanges := []string{
-		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
-		"127.0.0.0/8", "169.254.0.0/16",
-	}
-	for _, cidr := range privateRanges {
-		_, network, _ := net.ParseCIDR(cidr)
-		if network.Contains(ip) {
-			return true
-		}
-	}
-	return false
 }

@@ -129,33 +129,30 @@ func main() {
 	jsonWriter.Start(ctx)
 	log.Printf("💾 Master log: %s (5-min cycle)", absLogPath)
 
-	// 12. IDS Collector (5-min rotation)
-	idsLogPath := filepath.Join(logDir, "ids.log")
+	// 12. IDS Collector (Suricata EVE JSON, rotating 50MB)
+	idsLogPath := filepath.Join(logDir, "ids_ips.jsonl")
 	idsCollector := collectors.NewIDSCollector(idsLogPath, cfg.GetLogRotationInterval())
 	idsCollector.Start(ctx)
-	log.Printf("🛡️  IDS log: %s (5-min rotation)", idsLogPath)
+	log.Printf("🛡️  IDS/IPS log: %s (EVE JSON, 50MB rotation)", idsLogPath)
 
-	// 13. Firewall Collector (5-min rotation)
-	fwLogPath := filepath.Join(logDir, "firewall.log")
-	fwCollector := collectors.NewFirewallCollector(fwLogPath, cfg.GetLogRotationInterval())
-	fwCollector.Start(ctx)
-	log.Printf("🔥 Firewall log: %s (5-min rotation)", fwLogPath)
-
-	// 14. BiFlow Collector (NetFlow split, 5-min rotation)
+	// 13. BiFlow Collector (NetFlow E-W / N-S, rotating 50MB)
 	netflowDir := filepath.Join(logDir, "netflow")
 	os.MkdirAll(netflowDir, 0755)
-	ewLogPath := filepath.Join(netflowDir, "east_west.log")
-	nsLogPath := filepath.Join(netflowDir, "north_south.log")
-	unknownLogPath := filepath.Join(netflowDir, "unknown.log")
-	biflowCollector := collectors.NewBiflowCollector(ewLogPath, nsLogPath, unknownLogPath, cfg.GetLogRotationInterval())
-	biflowCollector.Start(ctx)
-	log.Printf("🌐 NetFlow: %s, %s (5-min rotation)", ewLogPath, nsLogPath)
+	ewLogPath := filepath.Join(netflowDir, "east_west.jsonl")
+	nsLogPath := filepath.Join(netflowDir, "north_south.jsonl")
+	biflowCollector := collectors.NewBiflowCollector(ewLogPath, nsLogPath, 50*1024*1024, 3)
+	if err := biflowCollector.Start(ctx); err != nil {
+		log.Fatalf("Failed to start NetFlow collector: %v", err)
+	}
+	log.Printf("🌐 NetFlow: %s, %s (IPFIX, 50MB rotation)", ewLogPath, nsLogPath)
 
-	// 15. Device Stats Collector (analyzes master log, outputs JSONL)
-	deviceLogPath := filepath.Join(logDir, "devices.jsonl")
-	deviceCollector := collectors.NewDeviceCollector(absLogPath, deviceLogPath, 30*time.Second) // Analyze every 30s
-	deviceCollector.Start(ctx)
-	log.Printf("📱 Device Inventory: %s", deviceLogPath)
+	// 14. IP Summary Collector (5-min per-IP aggregation, rotating 50MB)
+	ipSummaryPath := filepath.Join(logDir, "ip_summary.jsonl")
+	ipSummaryCollector := collectors.NewIPSummaryCollector(ipSummaryPath, 5, 50*1024*1024, 3)
+	if err := ipSummaryCollector.Start(ctx); err != nil {
+		log.Fatalf("Failed to start IP Summary collector: %v", err)
+	}
+	log.Printf("📊 IP Summary: %s (5-min aggregation, 50MB rotation)", ipSummaryPath)
 
 	// 11. Capture engine
 	captureConfig := capture.CaptureConfig{
@@ -207,8 +204,8 @@ func main() {
 
 				// Route to collectors
 				idsCollector.Process(pktLog)
-				fwCollector.Process(pktLog)
 				biflowCollector.Process(pktLog)
+				ipSummaryCollector.Process(pktLog)
 			}
 		}
 	}()

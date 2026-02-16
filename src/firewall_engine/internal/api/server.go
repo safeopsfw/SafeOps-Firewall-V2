@@ -148,7 +148,7 @@ func NewServer(addr string, deps Dependencies) (*Server, error) {
 	s := &Server{
 		addr:    addr,
 		deps:    deps,
-		hub:     NewEventHub(deps.Logger),
+		hub:     NewEventHub(),
 		tickets: NewTicketStore(),
 		triage:  NewTriageStore(),
 		logger:  deps.Logger,
@@ -298,9 +298,6 @@ func (s *Server) Start() error {
 
 	s.running.Store(true)
 
-	// Start hub for WebSocket broadcasts
-	s.hub.Start()
-
 	s.logger.Info().
 		Str("address", ln.Addr().String()).
 		Bool("auth_enabled", s.deps.APIKey != "").
@@ -332,9 +329,6 @@ func (s *Server) Stop() error {
 
 	s.running.Store(false)
 	s.logger.Info().Msg("Web UI API server shutting down")
-
-	// Stop WebSocket hub
-	s.hub.Stop()
 
 	// Graceful shutdown with timeout
 	if err := s.app.ShutdownWithTimeout(10 * time.Second); err != nil {

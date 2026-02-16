@@ -225,6 +225,18 @@ func ParsePacketLayers(data []byte) (*PacketLayers, error) {
 		pl.DNS = dns
 	}
 
+	// Extract ICMPv4 layer
+	if icmpLayer := packet.Layer(layers.LayerTypeICMPv4); icmpLayer != nil {
+		icmp, _ := icmpLayer.(*layers.ICMPv4)
+		pl.ICMPv4 = icmp
+	}
+
+	// Extract ARP layer
+	if arpLayer := packet.Layer(layers.LayerTypeARP); arpLayer != nil {
+		arp, _ := arpLayer.(*layers.ARP)
+		pl.ARP = arp
+	}
+
 	// Extract application layer
 	if appLayer := packet.ApplicationLayer(); appLayer != nil {
 		pl.Payload = appLayer.Payload()
@@ -241,5 +253,7 @@ type PacketLayers struct {
 	TCP      *layers.TCP
 	UDP      *layers.UDP
 	DNS      *layers.DNS
+	ICMPv4   *layers.ICMPv4
+	ARP      *layers.ARP
 	Payload  []byte
 }
