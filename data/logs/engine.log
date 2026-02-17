@@ -1,12 +1,2 @@
-{"timestamp":"2026-02-16T10:14:34.3509503Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
-{"timestamp":"2026-02-16T10:18:36.78055Z","level":"INFO","message":"Shutting down SafeOps Engine"}
-{"timestamp":"2026-02-16T10:18:36.7843486Z","level":"INFO","message":"Block page servers stopped"}
-{"timestamp":"2026-02-16T10:18:36.7854908Z","level":"INFO","message":"Control API server stopped"}
-{"timestamp":"2026-02-16T10:18:36.7869351Z","level":"INFO","message":"Stopping gRPC server"}
-{"timestamp":"2026-02-16T10:18:36.7879898Z","level":"INFO","message":"gRPC server stopped"}
-{"timestamp":"2026-02-16T10:18:36.7891363Z","level":"INFO","message":"Closing WinpkFilter driver"}
-{"timestamp":"2026-02-16T10:18:36.7902546Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Wi-Fi"}}
-{"timestamp":"2026-02-16T10:18:36.7913511Z","level":"INFO","message":"Adapter mode reset (tunnel disabled)","data":{"adapter":"Ethernet"}}
-{"timestamp":"2026-02-16T10:18:36.7924433Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Wi-Fi"}}
-{"timestamp":"2026-02-16T10:18:36.7935573Z","level":"INFO","message":"Adapter packet queue flushed","data":{"adapter":"Ethernet"}}
-{"timestamp":"2026-02-16T10:18:36.7965689Z","level":"INFO","message":"Driver stats","data":{"packets_dropped":8,"packets_read":172989,"packets_written":171779}}
+{"timestamp":"2026-02-17T06:31:19.838913Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
+{"timestamp":"2026-02-17T06:32:54.2305804Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}

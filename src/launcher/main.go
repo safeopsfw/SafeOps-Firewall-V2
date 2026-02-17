@@ -108,8 +108,8 @@ func main() {
 		},
 		{
 			Name:    "Network Logger",
-			ExePath: filepath.Join(binDir, "network_logger", "network_logger.exe"),
-			WorkDir: filepath.Join(binDir, "network_logger"),
+			ExePath: filepath.Join(binDir, "network-logger", "network-logger.exe"),
+			WorkDir: filepath.Join(binDir, "network-logger"),
 			Delay:   1 * time.Second,
 		},
 		{
@@ -150,7 +150,7 @@ func main() {
 	fmt.Println("║  Captive Portal       │ :8445 (HTTPS) / :8090 (HTTP)          ║")
 	fmt.Println("║  SafeOps Engine       │ Admin Mode (Packet Capture)           ║")
 	fmt.Println("║  Firewall Engine V5   │ Dual-Engine (SafeOps + WFP)           ║")
-	fmt.Println("║  Network Logger       │ Packet Logging                        ║")
+	fmt.Println("║  Network Logger       │ Packet Logging (5 JSONL outputs)      ║")
 	fmt.Println("║  SIEM Forwarder       │ Log Shipping → Elasticsearch          ║")
 	fmt.Println("║  Threat Intel         │ Threat Feed Pipeline (-scheduler)     ║")
 	fmt.Println("║  UI Frontend          │ :3001 (Vite)                          ║")
@@ -374,7 +374,7 @@ func cleanup() {
 		"captive_portal.exe",
 		"safeops-engine.exe",
 		"firewall-engine.exe",
-		"network_logger.exe",
+		"network-logger.exe",
 		"siem-forwarder.exe",
 	}
 
