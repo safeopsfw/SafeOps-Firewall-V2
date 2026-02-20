@@ -268,6 +268,12 @@ func (s *Server) createApp() *fiber.App {
 	api.Get("/health", s.handleHealth)
 	api.Get("/status", s.handleStatus)
 
+	// Logs — Verdict viewer (Phase 11)
+	api.Get("/logs/verdicts", s.handleGetVerdictLogs)
+
+	// Real-time stats (Phase 11)
+	api.Get("/stats/realtime", s.handleRealtimeStats)
+
 	// WebSocket routes
 	api.Get("/ws/events", s.handleWSEvents)
 	api.Get("/ws/stats", s.handleWSStats)
@@ -351,6 +357,12 @@ func (s *Server) Addr() string {
 // Hub returns the event hub for broadcasting events from other components.
 func (s *Server) Hub() *EventHub {
 	return s.hub
+}
+
+// SetReloader wires the hot-reload component into the server after startup.
+// Called from main.go once the reloader is initialized (after the API server starts).
+func (s *Server) SetReloader(r *hotreload.Reloader) {
+	s.deps.Reloader = r
 }
 
 // ============================================================================

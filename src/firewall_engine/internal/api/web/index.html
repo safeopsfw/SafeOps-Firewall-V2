@@ -105,6 +105,14 @@
                 </div>
 
                 <div class="nav-section">
+                    <div class="nav-section-label">Logging</div>
+                    <a href="#/logs/verdicts" class="nav-item" data-page="logs-verdicts">
+                        <span class="nav-icon">📋</span>
+                        Verdict Logs
+                    </a>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-label">System</div>
                     <a href="#/system" class="nav-item" data-page="system">
                         <span class="nav-icon">⚙️</span>
@@ -166,6 +174,16 @@
                             <div class="stat-icon green">🔄</div>
                             <div class="stat-value" id="stat-hot-reloads">—</div>
                             <div class="stat-label">Hot Reloads</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon cyan">📦</div>
+                            <div class="stat-value" id="stat-packets-processed">—</div>
+                            <div class="stat-label">Packets Processed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">🛑</div>
+                            <div class="stat-value" id="stat-packets-blocked">—</div>
+                            <div class="stat-label">Packets Blocked</div>
                         </div>
                     </div>
 
@@ -513,6 +531,48 @@
                             <p>Create a ticket to track security incidents</p>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ============ VERDICT LOGS PAGE ============ -->
+            <div id="page-logs-verdicts" class="page hidden">
+                <div class="page-header">
+                    <h1>Verdict Logs</h1>
+                    <p>Packet-level DROP/BLOCK/REDIRECT verdicts from the engine</p>
+                    <div class="page-header-actions">
+                        <select class="filter-select" id="verdict-action-filter">
+                            <option value="">All Actions</option>
+                            <option value="DROP">DROP</option>
+                            <option value="BLOCK">BLOCK</option>
+                            <option value="REDIRECT">REDIRECT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="page-body">
+                    <div class="table-container" id="verdicts-tbody-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Source</th>
+                                    <th>Destination</th>
+                                    <th>Proto</th>
+                                    <th>Action</th>
+                                    <th>Detector</th>
+                                    <th>Domain</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="verdicts-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="verdicts-empty" class="empty-state hidden">
+                        <div class="empty-icon">📋</div>
+                        <h3>No Verdict Logs</h3>
+                        <p>No DROP/BLOCK/REDIRECT verdicts recorded yet</p>
+                    </div>
+                    <div id="verdict-pagination" style="margin-top:1rem"></div>
                 </div>
             </div>
 

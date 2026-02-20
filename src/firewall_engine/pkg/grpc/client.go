@@ -27,6 +27,10 @@ type Client struct {
 	connected    atomic.Bool
 	stopping     atomic.Bool // set true during graceful shutdown to suppress reconnect
 
+	// Reconnect configuration
+	maxRetries    int           // 0 = unlimited
+	baseBackoff   time.Duration // initial backoff (doubles each retry)
+
 	// Async packet processing
 	packetChan chan *pb.PacketMetadata // Buffered channel for async processing
 	workerWg   sync.WaitGroup
@@ -35,6 +39,7 @@ type Client struct {
 	packetsReceived uint64
 	packetsDropped  uint64
 	verdictsApplied uint64
+	reconnects      uint64
 }
 
 // PacketHandler is called for each packet received from the stream
@@ -46,7 +51,22 @@ func NewClient(subscriberID, serverAddr string) *Client {
 		subscriberID: subscriberID,
 		serverAddr:   serverAddr,
 		packetChan:   make(chan *pb.PacketMetadata, 100000), // 100K buffer
+		maxRetries:   5,
+		baseBackoff:  2 * time.Second,
 	}
+}
+
+// WithReconnectConfig sets the max retry count and base backoff for reconnects.
+// maxRetries=0 means unlimited retries. baseBackoff doubles each attempt.
+func (c *Client) WithReconnectConfig(maxRetries int, baseBackoff time.Duration) *Client {
+	c.maxRetries = maxRetries
+	c.baseBackoff = baseBackoff
+	return c
+}
+
+// GetReconnectCount returns the total number of successful reconnects.
+func (c *Client) GetReconnectCount() uint64 {
+	return atomic.LoadUint64(&c.reconnects)
 }
 
 // Connect establishes connection to SafeOps Engine gRPC server
@@ -274,7 +294,8 @@ func (c *Client) Disconnect() error {
 	return nil
 }
 
-// handleReconnect attempts to reconnect to the gRPC server
+// handleReconnect attempts to reconnect to the gRPC server with exponential backoff.
+// When maxRetries is 0 it retries indefinitely until ctx is cancelled.
 func (c *Client) handleReconnect(ctx context.Context, handler PacketHandler, numWorkers int) {
 	fmt.Println("[gRPC Client] Attempting to reconnect...")
 
@@ -283,35 +304,57 @@ func (c *Client) handleReconnect(ctx context.Context, handler PacketHandler, num
 		c.conn.Close()
 	}
 
-	// Exponential backoff: 2s, 4s, 8s, 16s, 32s
-	for attempt := 0; attempt < 5; attempt++ {
-		backoff := time.Duration(2<<uint(attempt)) * time.Second
+	maxAttempts := c.maxRetries
+	if maxAttempts <= 0 {
+		maxAttempts = 1<<31 - 1 // unlimited
+	}
+	baseBackoff := c.baseBackoff
+	if baseBackoff <= 0 {
+		baseBackoff = 2 * time.Second
+	}
+	// Cap backoff at 60 seconds
+	const maxBackoff = 60 * time.Second
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		backoff := baseBackoff * time.Duration(1<<uint(attempt))
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+
+		fmt.Printf("[gRPC Client] Reconnection attempt %d — waiting %s...\n", attempt+1, backoff)
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(backoff):
 		}
 
+		if c.stopping.Load() {
+			return
+		}
+
 		if err := c.Connect(ctx); err != nil {
-			fmt.Printf("[gRPC Client] Reconnection attempt %d failed: %v\n", attempt+1, err)
+			fmt.Printf("[gRPC Client] Connect attempt %d failed: %v\n", attempt+1, err)
 			continue
 		}
 
 		if err := c.Subscribe(ctx, []string{"tcp", "udp"}); err != nil {
-			fmt.Printf("[gRPC Client] Re-subscription attempt %d failed: %v\n", attempt+1, err)
+			fmt.Printf("[gRPC Client] Subscribe attempt %d failed: %v\n", attempt+1, err)
+			c.conn.Close()
+			c.connected.Store(false)
 			continue
 		}
 
 		// Create new packet channel for reconnected stream
 		c.packetChan = make(chan *pb.PacketMetadata, 100000)
 		if err := c.StartReceiving(ctx, handler, numWorkers); err != nil {
-			fmt.Printf("[gRPC Client] Failed to restart receiving: %v\n", err)
+			fmt.Printf("[gRPC Client] StartReceiving attempt %d failed: %v\n", attempt+1, err)
 			continue
 		}
 
-		fmt.Println("[gRPC Client] Reconnected successfully")
+		atomic.AddUint64(&c.reconnects, 1)
+		fmt.Printf("[gRPC Client] Reconnected successfully (attempt %d)\n", attempt+1)
 		return
 	}
 
-	fmt.Println("[gRPC Client] All reconnection attempts failed")
+	fmt.Println("[gRPC Client] All reconnection attempts exhausted")
 }

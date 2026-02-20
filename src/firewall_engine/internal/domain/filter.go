@@ -556,6 +556,20 @@ func (f *Filter) LastReload() time.Time {
 	return time.Time{}
 }
 
+// GetAllBlockedDomains returns all domains from the config blocklist.
+// This is used by BlocklistSync to push domains to SafeOps Engine.
+// Note: threat intel domains are ALERT ONLY and not included here.
+func (f *Filter) GetAllBlockedDomains() []string {
+	f.configMu.RLock()
+	defer f.configMu.RUnlock()
+
+	if f.configMatcher == nil {
+		return nil
+	}
+
+	return f.configMatcher.GetExactDomains()
+}
+
 // ============================================================================
 // Internal helpers
 // ============================================================================

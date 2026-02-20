@@ -70,6 +70,13 @@ type Engine struct {
 	// MAC address cache for RST/injection (IP string -> [6]byte)
 	macCache sync.Map
 
+	// Flow cache: tracks inspected TCP connections on ports 80/443.
+	// After initial domain extraction (SNI/Host), subsequent data packets
+	// on the same flow skip slow-path. Key: "srcIP:srcPort-dstIP:dstPort"
+	// Value: true (inspected). Pruned periodically.
+	inspectedFlows sync.Map
+	flowCount      uint64 // approximate count for periodic pruning
+
 	// Stats
 	fastPathPackets uint64
 	slowPathPackets uint64
@@ -145,7 +152,7 @@ func Initialize() (*Engine, error) {
 			grpcServer:  grpcSrv,
 			ctx:         ctx,
 			cancel:      cancel,
-			sampleRate:  1, // Send every fast-path packet to Firewall Engine for security checks
+			sampleRate:  100, // Send 1-in-100 fast-path packets for security checks (DDoS, GeoIP, etc.)
 			dnsParser:   parser.NewDNSParser(),
 			tlsParser:   parser.NewTLSParser(),
 			httpParser:  parser.NewHTTPParser(),
@@ -155,26 +162,11 @@ func Initialize() (*Engine, error) {
 		// When engine restarts, stale DNS cache entries let browsers reach blocked sites.
 		flushDNSCache(log)
 
-		// Load domain blocklist from file (if found)
-		domainsPath := resolveDomainsFile()
-		if domainsPath != "" {
-			domainCount, loadErr := eng.LoadDomainsFromFile(domainsPath)
-			if loadErr != nil {
-				log.Warn("Failed to load domains file", map[string]interface{}{
-					"path":  domainsPath,
-					"error": loadErr.Error(),
-				})
-			} else {
-				log.Info("Domain blocklist loaded", map[string]interface{}{
-					"path":  domainsPath,
-					"count": domainCount,
-				})
-				fmt.Printf("  Domain blocklist: %d domains from %s\n", domainCount, domainsPath)
-			}
-		} else {
-			log.Info("No domains.txt found — domain blocking via file disabled", nil)
-			fmt.Println("  Domain blocklist: no domains.txt found (use control API to add domains)")
-		}
+		// Domain blocklist is populated by the Firewall Engine via BlockDomain().
+		// The Firewall Engine loads domains.txt + threat intel + categories and
+		// pushes them here via in-process BlocklistSync. No file loading here.
+		log.Info("Domain blocklist: waiting for Firewall Engine sync", nil)
+		fmt.Println("  Domain blocklist: managed by Firewall Engine (in-process sync)")
 
 		// Load DoH server blocklist — blocks DNS-over-HTTPS to force system DNS
 		dohPath := resolveConfigFile("doh_servers.txt")
@@ -341,6 +333,19 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 	// ============ SLOW PATH: Web traffic (DNS/HTTP/HTTPS) ============
 	atomic.AddUint64(&e.slowPathPackets, 1)
 
+	// Step 0: Flow cache — if this TCP flow on port 80/443 has already been
+	// inspected (domain extracted, verdict applied), skip expensive processing.
+	// DNS (port 53) is always inspected since each query is a new domain lookup.
+	if pkt.Protocol == driver.ProtoTCP && (dstPort == 80 || dstPort == 443) {
+		if _, inspected := e.inspectedFlows.Load(flowKey(pkt)); inspected {
+			// Already inspected this flow — fast-pass through.
+			// Still check gRPC verdict cache for external engine verdicts.
+			atomic.AddUint64(&e.fastPathPackets, 1)
+			shouldAllow := e.grpcServer.CheckVerdictCache(pkt)
+			return shouldAllow
+		}
+	}
+
 	// Step 1: Check IP blocklist
 	if v := e.verdict.CheckIP(pkt.DstIP); v != verdict.VerdictAllow {
 		e.handleVerdictAction(pkt, v)
@@ -404,6 +409,11 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 				}
 			}
 		}
+
+		// Mark this TCP flow as inspected — subsequent data packets skip slow-path.
+		// Done after SNI extraction attempt (even if no SNI found, the ClientHello
+		// was the first packet; data packets won't have SNI anyway).
+		e.markFlowInspected(pkt)
 	}
 
 	// Step 5b: Extract domain from QUIC Initial packet (UDP 443)
@@ -440,6 +450,9 @@ func (e *Engine) handlePacket(pkt *driver.ParsedPacket) bool {
 				return false
 			}
 		}
+
+		// Mark this TCP flow as inspected.
+		e.markFlowInspected(pkt)
 	}
 
 	// Step 7: Check gRPC verdict cache (for external service verdicts)
@@ -512,6 +525,31 @@ func isLocalIP(ip net.IP) bool {
 		}
 	}
 	return false
+}
+
+// flowKey builds a string key for tracking inspected TCP flows.
+func flowKey(pkt *driver.ParsedPacket) string {
+	return fmt.Sprintf("%s:%d-%s:%d", pkt.SrcIP, pkt.SrcPort, pkt.DstIP, pkt.DstPort)
+}
+
+// markFlowInspected records that a TCP flow has been through domain extraction.
+func (e *Engine) markFlowInspected(pkt *driver.ParsedPacket) {
+	e.inspectedFlows.Store(flowKey(pkt), true)
+	count := atomic.AddUint64(&e.flowCount, 1)
+	// Prune old flows every 50k entries to prevent memory leak
+	if count > 50000 && count%10000 == 0 {
+		go e.pruneFlows()
+	}
+}
+
+// pruneFlows clears the inspected flows cache.
+// Called periodically when flow count gets high.
+func (e *Engine) pruneFlows() {
+	e.inspectedFlows.Range(func(key, _ interface{}) bool {
+		e.inspectedFlows.Delete(key)
+		return true
+	})
+	atomic.StoreUint64(&e.flowCount, 0)
 }
 
 // handleVerdictAction executes the appropriate action for a verdict

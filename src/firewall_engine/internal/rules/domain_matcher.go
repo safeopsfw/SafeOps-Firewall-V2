@@ -272,3 +272,13 @@ func (dm *DomainMatcher) AddPattern(pattern string) {
 func (dm *DomainMatcher) Count() int {
 	return len(dm.patterns)
 }
+
+// GetExactDomains returns all exact domain entries (no wildcards).
+// Used by BlocklistSync to push domains to SafeOps Engine.
+func (dm *DomainMatcher) GetExactDomains() []string {
+	domains := make([]string, 0, len(dm.exactDomains))
+	for d := range dm.exactDomains {
+		domains = append(domains, d)
+	}
+	return domains
+}

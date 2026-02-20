@@ -12,6 +12,10 @@ let WS_EVENTS = null;
 let WS_STATS = null;
 let REFRESH_TIMER = null;
 
+// ---- Live packet counters (updated via WebSocket) ----
+let livePacketsProcessed = 0;
+let livePacketsBlocked = 0;
+
 // ============================================================================
 // API Client
 // ============================================================================
@@ -49,6 +53,40 @@ const GET    = (path) => api('GET', path);
 const POST   = (path, body) => api('POST', path, body);
 const PUT    = (path, body) => api('PUT', path, body);
 const DELETE = (path) => api('DELETE', path);
+
+// ============================================================================
+// UI Helpers — Error / Empty / Loading States
+// ============================================================================
+
+function renderErrorState(el, msg) {
+    if (typeof el === 'string') el = document.getElementById(el);
+    if (!el) return;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x26A0;&#xFE0F;</div><h3>Connection Error</h3><p>${esc(msg || 'Could not reach the engine API')}</p></div>`;
+}
+
+function renderEmptyState(el, icon, title, subtitle) {
+    if (typeof el === 'string') el = document.getElementById(el);
+    if (!el) return;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon}</div><h3>${esc(title)}</h3><p>${esc(subtitle)}</p></div>`;
+}
+
+function renderLoadingState(el) {
+    if (typeof el === 'string') el = document.getElementById(el);
+    if (!el) return;
+    el.innerHTML = `<div class="empty-state"><p style="color:var(--text-muted)">Loading...</p></div>`;
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + (type || 'info');
+    toast.textContent = message;
+    toast.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;padding:0.75rem 1.25rem;border-radius:0.5rem;z-index:10000;font-size:0.85rem;animation:fadeIn 0.3s ease;' +
+        (type === 'success' ? 'background:rgba(34,197,94,0.15);color:var(--accent-green);border:1px solid var(--accent-green)' :
+         type === 'error' ? 'background:rgba(239,68,68,0.15);color:var(--accent-red);border:1px solid var(--accent-red)' :
+         'background:rgba(96,165,250,0.15);color:var(--accent-cyan);border:1px solid var(--accent-cyan)');
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
 
 // ============================================================================
 // Auth
@@ -130,6 +168,7 @@ const ROUTES = {
     '/rules/detection':  'page-rules-detection',
     '/bans':             'page-bans',
     '/tickets':          'page-tickets',
+    '/logs/verdicts':    'page-logs-verdicts',
     '/system':           'page-system',
 };
 
@@ -170,15 +209,16 @@ window.addEventListener('hashchange', () => {
 async function loadPageData(route) {
     try {
         switch (route) {
-            case '/dashboard':     await loadDashboard(); break;
-            case '/alerts':        await loadAlerts(); break;
-            case '/rules/domains': await loadDomainRules(); break;
-            case '/rules/ips':     await loadIPRules(); break;
-            case '/rules/geoip':   await loadGeoIP(); break;
+            case '/dashboard':       await loadDashboard(); break;
+            case '/alerts':          await loadAlerts(); break;
+            case '/rules/domains':   await loadDomainRules(); break;
+            case '/rules/ips':       await loadIPRules(); break;
+            case '/rules/geoip':     await loadGeoIP(); break;
             case '/rules/detection': await loadDetection(); break;
-            case '/bans':          await loadBans(); break;
-            case '/tickets':       await loadTickets(); break;
-            case '/system':        await loadSystem(); break;
+            case '/bans':            await loadBans(); break;
+            case '/tickets':         await loadTickets(); break;
+            case '/logs/verdicts':   await loadVerdictLogs(); break;
+            case '/system':          await loadSystem(); break;
         }
     } catch (err) {
         console.error('Failed to load page data:', err);
@@ -193,19 +233,18 @@ async function loadDashboard() {
     try {
         const stats = await GET('/dashboard/stats');
         if (stats.alerts) {
-            setText('stat-total-alerts', fmt(stats.alerts.total_alerts));
+            setText('stat-total-alerts', fmt(stats.alerts.total));
         }
         if (stats.security) {
             setText('stat-active-bans', fmt(stats.security.active_bans));
             setText('stat-rate-limited', fmt(stats.security.rate_limited));
             setText('sec-ddos', fmt(stats.security.ddos_detected));
-            setText('sec-brute', fmt(stats.security.brute_force));
-            setText('sec-portscan', fmt(stats.security.port_scans));
-            setText('sec-anomaly', fmt(stats.security.anomalies));
-            setText('sec-baseline', fmt(stats.security.baseline_devs));
+            setText('sec-brute', fmt(stats.security.brute_force_detected));
+            setText('sec-portscan', fmt(stats.security.port_scans_detected));
+            setText('sec-baseline', fmt(stats.security.baseline_deviations));
         }
         if (stats.domains) {
-            setText('stat-domains-blocked', fmt(stats.domains.config_domains));
+            setText('stat-domains-blocked', fmt(stats.domains.blocked_domains));
         }
         if (stats.geoip) {
             setText('stat-geo-checks', fmt(stats.geoip.total_checks));
@@ -214,26 +253,22 @@ async function loadDashboard() {
             setText('stat-hot-reloads', fmt(stats.reloader.successes));
         }
     } catch (e) {
-        // API might not be available yet — populate with mock data
-        setText('stat-total-alerts', '14');
-        setText('stat-active-bans', '3');
-        setText('stat-rate-limited', '247');
-        setText('stat-domains-blocked', '12');
-        setText('stat-geo-checks', '1,893');
-        setText('stat-hot-reloads', '6');
-        setText('sec-ddos', '0');
-        setText('sec-brute', '0');
-        setText('sec-portscan', '1');
-        setText('sec-anomaly', '7');
-        setText('sec-baseline', '2');
+        // Show dashes — API not reachable
+        ['stat-total-alerts', 'stat-active-bans', 'stat-rate-limited',
+         'stat-domains-blocked', 'stat-geo-checks', 'stat-hot-reloads',
+         'sec-ddos', 'sec-brute', 'sec-portscan', 'sec-baseline'].forEach(id => setText(id, '\u2014'));
     }
+
+    // Live packet counters
+    setText('stat-packets-processed', fmt(livePacketsProcessed));
+    setText('stat-packets-blocked', fmt(livePacketsBlocked));
 
     // Load threat feed
     try {
         const threats = await GET('/dashboard/threats');
         renderThreatFeed(threats);
     } catch (e) {
-        renderMockThreatFeed();
+        renderEmptyState('threat-feed', '\uD83D\uDEE1\uFE0F', 'No Data', 'Threat feed unavailable \u2014 engine API not connected');
     }
 }
 
@@ -243,12 +278,12 @@ function renderThreatFeed(data) {
         ...(data.recent_alerts || []).map(a => ({
             icon: severityIcon(a.severity),
             bg: severityBg(a.severity),
-            title: a.type + (a.src_ip ? ' — ' + a.src_ip : '') + (a.domain ? ' — ' + a.domain : ''),
+            title: a.type + (a.source_ip ? ' \u2014 ' + a.source_ip : '') + (a.domain ? ' \u2014 ' + a.domain : ''),
             detail: a.details || '',
             time: timeAgo(a.timestamp),
         })),
         ...(data.active_bans || []).map(b => ({
-            icon: '🚫',
+            icon: '\uD83D\uDEAB',
             bg: 'rgba(248,113,113,0.12)',
             title: 'Ban: ' + b.ip,
             detail: b.reason,
@@ -257,7 +292,7 @@ function renderThreatFeed(data) {
     ];
 
     if (items.length === 0) {
-        el.innerHTML = `<div class="empty-state"><div class="empty-icon">🛡️</div><h3>All Clear</h3><p>No recent threats detected</p></div>`;
+        el.innerHTML = `<div class="empty-state"><div class="empty-icon">\uD83D\uDEE1\uFE0F</div><h3>All Clear</h3><p>No recent threats detected</p></div>`;
         return;
     }
 
@@ -267,27 +302,6 @@ function renderThreatFeed(data) {
             <div class="threat-body">
                 <h4>${esc(i.title)}</h4>
                 <p>${esc(i.detail).substring(0, 120)}</p>
-            </div>
-            <div class="threat-time">${i.time}</div>
-        </div>
-    `).join('');
-}
-
-function renderMockThreatFeed() {
-    const el = document.getElementById('threat-feed');
-    const mockItems = [
-        { icon: '🔴', bg: 'rgba(248,113,113,0.12)', title: 'PROTOCOL_VIOLATION — 160.79.104.10', detail: 'SYN+FIN flags set — likely OS fingerprinting', time: '4m ago' },
-        { icon: '🟡', bg: 'rgba(251,191,36,0.12)', title: 'PORT_SCAN — 192.168.1.5', detail: 'Port scan: 100 unique ports in 10s', time: '12m ago' },
-        { icon: '🔴', bg: 'rgba(248,113,113,0.12)', title: 'PROTOCOL_VIOLATION — 20.42.65.91', detail: 'SYN+FIN flags set simultaneously', time: '18m ago' },
-        { icon: '🟡', bg: 'rgba(251,191,36,0.12)', title: 'DOMAIN_BLOCK — www.googleadservices.com', detail: 'Threat intel domain detected (confidence=50%)', time: '2d ago' },
-        { icon: '🚫', bg: 'rgba(248,113,113,0.12)', title: 'Ban: 192.168.1.5', detail: 'Port scan detected (random)', time: '12m ago' },
-    ];
-    el.innerHTML = mockItems.map(i => `
-        <div class="threat-entry">
-            <div class="threat-icon" style="background:${i.bg}">${i.icon}</div>
-            <div class="threat-body">
-                <h4>${i.title}</h4>
-                <p>${i.detail}</p>
             </div>
             <div class="threat-time">${i.time}</div>
         </div>
@@ -305,19 +319,7 @@ async function loadAlerts() {
         const data = await GET('/alerts');
         alertsData = data.alerts || [];
     } catch (e) {
-        // Mock data from actual log file
-        alertsData = [
-            { id: '63822382', timestamp: '2026-02-11T10:35:30Z', type: 'PROTOCOL_VIOLATION', severity: 'HIGH', src_ip: '160.79.104.10', details: 'SYN+FIN flags set simultaneously — likely OS fingerprinting or evasion', action_taken: 'DROPPED', metadata: { anomaly_type: 'SYN_FIN' } },
-            { id: 'd5ef1b54', timestamp: '2026-02-11T10:35:30Z', type: 'PROTOCOL_VIOLATION', severity: 'HIGH', src_ip: '160.79.104.10', details: 'Xmas scan detected — FIN+PSH+URG flags set', action_taken: 'DROPPED', count: 2, metadata: { anomaly_type: 'XMAS_SCAN' } },
-            { id: '77729297', timestamp: '2026-02-11T10:38:32Z', type: 'PROTOCOL_VIOLATION', severity: 'HIGH', src_ip: '20.42.65.91', details: 'SYN+FIN flags set simultaneously — likely OS fingerprinting', action_taken: 'DROPPED', metadata: {} },
-            { id: '7d499d3c', timestamp: '2026-02-11T10:39:02Z', type: 'PROTOCOL_VIOLATION', severity: 'HIGH', src_ip: '216.239.38.223', details: 'SYN+FIN flags set simultaneously', action_taken: 'DROPPED', metadata: {} },
-            { id: 'ae54ed50', timestamp: '2026-02-11T10:39:07Z', type: 'PROTOCOL_VIOLATION', severity: 'HIGH', src_ip: '142.250.182.49', details: 'SYN+FIN flags set simultaneously', action_taken: 'DROPPED', metadata: {} },
-            { id: '5ae25481', timestamp: '2026-02-11T10:39:17Z', type: 'PROTOCOL_VIOLATION', severity: 'HIGH', src_ip: '160.79.104.10', details: 'Xmas scan detected — FIN+PSH+URG flags set', action_taken: 'DROPPED', metadata: {} },
-            { id: '795aef32', timestamp: '2026-02-11T10:39:34Z', type: 'PROTOCOL_VIOLATION', severity: 'HIGH', src_ip: '139.5.243.18', details: 'SYN+FIN flags set simultaneously', action_taken: 'DROPPED', metadata: {} },
-            { id: 'f0831882', timestamp: '2026-02-11T10:41:44Z', type: 'PORT_SCAN', severity: 'MEDIUM', src_ip: '192.168.1.5', details: 'Port scan detected (random): 100 unique ports in 10s (threshold: 100)', action_taken: 'BANNED', metadata: { scan_type: 'random' } },
-            { id: '6b182f48', timestamp: '2026-02-09T15:57:20Z', type: 'DOMAIN_BLOCK', severity: 'MEDIUM', src_ip: '', domain: 'www.googleadservices.com', details: 'Threat intel domain detected (confidence=50%) — NOT auto-blocked', action_taken: 'LOGGED', metadata: {} },
-            { id: 'f12470aa', timestamp: '2026-02-09T15:58:26Z', type: 'DOMAIN_BLOCK', severity: 'MEDIUM', src_ip: '', domain: 'beacons.gcp.gvt2.com', details: 'Threat intel alert (NOT blocked, CDN: Google CDN)', action_taken: 'LOGGED', count: 8, metadata: { cdn_provider: 'Google CDN', is_cdn: 'true' } },
-        ];
+        alertsData = [];
     }
     renderAlerts();
 }
@@ -351,7 +353,7 @@ function renderAlerts() {
             <td><span class="mono" style="font-size:0.78rem; color:var(--text-muted)">${formatTime(a.timestamp)}</span></td>
             <td><span class="badge badge-${a.severity.toLowerCase()}">${a.severity}</span></td>
             <td><span class="tag">${a.type}</span></td>
-            <td><span class="mono" style="color:var(--accent-cyan)">${esc(a.src_ip || a.domain || '—')}</span></td>
+            <td><span class="mono" style="color:var(--accent-cyan)">${esc(a.src_ip || a.domain || '\u2014')}</span></td>
             <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-secondary); font-size:0.85rem">${esc(a.details || '')}</td>
             <td><span class="badge badge-${actionColor(a.action_taken)}">${a.action_taken}</span></td>
             <td><span class="badge badge-info">${(a.triage_status || 'new')}</span></td>
@@ -371,7 +373,7 @@ function showAlertDetail(id) {
         <div class="mb-2">
             <span class="badge badge-${a.severity.toLowerCase()}" style="font-size:0.8rem">${a.severity}</span>
             <span class="tag" style="margin-left:0.5rem">${a.type}</span>
-            ${a.count > 1 ? `<span class="tag" style="margin-left:0.5rem">×${a.count} occurrences</span>` : ''}
+            ${a.count > 1 ? `<span class="tag" style="margin-left:0.5rem">\u00D7${a.count} occurrences</span>` : ''}
         </div>
         <div class="mb-2">
             <strong>Details</strong>
@@ -401,10 +403,10 @@ function showAlertDetail(id) {
         <div style="margin-top:1.5rem; border-top:1px solid var(--border-subtle); padding-top:1rem">
             <strong>Triage</strong>
             <div style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap">
-                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','acknowledged')">✓ Acknowledge</button>
-                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','escalated')" style="border-color:var(--accent-amber)">⬆ Escalate</button>
-                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','dismissed')">✗ Dismiss</button>
-                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','resolved')" style="border-color:var(--accent-green)">✔ Resolve</button>
+                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','acknowledged')">&#x2713; Acknowledge</button>
+                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','escalated')" style="border-color:var(--accent-amber)">&#x2B06; Escalate</button>
+                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','dismissed')">&#x2717; Dismiss</button>
+                <button class="btn btn-sm btn-secondary" onclick="triageAlert('${a.id}','resolved')" style="border-color:var(--accent-green)">&#x2714; Resolve</button>
             </div>
         </div>
     `;
@@ -415,14 +417,14 @@ function showAlertDetail(id) {
 function buildThreatLinks(ip, domain) {
     const links = [];
     if (ip) {
-        links.push(`<a href="https://www.virustotal.com/gui/ip-address/${ip}" target="_blank" class="btn btn-sm btn-secondary">🔍 VirusTotal</a>`);
-        links.push(`<a href="https://www.abuseipdb.com/check/${ip}" target="_blank" class="btn btn-sm btn-secondary">🛡️ AbuseIPDB</a>`);
-        links.push(`<a href="https://www.shodan.io/host/${ip}" target="_blank" class="btn btn-sm btn-secondary">📡 Shodan</a>`);
-        links.push(`<a href="https://viz.greynoise.io/ip/${ip}" target="_blank" class="btn btn-sm btn-secondary">🔇 GreyNoise</a>`);
+        links.push(`<a href="https://www.virustotal.com/gui/ip-address/${ip}" target="_blank" class="btn btn-sm btn-secondary">VT IP</a>`);
+        links.push(`<a href="https://www.abuseipdb.com/check/${ip}" target="_blank" class="btn btn-sm btn-secondary">AbuseIPDB</a>`);
+        links.push(`<a href="https://www.shodan.io/host/${ip}" target="_blank" class="btn btn-sm btn-secondary">Shodan</a>`);
+        links.push(`<a href="https://viz.greynoise.io/ip/${ip}" target="_blank" class="btn btn-sm btn-secondary">GreyNoise</a>`);
     }
     if (domain) {
-        links.push(`<a href="https://www.virustotal.com/gui/domain/${domain}" target="_blank" class="btn btn-sm btn-secondary">🔍 VT Domain</a>`);
-        links.push(`<a href="https://urlscan.io/search/#${domain}" target="_blank" class="btn btn-sm btn-secondary">🌐 urlscan</a>`);
+        links.push(`<a href="https://www.virustotal.com/gui/domain/${domain}" target="_blank" class="btn btn-sm btn-secondary">VT Domain</a>`);
+        links.push(`<a href="https://urlscan.io/search/#${domain}" target="_blank" class="btn btn-sm btn-secondary">urlscan</a>`);
     }
     return links.join('');
 }
@@ -430,15 +432,12 @@ function buildThreatLinks(ip, domain) {
 async function triageAlert(id, status) {
     try {
         await POST(`/alerts/${id}/triage`, { status, analyst: localStorage.getItem('safeops_user') || 'admin' });
-        const alert = alertsData.find(a => a.id === id);
-        if (alert) alert.triage_status = status;
-        renderAlerts();
     } catch (e) {
         // Update locally even if API fails
-        const alert = alertsData.find(a => a.id === id);
-        if (alert) alert.triage_status = status;
-        renderAlerts();
     }
+    const alert = alertsData.find(a => a.id === id);
+    if (alert) alert.triage_status = status;
+    renderAlerts();
     closeModal('alert-detail-modal');
 }
 
@@ -456,31 +455,21 @@ async function loadDomainRules() {
         const data = await GET('/rules/domains');
         renderDomainList('blocked-domains-list', data.domains || [], 'blocked');
     } catch (e) {
-        const mockDomains = ['facebook.com', 'tiktok.com', 'instagram.com', 'twitter.com', 'reddit.com'];
-        renderDomainList('blocked-domains-list', mockDomains, 'blocked');
+        renderErrorState('blocked-domains-list', 'Failed to load blocked domains');
     }
 
     try {
         const data = await GET('/rules/domains/whitelist');
         renderDomainList('whitelist-domains-list', data.domains || [], 'whitelist');
     } catch (e) {
-        renderDomainList('whitelist-domains-list', ['google.com', 'github.com', 'microsoft.com'], 'whitelist');
+        renderErrorState('whitelist-domains-list', 'Failed to load whitelisted domains');
     }
 
     try {
         const data = await GET('/rules/categories');
         renderCategories(data.categories || []);
     } catch (e) {
-        renderCategories([
-            { name: 'social_media', description: 'Social platforms', active: true },
-            { name: 'streaming', description: 'Streaming services', active: false },
-            { name: 'gaming', description: 'Gaming platforms', active: false },
-            { name: 'ads', description: 'Ad networks', active: true },
-            { name: 'trackers', description: 'Web trackers', active: true },
-            { name: 'adult', description: 'Adult content', active: false },
-            { name: 'gambling', description: 'Gambling sites', active: false },
-            { name: 'malware', description: 'Malware domains', active: true },
-        ]);
+        renderErrorState('categories-list', 'Failed to load categories');
     }
 }
 
@@ -493,13 +482,17 @@ function renderDomainList(containerId, domains, type) {
     el.innerHTML = domains.map(d => `
         <div class="rule-item">
             <span class="rule-value">${esc(d)}</span>
-            <button class="btn btn-ghost btn-sm" onclick="removeDomain('${esc(d)}', '${type}')" title="Remove">✕</button>
+            <button class="btn btn-ghost btn-sm" onclick="removeDomain('${esc(d)}', '${type}')" title="Remove">&#x2715;</button>
         </div>
     `).join('');
 }
 
 function renderCategories(cats) {
     const el = document.getElementById('categories-list');
+    if (cats.length === 0) {
+        renderEmptyState(el, '\uD83D\uDDC2\uFE0F', 'No Categories', 'No category filters configured');
+        return;
+    }
     el.innerHTML = cats.map(c => `
         <div class="rule-item" style="padding:0.75rem 0">
             <div>
@@ -546,7 +539,6 @@ async function removeDomain(domain, type) {
 }
 
 async function toggleCategory(name, active) {
-    // Get all currently checked categories
     const checkboxes = document.querySelectorAll('#categories-list input[type=checkbox]');
     const activeCats = [];
     checkboxes.forEach(cb => {
@@ -570,14 +562,14 @@ async function loadIPRules() {
         const data = await GET('/rules/ips');
         renderIPList('blocked-ips-list', data.ips || [], 'blocked');
     } catch (e) {
-        renderIPList('blocked-ips-list', ['192.168.1.100', '10.0.0.50', '172.16.0.0/12'], 'blocked');
+        renderErrorState('blocked-ips-list', 'Failed to load blocked IPs');
     }
 
     try {
         const data = await GET('/rules/ips/whitelist');
         renderIPList('whitelist-ips-list', data.ips || [], 'whitelist');
     } catch (e) {
-        renderIPList('whitelist-ips-list', ['192.168.1.1', '10.0.0.1'], 'whitelist');
+        renderErrorState('whitelist-ips-list', 'Failed to load whitelisted IPs');
     }
 }
 
@@ -590,7 +582,7 @@ function renderIPList(containerId, ips, type) {
     el.innerHTML = ips.map(ip => `
         <div class="rule-item">
             <span class="rule-value">${esc(ip)}</span>
-            <button class="btn btn-ghost btn-sm" onclick="removeIP('${esc(ip)}', '${type}')" title="Remove">✕</button>
+            <button class="btn btn-ghost btn-sm" onclick="removeIP('${esc(ip)}', '${type}')" title="Remove">&#x2715;</button>
         </div>
     `).join('');
 }
@@ -633,33 +625,87 @@ async function loadGeoIP() {
         const data = await GET('/rules/geoip');
         renderGeoIP(data);
     } catch (e) {
-        // Mock
-        setText('geo-total-checks', '1,893');
-        setText('geo-blocked-count', '42');
-        document.getElementById('geo-mode-badge').textContent = 'DENY_LIST';
-        document.getElementById('geoip-config-body').innerHTML = `
-            <div class="rule-item"><span>Enabled</span><span class="badge badge-success">Yes</span></div>
-            <div class="rule-item"><span>Mode</span><span class="mono">deny_list</span></div>
-            <div class="rule-item"><span>Blocked Countries</span><span class="mono">CN, RU, KP, IR</span></div>
-            <div class="rule-item"><span>Blocked ASNs</span><span class="mono">3</span></div>
-            <div class="rule-item"><span>Foreign DC Detection</span><span class="badge badge-success">Active</span></div>
-        `;
+        setText('geo-total-checks', '\u2014');
+        setText('geo-blocked-count', '\u2014');
+        document.getElementById('geo-mode-badge').textContent = '\u2014';
+        renderErrorState('geoip-config-body', 'Failed to load GeoIP configuration');
     }
 }
 
 function renderGeoIP(data) {
+    // Stats
     if (data.stats) {
         setText('geo-total-checks', fmt(data.stats.total_checks));
-        setText('geo-blocked-count', fmt(data.stats.blocked));
+        setText('geo-blocked-count', fmt(data.stats.total_blocks || data.stats.blocked || 0));
     }
-    if (data.config) {
-        const mode = data.config.mode || 'deny_list';
-        document.getElementById('geo-mode-badge').textContent = mode.toUpperCase();
+
+    const cfg = data.config;
+    if (!cfg) {
+        renderEmptyState('geoip-config-body', '\uD83C\uDF0D', 'No Config', 'GeoIP configuration not loaded');
+        return;
     }
+
+    const mode = (cfg.policy && cfg.policy.mode) || 'deny_list';
+    const enabled = cfg.policy && cfg.policy.enabled;
+    document.getElementById('geo-mode-badge').textContent = mode.toUpperCase();
+
+    const body = document.getElementById('geoip-config-body');
+    let html = '';
+
+    // Policy settings
+    html += `<div class="rule-item"><span>GeoIP Enabled</span><span class="badge badge-${enabled ? 'success' : 'warning'}">${enabled ? 'Yes' : 'No'}</span></div>`;
+    html += `<div class="rule-item"><span>Mode</span><span class="mono">${esc(mode)}</span></div>`;
+    html += `<div class="rule-item"><span>Log Blocked</span><span class="badge badge-${cfg.policy.log_blocked ? 'success' : 'info'}">${cfg.policy.log_blocked ? 'Yes' : 'No'}</span></div>`;
+    html += `<div class="rule-item"><span>Enrich Alerts</span><span class="badge badge-${cfg.policy.enrich_alerts ? 'success' : 'info'}">${cfg.policy.enrich_alerts ? 'Yes' : 'No'}</span></div>`;
+
+    // Country lists
+    const countries = mode === 'deny_list'
+        ? (cfg.deny_list && cfg.deny_list.countries) || []
+        : (cfg.allow_list && cfg.allow_list.countries) || [];
+
+    if (countries.length > 0) {
+        const label = mode === 'deny_list' ? 'Blocked Countries' : 'Allowed Countries';
+        html += `<div class="rule-item" style="flex-direction:column; align-items:flex-start; gap:0.5rem">
+            <strong>${label}</strong>
+            <div style="display:flex; flex-wrap:wrap; gap:0.35rem">${countries.map(c =>
+                `<span class="tag">${esc(c.toUpperCase())}</span>`
+            ).join('')}</div>
+        </div>`;
+    } else {
+        html += `<div class="rule-item"><span>${mode === 'deny_list' ? 'Blocked' : 'Allowed'} Countries</span><span class="mono" style="color:var(--text-muted)">None</span></div>`;
+    }
+
+    // ASN blocking
+    const asnEnabled = cfg.asn_block && cfg.asn_block.enabled;
+    const blockedASNs = (cfg.asn_block && cfg.asn_block.blocked_asns) || [];
+    html += `<div class="rule-item"><span>ASN Blocking</span><span class="badge badge-${asnEnabled ? 'success' : 'info'}">${asnEnabled ? 'Enabled' : 'Disabled'}</span></div>`;
+    if (blockedASNs.length > 0) {
+        html += `<div class="rule-item" style="flex-direction:column; align-items:flex-start; gap:0.5rem">
+            <strong>Blocked ASNs</strong>
+            <div style="display:flex; flex-wrap:wrap; gap:0.35rem">${blockedASNs.map(asn =>
+                `<span class="tag">AS${asn}</span>`
+            ).join('')}</div>
+        </div>`;
+    }
+
+    // Foreign datacenter detection
+    const flagDC = cfg.datacenter && cfg.datacenter.flag_foreign_datacenter;
+    const homeCountry = (cfg.datacenter && cfg.datacenter.home_country) || '';
+    html += `<div class="rule-item"><span>Foreign DC Detection</span><span class="badge badge-${flagDC ? 'success' : 'info'}">${flagDC ? 'Active' : 'Inactive'}</span></div>`;
+    if (homeCountry) {
+        html += `<div class="rule-item"><span>Home Country</span><span class="mono">${esc(homeCountry.toUpperCase())}</span></div>`;
+    }
+
+    // Cache stats from runtime
+    if (data.stats && data.stats.cache_hit_rate) {
+        html += `<div class="rule-item"><span>Cache Hit Rate</span><span class="mono">${esc(data.stats.cache_hit_rate)}</span></div>`;
+    }
+
+    body.innerHTML = html;
 }
 
 // ============================================================================
-// Detection
+// Detection Config
 // ============================================================================
 
 async function loadDetection() {
@@ -667,28 +713,129 @@ async function loadDetection() {
         const data = await GET('/rules/detection');
         renderDetection(data);
     } catch (e) {
-        document.getElementById('detection-config-body').innerHTML = `
-            <div class="rule-item"><span>Rate Limiting</span><span class="badge badge-success">Enabled</span></div>
-            <div class="rule-item"><span>  └ Requests/sec</span><span class="mono">100</span></div>
-            <div class="rule-item"><span>DDoS Protection</span><span class="badge badge-success">Enabled</span></div>
-            <div class="rule-item"><span>  └ SYN Threshold</span><span class="mono">1000/sec</span></div>
-            <div class="rule-item"><span>Brute Force Detection</span><span class="badge badge-success">Enabled</span></div>
-            <div class="rule-item"><span>  └ Max Failures</span><span class="mono">5</span></div>
-            <div class="rule-item"><span>Port Scan Detection</span><span class="badge badge-success">Enabled</span></div>
-            <div class="rule-item"><span>  └ Threshold</span><span class="mono">100 ports/10s</span></div>
-            <div class="rule-item"><span>Anomaly Detection</span><span class="badge badge-success">Enabled</span></div>
-            <div class="rule-item"><span>Traffic Baseline</span><span class="badge badge-success">Enabled</span></div>
-            <div class="rule-item"><span>  └ Warmup</span><span class="mono">30 min</span></div>
-        `;
+        renderErrorState('detection-config-body', 'Failed to load detection configuration');
     }
 }
 
 function renderDetection(data) {
-    // Render actual config values when API is connected
     const body = document.getElementById('detection-config-body');
-    if (data.config) {
-        body.innerHTML = `<div class="code-block">${JSON.stringify(data.config, null, 2)}</div>`;
+    const cfg = data.config;
+    if (!cfg) {
+        renderEmptyState(body, '\uD83D\uDD0D', 'No Config', 'Detection configuration not loaded');
+        return;
     }
+
+    let html = '';
+
+    // DDoS module
+    if (cfg.ddos) {
+        html += renderDetectionModule('DDoS Protection', cfg.ddos.enabled, [
+            { label: 'SYN Rate Threshold', value: fmt(cfg.ddos.syn_rate_threshold) + '/s' },
+            { label: 'UDP Rate Threshold', value: fmt(cfg.ddos.udp_rate_threshold) + '/s' },
+            { label: 'ICMP Rate Threshold', value: fmt(cfg.ddos.icmp_rate_threshold) + '/s' },
+            { label: 'Connection Ratio', value: cfg.ddos.connection_ratio_threshold },
+            { label: 'Ban Duration', value: cfg.ddos.ban_duration_minutes + ' min' },
+            { label: 'Max Ban Duration', value: cfg.ddos.max_ban_duration_hours + ' hrs' },
+            { label: 'Escalation Multiplier', value: cfg.ddos.escalation_multiplier + 'x' },
+            { label: 'Window', value: cfg.ddos.window_seconds + 's' },
+        ]);
+    }
+
+    // Rate Limiting module
+    if (cfg.rate_limit) {
+        html += renderDetectionModule('Rate Limiting', cfg.rate_limit.enabled, [
+            { label: 'Default Rate', value: fmt(cfg.rate_limit.default_rate) + '/s per IP' },
+            { label: 'Burst Size', value: fmt(cfg.rate_limit.burst_size) },
+            { label: 'Global Rate', value: fmt(cfg.rate_limit.global_rate) + '/s' },
+            { label: 'Cleanup Interval', value: cfg.rate_limit.cleanup_interval_seconds + 's' },
+        ]);
+    }
+
+    // Brute Force module
+    if (cfg.brute_force) {
+        const services = cfg.brute_force.services || {};
+        const serviceRows = Object.entries(services).map(([name, svc]) => ({
+            label: name.toUpperCase() + ' (port ' + svc.port + ')',
+            value: svc.max_failures + ' failures / ' + svc.window_seconds + 's',
+        }));
+        html += renderDetectionModule('Brute Force Detection', cfg.brute_force.enabled, [
+            { label: 'Global Window', value: cfg.brute_force.window_seconds + 's' },
+            ...serviceRows,
+        ]);
+    }
+
+    // Port Scan module
+    if (cfg.port_scan) {
+        html += renderDetectionModule('Port Scan Detection', cfg.port_scan.enabled, [
+            { label: 'Port Threshold', value: cfg.port_scan.port_threshold + ' ports' },
+            { label: 'Window', value: cfg.port_scan.window_seconds + 's' },
+            { label: 'Ban Duration', value: cfg.port_scan.ban_duration_minutes + ' min' },
+            { label: 'Sequential Threshold', value: cfg.port_scan.sequential_threshold + ' ports' },
+        ]);
+    }
+
+    // Traffic Baseline module
+    if (cfg.baseline) {
+        html += renderDetectionModule('Traffic Baseline', cfg.baseline.enabled, [
+            { label: 'Window', value: cfg.baseline.window_minutes + ' min' },
+            { label: 'Deviation Threshold', value: cfg.baseline.deviation_threshold + '\u03C3' },
+            { label: 'Warmup', value: cfg.baseline.warmup_minutes + ' min' },
+            { label: 'Update Interval', value: cfg.baseline.update_interval_seconds + 's' },
+        ]);
+    }
+
+    // Whitelist summary
+    if (cfg.whitelist) {
+        const ips = (cfg.whitelist.trusted_ips || []).length;
+        const cidrs = (cfg.whitelist.trusted_cidrs || []).length;
+        const cdns = (cfg.whitelist.cdn_cidrs || []).length;
+        html += `<div style="border:1px solid var(--border-subtle); border-radius:0.5rem; padding:1rem; margin-bottom:1rem">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem">
+                <strong style="font-size:0.9rem">Whitelist</strong>
+                <span class="badge badge-info">${ips + cidrs + cdns} entries</span>
+            </div>
+            <div class="rule-item"><span>Trusted IPs</span><span class="mono">${ips > 0 ? (cfg.whitelist.trusted_ips || []).join(', ') : 'None'}</span></div>
+            <div class="rule-item"><span>Trusted CIDRs</span><span class="mono">${cidrs > 0 ? (cfg.whitelist.trusted_cidrs || []).join(', ') : 'None'}</span></div>
+            <div class="rule-item"><span>CDN CIDRs</span><span class="mono">${cdns > 0 ? cdns + ' ranges' : 'None'}</span></div>
+        </div>`;
+    }
+
+    // Runtime stats if available
+    if (data.stats) {
+        const s = data.stats;
+        html += `<div style="border:1px solid var(--border-subtle); border-radius:0.5rem; padding:1rem; margin-bottom:1rem">
+            <strong style="font-size:0.9rem; margin-bottom:0.75rem; display:block">Runtime Statistics</strong>`;
+        if (s.Bans || s.bans) {
+            const bans = s.Bans || s.bans;
+            html += `<div class="rule-item"><span>Active Bans</span><span class="mono">${fmt(bans.active_bans || bans.ActiveBans || 0)}</span></div>`;
+            html += `<div class="rule-item"><span>Total Bans</span><span class="mono">${fmt(bans.total_bans || bans.TotalBans || 0)}</span></div>`;
+        }
+        if (s.RateLimiter || s.rate_limiter) {
+            const rl = s.RateLimiter || s.rate_limiter;
+            html += `<div class="rule-item"><span>Rate Limit Denied</span><span class="mono">${fmt(rl.denied || rl.Denied || 0)}</span></div>`;
+        }
+        if (s.DDoS || s.ddos) {
+            const dd = s.DDoS || s.ddos;
+            html += `<div class="rule-item"><span>SYN Flood Detections</span><span class="mono">${fmt(dd.syn_detections || dd.SYNDetections || 0)}</span></div>`;
+            html += `<div class="rule-item"><span>UDP Flood Detections</span><span class="mono">${fmt(dd.udp_detections || dd.UDPDetections || 0)}</span></div>`;
+        }
+        html += `</div>`;
+    }
+
+    body.innerHTML = html;
+}
+
+function renderDetectionModule(title, enabled, params) {
+    let html = `<div style="border:1px solid var(--border-subtle); border-radius:0.5rem; padding:1rem; margin-bottom:1rem">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem">
+            <strong style="font-size:0.9rem">${esc(title)}</strong>
+            <span class="badge badge-${enabled ? 'success' : 'warning'}">${enabled ? 'Enabled' : 'Disabled'}</span>
+        </div>`;
+    for (const p of params) {
+        html += `<div class="rule-item"><span style="color:var(--text-secondary)">${esc(p.label)}</span><span class="mono">${esc(String(p.value))}</span></div>`;
+    }
+    html += '</div>';
+    return html;
 }
 
 // ============================================================================
@@ -700,11 +847,7 @@ async function loadBans() {
         const data = await GET('/security/bans');
         renderBans(data.bans || []);
     } catch (e) {
-        renderBans([
-            { ip: '192.168.1.5', reason: 'Port scan detected (random)', banned_at: '2026-02-11T10:41:44Z', time_left: '23m 12s', level: 1, permanent: false },
-            { ip: '160.79.104.10', reason: 'Protocol violation — SYN+FIN', banned_at: '2026-02-11T10:35:30Z', time_left: '1h 44m', level: 2, permanent: false },
-            { ip: '45.33.32.156', reason: 'Manual ban from Web UI', banned_at: '2026-02-11T09:00:00Z', time_left: 'permanent', level: 3, permanent: true },
-        ]);
+        renderBans([]);
     }
 }
 
@@ -730,9 +873,9 @@ function renderBans(bans) {
             <td><span class="mono" style="color:var(--accent-red)">${esc(b.ip)}</span></td>
             <td style="font-size:0.85rem; color:var(--text-secondary); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(b.reason)}</td>
             <td><span class="mono" style="font-size:0.78rem; color:var(--text-muted)">${formatTime(b.banned_at)}</span></td>
-            <td>${b.permanent ? '<span class="badge badge-danger">PERMANENT</span>' : `<span style="font-size:0.85rem; color:var(--accent-amber)">${b.time_left || '—'}</span>`}</td>
+            <td>${b.permanent ? '<span class="badge badge-danger">PERMANENT</span>' : `<span style="font-size:0.85rem; color:var(--accent-amber)">${b.time_left || '\u2014'}</span>`}</td>
             <td><span class="badge badge-${b.level >= 3 ? 'danger' : b.level >= 2 ? 'warning' : 'info'}">L${b.level}</span></td>
-            <td><button class="btn btn-ghost btn-sm" onclick="unbanIP('${esc(b.ip)}')" title="Unban">🔓</button></td>
+            <td><button class="btn btn-ghost btn-sm" onclick="unbanIP('${esc(b.ip)}')" title="Unban">&#x1F513;</button></td>
         </tr>
     `).join('');
 }
@@ -778,14 +921,10 @@ async function loadTickets() {
             setText('ticket-resolved-count', data.stats.resolved || 0);
         }
     } catch (e) {
-        ticketsData = [
-            { id: 'a1b2c3d4', title: 'Investigate SYN+FIN scan from 160.79.104.10', severity: 'high', status: 'open', created_at: '2026-02-11T10:40:00Z', assignee: 'admin', linked_ips: ['160.79.104.10'] },
-            { id: 'e5f6g7h8', title: 'Review Google CDN threat intel false positive', severity: 'medium', status: 'in_progress', created_at: '2026-02-09T16:00:00Z', assignee: 'security', linked_alerts: ['f12470aa'] },
-            { id: 'i9j0k1l2', title: 'Port scan from internal IP 192.168.1.5', severity: 'medium', status: 'resolved', created_at: '2026-02-11T10:45:00Z', assignee: 'admin', resolved_at: '2026-02-11T11:00:00Z' },
-        ];
-        setText('ticket-open-count', 1);
-        setText('ticket-progress-count', 1);
-        setText('ticket-resolved-count', 1);
+        ticketsData = [];
+        setText('ticket-open-count', '\u2014');
+        setText('ticket-progress-count', '\u2014');
+        setText('ticket-resolved-count', '\u2014');
     }
     renderTickets();
 }
@@ -800,7 +939,7 @@ function renderTickets() {
     }
 
     if (filtered.length === 0) {
-        el.innerHTML = `<div class="empty-state"><div class="empty-icon">🎫</div><h3>No Tickets</h3><p>Create a ticket to track security incidents</p></div>`;
+        el.innerHTML = `<div class="empty-state"><div class="empty-icon">\uD83C\uDFAB</div><h3>No Tickets</h3><p>Create a ticket to track security incidents</p></div>`;
         return;
     }
 
@@ -813,8 +952,8 @@ function renderTickets() {
             <div class="ticket-title">${esc(t.title)}</div>
             <div class="ticket-meta">
                 <span class="ticket-id">#${t.id.substring(0, 8)}</span>
-                <span>👤 ${esc(t.assignee || 'Unassigned')}</span>
-                <span>📅 ${formatTime(t.created_at)}</span>
+                <span>${esc(t.assignee || 'Unassigned')}</span>
+                <span>${formatTime(t.created_at)}</span>
             </div>
         </div>
     `).join('');
@@ -833,7 +972,7 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
     try {
         await POST('/tickets', { title, description, severity, assignee, created_by: localStorage.getItem('safeops_user') || 'admin' });
     } catch (e) {
-        // Add locally
+        // Add locally as fallback
         ticketsData.unshift({
             id: Math.random().toString(36).substring(2, 10),
             title, description, severity, assignee,
@@ -847,6 +986,95 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
 });
 
 // ============================================================================
+// Verdict Logs
+// ============================================================================
+
+let verdictOffset = 0;
+const VERDICT_LIMIT = 100;
+
+async function loadVerdictLogs() {
+    verdictOffset = 0;
+    await fetchVerdictPage();
+}
+
+async function fetchVerdictPage() {
+    const actionFilter = document.getElementById('verdict-action-filter').value;
+    let url = `/logs/verdicts?limit=${VERDICT_LIMIT}&offset=${verdictOffset}`;
+    if (actionFilter) url += '&action=' + encodeURIComponent(actionFilter);
+
+    try {
+        const data = await GET(url);
+        renderVerdictLogs(data);
+    } catch (e) {
+        renderErrorState('verdicts-tbody-container', 'Failed to load verdict logs \u2014 engine API not reachable');
+        document.getElementById('verdict-pagination').innerHTML = '';
+    }
+}
+
+function renderVerdictLogs(data) {
+    const tbody = document.getElementById('verdicts-tbody');
+    const emptyEl = document.getElementById('verdicts-empty');
+    const verdicts = data.verdicts || [];
+
+    if (verdicts.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        document.getElementById('verdict-pagination').innerHTML = '';
+        return;
+    }
+    emptyEl.classList.add('hidden');
+
+    tbody.innerHTML = verdicts.map(v => {
+        const actionCls = v.action === 'DROP' ? 'danger' : v.action === 'BLOCK' ? 'warning' : 'info';
+        return `<tr>
+            <td><span class="mono" style="font-size:0.78rem; color:var(--text-muted)">${esc(v.ts)}</span></td>
+            <td><span class="mono" style="color:var(--accent-cyan)">${esc(v.src)}:${v.sp}</span></td>
+            <td><span class="mono">${esc(v.dst)}:${v.dp}</span></td>
+            <td><span class="tag">${esc(v.proto)}</span></td>
+            <td><span class="badge badge-${actionCls}">${esc(v.action)}</span></td>
+            <td style="font-size:0.85rem">${esc(v.detector)}</td>
+            <td style="font-size:0.85rem; color:var(--accent-purple)">${esc(v.domain || '')}</td>
+            <td style="font-size:0.82rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-secondary)">${esc(v.reason)}</td>
+        </tr>`;
+    }).join('');
+
+    // Pagination
+    const total = data.total || 0;
+    const pagEl = document.getElementById('verdict-pagination');
+    const pages = Math.ceil(total / VERDICT_LIMIT);
+    const currentPage = Math.floor(verdictOffset / VERDICT_LIMIT) + 1;
+
+    if (pages <= 1) {
+        pagEl.innerHTML = `<span style="color:var(--text-muted); font-size:0.82rem">${total} entries</span>`;
+        return;
+    }
+
+    pagEl.innerHTML = `
+        <span style="color:var(--text-muted); font-size:0.82rem">${total} entries \u2014 Page ${currentPage}/${pages}</span>
+        <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
+            <button class="btn btn-sm btn-secondary" ${currentPage <= 1 ? 'disabled' : ''} onclick="verdictPrev()">&#x2190; Prev</button>
+            <button class="btn btn-sm btn-secondary" ${currentPage >= pages ? 'disabled' : ''} onclick="verdictNext()">Next &#x2192;</button>
+        </div>
+    `;
+}
+
+function verdictPrev() {
+    verdictOffset = Math.max(0, verdictOffset - VERDICT_LIMIT);
+    fetchVerdictPage();
+}
+
+function verdictNext() {
+    verdictOffset += VERDICT_LIMIT;
+    fetchVerdictPage();
+}
+
+// Wire filter change
+document.getElementById('verdict-action-filter')?.addEventListener('change', () => {
+    verdictOffset = 0;
+    fetchVerdictPage();
+});
+
+// ============================================================================
 // System
 // ============================================================================
 
@@ -854,38 +1082,32 @@ async function loadSystem() {
     try {
         const data = await GET('/status');
         setText('sys-status', data.status || 'unknown');
-        setText('sys-uptime', data.uptime || '—');
+        setText('sys-uptime', data.uptime || '\u2014');
         if (data.memory) {
-            setText('sys-memory', data.memory.alloc_mb?.toFixed(1) || '—');
-            setText('sys-goroutines', data.memory.goroutines || '—');
+            setText('sys-memory', data.memory.alloc_mb?.toFixed(1) || '\u2014');
+            setText('sys-goroutines', data.memory.goroutines || '\u2014');
         }
         if (data.components) {
             renderComponents(data.components);
         }
     } catch (e) {
-        setText('sys-status', 'Running');
-        setText('sys-uptime', '2h 15m');
-        setText('sys-memory', '42.3');
-        setText('sys-goroutines', '38');
-        document.getElementById('component-health').innerHTML = `
-            <div class="rule-item"><span>🛡️ Security Manager</span><span class="badge badge-success">Active</span></div>
-            <div class="rule-item"><span>🌐 Domain Filter</span><span class="badge badge-success">Active</span></div>
-            <div class="rule-item"><span>🌍 GeoIP Checker</span><span class="badge badge-success">Active</span></div>
-            <div class="rule-item"><span>🔔 Alert Manager</span><span class="badge badge-success">Active</span></div>
-            <div class="rule-item"><span>🔄 Hot Reloader</span><span class="badge badge-success">Active</span></div>
-        `;
+        setText('sys-status', '\u2014');
+        setText('sys-uptime', '\u2014');
+        setText('sys-memory', '\u2014');
+        setText('sys-goroutines', '\u2014');
+        renderErrorState('component-health', 'Could not reach engine status API');
     }
 }
 
 function renderComponents(components) {
     const el = document.getElementById('component-health');
     const icons = {
-        security: '🛡️', domain_filter: '🌐', geoip: '🌍',
-        alerting: '🔔', hot_reload: '🔄'
+        security: '\uD83D\uDEE1\uFE0F', domain_filter: '\uD83C\uDF10', geoip: '\uD83C\uDF0D',
+        alerting: '\uD83D\uDD14', hot_reload: '\uD83D\uDD04'
     };
     el.innerHTML = Object.entries(components).map(([name, info]) => `
         <div class="rule-item">
-            <span>${icons[name] || '⚙️'} ${name.replace(/_/g, ' ')}</span>
+            <span>${icons[name] || '\u2699\uFE0F'} ${name.replace(/_/g, ' ')}</span>
             <span class="badge badge-${info.status === 'active' ? 'success' : 'warning'}">${info.status}</span>
         </div>
     `).join('');
@@ -931,6 +1153,24 @@ function handleWSEvent(msg) {
         case 'ticket_created':
         case 'ticket_updated':
             if (getCurrentPage() === 'tickets') loadTickets();
+            break;
+        case 'packet_stats':
+            // Update live packet counters from engine broadcast
+            if (msg.data) {
+                livePacketsProcessed = msg.data.processed || msg.data.total || 0;
+                livePacketsBlocked = msg.data.blocked || 0;
+                setText('stat-packets-processed', fmt(livePacketsProcessed));
+                setText('stat-packets-blocked', fmt(livePacketsBlocked));
+            }
+            break;
+        case 'config_reloaded':
+            showToast('Configuration reloaded successfully', 'success');
+            // Refresh current page to pick up new config
+            const page = getCurrentPage();
+            if (page === 'dashboard') loadDashboard();
+            else if (page === 'rules-detection') loadDetection();
+            else if (page === 'rules-geoip') loadGeoIP();
+            else if (page === 'rules-domains') loadDomainRules();
             break;
     }
 }
@@ -1021,7 +1261,7 @@ document.addEventListener('keydown', (e) => {
 
 function getCurrentPage() {
     const hash = window.location.hash.replace('#', '') || '/dashboard';
-    return hash.replace('/rules/', 'rules-').replace('/', '');
+    return hash.replace('/rules/', 'rules-').replace('/logs/', 'logs-').replace('/', '');
 }
 
 function setText(id, text) {
@@ -1030,7 +1270,7 @@ function setText(id, text) {
 }
 
 function fmt(num) {
-    if (num == null || num === undefined) return '—';
+    if (num == null || num === undefined) return '\u2014';
     return Number(num).toLocaleString();
 }
 
@@ -1042,7 +1282,7 @@ function esc(str) {
 }
 
 function formatTime(ts) {
-    if (!ts) return '—';
+    if (!ts) return '\u2014';
     const d = new Date(ts);
     const now = new Date();
     const diff = now - d;
@@ -1057,11 +1297,11 @@ function timeAgo(ts) { return formatTime(ts); }
 
 function severityIcon(sev) {
     switch ((sev || '').toUpperCase()) {
-        case 'CRITICAL': return '🔴';
-        case 'HIGH': return '🔴';
-        case 'MEDIUM': return '🟡';
-        case 'LOW': return '🔵';
-        default: return '⚪';
+        case 'CRITICAL': return '\uD83D\uDD34';
+        case 'HIGH': return '\uD83D\uDD34';
+        case 'MEDIUM': return '\uD83D\uDFE1';
+        case 'LOW': return '\uD83D\uDD35';
+        default: return '\u26AA';
     }
 }
 

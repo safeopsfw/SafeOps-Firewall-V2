@@ -11,6 +11,7 @@ import (
 	"firewall_engine/internal/config"
 	"firewall_engine/internal/domain"
 	"firewall_engine/internal/geoip"
+	"firewall_engine/internal/integration"
 	"firewall_engine/internal/logging"
 	"firewall_engine/internal/rules"
 	"firewall_engine/internal/security"
@@ -24,11 +25,12 @@ type Reloader struct {
 	configDir string
 
 	// Components that can be reloaded
-	domainFilter *domain.Filter
-	geoChecker   *geoip.Checker
-	securityMgr  *security.Manager
-	alertMgr     *alerting.Manager
-	ruleEngine   *rules.Engine
+	domainFilter  *domain.Filter
+	geoChecker    *geoip.Checker
+	securityMgr   *security.Manager
+	alertMgr      *alerting.Manager
+	ruleEngine    *rules.Engine
+	blocklistSync *integration.BlocklistSync
 
 	// Current parsed blocklist (atomic swap)
 	parsedBlocklist atomic.Pointer[config.ParsedBlocklist]
@@ -63,6 +65,9 @@ type ReloaderConfig struct {
 
 	// Rule engine for hot-reload of rules.toml
 	RuleEngine *rules.Engine
+
+	// BlocklistSync for pushing domain changes to SafeOps Engine
+	BlocklistSync *integration.BlocklistSync
 }
 
 // NewReloader creates a hot-reload orchestrator.
@@ -82,6 +87,7 @@ func NewReloader(cfg ReloaderConfig) (*Reloader, error) {
 		alertMgr:          cfg.AlertMgr,
 		onBlocklistReload: cfg.OnBlocklistReload,
 		ruleEngine:        cfg.RuleEngine,
+		blocklistSync:     cfg.BlocklistSync,
 	}
 
 	if cfg.InitialBlocklist != nil {
@@ -162,6 +168,13 @@ func (r *Reloader) reloadDomains(path string) {
 		Int("domains", stats.ConfigDomains).
 		Msg("Hot-reload: domains.txt reloaded successfully")
 
+	// Push updated domain list to SafeOps Engine (in-process, zero-latency)
+	if r.blocklistSync != nil {
+		domains := filter.GetAllBlockedDomains()
+		synced := r.blocklistSync.SyncDomains(domains)
+		r.logger.Info().Int("synced", synced).Msg("Hot-reload: domain blocklist synced to SafeOps Engine")
+	}
+
 	r.fireAlert("domains.txt", true, fmt.Sprintf("%d domains loaded", stats.ConfigDomains))
 }
 
@@ -200,6 +213,13 @@ func (r *Reloader) reloadBlocklist(path string) {
 		r.logger.Info().
 			Strs("categories", parsed.BlockedCategories).
 			Msg("Hot-reload: domain filter categories updated")
+
+		// Re-sync domain blocklist to SafeOps Engine after category change
+		if r.blocklistSync != nil {
+			domains := filter.GetAllBlockedDomains()
+			synced := r.blocklistSync.SyncDomains(domains)
+			r.logger.Info().Int("synced", synced).Msg("Hot-reload: domain blocklist re-synced to SafeOps Engine (blocklist.toml change)")
+		}
 	}
 
 	// Step 5: Update GeoIP extra countries/ASNs

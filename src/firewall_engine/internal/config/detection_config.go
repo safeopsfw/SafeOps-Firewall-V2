@@ -14,7 +14,6 @@ type DetectionConfig struct {
 	RateLimit  RateLimitConfig  `toml:"rate_limit"`
 	BruteForce BruteForceConfig `toml:"brute_force"`
 	PortScan   PortScanConfig   `toml:"port_scan"`
-	Anomaly    AnomalyConfig    `toml:"anomaly"`
 	Baseline   BaselineConfig   `toml:"baseline"`
 	Whitelist  WhitelistConfig  `toml:"whitelist"`
 }
@@ -57,16 +56,6 @@ type PortScanConfig struct {
 	WindowSeconds       int  `toml:"window_seconds"`
 	BanDurationMinutes  int  `toml:"ban_duration_minutes"`
 	SequentialThreshold int  `toml:"sequential_threshold"`
-}
-
-type AnomalyConfig struct {
-	Enabled                  bool    `toml:"enabled"`
-	EnableProtocolViolations bool    `toml:"enable_protocol_violations"`
-	EnablePacketSize         bool    `toml:"enable_packet_size"`
-	EnableBeaconing          bool    `toml:"enable_beaconing"`
-	BeaconingMinSamples      int     `toml:"beaconing_min_samples"`
-	BeaconingCOVThreshold    float64 `toml:"beaconing_cov_threshold"`
-	OversizedPacketBytes     int     `toml:"oversized_packet_bytes"`
 }
 
 type BaselineConfig struct {
@@ -172,15 +161,6 @@ func DefaultDetectionConfig() *DetectionConfig {
 			WindowSeconds:       10,
 			BanDurationMinutes:  15,
 			SequentialThreshold: 20,
-		},
-		Anomaly: AnomalyConfig{
-			Enabled:                  true,
-			EnableProtocolViolations: true,
-			EnablePacketSize:         true,
-			EnableBeaconing:          true,
-			BeaconingMinSamples:      20,
-			BeaconingCOVThreshold:    0.1,
-			OversizedPacketBytes:     65535,
 		},
 		Baseline: BaselineConfig{
 			Enabled:              true,

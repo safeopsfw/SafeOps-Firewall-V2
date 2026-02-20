@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"time"
 
 	grpcclient "firewall_engine/pkg/grpc"
 	"safeops-engine/pkg/grpc/pb"
@@ -23,6 +24,16 @@ func NewSafeOpsGRPCClient(subscriberID, serverAddr string, filters []string) *Sa
 		grpcClient: grpcclient.NewClient(subscriberID, serverAddr),
 		filters:    filters,
 	}
+}
+
+// WithReconnectConfig sets exponential backoff parameters from the TOML config.
+// maxRetries=0 means unlimited. baseBackoffSecs is the initial wait (doubles each retry).
+func (c *SafeOpsGRPCClient) WithReconnectConfig(maxRetries, baseBackoffSecs int) *SafeOpsGRPCClient {
+	if baseBackoffSecs <= 0 {
+		baseBackoffSecs = 2
+	}
+	c.grpcClient.WithReconnectConfig(maxRetries, time.Duration(baseBackoffSecs)*time.Second)
+	return c
 }
 
 // Connect establishes gRPC connection and subscribes with filters

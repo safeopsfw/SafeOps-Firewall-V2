@@ -39,14 +39,7 @@ window_seconds = 10              # Sliding window
 ban_duration_minutes = 15        # Ban duration for scanners
 sequential_threshold = 20        # Sequential ports in window = sequential scan
 
-[anomaly]
-enabled = true
-enable_protocol_violations = true    # SYN+FIN, Xmas, Null scans
-enable_packet_size = true            # Zero-byte, oversized packets
-enable_beaconing = true              # C2 callback detection
-beaconing_min_samples = 20           # Min connections to analyze
-beaconing_cov_threshold = 0.1        # Coefficient of variation threshold
-oversized_packet_bytes = 65535       # MTU violation threshold
+# [anomaly] — removed, moving to IDS/IPS module
 
 [baseline]
 enabled = true

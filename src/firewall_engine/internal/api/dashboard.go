@@ -63,7 +63,6 @@ type SecuritySummary struct {
 	DDoSDetected int64 `json:"ddos_detected"`
 	BruteForce   int64 `json:"brute_force_detected"`
 	PortScans    int64 `json:"port_scans_detected"`
-	Anomalies    int64 `json:"anomalies_detected"`
 	BaselineDevs int64 `json:"baseline_deviations"`
 }
 
@@ -130,7 +129,6 @@ func (s *Server) handleDashboardStats(c *fiber.Ctx) error {
 			DDoSDetected: ss.DDoS.SYNDetections + ss.DDoS.UDPDetections + ss.DDoS.ICMPDetections,
 			BruteForce:   ss.BruteForce.Detections,
 			PortScans:    ss.PortScan.Detections,
-			Anomalies:    ss.Anomaly.ProtocolViolations + ss.Anomaly.SizeAnomalies + ss.Anomaly.BeaconingAlerts,
 			BaselineDevs: ss.Baseline.Deviations,
 		}
 	}

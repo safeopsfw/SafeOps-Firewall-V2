@@ -11,7 +11,7 @@ import (
 
 // Manager is the central security orchestrator. It initializes and coordinates
 // all detection sub-systems: rate limiting, DDoS protection, brute force,
-// port scanning, anomaly detection, traffic baseline, and ban management.
+// port scanning, traffic baseline, and ban management.
 //
 // The packet pipeline calls Manager.Check() which runs all enabled detectors
 // and returns a SecurityVerdict.
@@ -25,7 +25,6 @@ type Manager struct {
 	DDoS           *rate_limiting.DDoSProtection
 	BruteForce     *BruteForceDetector
 	PortScan       *PortScanDetector
-	Anomaly        *AnomalyDetector
 	Baseline       *TrafficBaseline
 	BanMgr         *BanManager
 
@@ -47,7 +46,6 @@ type SecurityVerdict struct {
 	IsDDoS         bool              `json:"is_ddos,omitempty"`
 	IsBruteForce   bool              `json:"is_brute_force,omitempty"`
 	IsPortScan     bool              `json:"is_port_scan,omitempty"`
-	IsAnomaly      bool              `json:"is_anomaly,omitempty"`
 }
 
 // SecurityStats aggregates all sub-system stats
@@ -56,7 +54,6 @@ type SecurityStats struct {
 	DDoS        rate_limiting.DDoSStats        `json:"ddos"`
 	BruteForce  BruteForceStats                `json:"brute_force"`
 	PortScan    PortScanStats                  `json:"port_scan"`
-	Anomaly     AnomalyStats                   `json:"anomaly"`
 	Baseline    BaselineStats                  `json:"baseline"`
 	Bans        BanManagerStats                `json:"bans"`
 }
@@ -81,7 +78,6 @@ func NewManager(cfg *config.DetectionConfig, alertMgr *alerting.Manager) *Manage
 	m.DDoS = rate_limiting.NewDDoSProtection(cfg.DDoS, alertMgr)
 	m.BruteForce = NewBruteForceDetector(cfg.BruteForce, alertMgr)
 	m.PortScan = NewPortScanDetector(cfg.PortScan, alertMgr)
-	m.Anomaly = NewAnomalyDetector(cfg.Anomaly, alertMgr)
 	m.Baseline = NewTrafficBaseline(cfg.Baseline, alertMgr)
 	m.BanMgr = NewBanManager(
 		cfg.DDoS.BanDurationMinutes,
@@ -95,7 +91,7 @@ func NewManager(cfg *config.DetectionConfig, alertMgr *alerting.Manager) *Manage
 
 // Check runs all security checks for a packet.
 // This is the main entry point called from the packet pipeline.
-// Order: banned? → whitelisted? → rate limit → DDoS → anomaly → baseline
+// Order: banned? → whitelisted? → rate limit → DDoS → baseline
 // Brute force and port scan are checked via separate methods since they need
 // specific context (failed connections for brute force, new connections for port scan).
 func (m *Manager) Check(srcIP string, protocol string, tcpFlags uint8, packetSize int) SecurityVerdict {
@@ -135,28 +131,10 @@ func (m *Manager) Check(srcIP string, protocol string, tcpFlags uint8, packetSiz
 		}
 	}
 
-	// 5. Protocol anomaly detection (TCP flags)
-	if protocol == "TCP" && tcpFlags != 0 {
-		if result := m.Anomaly.CheckTCPFlags(srcIP, tcpFlags); result.Detected {
-			return SecurityVerdict{
-				Allowed:      false,
-				Reason:       result.Details,
-				DetectorName: "anomaly_detector",
-				IsAnomaly:    true,
-			}
-		}
-	}
-
-	// 6. Packet size anomaly
-	if result := m.Anomaly.CheckPacketSize(srcIP, packetSize); result.Detected {
-		// Size anomalies are logged, not blocked
-		// (oversized could be legitimate jumbo frames)
-	}
-
-	// 7. Record for traffic baseline (non-blocking)
+	// 5. Record for traffic baseline (non-blocking)
 	m.Baseline.RecordPacket(protocol)
 
-	// 8. Periodic baseline deviation check (every 10 seconds)
+	// 6. Periodic baseline deviation check (every 10 seconds)
 	m.checkBaselinePeriodically()
 
 	return SecurityVerdict{Allowed: true}
@@ -195,21 +173,6 @@ func (m *Manager) CheckPortScan(srcIP string, dstPort uint16) SecurityVerdict {
 	return SecurityVerdict{Allowed: true}
 }
 
-// CheckBeaconing should be called for each outbound connection to track C2 patterns.
-func (m *Manager) CheckBeaconing(srcIP, dstIP string) SecurityVerdict {
-	result := m.Anomaly.RecordConnection(srcIP, dstIP)
-	if result.Detected {
-		m.BanMgr.Ban(dstIP, "beaconing/C2 destination")
-		return SecurityVerdict{
-			Allowed:      false,
-			Reason:       result.Details,
-			DetectorName: "anomaly_detector",
-			IsAnomaly:    true,
-		}
-	}
-	return SecurityVerdict{Allowed: true}
-}
-
 // UpdateConfig hot-reloads the detection configuration.
 // Recreates sub-systems with new config while preserving the ban manager
 // (bans are runtime state, not config-driven). Old sub-systems are stopped.
@@ -225,7 +188,6 @@ func (m *Manager) UpdateConfig(newCfg *config.DetectionConfig) {
 	m.DDoS.Stop()
 	m.BruteForce.Stop()
 	m.PortScan.Stop()
-	m.Anomaly.Stop()
 	m.Baseline.Stop()
 
 	// Recreate with new config
@@ -235,7 +197,6 @@ func (m *Manager) UpdateConfig(newCfg *config.DetectionConfig) {
 	m.DDoS = rate_limiting.NewDDoSProtection(newCfg.DDoS, m.alertMgr)
 	m.BruteForce = NewBruteForceDetector(newCfg.BruteForce, m.alertMgr)
 	m.PortScan = NewPortScanDetector(newCfg.PortScan, m.alertMgr)
-	m.Anomaly = NewAnomalyDetector(newCfg.Anomaly, m.alertMgr)
 	m.Baseline = NewTrafficBaseline(newCfg.Baseline, m.alertMgr)
 
 	// Update ban manager escalation params (don't recreate — preserve active bans)
@@ -253,7 +214,6 @@ func (m *Manager) Stats() SecurityStats {
 		DDoS:        m.DDoS.Stats(),
 		BruteForce:  m.BruteForce.Stats(),
 		PortScan:    m.PortScan.Stats(),
-		Anomaly:     m.Anomaly.Stats(),
 		Baseline:    m.Baseline.Stats(),
 		Bans:        m.BanMgr.Stats(),
 	}
@@ -265,7 +225,6 @@ func (m *Manager) Stop() {
 	m.DDoS.Stop()
 	m.BruteForce.Stop()
 	m.PortScan.Stop()
-	m.Anomaly.Stop()
 	m.Baseline.Stop()
 	m.BanMgr.Stop()
 }

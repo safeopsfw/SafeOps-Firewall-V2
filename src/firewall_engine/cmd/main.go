@@ -6,15 +6,19 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof" // registers pprof handlers on DefaultServeMux
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
 	"firewall_engine/internal/alerting"
+	"firewall_engine/internal/api"
 	"firewall_engine/internal/cache"
 	"firewall_engine/internal/config"
 	"firewall_engine/internal/connection"
@@ -42,8 +46,27 @@ func main() {
 	fmt.Println("=== SafeOps Firewall Engine ===")
 	fmt.Println("Initializing...")
 
+	startTime := time.Now()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Handle Windows service CLI flags (-install, -remove, -service).
+	// -install: register as a Windows service
+	// -remove:  unregister the service
+	// -service: run in service mode (called by SCM, not directly by user)
+	if handleServiceCLI(os.Args[1:], cancel) {
+		return
+	}
+
+	// If running inside the Windows SCM (e.g. after sc start), run as service.
+	if isWindowsService() {
+		if err := runAsService(cancel); err != nil {
+			fmt.Fprintf(os.Stderr, "Service error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	// ========================================================================
 	// 0. Load Configuration (soft-coded path resolution)
@@ -104,6 +127,35 @@ func main() {
 
 	legacyLogger := log.New(os.Stdout, "[FIREWALL] ", log.LstdFlags|log.Lmicroseconds)
 	_ = legacyLogger
+
+	// pprof server for profiling (Phase 8 — port 6060)
+	go func() {
+		pprofAddr := ":6060"
+		logger.Info().Str("address", pprofAddr).Msg("pprof server started (CPU/memory/goroutine profiling)")
+		if pprofErr := http.ListenAndServe(pprofAddr, nil); pprofErr != nil {
+			logger.Warn().Err(pprofErr).Msg("pprof server stopped")
+		}
+	}()
+
+	// ========================================================================
+	// 1b. Initialize Verdict Logger (SOC-style packet decision log)
+	// ========================================================================
+	// Resolve bin/logs/ directory relative to the binary
+	verdictLogDir := filepath.Join(filepath.Dir(cfg.ConfigDir), "logs")
+	// ConfigDir is bin/firewall-engine/configs → go up two levels to bin/, then into logs/
+	if exeDir, exeErr := os.Executable(); exeErr == nil {
+		verdictLogDir = filepath.Join(filepath.Dir(exeDir), "..", "logs")
+	}
+	verdictLogDir, _ = filepath.Abs(verdictLogDir)
+
+	vlCfg := logging.DefaultVerdictLoggerConfig()
+	vlCfg.Dir = verdictLogDir
+	verdictLogger, err := logging.NewVerdictFileLogger(vlCfg)
+	if err != nil {
+		logger.Warn().Err(err).Msg("Verdict logger init failed — verdict logging disabled")
+	} else {
+		logger.Info().Str("dir", verdictLogDir).Str("rotate", "5m").Msg("Verdict Logger started (SOC-style JSONL)")
+	}
 
 	// ========================================================================
 	// 2. Initialize Alert Manager
@@ -194,7 +246,6 @@ func main() {
 		Bool("ddos", cfg.Detection.DDoS.Enabled).
 		Bool("brute_force", cfg.Detection.BruteForce.Enabled).
 		Bool("port_scan", cfg.Detection.PortScan.Enabled).
-		Bool("anomaly", cfg.Detection.Anomaly.Enabled).
 		Bool("baseline", cfg.Detection.Baseline.Enabled).
 		Msg("Security Manager initialized")
 
@@ -459,6 +510,9 @@ func main() {
 		cfg.Firewall.SafeOps.SubscriberID,
 		cfg.Firewall.SafeOps.GRPCAddress,
 		cfg.Firewall.SafeOps.Filters,
+	).WithReconnectConfig(
+		cfg.Firewall.SafeOps.ReconnectMaxRetries,
+		cfg.Firewall.SafeOps.ReconnectBackoffSeconds,
 	)
 
 	if err := grpcClient.Connect(ctx); err != nil {
@@ -474,30 +528,62 @@ func main() {
 	// ========================================================================
 	// 11. Start Packet Capture Stream (config-driven worker count)
 	// ========================================================================
+
+	// Global packet counter — incremented by every packet processed.
+	// Read by the stats WebSocket ticker and the pprof /debug/vars endpoint.
+	var totalPacketsProcessed atomic.Uint64
+	var totalPacketsBlocked atomic.Uint64
+
 	if grpcClient.IsConnected() {
 		numWorkers := cfg.Firewall.Engine.WorkerCount
 		if err := grpcClient.StartCapture(ctx, func(pkt *pb.PacketMetadata) {
+			totalPacketsProcessed.Add(1)
 			packet := convertPacket(pkt)
+			defer releasePacket(packet)
 
 			// Load current blocklist config (hot-reloadable via atomic pointer)
 			bl := liveBlocklist.Load()
 			blockCacheTTL := uint32(bl.BlockCacheTTLSeconds)
 
+			// logAndSend wraps gRPC verdict send + SOC verdict log in one call.
+			logAndSend := func(verdictType pb.VerdictType, reason, detector string, ttl uint32) {
+				if verdictType == pb.VerdictType_DROP || verdictType == pb.VerdictType_BLOCK {
+					totalPacketsBlocked.Add(1)
+				}
+				go grpcClient.SendVerdict(ctx, pkt.PacketId, verdictType,
+					reason, detector, ttl, pkt.CacheKey)
+				if verdictLogger != nil {
+					verdictLogger.Log(logging.VerdictEntry{
+						SrcIP:    pkt.SrcIp,
+						SrcPort:  pkt.SrcPort,
+						DstIP:    pkt.DstIp,
+						DstPort:  pkt.DstPort,
+						Proto:    protocolName(pkt.Protocol),
+						Action:   verdictType.String(),
+						Detector: detector,
+						Domain:   pkt.Domain,
+						Reason:   reason,
+						Size:     pkt.PacketSize,
+						Flags:    logging.TCPFlagsToString(pkt.TcpFlags),
+						CacheTTL: ttl,
+					})
+				}
+			}
+
 			// Step 0: Determine whitelist status (blocklist.toml [whitelist])
 			// Whitelisted IPs bypass BLOCKING checks (threat intel, manual IP, geo, domain)
-			// but NOT security MONITORING (DDoS, port scan, brute force, anomaly).
+			// but NOT security MONITORING (DDoS, port scan, brute force).
 			// Security monitoring always runs so we detect attacks from/to any IP.
 			isWhitelisted := bl.IsIPWhitelisted(pkt.SrcIp) || bl.IsIPWhitelisted(pkt.DstIp)
 
 			{
 				// Security monitoring (ALWAYS runs — even for whitelisted IPs)
-				// DDoS detection, rate limiting, port scan, brute force, anomaly
+				// DDoS detection, rate limiting, port scan, brute force
 				// These generate alerts but only send DROP verdicts for non-whitelisted traffic.
 				protocol := protocolName(pkt.Protocol)
 				verdict := securityMgr.Check(pkt.SrcIp, protocol, uint8(pkt.TcpFlags), int(pkt.PacketSize))
 				if !verdict.Allowed && !isWhitelisted {
-					go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-						verdict.Reason, verdict.DetectorName, 60, pkt.CacheKey)
+					logAndSend(pb.VerdictType_DROP, verdict.Reason, verdict.DetectorName, 60)
 					return
 				}
 
@@ -505,8 +591,7 @@ func main() {
 				if protocol == "TCP" && pkt.TcpFlags&0x02 != 0 && pkt.TcpFlags&0x10 == 0 {
 					scanVerdict := securityMgr.CheckPortScan(pkt.SrcIp, uint16(pkt.DstPort))
 					if !scanVerdict.Allowed && !isWhitelisted {
-						go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-							scanVerdict.Reason, scanVerdict.DetectorName, 300, pkt.CacheKey)
+						logAndSend(pb.VerdictType_DROP, scanVerdict.Reason, scanVerdict.DetectorName, 300)
 						return
 					}
 				}
@@ -516,8 +601,7 @@ func main() {
 					if securityMgr.BruteForce.IsMonitoredPort(int(pkt.DstPort)) {
 						bfVerdict := securityMgr.CheckBruteForce(pkt.SrcIp, int(pkt.DstPort))
 						if !bfVerdict.Allowed && !isWhitelisted {
-							go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-								bfVerdict.Reason, bfVerdict.DetectorName, 300, pkt.CacheKey)
+							logAndSend(pb.VerdictType_DROP, bfVerdict.Reason, bfVerdict.DetectorName, 300)
 							return
 						}
 					}
@@ -537,8 +621,7 @@ func main() {
 					})
 					for _, rm := range ruleMatches {
 						if rm.Rule != nil && strings.ToUpper(rm.Rule.Action) == "DROP" && !isWhitelisted {
-							go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-								rm.Description, "rule_engine", 60, pkt.CacheKey)
+							logAndSend(pb.VerdictType_DROP, rm.Description, "rule_engine", 60)
 							return
 						}
 					}
@@ -553,14 +636,12 @@ func main() {
 				if bl.IPsEnabled {
 					if bl.IsIPManuallyBlocked(pkt.SrcIp) {
 						reason := fmt.Sprintf("Source IP %s in manual blocklist (blocklist.toml)", pkt.SrcIp)
-						go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-							reason, "manual_blocklist", blockCacheTTL, pkt.CacheKey)
+						logAndSend(pb.VerdictType_DROP, reason, "manual_blocklist", blockCacheTTL)
 						return
 					}
 					if bl.IsIPManuallyBlocked(pkt.DstIp) {
 						reason := fmt.Sprintf("Destination IP %s in manual blocklist (blocklist.toml)", pkt.DstIp)
-						go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-							reason, "manual_blocklist", blockCacheTTL, pkt.CacheKey)
+						logAndSend(pb.VerdictType_DROP, reason, "manual_blocklist", blockCacheTTL)
 						return
 					}
 				}
@@ -569,8 +650,7 @@ func main() {
 				if geoChecker != nil {
 					geoResult := geoChecker.Check(pkt.SrcIp)
 					if geoResult.Blocked {
-						go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-							geoResult.Reason, "geoip", 600, pkt.CacheKey)
+						logAndSend(pb.VerdictType_DROP, geoResult.Reason, "geoip", 600)
 						return
 					}
 				}
@@ -579,8 +659,7 @@ func main() {
 				if threatDecision != nil {
 					ipResult := threatDecision.CheckIP(pkt.SrcIp, pkt.DstIp)
 					if ipResult != nil && ipResult.IsBlocked {
-						go grpcClient.SendVerdict(ctx, pkt.PacketId, pb.VerdictType_DROP,
-							ipResult.Reason, "threat_intel", 300, pkt.CacheKey)
+						logAndSend(pb.VerdictType_DROP, ipResult.Reason, "threat_intel", 300)
 						return
 					}
 				}
@@ -608,8 +687,7 @@ func main() {
 								domResult.CDNProvider, domResult.Domain, domResult.MatchedBy)
 						}
 
-						go grpcClient.SendVerdict(ctx, pkt.PacketId, verdictType,
-							reason, "domain_filter", blockCacheTTL, pkt.CacheKey)
+						logAndSend(verdictType, reason, "domain_filter", blockCacheTTL)
 						return
 					}
 				}
@@ -629,8 +707,7 @@ func main() {
 			verdictType := convertVerdictType(result.Verdict)
 			cacheTTL := uint32(cfg.Firewall.Performance.VerdictCacheTTLSeconds)
 
-			go grpcClient.SendVerdict(ctx, pkt.PacketId, verdictType, result.Reason,
-				result.RuleID, cacheTTL, pkt.CacheKey)
+			logAndSend(verdictType, result.Reason, result.RuleID, cacheTTL)
 
 		}, numWorkers); err != nil {
 			logger.Error().Err(err).Msg("Failed to start capture")
@@ -758,6 +835,58 @@ func main() {
 	}
 
 	// ========================================================================
+	// 14b. Initialize Web UI API Server
+	// ========================================================================
+	webAPIAddr := cfg.Firewall.Servers.WebAPIAddress
+	if webAPIAddr == "" {
+		webAPIAddr = ":8443"
+	}
+
+	apiDeps := api.Dependencies{
+		Config:        cfg,
+		SecurityMgr:   securityMgr,
+		DomainFilter:  domainFilter,
+		GeoChecker:    geoChecker,
+		AlertMgr:      alertMgr,
+		LiveBlocklist: &liveBlocklist,
+		Logger:        logger,
+		StartTime:     startTime,
+		// Reloader is wired after it's created below (see section 16)
+	}
+
+	var apiServer *api.Server
+	if apiServer, err = api.NewServer(webAPIAddr, apiDeps); err != nil {
+		logger.Error().Err(err).Msg("Failed to create Web UI API server")
+	} else {
+		if err = apiServer.Start(); err != nil {
+			logger.Error().Err(err).Msg("Failed to start Web UI API server")
+			apiServer = nil
+		} else {
+			logger.Info().Str("address", webAPIAddr).Msg("Web UI API server started — http://localhost" + webAPIAddr)
+		}
+	}
+
+	// Periodic WebSocket broadcast for real-time packet counter (Phase 11).
+	// Started AFTER apiServer is initialized so the closure is valid.
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if apiServer != nil {
+					apiServer.Hub().BroadcastEvent("packet_stats", map[string]interface{}{
+						"total_processed": totalPacketsProcessed.Load(),
+						"total_blocked":   totalPacketsBlocked.Load(),
+					})
+				}
+			}
+		}
+	}()
+
+	// ========================================================================
 	// 15. Statistics Reporter
 	// ========================================================================
 	go func() {
@@ -775,6 +904,51 @@ func main() {
 	}()
 
 	// ========================================================================
+	// 15b. Initialize Memory & Goroutine Monitors (Phase 9)
+	// ========================================================================
+	memMonitor := health.NewMemoryMonitor(health.DefaultMemoryMonitorConfig())
+	memMonitor.OnSoftLimit = func(allocMB int64) {
+		logger.Warn().Int64("alloc_mb", allocMB).Msg("Memory soft limit exceeded (512 MB)")
+	}
+	memMonitor.OnHardLimit = func(allocMB int64) {
+		logger.Error().Int64("alloc_mb", allocMB).Msg("Memory hard limit exceeded (1024 MB) — GC triggered")
+		alertMgr.Alert(alerting.NewAlert(alerting.AlertAnomaly, alerting.SeverityCritical).
+			WithDetails(fmt.Sprintf("Memory usage critical: %d MB (hard limit 1024 MB)", allocMB)).
+			Build())
+	}
+	go memMonitor.Run(ctx)
+
+	goroutineMonitor := health.NewGoroutineMonitor(health.DefaultGoroutineMonitorConfig())
+	goroutineMonitor.OnLeak = func(count int, msg string) {
+		logger.Error().Int("goroutines", count).Msg(msg)
+	}
+	goroutineMonitor.OnDouble = func(count, prev int) {
+		logger.Warn().Int("goroutines", count).Int("previous", prev).Msg("Goroutine count doubled between checks — possible leak")
+	}
+	go goroutineMonitor.Run(ctx)
+	logger.Info().Int64("soft_mb", health.DefaultMemoryMonitorConfig().SoftLimitMB).Int64("hard_mb", health.DefaultMemoryMonitorConfig().HardLimitMB).Msg("Memory & goroutine monitors started")
+
+	// ========================================================================
+	// 15d. Initialize BlocklistSync (before banner so stats are available)
+	// ========================================================================
+	controlAddr := cfg.Firewall.SafeOps.ControlAPIAddress
+	if controlAddr == "" {
+		controlAddr = "127.0.0.1:50052"
+	}
+	blocklistSync := integration.NewBlocklistSync(logger, controlAddr)
+
+	// Wait for SafeOps control API to be ready, then do initial domain sync
+	if domainFilter != nil {
+		if err := blocklistSync.WaitForAPI(10 * time.Second); err != nil {
+			logger.Warn().Err(err).Msg("SafeOps control API not available — domain sync deferred to hot-reload")
+		} else {
+			domains := domainFilter.GetAllBlockedDomains()
+			synced := blocklistSync.SyncDomains(domains)
+			logger.Info().Int("synced", synced).Msg("Initial domain blocklist synced to SafeOps Engine")
+		}
+	}
+
+	// ========================================================================
 	// Ready Message
 	// ========================================================================
 	printBanner(cfg, dualEngine, wfpEngine, alertDir, threatRefresher, securityMgr, domainFilter, geoChecker, parsedBlocklist)
@@ -785,6 +959,15 @@ func main() {
 		fmt.Printf("  Enabled Rules:      %d\n", ruleEngine.RuleCount())
 		fmt.Printf("  Config:             %s\n", rulesConfigPath)
 		fmt.Printf("  Hot-Reload:         enabled\n")
+		fmt.Println(sep)
+	}
+
+	if blocklistSync != nil {
+		sep := strings.Repeat("=", 60)
+		fmt.Println("Blocklist Sync (Firewall → SafeOps):")
+		fmt.Printf("  Mode:               in-process (zero-latency)\n")
+		fmt.Printf("  Synced Domains:     %d\n", blocklistSync.SyncedCount())
+		fmt.Printf("  Hot-Reload:         enabled (domains.txt + blocklist.toml)\n")
 		fmt.Println(sep)
 	}
 
@@ -799,9 +982,16 @@ func main() {
 		GeoChecker:       geoChecker,
 		SecurityMgr:      securityMgr,
 		RuleEngine:       ruleEngine,
+		BlocklistSync:    blocklistSync,
 		InitialBlocklist: parsedBlocklist,
 		OnBlocklistReload: func(newBL *config.ParsedBlocklist) {
 			liveBlocklist.Store(newBL)
+			// Notify WebSocket clients of config reload
+			if apiServer != nil {
+				apiServer.Hub().BroadcastEvent("config_reloaded", map[string]interface{}{
+					"type": "blocklist",
+				})
+			}
 		},
 	})
 	if err != nil {
@@ -811,6 +1001,11 @@ func main() {
 			logger.Error().Err(err).Msg("Failed to start hot-reload watcher")
 		} else {
 			logger.Info().Str("config_dir", cfg.ConfigDir).Msg("Hot-reload watcher active")
+		}
+
+		// Wire reloader into API server now that it's created
+		if apiServer != nil {
+			apiServer.SetReloader(reloader)
 		}
 	}
 
@@ -826,6 +1021,11 @@ func main() {
 	cancel()
 
 	// Graceful shutdown in reverse order
+	if apiServer != nil {
+		if err := apiServer.Stop(); err != nil {
+			logger.Error().Err(err).Msg("Error stopping Web UI API server")
+		}
+	}
 	if reloader != nil {
 		if err := reloader.Stop(); err != nil {
 			logger.Error().Err(err).Msg("Error stopping hot-reload watcher")
@@ -863,6 +1063,13 @@ func main() {
 	if err := verdictCache.Stop(); err != nil {
 		logger.Error().Err(err).Msg("Error stopping cache")
 	}
+	if verdictLogger != nil {
+		vlStats := verdictLogger.Stats()
+		logger.Info().Int64("written", vlStats.Written).Int64("rotated", vlStats.Rotated).Msg("Verdict logger stopping")
+		if err := verdictLogger.Stop(); err != nil {
+			logger.Error().Err(err).Msg("Error stopping verdict logger")
+		}
+	}
 
 	printFinalStats(packetInspector, verdictCache, connTracker, grpcClient, alertMgr, securityMgr, domainFilter, geoChecker)
 
@@ -873,13 +1080,30 @@ func main() {
 // Helper Functions
 // ============================================================================
 
+// packetMetaPool reduces allocations in the per-packet hot path (Phase 8 optimization).
+// Each PacketMetadata is obtained from the pool, written, used, then returned.
+var packetMetaPool = sync.Pool{
+	New: func() interface{} {
+		return &models.PacketMetadata{}
+	},
+}
+
 func convertPacket(pkt *pb.PacketMetadata) *models.PacketMetadata {
-	return &models.PacketMetadata{
-		SrcIP:    pkt.SrcIp,
-		DstIP:    pkt.DstIp,
-		SrcPort:  uint16(pkt.SrcPort),
-		DstPort:  uint16(pkt.DstPort),
-		Protocol: models.Protocol(pkt.Protocol),
+	m := packetMetaPool.Get().(*models.PacketMetadata)
+	// Zero-fill only the fields we use (avoids reading stale data from prior use)
+	m.SrcIP = pkt.SrcIp
+	m.DstIP = pkt.DstIp
+	m.SrcPort = uint16(pkt.SrcPort)
+	m.DstPort = uint16(pkt.DstPort)
+	m.Protocol = models.Protocol(pkt.Protocol)
+	return m
+}
+
+// releasePacket returns a packet metadata struct back to the pool.
+// Call this at the end of each packet handler goroutine.
+func releasePacket(m *models.PacketMetadata) {
+	if m != nil {
+		packetMetaPool.Put(m)
 	}
 }
 
@@ -1025,7 +1249,6 @@ func printBanner(cfg *config.AllConfig, dualEngine *enforcement.DualEngineCoordi
 			cfg.Detection.BruteForce.Enabled, len(cfg.Detection.BruteForce.Services))
 		fmt.Printf("  Port Scan:          %v (threshold: %d ports/%ds)\n",
 			cfg.Detection.PortScan.Enabled, cfg.Detection.PortScan.PortThreshold, cfg.Detection.PortScan.WindowSeconds)
-		fmt.Printf("  Anomaly Detection:  %v (protocol/size/beaconing)\n", cfg.Detection.Anomaly.Enabled)
 		fmt.Printf("  Traffic Baseline:   %v (EMA window: %d min)\n",
 			cfg.Detection.Baseline.Enabled, cfg.Detection.Baseline.WindowMinutes)
 		fmt.Printf("  Ban Escalation:     %dm → %dm → %dm → ... (max %dh)\n",
@@ -1036,6 +1259,7 @@ func printBanner(cfg *config.AllConfig, dualEngine *enforcement.DualEngineCoordi
 		fmt.Println(sep)
 	}
 	fmt.Println("Servers:")
+	fmt.Printf("  Web UI:             http://localhost%s\n", cfg.Firewall.Servers.WebAPIAddress)
 	fmt.Printf("  Metrics:            http://localhost%s%s\n", cfg.Firewall.Servers.MetricsAddress, cfg.Firewall.Servers.MetricsPath)
 	fmt.Printf("  Health:             http://localhost%s/health\n", cfg.Firewall.Servers.HealthAddress)
 	fmt.Printf("  gRPC Management:    grpc://localhost%s\n", cfg.Firewall.Servers.ManagementAddress)
@@ -1149,9 +1373,6 @@ func printFinalStats(insp *inspector.Inspector, cache *cache.VerdictCache,
 	fmt.Printf("DDoS ICMP:           %d\n", secStats.DDoS.ICMPDetections)
 	fmt.Printf("Brute Force:         %d\n", secStats.BruteForce.Detections)
 	fmt.Printf("Port Scans:          %d\n", secStats.PortScan.Detections)
-	fmt.Printf("Protocol Violations: %d\n", secStats.Anomaly.ProtocolViolations)
-	fmt.Printf("Size Anomalies:      %d\n", secStats.Anomaly.SizeAnomalies)
-	fmt.Printf("Beaconing Alerts:    %d\n", secStats.Anomaly.BeaconingAlerts)
 	fmt.Printf("Baseline Deviations: %d\n", secStats.Baseline.Deviations)
 	fmt.Println(sep)
 	if domFilter != nil {

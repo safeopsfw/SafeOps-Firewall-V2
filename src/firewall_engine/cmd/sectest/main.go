@@ -5,7 +5,6 @@
 //   - DDoS detection (SYN flood, UDP flood, ICMP flood)
 //   - Port scan detection (100+ unique ports)
 //   - Brute force detection (failed logins on SSH/RDP/etc)
-//   - Protocol anomaly detection (SYN+FIN, Xmas, Null scans)
 //   - Ban escalation
 //   - Whitelist bypass
 //
@@ -71,8 +70,6 @@ func main() {
 		{"Sequential Port Scan", testSequentialPortScan},
 		{"SSH Brute Force", testSSHBruteForce},
 		{"RDP Brute Force", testRDPBruteForce},
-		{"Protocol Anomaly — SYN+FIN", testSYNFINAnomaly},
-		{"Protocol Anomaly — Xmas Tree", testXmasAnomaly},
 		{"Ban Escalation", testBanEscalation},
 		{"Whitelist Bypass", testWhitelistBypass},
 	}
@@ -111,8 +108,6 @@ func main() {
 		stats.DDoS.SYNDetections, stats.DDoS.UDPDetections, stats.DDoS.ICMPDetections)
 	fmt.Printf("  Brute Force:  detections=%d\n", stats.BruteForce.Detections)
 	fmt.Printf("  Port Scan:    detections=%d\n", stats.PortScan.Detections)
-	fmt.Printf("  Anomaly:      protocol=%d size=%d beacon=%d\n",
-		stats.Anomaly.ProtocolViolations, stats.Anomaly.SizeAnomalies, stats.Anomaly.BeaconingAlerts)
 	fmt.Printf("  Bans:         active=%d total=%d\n",
 		stats.Bans.ActiveBans, stats.Bans.TotalBans)
 
@@ -403,53 +398,7 @@ func testRDPBruteForce(secMgr *security.Manager) (passed, failed int) {
 }
 
 // ============================================================================
-// Test 9: Protocol Anomaly — SYN+FIN
-// ============================================================================
-func testSYNFINAnomaly(secMgr *security.Manager) (passed, failed int) {
-	ip := "192.0.2.10"
-
-	info("Sending SYN+FIN packet (invalid TCP flag combination)...")
-
-	// SYN=0x02, FIN=0x01 → SYN+FIN=0x03
-	v := secMgr.Check(ip, "TCP", 0x03, 64)
-	if v.IsAnomaly {
-		pass("SYN+FIN anomaly detected")
-		passed++
-	} else if !v.Allowed {
-		pass(fmt.Sprintf("Blocked: %s (detector: %s)", v.Reason, v.DetectorName))
-		passed++
-	} else {
-		fail("SYN+FIN packet was ALLOWED")
-		failed++
-	}
-	return
-}
-
-// ============================================================================
-// Test 10: Protocol Anomaly — Xmas Tree
-// ============================================================================
-func testXmasAnomaly(secMgr *security.Manager) (passed, failed int) {
-	ip := "192.0.2.11"
-
-	info("Sending Xmas tree packet (FIN+PSH+URG flags)...")
-
-	// FIN=0x01, PSH=0x08, URG=0x20 → 0x29
-	v := secMgr.Check(ip, "TCP", 0x29, 64)
-	if v.IsAnomaly {
-		pass("Xmas tree anomaly detected")
-		passed++
-	} else if !v.Allowed {
-		pass(fmt.Sprintf("Blocked: %s (detector: %s)", v.Reason, v.DetectorName))
-		passed++
-	} else {
-		fail("Xmas tree packet was ALLOWED")
-		failed++
-	}
-	return
-}
-
-// ============================================================================
-// Test 11: Ban Escalation
+// Test 9: Ban Escalation
 // First ban = 30min, second = 2h (4x multiplier)
 // ============================================================================
 func testBanEscalation(secMgr *security.Manager) (passed, failed int) {
@@ -501,7 +450,7 @@ func testBanEscalation(secMgr *security.Manager) (passed, failed int) {
 }
 
 // ============================================================================
-// Test 12: Whitelist Bypass
+// Test 10: Whitelist Bypass
 // 127.0.0.1 and 192.168.0.0/16 should bypass all detection
 // ============================================================================
 func testWhitelistBypass(secMgr *security.Manager) (passed, failed int) {

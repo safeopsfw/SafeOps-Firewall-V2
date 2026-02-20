@@ -50,6 +50,9 @@ func (s *Server) Start() error {
 	// Domain blocking
 	mux.HandleFunc("/api/v1/block/domain", s.handleBlockDomain)
 
+	// Bulk domain sync (firewall → SafeOps)
+	mux.HandleFunc("/api/v1/sync/domains", s.handleSyncDomains)
+
 	// Port blocking
 	mux.HandleFunc("/api/v1/block/port", s.handleBlockPort)
 
@@ -110,6 +113,10 @@ type blockIPRequest struct {
 
 type blockDomainRequest struct {
 	Domain string `json:"domain"`
+}
+
+type syncDomainsRequest struct {
+	Domains []string `json:"domains"`
 }
 
 type blockPortRequest struct {
@@ -318,6 +325,55 @@ func (s *Server) handleDNSRedirect(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("DNS redirect removed via control API", map[string]interface{}{"domain": domain})
 
 		s.writeJSON(w, http.StatusOK, apiResponse{Success: true, Message: fmt.Sprintf("DNS redirect removed: %s", domain)})
+
+	default:
+		s.writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Success: false, Message: "method not allowed"})
+	}
+}
+
+// handleSyncDomains replaces the entire domain blocklist in one call.
+// POST: receives {"domains":["a.com","b.com",...]} — clears existing, adds all new.
+// GET: returns the current blocked domain list.
+func (s *Server) handleSyncDomains(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		var req syncDomainsRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.writeJSON(w, http.StatusBadRequest, apiResponse{Success: false, Message: "invalid JSON"})
+			return
+		}
+
+		// Clear existing domains
+		existing := s.engine.GetBlockedDomains()
+		for _, d := range existing {
+			s.engine.UnblockDomain(d)
+		}
+
+		// Add all new domains
+		for _, d := range req.Domains {
+			d = strings.ToLower(strings.TrimSpace(d))
+			if d != "" {
+				s.engine.BlockDomain(d)
+			}
+		}
+
+		s.log.Info("Bulk domain sync via control API", map[string]interface{}{
+			"cleared": len(existing),
+			"synced":  len(req.Domains),
+		})
+
+		s.writeJSON(w, http.StatusOK, apiResponse{
+			Success: true,
+			Message: fmt.Sprintf("Synced %d domains (cleared %d)", len(req.Domains), len(existing)),
+			Data:    map[string]int{"synced": len(req.Domains), "cleared": len(existing)},
+		})
+
+	case http.MethodGet:
+		domains := s.engine.GetBlockedDomains()
+		s.writeJSON(w, http.StatusOK, apiResponse{
+			Success: true,
+			Data:    map[string]interface{}{"domains": domains, "count": len(domains)},
+		})
 
 	default:
 		s.writeJSON(w, http.StatusMethodNotAllowed, apiResponse{Success: false, Message: "method not allowed"})
