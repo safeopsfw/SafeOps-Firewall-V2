@@ -10,9 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/gofiber/fiber/v2"
 
 	"firewall_engine/internal/config"
+	"firewall_engine/internal/rules"
 )
 
 // ============================================================================
@@ -278,6 +280,7 @@ type UpdateCategoriesRequest struct {
 }
 
 // handleUpdateCategories handles PUT /api/v1/rules/categories.
+// Persists the change to blocklist.toml so it survives engine restart.
 func (s *Server) handleUpdateCategories(c *fiber.Ctx) error {
 	var req UpdateCategoriesRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -285,19 +288,159 @@ func (s *Server) handleUpdateCategories(c *fiber.Ctx) error {
 			"Invalid request body: "+err.Error())
 	}
 
-	// Apply to domain filter immediately
+	// Apply to domain filter immediately (in-memory)
 	if s.deps.DomainFilter != nil {
 		s.deps.DomainFilter.SetBlockedCategories(req.Categories)
+	}
+
+	// Persist to blocklist.toml by updating the [domains.categories] section.
+	// Build a set of enabled categories for O(1) lookup.
+	enabled := make(map[string]bool, len(req.Categories))
+	for _, cat := range req.Categories {
+		enabled[strings.ToLower(strings.TrimSpace(cat))] = true
+	}
+
+	configPath := s.deps.Config.BlocklistFilePath()
+	if configPath != "" {
+		currentBL, err := config.LoadBlocklistConfigFromFile(configPath)
+		if err == nil {
+			currentBL.Domains.Categories = config.BlocklistCategoriesConfig{
+				SocialMedia: enabled["social_media"],
+				Streaming:   enabled["streaming"],
+				Gaming:      enabled["gaming"],
+				Ads:         enabled["ads"],
+				Trackers:    enabled["trackers"],
+				Adult:       enabled["adult"],
+				Gambling:    enabled["gambling"],
+				VPNProxy:    enabled["vpn_proxy"],
+			}
+
+			if writeErr := writeJSONToTOMLFile(configPath, currentBL); writeErr != nil {
+				s.logger.Warn().Err(writeErr).Msg("Failed to persist categories to blocklist.toml — in-memory update applied")
+			} else {
+				s.triggerReload("blocklist.toml")
+			}
+		}
 	}
 
 	s.logger.Info().
 		Strs("categories", req.Categories).
 		Int("count", len(req.Categories)).
-		Msg("Blocked categories updated")
+		Msg("Blocked categories updated and persisted")
 
 	return c.JSON(fiber.Map{
 		"message":    "Categories updated",
 		"categories": req.Categories,
+	})
+}
+
+// ============================================================================
+// Category Patterns (categories.toml)
+// ============================================================================
+
+// handleGetCategoryPatterns handles GET /api/v1/rules/categories/patterns.
+// Returns all category names with their domain patterns from categories.toml.
+func (s *Server) handleGetCategoryPatterns(c *fiber.Ctx) error {
+	allCats := rules.GetAllCategories()
+
+	type catPatterns struct {
+		Name     string   `json:"name"`
+		Patterns []string `json:"patterns"`
+		Count    int      `json:"count"`
+	}
+
+	var result []catPatterns
+	for _, cat := range allCats {
+		patterns := rules.GetCategoryPatterns(cat)
+		result = append(result, catPatterns{
+			Name:     cat,
+			Patterns: patterns,
+			Count:    len(patterns),
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
+
+	return c.JSON(fiber.Map{
+		"categories": result,
+		"total":      len(result),
+	})
+}
+
+// CategoryPatternsRequest is the request body for updating category patterns.
+type CategoryPatternsRequest struct {
+	Patterns []string `json:"patterns"`
+}
+
+// handleUpdateCategoryPatterns handles PUT /api/v1/rules/categories/patterns/:category.
+// Updates the domain patterns for a specific category in categories.toml.
+func (s *Server) handleUpdateCategoryPatterns(c *fiber.Ctx) error {
+	category := strings.ToLower(c.Params("category"))
+	if category == "" {
+		return respondError(c, fiber.StatusBadRequest, "bad_request", "Category name is required")
+	}
+
+	var req CategoryPatternsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return respondError(c, fiber.StatusBadRequest, "bad_request",
+			"Invalid request body: "+err.Error())
+	}
+
+	if len(req.Patterns) == 0 {
+		return respondError(c, fiber.StatusBadRequest, "bad_request", "At least one pattern is required")
+	}
+
+	// Read current categories.toml
+	categoriesPath := filepath.Join(s.deps.Config.ConfigDir, "categories.toml")
+
+	type catEntry struct {
+		Patterns []string `toml:"patterns"`
+	}
+	var raw map[string]catEntry
+
+	data, err := os.ReadFile(categoriesPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			raw = make(map[string]catEntry)
+		} else {
+			return respondError(c, fiber.StatusInternalServerError, "internal_error",
+				"Failed to read categories.toml: "+err.Error())
+		}
+	} else {
+		if _, decErr := toml.Decode(string(data), &raw); decErr != nil {
+			return respondError(c, fiber.StatusInternalServerError, "internal_error",
+				"Failed to parse categories.toml: "+decErr.Error())
+		}
+	}
+
+	// Update the category
+	raw[category] = catEntry{Patterns: req.Patterns}
+
+	// Write back as TOML
+	f, err := os.Create(categoriesPath)
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "internal_error",
+			"Failed to write categories.toml: "+err.Error())
+	}
+	defer f.Close()
+
+	encoder := toml.NewEncoder(f)
+	if err := encoder.Encode(raw); err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "internal_error",
+			"Failed to encode categories.toml: "+err.Error())
+	}
+
+	s.triggerReload("categories.toml")
+
+	s.logger.Info().
+		Str("category", category).
+		Int("patterns", len(req.Patterns)).
+		Msg("Category patterns updated via API")
+
+	return c.JSON(fiber.Map{
+		"message":  fmt.Sprintf("Category %s patterns updated (%d patterns)", category, len(req.Patterns)),
+		"category": category,
+		"patterns": req.Patterns,
 	})
 }
 
@@ -904,4 +1047,136 @@ func (s *Server) triggerReload(filename string) {
 	s.logger.Info().
 		Str("file", filename).
 		Msg("Config file modified via API — hot-reload should trigger")
+}
+
+// ============================================================================
+// Custom Detection Rules (rules.toml) — read/toggle
+// ============================================================================
+
+// handleGetCustomRules handles GET /api/v1/rules/custom.
+// Returns all detection rules from rules.toml (including disabled).
+func (s *Server) handleGetCustomRules(c *fiber.Ctx) error {
+	rulesPath := filepath.Join(s.deps.Config.ConfigDir, "rules.toml")
+
+	allRules, err := rules.GetAllRulesFromFile(rulesPath)
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "read_error",
+			fmt.Sprintf("Failed to read rules.toml: %v", err))
+	}
+
+	// Group rules by alert_type category
+	type ruleResponse struct {
+		Name             string   `json:"name"`
+		Description      string   `json:"description"`
+		Enabled          bool     `json:"enabled"`
+		Severity         string   `json:"severity"`
+		Protocol         string   `json:"protocol,omitempty"`
+		DstPort          []int    `json:"dst_port,omitempty"`
+		SrcPort          []int    `json:"src_port,omitempty"`
+		Direction        string   `json:"direction,omitempty"`
+		DstIP            []string `json:"dst_ip,omitempty"`
+		Action           string   `json:"action"`
+		AlertType        string   `json:"alert_type"`
+		ThresholdCount   int      `json:"threshold_count,omitempty"`
+		ThresholdWindow  int      `json:"threshold_window,omitempty"`
+		ThresholdGroupBy string   `json:"threshold_group_by,omitempty"`
+		BanDuration      string   `json:"ban_duration,omitempty"`
+		TCPFlags         string   `json:"tcp_flags,omitempty"`
+	}
+
+	var resp []ruleResponse
+	for _, r := range allRules {
+		resp = append(resp, ruleResponse{
+			Name:             r.Name,
+			Description:      r.Description,
+			Enabled:          r.Enabled,
+			Severity:         r.Severity,
+			Protocol:         r.Protocol,
+			DstPort:          r.DstPort,
+			SrcPort:          r.SrcPort,
+			Direction:        r.Direction,
+			DstIP:            r.DstIP,
+			Action:           r.Action,
+			AlertType:        r.AlertType,
+			ThresholdCount:   r.ThresholdCount,
+			ThresholdWindow:  r.ThresholdWindow,
+			ThresholdGroupBy: r.ThresholdGroupBy,
+			BanDuration:      r.BanDuration,
+			TCPFlags:         r.TCPFlags,
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"rules": resp,
+		"total": len(resp),
+	})
+}
+
+// handleToggleCustomRule handles PUT /api/v1/rules/custom/:name/toggle.
+// Toggles the enabled state of a rule and writes back to rules.toml.
+func (s *Server) handleToggleCustomRule(c *fiber.Ctx) error {
+	ruleName := c.Params("name")
+	if ruleName == "" {
+		return respondError(c, fiber.StatusBadRequest, "invalid_request", "Rule name is required")
+	}
+
+	var body struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return respondError(c, fiber.StatusBadRequest, "invalid_body", "Expected JSON with 'enabled' field")
+	}
+
+	rulesPath := filepath.Join(s.deps.Config.ConfigDir, "rules.toml")
+
+	// Read all rules
+	allRules, err := rules.GetAllRulesFromFile(rulesPath)
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "read_error",
+			fmt.Sprintf("Failed to read rules.toml: %v", err))
+	}
+
+	// Find and toggle the rule
+	found := false
+	for i, r := range allRules {
+		if r.Name == ruleName {
+			allRules[i].Enabled = body.Enabled
+			found = true
+			break
+		}
+	}
+	if !found {
+		return respondError(c, fiber.StatusNotFound, "not_found",
+			fmt.Sprintf("Rule '%s' not found", ruleName))
+	}
+
+	// Write back to TOML
+	f, err := os.Create(rulesPath)
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "write_error",
+			fmt.Sprintf("Failed to write rules.toml: %v", err))
+	}
+	defer f.Close()
+
+	w := bufio.NewWriter(f)
+	w.WriteString("# SafeOps Firewall Engine - Custom Detection Rules\n")
+	w.WriteString("# Auto-generated by Web UI — " + time.Now().Format(time.RFC3339) + "\n\n")
+
+	enc := toml.NewEncoder(w)
+	err = enc.Encode(struct {
+		Rule []rules.Rule `toml:"rule"`
+	}{Rule: allRules})
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "encode_error",
+			fmt.Sprintf("Failed to encode rules: %v", err))
+	}
+	w.Flush()
+
+	s.triggerReload("rules.toml")
+
+	return c.JSON(fiber.Map{
+		"status":  "ok",
+		"rule":    ruleName,
+		"enabled": body.Enabled,
+	})
 }

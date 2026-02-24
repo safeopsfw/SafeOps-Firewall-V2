@@ -1,0 +1,213 @@
+# SafeOps Firewall Engine - Domain Category Patterns
+# ===================================================
+# This file defines domain patterns for each category.
+# Categories are toggled on/off in blocklist.toml [domains.categories].
+# This file is loaded at startup and on hot-reload.
+#
+# Pattern syntax:
+#   "*.example.com"  - matches example.com and all subdomains
+#   "example.com"    - exact match only
+#
+# Add new domains to expand blocking coverage without recompiling.
+# Hot-reload: changes to this file take effect within seconds.
+
+[social_media]
+patterns = [
+    "*.facebook.com",
+    "*.twitter.com",
+    "*.x.com",
+    "*.instagram.com",
+    "*.tiktok.com",
+    "*.linkedin.com",
+    "*.snapchat.com",
+    "*.pinterest.com",
+    "*.reddit.com",
+    "*.tumblr.com",
+    "*.threads.net",
+    "*.mastodon.social",
+    "*.bsky.app",
+    "*.discord.com",
+    "*.discordapp.com",
+    "*.whatsapp.com",
+    "*.telegram.org",
+    "*.t.me",
+]
+
+[streaming]
+patterns = [
+    "*.netflix.com",
+    "*.youtube.com",
+    "*.twitch.tv",
+    "*.hulu.com",
+    "*.disneyplus.com",
+    "*.primevideo.com",
+    "*.spotify.com",
+    "*.crunchyroll.com",
+    "*.peacocktv.com",
+    "*.paramountplus.com",
+    "*.max.com",
+    "*.apple.com/tv",
+    "*.deezer.com",
+    "*.tidal.com",
+    "*.soundcloud.com",
+    "*.pandora.com",
+    "*.vimeo.com",
+    "*.dailymotion.com",
+]
+
+[gaming]
+patterns = [
+    "*.steampowered.com",
+    "*.steamcommunity.com",
+    "*.store.steampowered.com",
+    "*.epicgames.com",
+    "*.ea.com",
+    "*.riotgames.com",
+    "*.blizzard.com",
+    "*.battle.net",
+    "*.xbox.com",
+    "*.playstation.com",
+    "*.ubisoft.com",
+    "*.roblox.com",
+    "*.minecraft.net",
+    "*.mojang.com",
+    "*.valvesoftware.com",
+    "*.gog.com",
+    "*.origin.com",
+]
+
+[ads]
+patterns = [
+    "*.doubleclick.net",
+    "*.googlesyndication.com",
+    "*.googleadservices.com",
+    "*.facebook.net",
+    "*.adnxs.com",
+    "*.adsrvr.org",
+    "*.moatads.com",
+    "*.outbrain.com",
+    "*.taboola.com",
+    "*.criteo.com",
+    "*.pubmatic.com",
+    "*.rubiconproject.com",
+    "*.openx.net",
+    "*.amazon-adsystem.com",
+    "*.ad.doubleclick.net",
+    "*.adsymptotic.com",
+    "*.bidswitch.net",
+    "*.casalemedia.com",
+    "*.contextweb.com",
+    "*.indexww.com",
+    "*.media.net",
+]
+
+[trackers]
+patterns = [
+    "*.google-analytics.com",
+    "*.analytics.google.com",
+    "*.mixpanel.com",
+    "*.segment.io",
+    "*.hotjar.com",
+    "*.fullstory.com",
+    "*.mouseflow.com",
+    "*.crazyegg.com",
+    "*.luckyorange.com",
+    "*.heap.io",
+    "*.amplitude.com",
+    "*.braze.com",
+    "*.intercom.io",
+    "*.optimizely.com",
+    "*.newrelic.com",
+    "*.datadoghq.com",
+    "*.sentry.io",
+    "*.bugsnag.com",
+    "*.appsflyer.com",
+    "*.branch.io",
+    "*.adjust.com",
+    "*.facebook.com/tr",
+]
+
+[adult]
+patterns = [
+    "*.pornhub.com",
+    "*.xvideos.com",
+    "*.xhamster.com",
+    "*.redtube.com",
+    "*.youporn.com",
+    "*.xnxx.com",
+    "*.tube8.com",
+    "*.spankbang.com",
+    "*.chaturbate.com",
+    "*.onlyfans.com",
+    "*.stripchat.com",
+    "*.livejasmin.com",
+]
+
+[gambling]
+patterns = [
+    "*.bet365.com",
+    "*.draftkings.com",
+    "*.fanduel.com",
+    "*.betway.com",
+    "*.888sport.com",
+    "*.williamhill.com",
+    "*.paddypower.com",
+    "*.pokerstars.com",
+    "*.unibet.com",
+    "*.bwin.com",
+    "*.betfair.com",
+    "*.bovada.lv",
+    "*.stake.com",
+]
+
+[vpn_proxy]
+patterns = [
+    "*.nordvpn.com",
+    "*.expressvpn.com",
+    "*.surfshark.com",
+    "*.cyberghostvpn.com",
+    "*.privateinternetaccess.com",
+    "*.protonvpn.com",
+    "*.windscribe.com",
+    "*.tunnelbear.com",
+    "*.hide.me",
+    "*.hotspotshield.com",
+    "*.ipvanish.com",
+    "*.mullvad.net",
+    "*.torproject.org",
+]
+
+[microsoft]
+patterns = [
+    "*.microsoft.com",
+    "*.windows.com",
+    "*.office.com",
+    "*.office365.com",
+    "*.azure.com",
+    "*.live.com",
+    "*.msn.com",
+    "*.outlook.com",
+    "*.bing.com",
+    "*.skype.com",
+    "*.teams.microsoft.com",
+    "*.onedrive.live.com",
+    "*.sharepoint.com",
+]
+
+[google]
+patterns = [
+    "*.google.com",
+    "*.googleapis.com",
+    "*.gstatic.com",
+    "*.googlevideo.com",
+    "*.youtube.com",
+    "*.ytimg.com",
+    "*.gmail.com",
+    "*.googleusercontent.com",
+    "*.google-analytics.com",
+    "*.googlesyndication.com",
+    "*.googleadservices.com",
+    "*.drive.google.com",
+    "*.docs.google.com",
+    "*.maps.google.com",
+]

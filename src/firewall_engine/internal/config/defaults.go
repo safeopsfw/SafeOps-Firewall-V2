@@ -75,6 +75,7 @@ func Defaults() *Config {
 			ConnectionTimeoutUDP:      DefaultUDPTimeout,
 			ConnectionTimeoutICMP:     DefaultICMPTimeout,
 			MaxConnections:            DefaultMaxConnections,
+			CleanupIntervalSeconds:    300, // 5 minutes
 			ConnectionLogging:         false, // Off by default for performance
 		},
 
@@ -389,6 +390,9 @@ func MergeWithDefaults(cfg *Config) *Config {
 		}
 		if cfg.ConnectionTracking.MaxConnections == 0 {
 			cfg.ConnectionTracking.MaxConnections = defaults.ConnectionTracking.MaxConnections
+		}
+		if cfg.ConnectionTracking.CleanupIntervalSeconds == 0 {
+			cfg.ConnectionTracking.CleanupIntervalSeconds = defaults.ConnectionTracking.CleanupIntervalSeconds
 		}
 	}
 

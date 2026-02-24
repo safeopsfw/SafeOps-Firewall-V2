@@ -104,6 +104,7 @@ func (r *Reloader) Start(ctx context.Context) error {
 	files := map[string]FileChangeHandler{
 		"domains.txt":           r.reloadDomains,
 		"blocklist.toml":        r.reloadBlocklist,
+		"categories.toml":       r.reloadCategories,
 		"geoip.toml":            r.reloadGeoIP,
 		"detection.toml":        r.reloadDetection,
 		"rules.toml":            r.reloadRules,
@@ -254,6 +255,45 @@ func (r *Reloader) reloadBlocklist(path string) {
 	r.fireAlert("blocklist.toml", true, fmt.Sprintf(
 		"domains=%v ips=%v threat_intel=%v geo=%v",
 		parsed.DomainsEnabled, parsed.IPsEnabled, parsed.ThreatIntelEnabled, parsed.GeoEnabled))
+}
+
+// reloadCategories handles changes to categories.toml
+func (r *Reloader) reloadCategories(path string) {
+	if err := rules.ReloadCategories(); err != nil {
+		r.failCount.Add(1)
+		r.lastError.Store(fmt.Sprintf("categories.toml: %v", err))
+		r.logger.Error().Err(err).Msg("Hot-reload: categories.toml reload failed — keeping old patterns")
+		r.fireAlert("categories.toml", false, err.Error())
+		return
+	}
+
+	r.successCount.Add(1)
+	r.lastReload.Store(time.Now())
+	r.logger.Info().
+		Strs("categories", rules.GetAllCategories()).
+		Msg("Hot-reload: categories.toml reloaded successfully")
+
+	// Re-apply current blocklist categories with new patterns
+	r.mu.RLock()
+	filter := r.domainFilter
+	r.mu.RUnlock()
+
+	if filter != nil {
+		bl := r.parsedBlocklist.Load()
+		if bl != nil {
+			filter.SetBlockedCategories(bl.BlockedCategories)
+			r.logger.Info().Msg("Hot-reload: domain filter categories refreshed with new patterns")
+
+			// Re-sync to SafeOps Engine
+			if r.blocklistSync != nil {
+				domains := filter.GetAllBlockedDomains()
+				synced := r.blocklistSync.SyncDomains(domains)
+				r.logger.Info().Int("synced", synced).Msg("Hot-reload: domain blocklist re-synced (categories.toml change)")
+			}
+		}
+	}
+
+	r.fireAlert("categories.toml", true, fmt.Sprintf("%d categories loaded", len(rules.GetAllCategories())))
 }
 
 // reloadGeoIP handles changes to geoip.toml

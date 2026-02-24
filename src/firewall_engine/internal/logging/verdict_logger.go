@@ -20,9 +20,13 @@ package logging
 import (
 	"bufio"
 	"compress/gzip"
+	"crypto/sha1"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -30,41 +34,60 @@ import (
 	"time"
 )
 
-// VerdictEntry is a single firewall decision log line.
-// Field names are short for storage efficiency (SOC tools map them on ingest).
+// VerdictEntry is a single firewall log entry for SOC/NOC monitoring.
+// ALL traffic is logged (ALLOW sampled, DROP/BLOCK/REDIRECT always).
+// Field names are short for storage efficiency (SOC/SIEM tools map them on ingest).
+//
+// Compatible with: Splunk CIM (Network Traffic), ELK ECS, QRadar LEEF, Suricata EVE.
 type VerdictEntry struct {
 	Timestamp string `json:"ts"`               // ISO 8601 with ms
+	EventType string `json:"event_type"`       // "firewall" (always — for SIEM event categorization)
 	SrcIP     string `json:"src"`              // source IP
 	SrcPort   uint32 `json:"sp"`               // source port
 	DstIP     string `json:"dst"`              // destination IP
 	DstPort   uint32 `json:"dp"`               // destination port
 	Proto     string `json:"proto"`            // TCP/UDP/ICMP
 	Action    string `json:"action"`           // ALLOW/DROP/BLOCK/REDIRECT
-	Detector  string `json:"detector"`         // which module decided
-	Domain    string `json:"domain,omitempty"` // domain if available
+	Detector  string `json:"detector"`         // which module decided (e.g. "domain_filter", "geoip", "ddos")
+	Domain    string `json:"domain,omitempty"` // domain if available (DNS/SNI)
 	Reason    string `json:"reason"`           // human-readable reason
-	Size      uint32 `json:"size,omitempty"`   // packet size
+	Size      uint32 `json:"size,omitempty"`   // packet size in bytes
 	Flags     string `json:"flags,omitempty"`  // TCP flags (S/A/F/R/P/U)
 	CacheTTL  uint32 `json:"ttl,omitempty"`    // verdict cache TTL seconds
+
+	// Enrichment fields (SOC/SIEM correlation)
+	Direction   string `json:"dir"`               // north_south / east_west
+	TrafficType string `json:"ttype"`             // inbound / outbound / internal / transit
+	CommunityID string `json:"cid,omitempty"`     // community_id v1 (Suricata-compatible SHA1 flow hash)
+	FlowID      uint64 `json:"flow_id,omitempty"` // monotonic flow identifier
+	SrcGeo      string `json:"src_geo,omitempty"` // source country code (ISO 3166-1 alpha-2)
+	DstGeo      string `json:"dst_geo,omitempty"` // destination country code
+	SrcASN      string `json:"src_asn,omitempty"` // source ASN (e.g. "AS15169")
+	DstASN      string `json:"dst_asn,omitempty"` // destination ASN
+
+	// Severity hint for SOC dashboards (derived from detector + action)
+	Severity string `json:"severity,omitempty"` // CRITICAL/HIGH/MEDIUM/LOW/INFO
 }
 
-// VerdictLoggerConfig controls what gets logged and storage limits.
+// VerdictLoggerConfig controls the SOC/NOC firewall log output.
 type VerdictLoggerConfig struct {
-	Dir            string        // directory for verdict log files (e.g. bin/logs)
+	Dir            string        // directory for firewall log files (e.g. bin/logs)
 	RotateInterval time.Duration // time-based rotation interval (default 5 min)
 	MaxBackups     int           // max rotated archives to keep (default 20)
-	LogAllows      bool          // log ALLOW verdicts (default false — too noisy)
-	AllowSampleN   int           // if LogAllows, sample 1 in N (default 1000)
+	LogAllows      bool          // log ALLOW decisions (default true for SOC visibility)
+	AllowSampleN   int           // if LogAllows, sample 1 in N (default 100 — every 100th ALLOW)
 	FlushInterval  time.Duration // buffer flush interval (default 2s)
 }
 
-// DefaultVerdictLoggerConfig returns production defaults.
+// DefaultVerdictLoggerConfig returns production defaults for SOC/NOC monitoring.
+// ALLOW traffic is sampled at 1:100 for full visibility without disk pressure.
+// DROP/BLOCK/REDIRECT always logged at 100%.
 func DefaultVerdictLoggerConfig() VerdictLoggerConfig {
 	return VerdictLoggerConfig{
 		RotateInterval: 5 * time.Minute,
 		MaxBackups:     20,
-		LogAllows:      false,
-		AllowSampleN:   1000,
+		LogAllows:      true,
+		AllowSampleN:   100,
 		FlushInterval:  2 * time.Second,
 	}
 }
@@ -87,7 +110,7 @@ type VerdictFileLogger struct {
 	allowCtr atomic.Int64
 }
 
-const verdictActiveFile = "firewall-verdicts.jsonl"
+const verdictActiveFile = "firewall.jsonl"
 
 // NewVerdictFileLogger creates a verdict logger writing to cfg.Dir.
 func NewVerdictFileLogger(cfg VerdictLoggerConfig) (*VerdictFileLogger, error) {
@@ -126,7 +149,8 @@ func NewVerdictFileLogger(cfg VerdictLoggerConfig) (*VerdictFileLogger, error) {
 	return vl, nil
 }
 
-// Log writes a verdict entry. Non-blocking: drops on error.
+// Log writes a firewall log entry for SOC/NOC monitoring. Non-blocking: drops on error.
+// DROP/BLOCK/REDIRECT are always logged. ALLOW is sampled at 1:N for visibility.
 func (vl *VerdictFileLogger) Log(entry VerdictEntry) {
 	if vl.stopped.Load() {
 		return
@@ -144,6 +168,16 @@ func (vl *VerdictFileLogger) Log(entry VerdictEntry) {
 
 	if entry.Timestamp == "" {
 		entry.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	}
+
+	// Auto-populate event_type for SIEM categorization
+	if entry.EventType == "" {
+		entry.EventType = "firewall"
+	}
+
+	// Auto-derive severity from action + detector if not set
+	if entry.Severity == "" {
+		entry.Severity = deriveSeverity(entry.Action, entry.Detector)
 	}
 
 	data, err := json.Marshal(entry)
@@ -329,6 +363,208 @@ func verdictCompressFile(src, dst string) error {
 	}
 	return gz.Close()
 }
+
+// deriveSeverity maps action+detector to SOC severity level.
+// CRITICAL: DDoS, brute force bans. HIGH: blocks, geo blocks. MEDIUM: drops.
+// LOW: rate limits. INFO: allowed traffic.
+func deriveSeverity(action, detector string) string {
+	switch action {
+	case "ALLOW":
+		return "INFO"
+	case "REDIRECT":
+		return "MEDIUM"
+	case "BLOCK":
+		switch detector {
+		case "ddos", "brute_force":
+			return "CRITICAL"
+		case "geoip", "threat_intel":
+			return "HIGH"
+		default:
+			return "HIGH"
+		}
+	case "DROP":
+		switch detector {
+		case "ddos", "brute_force":
+			return "CRITICAL"
+		case "port_scan", "custom_rule":
+			return "HIGH"
+		case "rate_limit":
+			return "LOW"
+		default:
+			return "MEDIUM"
+		}
+	default:
+		return "MEDIUM"
+	}
+}
+
+// ============================================================================
+// Enrichment Helpers — Community ID, Traffic Type, Flow ID
+// ============================================================================
+
+// flowIDCounter is a monotonic counter for flow identifiers.
+var flowIDCounter atomic.Uint64
+
+// NextFlowID returns a monotonically increasing flow identifier.
+func NextFlowID() uint64 {
+	return flowIDCounter.Add(1)
+}
+
+// ComputeCommunityID computes a Community ID v1 hash (Suricata-compatible).
+// Format: "1:" + base64(SHA1(seed + ordered_src_ip + ordered_dst_ip + proto + pad + ordered_src_port + ordered_dst_port))
+// IPs and ports are ordered so that the same flow always produces the same hash
+// regardless of direction.
+func ComputeCommunityID(srcIP, dstIP string, srcPort, dstPort uint32, protoNum uint8) string {
+	src := net.ParseIP(srcIP)
+	dst := net.ParseIP(dstIP)
+	if src == nil || dst == nil {
+		return ""
+	}
+
+	// Normalize to 4-byte IPv4
+	src4 := src.To4()
+	dst4 := dst.To4()
+	if src4 != nil {
+		src = src4
+	}
+	if dst4 != nil {
+		dst = dst4
+	}
+
+	// Order: lower IP first. If IPs equal, lower port first.
+	swap := false
+	cmp := compareIPs(src, dst)
+	if cmp > 0 {
+		swap = true
+	} else if cmp == 0 && srcPort > dstPort {
+		swap = true
+	}
+
+	var orderedSrc, orderedDst net.IP
+	var orderedSP, orderedDP uint32
+	if swap {
+		orderedSrc, orderedDst = dst, src
+		orderedSP, orderedDP = dstPort, srcPort
+	} else {
+		orderedSrc, orderedDst = src, dst
+		orderedSP, orderedDP = srcPort, dstPort
+	}
+
+	h := sha1.New()
+	// Seed = 0 (2 bytes)
+	binary.Write(h, binary.BigEndian, uint16(0))
+	h.Write(orderedSrc)
+	h.Write(orderedDst)
+	binary.Write(h, binary.BigEndian, protoNum)
+	h.Write([]byte{0}) // padding
+	binary.Write(h, binary.BigEndian, uint16(orderedSP))
+	binary.Write(h, binary.BigEndian, uint16(orderedDP))
+
+	return "1:" + base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
+// compareIPs compares two net.IP byte slices. Returns -1, 0, or 1.
+func compareIPs(a, b net.IP) int {
+	aLen, bLen := len(a), len(b)
+	minLen := aLen
+	if bLen < minLen {
+		minLen = bLen
+	}
+	for i := 0; i < minLen; i++ {
+		if a[i] < b[i] {
+			return -1
+		}
+		if a[i] > b[i] {
+			return 1
+		}
+	}
+	if aLen < bLen {
+		return -1
+	}
+	if aLen > bLen {
+		return 1
+	}
+	return 0
+}
+
+// ClassifyDirection determines if traffic is north_south (one endpoint public)
+// or east_west (both endpoints private RFC1918).
+func ClassifyDirection(srcIP, dstIP string) string {
+	srcPrivate := isPrivateIP(srcIP)
+	dstPrivate := isPrivateIP(dstIP)
+	if srcPrivate && dstPrivate {
+		return "east_west"
+	}
+	return "north_south"
+}
+
+// ClassifyTrafficType determines traffic type based on IP classification.
+// inbound = public src → private dst, outbound = private src → public dst,
+// internal = both private.
+func ClassifyTrafficType(srcIP, dstIP string) string {
+	srcPrivate := isPrivateIP(srcIP)
+	dstPrivate := isPrivateIP(dstIP)
+	if srcPrivate && dstPrivate {
+		return "internal"
+	}
+	if srcPrivate && !dstPrivate {
+		return "outbound"
+	}
+	if !srcPrivate && dstPrivate {
+		return "inbound"
+	}
+	return "transit"
+}
+
+// ProtocolNumber converts protocol name to IANA number.
+func ProtocolNumber(proto string) uint8 {
+	switch proto {
+	case "TCP":
+		return 6
+	case "UDP":
+		return 17
+	case "ICMP":
+		return 1
+	default:
+		return 0
+	}
+}
+
+// isPrivateIP returns true if the IP is RFC1918 or loopback.
+func isPrivateIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	// Standard private ranges
+	for _, cidr := range privateRanges {
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+var privateRanges = func() []*net.IPNet {
+	cidrs := []string{
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"127.0.0.0/8",
+		"169.254.0.0/16",
+		"::1/128",
+		"fc00::/7",
+		"fe80::/10",
+	}
+	var nets []*net.IPNet
+	for _, c := range cidrs {
+		_, n, _ := net.ParseCIDR(c)
+		if n != nil {
+			nets = append(nets, n)
+		}
+	}
+	return nets
+}()
 
 // TCPFlagsToString converts TCP flags bitmask to readable string.
 // e.g., 0x02 = "S", 0x12 = "SA", 0x04 = "R"

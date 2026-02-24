@@ -168,6 +168,10 @@ type ConnectionTrackingConfig struct {
 	// MaxConnections is the maximum tracked connections.
 	MaxConnections int `toml:"max_connections" json:"max_connections"`
 
+	// CleanupIntervalSeconds is how often to clean expired connections.
+	// Default: 300 (5 minutes). Minimum: 30.
+	CleanupIntervalSeconds int `toml:"cleanup_interval_seconds" json:"cleanup_interval_seconds"`
+
 	// ConnectionLogging logs connection state changes.
 	ConnectionLogging bool `toml:"connection_logging" json:"connection_logging"`
 }

@@ -229,6 +229,8 @@ func (s *Server) createApp() *fiber.App {
 	api.Delete("/rules/domains/whitelist/:domain", s.handleRemoveWhitelistDomain)
 	api.Get("/rules/categories", s.handleGetCategories)
 	api.Put("/rules/categories", s.handleUpdateCategories)
+	api.Get("/rules/categories/patterns", s.handleGetCategoryPatterns)
+	api.Put("/rules/categories/patterns/:category", s.handleUpdateCategoryPatterns)
 
 	// Rules — IPs
 	api.Get("/rules/ips", s.handleGetBlockedIPs)
@@ -245,6 +247,10 @@ func (s *Server) createApp() *fiber.App {
 	// Rules — Detection
 	api.Get("/rules/detection", s.handleGetDetectionConfig)
 	api.Put("/rules/detection", s.handleUpdateDetectionConfig)
+
+	// Rules — Custom Detection Rules (rules.toml)
+	api.Get("/rules/custom", s.handleGetCustomRules)
+	api.Put("/rules/custom/:name/toggle", s.handleToggleCustomRule)
 
 	// Rules — Blocklist policy
 	api.Get("/rules/blocklist", s.handleGetBlocklistConfig)

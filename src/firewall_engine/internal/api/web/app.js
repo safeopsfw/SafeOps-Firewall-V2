@@ -166,6 +166,7 @@ const ROUTES = {
     '/rules/ips':        'page-rules-ips',
     '/rules/geoip':      'page-rules-geoip',
     '/rules/detection':  'page-rules-detection',
+    '/rules/custom':     'page-rules-custom',
     '/bans':             'page-bans',
     '/tickets':          'page-tickets',
     '/logs/verdicts':    'page-logs-verdicts',
@@ -215,6 +216,7 @@ async function loadPageData(route) {
             case '/rules/ips':       await loadIPRules(); break;
             case '/rules/geoip':     await loadGeoIP(); break;
             case '/rules/detection': await loadDetection(); break;
+            case '/rules/custom':    await loadCustomRules(); break;
             case '/bans':            await loadBans(); break;
             case '/tickets':         await loadTickets(); break;
             case '/logs/verdicts':   await loadVerdictLogs(); break;
@@ -986,6 +988,138 @@ document.getElementById('ticket-form').addEventListener('submit', async (e) => {
 });
 
 // ============================================================================
+// Custom Detection Rules
+// ============================================================================
+
+let customRulesData = [];
+
+async function loadCustomRules() {
+    try {
+        const data = await GET('/rules/custom');
+        customRulesData = data.rules || [];
+    } catch (e) {
+        customRulesData = [];
+    }
+    renderCustomRulesStats();
+    buildCategoryFilter();
+    renderCustomRules();
+}
+
+function renderCustomRulesStats() {
+    const total = customRulesData.length;
+    const enabled = customRulesData.filter(r => r.enabled).length;
+    const critical = customRulesData.filter(r => r.severity === 'CRITICAL').length;
+    const high = customRulesData.filter(r => r.severity === 'HIGH').length;
+    setText('cr-total', total);
+    setText('cr-enabled', enabled);
+    setText('cr-critical', critical);
+    setText('cr-high', high);
+}
+
+function buildCategoryFilter() {
+    const sel = document.getElementById('custom-rule-category-filter');
+    const cats = [...new Set(customRulesData.map(r => r.alert_type || 'CUSTOM_RULE'))].sort();
+    // Keep first option
+    sel.innerHTML = '<option value="">All Categories</option>';
+    cats.forEach(cat => {
+        sel.innerHTML += `<option value="${esc(cat)}">${esc(cat.replace(/_/g, ' '))}</option>`;
+    });
+}
+
+function renderCustomRules() {
+    const el = document.getElementById('custom-rules-list');
+    const emptyEl = document.getElementById('custom-rules-empty');
+    const search = (document.getElementById('custom-rule-search').value || '').toLowerCase();
+    const sevFilter = document.getElementById('custom-rule-severity-filter').value;
+    const catFilter = document.getElementById('custom-rule-category-filter').value;
+
+    let filtered = customRulesData.filter(r => {
+        if (sevFilter && r.severity !== sevFilter) return false;
+        if (catFilter && (r.alert_type || 'CUSTOM_RULE') !== catFilter) return false;
+        if (search) {
+            const haystack = `${r.name} ${r.description} ${(r.dst_port||[]).join(' ')} ${r.protocol} ${r.alert_type}`.toLowerCase();
+            if (!haystack.includes(search)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        el.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+    emptyEl.classList.add('hidden');
+
+    // Group by alert_type
+    const groups = {};
+    filtered.forEach(r => {
+        const cat = r.alert_type || 'CUSTOM_RULE';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(r);
+    });
+
+    let html = '';
+    for (const [cat, catRules] of Object.entries(groups).sort()) {
+        html += `<div class="card mb-2">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">${esc(cat.replace(/_/g, ' '))}</div>
+                    <div class="card-subtitle">${catRules.length} rule${catRules.length > 1 ? 's' : ''}</div>
+                </div>
+            </div>`;
+        catRules.forEach(r => {
+            const sevClass = r.severity === 'CRITICAL' ? 'danger' : r.severity === 'HIGH' ? 'warning' : r.severity === 'MEDIUM' ? 'info' : 'success';
+            const ports = (r.dst_port || []).map(p => p).join(', ');
+            const ips = (r.dst_ip || []).join(', ');
+            html += `
+            <div class="rule-item" style="padding:0.75rem 1rem; align-items:flex-start">
+                <div style="flex:1; min-width:0">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem; flex-wrap:wrap">
+                        <span class="badge badge-${sevClass}" style="font-size:0.7rem">${esc(r.severity)}</span>
+                        <strong style="font-size:0.88rem">${esc(r.name)}</strong>
+                        ${r.action && r.action !== 'ALERT' ? `<span class="tag" style="font-size:0.7rem">${esc(r.action)}</span>` : ''}
+                    </div>
+                    <div style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:0.35rem">${esc(r.description)}</div>
+                    <div style="display:flex; gap:0.75rem; flex-wrap:wrap; font-size:0.78rem; color:var(--text-muted)">
+                        ${r.protocol ? `<span>Proto: <span class="mono">${esc(r.protocol)}</span></span>` : ''}
+                        ${ports ? `<span>Ports: <span class="mono">${esc(ports)}</span></span>` : ''}
+                        ${ips ? `<span>IPs: <span class="mono">${esc(ips)}</span></span>` : ''}
+                        ${r.tcp_flags ? `<span>Flags: <span class="mono">${esc(r.tcp_flags)}</span></span>` : ''}
+                        ${r.threshold_count ? `<span>Threshold: <span class="mono">${r.threshold_count}/${r.threshold_window}s</span></span>` : ''}
+                        ${r.direction ? `<span>Dir: <span class="mono">${esc(r.direction)}</span></span>` : ''}
+                    </div>
+                </div>
+                <label class="toggle-switch" style="flex-shrink:0; margin-top:0.25rem">
+                    <input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="toggleCustomRule('${esc(r.name)}', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    el.innerHTML = html;
+}
+
+async function toggleCustomRule(name, enabled) {
+    try {
+        await PUT(`/rules/custom/${encodeURIComponent(name)}/toggle`, { enabled });
+        // Update local state
+        const r = customRulesData.find(x => x.name === name);
+        if (r) r.enabled = enabled;
+        renderCustomRulesStats();
+        showToast(`Rule "${name}" ${enabled ? 'enabled' : 'disabled'}`, 'success');
+    } catch (e) {
+        showToast(`Failed to toggle rule: ${e.message || 'API error'}`, 'error');
+        loadCustomRules(); // Reload to get correct state
+    }
+}
+
+// Custom rules filters
+document.getElementById('custom-rule-search')?.addEventListener('input', renderCustomRules);
+document.getElementById('custom-rule-severity-filter')?.addEventListener('change', renderCustomRules);
+document.getElementById('custom-rule-category-filter')?.addEventListener('change', renderCustomRules);
+
+// ============================================================================
 // Verdict Logs
 // ============================================================================
 
@@ -1025,15 +1159,25 @@ function renderVerdictLogs(data) {
     emptyEl.classList.add('hidden');
 
     tbody.innerHTML = verdicts.map(v => {
-        const actionCls = v.action === 'DROP' ? 'danger' : v.action === 'BLOCK' ? 'warning' : 'info';
+        const actionCls = v.action === 'DROP' ? 'danger' : v.action === 'BLOCK' ? 'warning' : v.action === 'ALLOW' ? 'success' : 'info';
+        const sevMap = { CRITICAL: 'danger', HIGH: 'warning', MEDIUM: 'info', LOW: 'secondary', INFO: 'muted' };
+        const sevCls = sevMap[(v.severity || '').toUpperCase()] || 'muted';
+        const dirCls = v.dir === 'north_south' ? 'tag-ns' : v.dir === 'east_west' ? 'tag-ew' : '';
+        const dirLabel = v.dir === 'north_south' ? 'N/S' : v.dir === 'east_west' ? 'E/W' : (v.dir || '');
+        const srcGeo = v.src_geo ? ` (${v.src_geo})` : '';
+        const dstGeo = v.dst_geo ? ` (${v.dst_geo})` : '';
+        const cidShort = v.cid ? v.cid.substring(0, 12) + '...' : '';
         return `<tr>
             <td><span class="mono" style="font-size:0.78rem; color:var(--text-muted)">${esc(v.ts)}</span></td>
-            <td><span class="mono" style="color:var(--accent-cyan)">${esc(v.src)}:${v.sp}</span></td>
-            <td><span class="mono">${esc(v.dst)}:${v.dp}</span></td>
+            <td><span class="badge badge-${sevCls}" style="font-size:0.68rem">${esc(v.severity || '')}</span></td>
+            <td>${dirLabel ? `<span class="tag ${dirCls}" style="font-size:0.7rem">${dirLabel}</span>` : ''}</td>
+            <td><span class="mono" style="color:var(--accent-cyan)">${esc(v.src)}:${v.sp}</span><span style="font-size:0.7rem; color:var(--text-muted)">${srcGeo}</span></td>
+            <td><span class="mono">${esc(v.dst)}:${v.dp}</span><span style="font-size:0.7rem; color:var(--text-muted)">${dstGeo}</span></td>
             <td><span class="tag">${esc(v.proto)}</span></td>
             <td><span class="badge badge-${actionCls}">${esc(v.action)}</span></td>
             <td style="font-size:0.85rem">${esc(v.detector)}</td>
             <td style="font-size:0.85rem; color:var(--accent-purple)">${esc(v.domain || '')}</td>
+            <td><span class="mono" style="font-size:0.72rem; color:var(--text-muted)" title="${esc(v.cid || '')}">${cidShort}</span></td>
             <td style="font-size:0.82rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-secondary)">${esc(v.reason)}</td>
         </tr>`;
     }).join('');
@@ -1171,6 +1315,7 @@ function handleWSEvent(msg) {
             else if (page === 'rules-detection') loadDetection();
             else if (page === 'rules-geoip') loadGeoIP();
             else if (page === 'rules-domains') loadDomainRules();
+            else if (page === 'rules-custom') loadCustomRules();
             break;
     }
 }

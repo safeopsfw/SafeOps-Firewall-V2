@@ -2,7 +2,11 @@
 package rules
 
 import (
+	"os"
 	"strings"
+	"sync"
+
+	"github.com/BurntSushi/toml"
 )
 
 // ============================================================================
@@ -103,76 +107,97 @@ func NormalizeDomain(domain string) string {
 }
 
 // ============================================================================
-// Domain Categories
+// Domain Categories — loaded from categories.toml at runtime
 // ============================================================================
 
-// CommonDomainCategories provides pattern lists for common categories.
-var CommonDomainCategories = map[string][]string{
-	"social_media": {
-		"*.facebook.com",
-		"*.twitter.com",
-		"*.instagram.com",
-		"*.tiktok.com",
-		"*.linkedin.com",
-		"*.snapchat.com",
-		"*.pinterest.com",
-	},
-	"streaming": {
-		"*.netflix.com",
-		"*.youtube.com",
-		"*.twitch.tv",
-		"*.hulu.com",
-		"*.disneyplus.com",
-		"*.primevideo.com",
-		"*.spotify.com",
-	},
-	"gaming": {
-		"*.steampowered.com",
-		"*.epicgames.com",
-		"*.ea.com",
-		"*.riotgames.com",
-		"*.blizzard.com",
-	},
-	"ads": {
-		"*.doubleclick.net",
-		"*.googlesyndication.com",
-		"*.googleadservices.com",
-		"*.facebook.net",
-		"*.adnxs.com",
-		"*.adsrvr.org",
-	},
-	"trackers": {
-		"*.google-analytics.com",
-		"*.analytics.google.com",
-		"*.mixpanel.com",
-		"*.segment.io",
-		"*.hotjar.com",
-	},
-	"microsoft": {
-		"*.microsoft.com",
-		"*.windows.com",
-		"*.office.com",
-		"*.office365.com",
-		"*.azure.com",
-		"*.live.com",
-		"*.msn.com",
-	},
-	"google": {
-		"*.google.com",
-		"*.googleapis.com",
-		"*.gstatic.com",
-		"*.googlevideo.com",
-		"*.youtube.com",
-		"*.ytimg.com",
-	},
+// categoryEntry is used for TOML parsing of each category section.
+type categoryEntry struct {
+	Patterns []string `toml:"patterns"`
+}
+
+// categoryStore holds the loaded category patterns, protected by RWMutex.
+var (
+	categoryPatterns   = make(map[string][]string)
+	categoryMu         sync.RWMutex
+	categoriesFilePath string // set by LoadCategoriesFromFile
+)
+
+// builtinCategories is the minimal fallback used ONLY if no categories.toml exists.
+var builtinCategories = map[string][]string{
+	"social_media": {"*.facebook.com", "*.twitter.com", "*.x.com", "*.instagram.com", "*.tiktok.com", "*.linkedin.com", "*.snapchat.com", "*.pinterest.com"},
+	"streaming":    {"*.netflix.com", "*.youtube.com", "*.twitch.tv", "*.hulu.com", "*.disneyplus.com", "*.primevideo.com", "*.spotify.com"},
+	"gaming":       {"*.steampowered.com", "*.epicgames.com", "*.ea.com", "*.riotgames.com", "*.blizzard.com"},
+	"ads":          {"*.doubleclick.net", "*.googlesyndication.com", "*.googleadservices.com", "*.facebook.net", "*.adnxs.com", "*.adsrvr.org"},
+	"trackers":     {"*.google-analytics.com", "*.analytics.google.com", "*.mixpanel.com", "*.segment.io", "*.hotjar.com"},
+}
+
+// LoadCategoriesFromFile loads category patterns from a TOML file.
+// Call this at startup from main.go. If the file doesn't exist, builtin
+// fallback patterns are used. Hot-reload calls ReloadCategories().
+func LoadCategoriesFromFile(path string) error {
+	categoriesFilePath = path
+	return loadCategoriesFile(path)
+}
+
+// ReloadCategories reloads category patterns from the previously configured file.
+// Called by hot-reload watcher when categories.toml changes.
+func ReloadCategories() error {
+	if categoriesFilePath == "" {
+		return nil
+	}
+	return loadCategoriesFile(categoriesFilePath)
+}
+
+// loadCategoriesFile parses a TOML file into the category store.
+func loadCategoriesFile(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// File doesn't exist — use builtin fallback
+		categoryMu.Lock()
+		categoryPatterns = builtinCategories
+		categoryMu.Unlock()
+		return nil
+	}
+
+	// Parse TOML: each top-level key is a category name with a "patterns" array
+	var raw map[string]categoryEntry
+	if _, err := toml.DecodeFile(path, &raw); err != nil {
+		return err
+	}
+
+	newPatterns := make(map[string][]string, len(raw))
+	for cat, entry := range raw {
+		cat = strings.ToLower(strings.TrimSpace(cat))
+		if len(entry.Patterns) > 0 {
+			newPatterns[cat] = entry.Patterns
+		}
+	}
+
+	categoryMu.Lock()
+	categoryPatterns = newPatterns
+	categoryMu.Unlock()
+	return nil
 }
 
 // GetCategoryPatterns returns patterns for a domain category.
+// Thread-safe: reads from the dynamically loaded category store.
 func GetCategoryPatterns(category string) []string {
-	if patterns, ok := CommonDomainCategories[strings.ToLower(category)]; ok {
+	categoryMu.RLock()
+	defer categoryMu.RUnlock()
+	if patterns, ok := categoryPatterns[strings.ToLower(category)]; ok {
 		return patterns
 	}
 	return nil
+}
+
+// GetAllCategories returns all loaded category names.
+func GetAllCategories() []string {
+	categoryMu.RLock()
+	defer categoryMu.RUnlock()
+	cats := make([]string, 0, len(categoryPatterns))
+	for cat := range categoryPatterns {
+		cats = append(cats, cat)
+	}
+	return cats
 }
 
 // MatchCategory checks if a domain matches any pattern in a category.

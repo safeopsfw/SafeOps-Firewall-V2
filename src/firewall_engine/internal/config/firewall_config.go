@@ -60,6 +60,7 @@ type PerformanceConfig struct {
 	VerdictCacheTTLSeconds     int `toml:"verdict_cache_ttl_seconds"`
 	VerdictCacheCleanupSeconds int `toml:"verdict_cache_cleanup_seconds"`
 	MaxConnections             int `toml:"max_connections"`
+	ConnectionCleanupSeconds   int `toml:"connection_cleanup_seconds"`
 	PacketBufferSize           int `toml:"packet_buffer_size"`
 	ThreatIntelRefreshMinutes  int `toml:"threat_intel_refresh_minutes"`
 	GeoIPCacheSize             int `toml:"geoip_cache_size"`
@@ -124,6 +125,7 @@ func DefaultFirewallConfig() *FirewallConfig {
 			VerdictCacheTTLSeconds:     60,
 			VerdictCacheCleanupSeconds: 10,
 			MaxConnections:             500000,
+			ConnectionCleanupSeconds:   300, // 5 minutes
 			PacketBufferSize:           100000,
 			ThreatIntelRefreshMinutes:  5,
 			GeoIPCacheSize:             500000,

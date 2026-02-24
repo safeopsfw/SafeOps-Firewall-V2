@@ -474,6 +474,28 @@ func (e *Engine) RuleCount() int {
 	return len(e.rules)
 }
 
+// GetAllRules returns all loaded rules (both enabled and the raw config).
+// Used by the API to expose rules to the Web UI.
+func (e *Engine) GetAllRules() []Rule {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	out := make([]Rule, len(e.rules))
+	copy(out, e.rules)
+	return out
+}
+
+// GetAllRulesFromFile reads all rules from the TOML config (including disabled).
+func GetAllRulesFromFile(configPath string) ([]Rule, error) {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return nil, nil
+	}
+	var config RulesConfig
+	if _, err := toml.DecodeFile(configPath, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse rules config: %w", err)
+	}
+	return config.Rule, nil
+}
+
 // Stats returns engine statistics.
 func (e *Engine) Stats() map[string]interface{} {
 	stats := map[string]interface{}{

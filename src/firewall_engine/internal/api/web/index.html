@@ -90,6 +90,10 @@
                         <span class="nav-icon">🔍</span>
                         Detection Config
                     </a>
+                    <a href="#/rules/custom" class="nav-item" data-page="rules-custom">
+                        <span class="nav-icon">📐</span>
+                        Custom Rules
+                    </a>
                 </div>
 
                 <div class="nav-section">
@@ -108,7 +112,7 @@
                     <div class="nav-section-label">Logging</div>
                     <a href="#/logs/verdicts" class="nav-item" data-page="logs-verdicts">
                         <span class="nav-icon">📋</span>
-                        Verdict Logs
+                        Firewall Logs
                     </a>
                 </div>
 
@@ -534,14 +538,15 @@
                 </div>
             </div>
 
-            <!-- ============ VERDICT LOGS PAGE ============ -->
+            <!-- ============ FIREWALL LOGS PAGE (SOC/NOC) ============ -->
             <div id="page-logs-verdicts" class="page hidden">
                 <div class="page-header">
-                    <h1>Verdict Logs</h1>
-                    <p>Packet-level DROP/BLOCK/REDIRECT verdicts from the engine</p>
+                    <h1>Firewall Logs</h1>
+                    <p>SOC/NOC monitoring — all firewall decisions with enrichment (GeoIP, Community ID, direction)</p>
                     <div class="page-header-actions">
                         <select class="filter-select" id="verdict-action-filter">
                             <option value="">All Actions</option>
+                            <option value="ALLOW">ALLOW</option>
                             <option value="DROP">DROP</option>
                             <option value="BLOCK">BLOCK</option>
                             <option value="REDIRECT">REDIRECT</option>
@@ -554,12 +559,15 @@
                             <thead>
                                 <tr>
                                     <th>Timestamp</th>
+                                    <th>Sev</th>
+                                    <th>Dir</th>
                                     <th>Source</th>
                                     <th>Destination</th>
                                     <th>Proto</th>
                                     <th>Action</th>
                                     <th>Detector</th>
                                     <th>Domain</th>
+                                    <th>CID</th>
                                     <th>Reason</th>
                                 </tr>
                             </thead>
@@ -569,10 +577,63 @@
                     </div>
                     <div id="verdicts-empty" class="empty-state hidden">
                         <div class="empty-icon">📋</div>
-                        <h3>No Verdict Logs</h3>
-                        <p>No DROP/BLOCK/REDIRECT verdicts recorded yet</p>
+                        <h3>No Firewall Logs</h3>
+                        <p>No firewall decisions recorded yet</p>
                     </div>
                     <div id="verdict-pagination" style="margin-top:1rem"></div>
+                </div>
+            </div>
+
+            <!-- ============ CUSTOM RULES PAGE ============ -->
+            <div id="page-rules-custom" class="page hidden">
+                <div class="page-header">
+                    <h1>Custom Detection Rules</h1>
+                    <p>TOML-driven detection rules from rules.toml — hot-reloadable</p>
+                    <div class="page-header-actions">
+                        <input type="text" class="search-input" id="custom-rule-search"
+                            placeholder="Search rules by name, description, or port..."
+                            style="max-width:350px;">
+                        <select class="filter-select" id="custom-rule-severity-filter">
+                            <option value="">All Severities</option>
+                            <option value="CRITICAL">Critical</option>
+                            <option value="HIGH">High</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="LOW">Low</option>
+                        </select>
+                        <select class="filter-select" id="custom-rule-category-filter">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="page-body">
+                    <div class="stats-grid mb-3" id="custom-rules-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">📐</div>
+                            <div class="stat-value" id="cr-total">--</div>
+                            <div class="stat-label">Total Rules</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">✅</div>
+                            <div class="stat-value" id="cr-enabled">--</div>
+                            <div class="stat-label">Enabled</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">🔴</div>
+                            <div class="stat-value" id="cr-critical">--</div>
+                            <div class="stat-label">Critical</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon amber">🟡</div>
+                            <div class="stat-value" id="cr-high">--</div>
+                            <div class="stat-label">High</div>
+                        </div>
+                    </div>
+                    <div id="custom-rules-list"></div>
+                    <div id="custom-rules-empty" class="empty-state hidden">
+                        <div class="empty-icon">📐</div>
+                        <h3>No Custom Rules</h3>
+                        <p>No detection rules configured in rules.toml</p>
+                    </div>
                 </div>
             </div>
 

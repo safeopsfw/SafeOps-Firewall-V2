@@ -129,6 +129,17 @@ func main() {
 		{"port-scan", "Port Scan — 150 unique ports in <10s (threshold: 100)", func() testResult { return testPortScan(targetIP3) }},
 		{"seq-scan", "Sequential Port Scan — 30 sequential (threshold: 20)", func() testResult { return testSequentialScan(targetIP4) }},
 		{"multi-proto", "Multi-Protocol Burst — TCP+UDP from same IP simultaneously", func() testResult { return testMultiProtoBurst(targetIP8, duration) }},
+
+		// Custom rule tests (rules.toml coverage)
+		{"llmnr", "LLMNR Poisoning Vector — UDP port 5355", func() testResult { return testLLMNR() }},
+		{"nbtns", "NBT-NS Poisoning Vector — UDP port 137", func() testResult { return testNBTNS() }},
+		{"smb-ext", "SMB External — TCP port 445 to external IP", func() testResult { return testSMBExternal() }},
+		{"telnet", "Telnet Insecure — TCP port 23", func() testResult { return testTelnet() }},
+		{"dns-axfr", "DNS Zone Transfer — TCP port 53 to external", func() testResult { return testDNSZoneTransfer() }},
+		{"irc-c2", "IRC C2 Channel — TCP ports 6667/6697", func() testResult { return testIRCC2() }},
+		{"rev-shell", "Reverse Shell Ports — TCP 4444/4445/5554", func() testResult { return testReverseShell() }},
+		{"crypto-mine", "Crypto Mining Stratum — TCP 3333/14444/8333", func() testResult { return testCryptoMining() }},
+		{"icmp-flood", "ICMP Flood — rapid ping burst", func() testResult { return testICMPFlood(targetIP10, duration) }},
 	}
 
 	if *listFlag {
@@ -481,4 +492,248 @@ func testMultiProtoBurst(target string, duration time.Duration) testResult {
 	wg.Wait()
 
 	return testResult{true, int(sent), fmt.Sprintf("Multi-protocol burst: %d TCP+UDP packets in %v", sent, duration)}
+}
+
+// ============================================================================
+// Custom Rule Tests — rules.toml coverage for all untested rules
+// ============================================================================
+
+// Test: LLMNR Poisoning Vector (UDP port 5355)
+// Rule: llmnr_access — MEDIUM severity
+func testLLMNR() testResult {
+	sent := 0
+	for i := 0; i < 5; i++ {
+		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:5355", targetIP))
+		conn, err := net.DialUDP("udp", nil, addr)
+		if err == nil {
+			// LLMNR query header (simplified)
+			conn.Write([]byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+			conn.Close()
+		}
+		sent++
+		fmt.Printf("    LLMNR query %d → %s:5355 (UDP)\n", i+1, targetIP)
+	}
+	return testResult{true, sent, fmt.Sprintf("LLMNR: %d UDP queries to port 5355", sent)}
+}
+
+// Test: NBT-NS Poisoning Vector (UDP port 137)
+// Rule: nbns_access — MEDIUM severity
+func testNBTNS() testResult {
+	sent := 0
+	for i := 0; i < 5; i++ {
+		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:137", targetIP2))
+		conn, err := net.DialUDP("udp", nil, addr)
+		if err == nil {
+			// NBNS name query (simplified)
+			conn.Write([]byte{0x80, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x20, 0x43, 0x4B, 0x41, 0x41, 0x41})
+			conn.Close()
+		}
+		sent++
+		fmt.Printf("    NBT-NS query %d → %s:137 (UDP)\n", i+1, targetIP2)
+	}
+	return testResult{true, sent, fmt.Sprintf("NBT-NS: %d UDP queries to port 137", sent)}
+}
+
+// Test: SMB External (TCP port 445 to non-LAN IP)
+// Rule: smb_external — CRITICAL severity (dst_not_cidr excludes LAN)
+func testSMBExternal() testResult {
+	sent := 0
+	// targetIP is 198.51.100.1 which is NOT in private CIDRs → triggers rule
+	for i := 0; i < 3; i++ {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", targetIP3), 200*time.Millisecond)
+		if err == nil {
+			// SMB negotiate protocol request (simplified)
+			conn.Write([]byte{0x00, 0x00, 0x00, 0x54, 0xFF, 0x53, 0x4D, 0x42})
+			conn.Close()
+			fmt.Printf("    SMB → %s:445 — "+yellow+"connected"+reset+"\n", targetIP3)
+		} else {
+			fmt.Printf("    SMB → %s:445 — "+green+"blocked/timeout"+reset+"\n", targetIP3)
+		}
+		sent++
+	}
+	return testResult{true, sent, fmt.Sprintf("SMB external: %d TCP connections to port 445", sent)}
+}
+
+// Test: Telnet Insecure Protocol (TCP port 23)
+// Rule: telnet_access — HIGH severity
+func testTelnet() testResult {
+	sent := 0
+	for i := 0; i < 3; i++ {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:23", targetIP4), 200*time.Millisecond)
+		if err == nil {
+			conn.Write([]byte("admin\r\n"))
+			conn.Close()
+			fmt.Printf("    Telnet → %s:23 — "+yellow+"connected"+reset+"\n", targetIP4)
+		} else {
+			fmt.Printf("    Telnet → %s:23 — "+green+"blocked/timeout"+reset+"\n", targetIP4)
+		}
+		sent++
+	}
+	return testResult{true, sent, fmt.Sprintf("Telnet: %d TCP connections to port 23", sent)}
+}
+
+// Test: DNS Zone Transfer (TCP port 53 to external)
+// Rule: dns_zone_transfer — HIGH severity (dst_not_cidr excludes LAN)
+func testDNSZoneTransfer() testResult {
+	sent := 0
+	for i := 0; i < 3; i++ {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:53", targetIP5), 200*time.Millisecond)
+		if err == nil {
+			// AXFR request (simplified DNS query header with AXFR type=252)
+			conn.Write([]byte{0x00, 0x1C, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x65,
+				0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, 0x03, 0x63,
+				0x6F, 0x6D, 0x00, 0x00, 0xFC, 0x00, 0x01})
+			conn.Close()
+			fmt.Printf("    DNS AXFR → %s:53 — "+yellow+"connected"+reset+"\n", targetIP5)
+		} else {
+			fmt.Printf("    DNS AXFR → %s:53 — "+green+"blocked/timeout"+reset+"\n", targetIP5)
+		}
+		sent++
+	}
+	return testResult{true, sent, fmt.Sprintf("DNS zone transfer: %d TCP connections to port 53", sent)}
+}
+
+// Test: IRC C2 Channel (TCP ports 6667, 6697)
+// Rule: irc_outbound — HIGH severity
+func testIRCC2() testResult {
+	sent := 0
+	ircPorts := []int{6667, 6697}
+	for _, port := range ircPorts {
+		for i := 0; i < 2; i++ {
+			conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetIP6, port), 200*time.Millisecond)
+			if err == nil {
+				conn.Write([]byte("NICK bot\r\nUSER bot 0 * :bot\r\nJOIN #c2\r\n"))
+				conn.Close()
+				fmt.Printf("    IRC → %s:%d — "+yellow+"connected"+reset+"\n", targetIP6, port)
+			} else {
+				fmt.Printf("    IRC → %s:%d — "+green+"blocked/timeout"+reset+"\n", targetIP6, port)
+			}
+			sent++
+		}
+	}
+	return testResult{true, sent, fmt.Sprintf("IRC C2: %d TCP connections to IRC ports", sent)}
+}
+
+// Test: Reverse Shell Common Ports (TCP 4444, 4445, 5554)
+// Rule: reverse_shell_common — CRITICAL severity
+func testReverseShell() testResult {
+	sent := 0
+	shellPorts := []int{4444, 4445, 5554}
+	for _, port := range shellPorts {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetIP7, port), 200*time.Millisecond)
+		if err == nil {
+			conn.Write([]byte("/bin/sh -i\n"))
+			conn.Close()
+			fmt.Printf("    Reverse shell → %s:%d — "+yellow+"connected"+reset+"\n", targetIP7, port)
+		} else {
+			fmt.Printf("    Reverse shell → %s:%d — "+green+"blocked/timeout"+reset+"\n", targetIP7, port)
+		}
+		sent++
+	}
+	return testResult{true, sent, fmt.Sprintf("Reverse shell: %d TCP connections to shell ports", sent)}
+}
+
+// Test: Crypto Mining Stratum Protocol (TCP 3333, 14444, 8333)
+// Rule: crypto_mining_stratum — HIGH severity
+func testCryptoMining() testResult {
+	sent := 0
+	miningPorts := []int{3333, 14444, 8333}
+	for _, port := range miningPorts {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", targetIP8, port), 200*time.Millisecond)
+		if err == nil {
+			// Stratum mining.subscribe JSON-RPC
+			conn.Write([]byte(`{"id":1,"method":"mining.subscribe","params":[]}` + "\n"))
+			conn.Close()
+			fmt.Printf("    Mining → %s:%d — "+yellow+"connected"+reset+"\n", targetIP8, port)
+		} else {
+			fmt.Printf("    Mining → %s:%d — "+green+"blocked/timeout"+reset+"\n", targetIP8, port)
+		}
+		sent++
+	}
+	return testResult{true, sent, fmt.Sprintf("Crypto mining: %d TCP connections to Stratum ports", sent)}
+}
+
+// Test: ICMP Flood
+// Sends rapid ICMP echo requests (ping) using raw Go net.Dial("ip4:icmp", ...).
+// Falls back to UDP ICMP simulation if raw sockets are unavailable.
+func testICMPFlood(target string, duration time.Duration) testResult {
+	sent := 0
+	start := time.Now()
+
+	// Try raw ICMP first (requires admin)
+	conn, err := net.Dial("ip4:icmp", target)
+	if err != nil {
+		// Fallback: send UDP to port 7 (echo) to simulate burst
+		fmt.Printf("    Raw ICMP unavailable (%v), using UDP echo fallback\n", err)
+		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:7", target))
+		uconn, uerr := net.DialUDP("udp", nil, addr)
+		if uerr != nil {
+			return testResult{false, 0, fmt.Sprintf("ICMP fallback failed: %v", uerr)}
+		}
+		defer uconn.Close()
+		payload := make([]byte, 64)
+		for time.Since(start) < duration {
+			for i := 0; i < 500; i++ {
+				uconn.Write(payload)
+				sent++
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		return testResult{true, sent, fmt.Sprintf("ICMP flood (UDP fallback): %d packets in %v", sent, duration)}
+	}
+	defer conn.Close()
+
+	// Build ICMP echo request
+	for time.Since(start) < duration {
+		for i := 0; i < 200; i++ {
+			id := uint16(os.Getpid() & 0xffff)
+			seq := uint16(sent & 0xffff)
+			msg := buildICMPEcho(id, seq)
+			conn.Write(msg)
+			sent++
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	return testResult{true, sent, fmt.Sprintf("ICMP flood: %d echo requests in %v", sent, duration)}
+}
+
+// buildICMPEcho constructs a minimal ICMP echo request packet.
+func buildICMPEcho(id, seq uint16) []byte {
+	msg := make([]byte, 8+56) // 8 header + 56 payload
+	msg[0] = 8                // Type: Echo Request
+	msg[1] = 0                // Code: 0
+	msg[2] = 0                // Checksum (placeholder)
+	msg[3] = 0
+	msg[4] = byte(id >> 8)
+	msg[5] = byte(id)
+	msg[6] = byte(seq >> 8)
+	msg[7] = byte(seq)
+
+	// Fill payload
+	for i := 8; i < len(msg); i++ {
+		msg[i] = byte(i)
+	}
+
+	// Compute checksum
+	csum := icmpChecksum(msg)
+	msg[2] = byte(csum >> 8)
+	msg[3] = byte(csum)
+	return msg
+}
+
+func icmpChecksum(data []byte) uint16 {
+	var sum uint32
+	length := len(data)
+	for i := 0; i < length-1; i += 2 {
+		sum += uint32(data[i])<<8 | uint32(data[i+1])
+	}
+	if length%2 != 0 {
+		sum += uint32(data[length-1]) << 8
+	}
+	sum = (sum >> 16) + (sum & 0xffff)
+	sum += sum >> 16
+	return ^uint16(sum)
 }

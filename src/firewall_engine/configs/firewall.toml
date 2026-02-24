@@ -37,6 +37,7 @@ verdict_cache_size = 100000
 verdict_cache_ttl_seconds = 60
 verdict_cache_cleanup_seconds = 10
 max_connections = 500000
+connection_cleanup_seconds = 300    # 5 minutes (was 30s default)
 packet_buffer_size = 100000
 threat_intel_refresh_minutes = 5
 geoip_cache_size = 500000

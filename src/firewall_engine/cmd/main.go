@@ -9,6 +9,7 @@ import (
 	"net/http"
 	_ "net/http/pprof" // registers pprof handlers on DefaultServeMux
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -252,6 +253,16 @@ func main() {
 	// ========================================================================
 	// 2d. Initialize Domain Filter (domains.txt + category blocking)
 	// ========================================================================
+
+	// Load category patterns from categories.toml (dynamic, hot-reloadable).
+	// Falls back to builtin patterns if file is missing.
+	categoriesPath := filepath.Join(configDir, "categories.toml")
+	if err := rules.LoadCategoriesFromFile(categoriesPath); err != nil {
+		logger.Warn().Err(err).Msg("Failed to load categories.toml — using builtin fallback patterns")
+	} else {
+		logger.Info().Str("file", categoriesPath).Strs("categories", rules.GetAllCategories()).Msg("Category patterns loaded from file")
+	}
+
 	var domainFilter *domain.Filter
 
 	if !parsedBlocklist.DomainsEnabled {
@@ -405,6 +416,9 @@ func main() {
 	// ========================================================================
 	connConfig := connection.DefaultTrackerConfig()
 	connConfig.MaxConnections = cfg.Firewall.Performance.MaxConnections
+	if cfg.Firewall.Performance.ConnectionCleanupSeconds > 0 {
+		connConfig.CleanupInterval = time.Duration(cfg.Firewall.Performance.ConnectionCleanupSeconds) * time.Second
+	}
 
 	connTracker, err := connection.NewTracker(connConfig)
 	if err != nil {
@@ -545,20 +559,26 @@ func main() {
 			bl := liveBlocklist.Load()
 			blockCacheTTL := uint32(bl.BlockCacheTTLSeconds)
 
-			// logAndSend wraps gRPC verdict send + SOC verdict log in one call.
+			// logAndSend wraps gRPC verdict send + SOC/NOC firewall log in one call.
+			// DROP/BLOCK/REDIRECT: always sent to SafeOps + always logged.
+			// ALLOW: NOT sent to SafeOps (implicit fail-open) but IS logged
+			// to the SOC firewall log (sampled at 1:N for full traffic visibility).
 			logAndSend := func(verdictType pb.VerdictType, reason, detector string, ttl uint32) {
 				if verdictType == pb.VerdictType_DROP || verdictType == pb.VerdictType_BLOCK {
 					totalPacketsBlocked.Add(1)
 				}
-				go grpcClient.SendVerdict(ctx, pkt.PacketId, verdictType,
-					reason, detector, ttl, pkt.CacheKey)
+				if verdictType != pb.VerdictType_ALLOW {
+					go grpcClient.SendVerdict(ctx, pkt.PacketId, verdictType,
+						reason, detector, ttl, pkt.CacheKey)
+				}
 				if verdictLogger != nil {
-					verdictLogger.Log(logging.VerdictEntry{
+					proto := protocolName(pkt.Protocol)
+					entry := logging.VerdictEntry{
 						SrcIP:    pkt.SrcIp,
 						SrcPort:  pkt.SrcPort,
 						DstIP:    pkt.DstIp,
 						DstPort:  pkt.DstPort,
-						Proto:    protocolName(pkt.Protocol),
+						Proto:    proto,
 						Action:   verdictType.String(),
 						Detector: detector,
 						Domain:   pkt.Domain,
@@ -566,7 +586,24 @@ func main() {
 						Size:     pkt.PacketSize,
 						Flags:    logging.TCPFlagsToString(pkt.TcpFlags),
 						CacheTTL: ttl,
-					})
+						// Enrichment
+						Direction:   logging.ClassifyDirection(pkt.SrcIp, pkt.DstIp),
+						TrafficType: logging.ClassifyTrafficType(pkt.SrcIp, pkt.DstIp),
+						CommunityID: logging.ComputeCommunityID(pkt.SrcIp, pkt.DstIp, pkt.SrcPort, pkt.DstPort, logging.ProtocolNumber(proto)),
+						FlowID:      logging.NextFlowID(),
+					}
+					// GeoIP enrichment (nil-safe)
+					if geoChecker != nil {
+						if srcGeo := geoChecker.Enrich(pkt.SrcIp); srcGeo != nil {
+							entry.SrcGeo = srcGeo.CountryCode
+							entry.SrcASN = srcGeo.ASNOrg
+						}
+						if dstGeo := geoChecker.Enrich(pkt.DstIp); dstGeo != nil {
+							entry.DstGeo = dstGeo.CountryCode
+							entry.DstASN = dstGeo.ASNOrg
+						}
+					}
+					verdictLogger.Log(entry)
 				}
 			}
 
@@ -707,6 +744,7 @@ func main() {
 			verdictType := convertVerdictType(result.Verdict)
 			cacheTTL := uint32(cfg.Firewall.Performance.VerdictCacheTTLSeconds)
 
+			// Log ALL verdicts to SOC/NOC firewall log (ALLOW is sampled internally)
 			logAndSend(verdictType, result.Reason, result.RuleID, cacheTTL)
 
 		}, numWorkers); err != nil {
@@ -863,6 +901,17 @@ func main() {
 			apiServer = nil
 		} else {
 			logger.Info().Str("address", webAPIAddr).Msg("Web UI API server started — http://localhost" + webAPIAddr)
+
+			// Auto-open browser after a short delay to let the server fully bind.
+			// Windows "start" treats the first quoted arg as a window title,
+			// so we pass an empty title "" before the URL.
+			go func() {
+				time.Sleep(1 * time.Second)
+				url := "http://localhost" + webAPIAddr
+				if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start(); err != nil {
+					logger.Warn().Err(err).Msg("Failed to open browser automatically")
+				}
+			}()
 		}
 	}
 
