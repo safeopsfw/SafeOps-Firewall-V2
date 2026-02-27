@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"sync"
 	"time"
@@ -627,4 +628,45 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func isPrivateIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	privateRanges := []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16"}
+	for _, cidr := range privateRanges {
+		_, network, _ := net.ParseCIDR(cidr)
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func formatTCPFlags(f *models.TCPFlags) string {
+	if f == nil {
+		return ""
+	}
+	var flags string
+	if f.SYN {
+		flags += "S"
+	}
+	if f.ACK {
+		flags += "A"
+	}
+	if f.FIN {
+		flags += "F"
+	}
+	if f.RST {
+		flags += "R"
+	}
+	if f.PSH {
+		flags += "P"
+	}
+	if f.URG {
+		flags += "U"
+	}
+	return flags
 }

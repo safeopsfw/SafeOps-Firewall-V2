@@ -28,7 +28,7 @@ const (
 	dbHost     = "localhost"
 	dbPort     = 5432
 	dbUser     = "postgres"
-	dbPassword = "postgres"
+	dbPassword = "admin"
 	dbName     = "threat_intel_db"
 )
 
@@ -150,7 +150,7 @@ func main() {
 	fmt.Println("║  Captive Portal       │ :8445 (HTTPS) / :8090 (HTTP)          ║")
 	fmt.Println("║  SafeOps Engine       │ Admin Mode (Packet Capture)           ║")
 	fmt.Println("║  Firewall Engine V5   │ Dual-Engine (SafeOps + WFP)           ║")
-	fmt.Println("║  Network Logger       │ Packet Logging (5 JSONL outputs)      ║")
+	fmt.Println("║  Network Logger       │ Packet Logging (4 JSONL outputs)      ║")
 	fmt.Println("║  SIEM Forwarder       │ Log Shipping → Elasticsearch          ║")
 	fmt.Println("║  Threat Intel         │ Threat Feed Pipeline (-scheduler)     ║")
 	fmt.Println("║  UI Frontend          │ :3001 (Vite)                          ║")

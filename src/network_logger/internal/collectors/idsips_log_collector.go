@@ -3,7 +3,6 @@ package collectors
 import (
 	"context"
 	"fmt"
-	"net"
 	"sync"
 	"time"
 
@@ -27,13 +26,13 @@ type EVEEvent struct {
 	DNS         *EVEDns             `json:"dns,omitempty"`
 	HTTP        *EVEHTTP            `json:"http,omitempty"`
 	TLS         *EVETLS             `json:"tls,omitempty"`
-	Flow        *EVEFlow            `json:"flow,omitempty"`
 	Process     *models.ProcessInfo `json:"process,omitempty"`
 	SrcGeo      *models.GeoInfo     `json:"src_geo,omitempty"`
 	DstGeo      *models.GeoInfo     `json:"dst_geo,omitempty"`
 }
 
 // EVEDns represents DNS event data in EVE format
+// Only responses are logged (contains query name + answers + rcode)
 type EVEDns struct {
 	Type    string         `json:"type"`
 	ID      uint16         `json:"id,omitempty"`
@@ -61,6 +60,7 @@ type EVEHTTP struct {
 	Protocol      string `json:"protocol,omitempty"`
 	Status        int    `json:"status,omitempty"`
 	Length        int    `json:"length,omitempty"`
+	ContentType   string `json:"content_type,omitempty"`
 }
 
 // EVETLS represents TLS event data in EVE format
@@ -69,71 +69,58 @@ type EVETLS struct {
 	Version     string `json:"version,omitempty"`
 	JA3         string `json:"ja3,omitempty"`
 	JA3S        string `json:"ja3s,omitempty"`
+	Cipher      string `json:"cipher,omitempty"`
 	Certificate bool   `json:"certificate,omitempty"`
 }
 
-// EVEFlow represents flow event data in EVE format
-type EVEFlow struct {
-	PktsToServer  int    `json:"pkts_toserver"`
-	PktsToClient  int    `json:"pkts_toclient"`
-	BytesToServer int64  `json:"bytes_toserver"`
-	BytesToClient int64  `json:"bytes_toclient"`
-	Start         string `json:"start,omitempty"`
-	End           string `json:"end,omitempty"`
-	State         string `json:"state,omitempty"`
-	Reason        string `json:"reason,omitempty"`
-}
+// dedupWindow is the time-based deduplication window.
+// Same event key within this window is suppressed.
+const dedupWindow = 60 * time.Second
 
-// idsFlowState tracks a flow for EVE flow-end events
-type idsFlowState struct {
-	FlowID        string
-	SrcIP         string
-	DstIP         string
-	SrcPort       uint16
-	DstPort       uint16
-	Proto         string
-	CommunityID   string
-	Direction     string
-	AppProto      string
-	PktsToServer  int
-	PktsToClient  int
-	BytesToServer int64
-	BytesToClient int64
-	FirstSeen     time.Time
-	LastSeen      time.Time
-	TCPFlags      map[string]bool
-	State         string
-	Process       *models.ProcessInfo
-	SrcGeo        *models.GeoInfo
-	DstGeo        *models.GeoInfo
-}
+// dedupMaxEntries caps the dedup cache to prevent memory leak.
+const dedupMaxEntries = 100000
 
 // IDSCollector produces Suricata EVE JSON-compatible event logs
+// Logs protocol metadata only: DNS responses, HTTP requests, TLS handshakes
+// Flow events are NOT logged here — BiflowCollector handles those
+// (east_west.jsonl and north_south.jsonl have richer flow data)
 type IDSCollector struct {
-	writer      *writer.RotatingWriter
-	dedupFilter *DuplicateFilter
-	flows       map[string]*idsFlowState
-	flowsMu     sync.RWMutex
-	flowTimeout time.Duration
+	writer *writer.RotatingWriter
+
+	// Time-based dedup: eventKey -> lastLoggedTime
+	dedupCache map[string]time.Time
+	dedupMu    sync.Mutex
 }
 
 // NewIDSCollector creates a new EVE JSON IDS collector
-func NewIDSCollector(logPath string, _ time.Duration) *IDSCollector {
+func NewIDSCollector(logPath string, _ interface{}) *IDSCollector {
 	return &IDSCollector{
-		writer:      writer.NewRotatingWriter(logPath, 50*1024*1024, 3),
-		dedupFilter: NewDuplicateFilter(),
-		flows:       make(map[string]*idsFlowState),
-		flowTimeout: 60 * time.Second,
+		writer:     writer.NewRotatingWriter(logPath, 50*1024*1024, 3),
+		dedupCache: make(map[string]time.Time),
 	}
 }
 
-// Start begins the IDS collector
+// Start begins the IDS collector and its dedup cleanup goroutine
 func (c *IDSCollector) Start(ctx context.Context) {
 	c.writer.Start(ctx)
-	go c.flowCleanupLoop(ctx)
+
+	// Periodic dedup cache cleanup
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.pruneDedup()
+			}
+		}
+	}()
 }
 
 // Process processes a packet and generates EVE events
+// Only logs: DNS responses, HTTP requests, TLS ClientHellos
 func (c *IDSCollector) Process(pkt *models.PacketLog) {
 	if pkt.Layers.Network == nil {
 		return
@@ -147,38 +134,44 @@ func (c *IDSCollector) Process(pkt *models.PacketLog) {
 	case pkt.ParsedApplication.TLS != nil && pkt.ParsedApplication.TLS.ClientHello != nil:
 		c.processTLS(pkt)
 	}
-
-	if pkt.Layers.Transport != nil {
-		c.updateFlow(pkt)
-	}
 }
 
+// processDNS logs DNS responses only (responses contain query name + answers + rcode).
+// Queries without responses are not logged — responses always have the full picture.
+// Deduplicates by domain+type within 60s window.
 func (c *IDSCollector) processDNS(pkt *models.PacketLog) {
 	dns := pkt.ParsedApplication.DNS
 	if dns == nil || len(dns.Queries) == 0 {
 		return
 	}
 
+	// Only log responses (QR=1). Responses contain the query info + answers.
+	if dns.QR == 0 {
+		return
+	}
+
 	for _, q := range dns.Queries {
+		// Dedup by domain+type (e.g., "dns:example.com:A")
+		dedupKey := fmt.Sprintf("dns:%s:%s", q.Name, q.Type)
+		if c.isDeduplicate(dedupKey) {
+			continue
+		}
+
 		evt := c.baseEvent(pkt, "dns")
 		evt.AppProto = "dns"
 
 		eveDns := &EVEDns{
+			Type:   "answer",
 			ID:     dns.TransactionID,
 			RRName: q.Name,
 			RRType: q.Type,
+			Rcode:  dns.RcodeString,
 		}
 
-		if dns.QR == 0 {
-			eveDns.Type = "query"
-		} else {
-			eveDns.Type = "answer"
-			eveDns.Rcode = dns.RcodeString
-			for _, a := range dns.Answers {
-				eveDns.Answers = append(eveDns.Answers, EVEDnsAnswer{
-					RRName: a.Name, RRType: a.Type, TTL: a.TTL, RData: a.Data,
-				})
-			}
+		for _, a := range dns.Answers {
+			eveDns.Answers = append(eveDns.Answers, EVEDnsAnswer{
+				RRName: a.Name, RRType: a.Type, TTL: a.TTL, RData: a.Data,
+			})
 		}
 
 		evt.DNS = eveDns
@@ -193,7 +186,7 @@ func (c *IDSCollector) processHTTP(pkt *models.PacketLog) {
 	}
 
 	dedupKey := fmt.Sprintf("http:%s:%s:%s", http.Host, http.Method, http.URI)
-	if c.isDuplicate(pkt, dedupKey) {
+	if c.isDeduplicate(dedupKey) {
 		return
 	}
 
@@ -205,6 +198,17 @@ func (c *IDSCollector) processHTTP(pkt *models.PacketLog) {
 		HTTPReferer: http.Referer, Protocol: http.Version,
 		Status: http.StatusCode, Length: http.BodyLength,
 	}
+
+	// Extract content-type from response headers if available
+	if http.Headers != nil {
+		if ct, ok := http.Headers["Content-Type"]; ok {
+			evt.HTTP.ContentType = ct
+		}
+		if ct, ok := http.Headers["content-type"]; ok && evt.HTTP.ContentType == "" {
+			evt.HTTP.ContentType = ct
+		}
+	}
+
 	c.writer.WriteJSON(evt)
 }
 
@@ -216,7 +220,7 @@ func (c *IDSCollector) processTLS(pkt *models.PacketLog) {
 
 	sni := tls.ClientHello.SNI
 	dedupKey := fmt.Sprintf("tls:%s", sni)
-	if c.isDuplicate(pkt, dedupKey) {
+	if c.isDeduplicate(dedupKey) {
 		return
 	}
 
@@ -227,6 +231,12 @@ func (c *IDSCollector) processTLS(pkt *models.PacketLog) {
 		JA3: tls.JA3Hash, JA3S: tls.JA3SHash,
 		Certificate: tls.CertificatesPresent,
 	}
+
+	// Add negotiated cipher suite (first from the ClientHello list)
+	if len(tls.ClientHello.CipherSuites) > 0 {
+		evt.TLS.Cipher = tls.ClientHello.CipherSuites[0]
+	}
+
 	c.writer.WriteJSON(evt)
 }
 
@@ -262,237 +272,59 @@ func (c *IDSCollector) baseEvent(pkt *models.PacketLog, eventType string) *EVEEv
 	return evt
 }
 
-func (c *IDSCollector) updateFlow(pkt *models.PacketLog) {
-	flowKey := c.generateFlowKey(pkt)
-
-	c.flowsMu.Lock()
-	defer c.flowsMu.Unlock()
-
+// isDeduplicate returns true if the same event key was logged within the dedup window.
+// If not a duplicate, records the current time for the key.
+func (c *IDSCollector) isDeduplicate(key string) bool {
 	now := time.Now()
-	flow, exists := c.flows[flowKey]
-	pktSize := int64(pkt.CaptureInfo.WireLength)
 
-	if !exists {
-		proto := "TCP"
-		switch pkt.Layers.Network.Protocol {
-		case 17:
-			proto = "UDP"
-		case 1:
-			proto = "ICMP"
-		}
+	c.dedupMu.Lock()
+	defer c.dedupMu.Unlock()
 
-		flow = &idsFlowState{
-			FlowID: flowKey, SrcIP: pkt.Layers.Network.SrcIP, DstIP: pkt.Layers.Network.DstIP,
-			Proto: proto, CommunityID: pkt.CommunityID, Direction: pkt.Direction,
-			AppProto: pkt.AppProto, FirstSeen: now, LastSeen: now,
-			TCPFlags: make(map[string]bool), State: "new",
-			SrcGeo: pkt.SrcGeo, DstGeo: pkt.DstGeo,
+	if lastSeen, exists := c.dedupCache[key]; exists {
+		if now.Sub(lastSeen) < dedupWindow {
+			return true
 		}
-		if pkt.Layers.Transport != nil {
-			flow.SrcPort = pkt.Layers.Transport.SrcPort
-			flow.DstPort = pkt.Layers.Transport.DstPort
-		}
-		c.flows[flowKey] = flow
 	}
 
-	flow.LastSeen = now
-	if pkt.FlowContext != nil && pkt.FlowContext.ProcessInfo != nil {
-		flow.Process = pkt.FlowContext.ProcessInfo
-	}
-	if flow.AppProto == "" && pkt.AppProto != "" {
-		flow.AppProto = pkt.AppProto
+	c.dedupCache[key] = now
+
+	// Inline prune if cache is too large
+	if len(c.dedupCache) > dedupMaxEntries {
+		cutoff := now.Add(-dedupWindow)
+		for k, t := range c.dedupCache {
+			if t.Before(cutoff) {
+				delete(c.dedupCache, k)
+			}
+		}
 	}
 
-	isForward := pkt.Layers.Network.SrcIP == flow.SrcIP
-	if isForward {
-		flow.PktsToServer++
-		flow.BytesToServer += pktSize
-	} else {
-		flow.PktsToClient++
-		flow.BytesToClient += pktSize
-	}
-
-	if pkt.Layers.Transport != nil && pkt.Layers.Transport.TCPFlags != nil {
-		flags := pkt.Layers.Transport.TCPFlags
-		if flags.SYN {
-			flow.TCPFlags["SYN"] = true
-		}
-		if flags.ACK {
-			flow.TCPFlags["ACK"] = true
-			flow.State = "established"
-		}
-		if flags.FIN {
-			flow.TCPFlags["FIN"] = true
-			flow.State = "closed"
-			c.emitFlowEnd(flow, "fin")
-			delete(c.flows, flowKey)
-		}
-		if flags.RST {
-			flow.TCPFlags["RST"] = true
-			flow.State = "closed"
-			c.emitFlowEnd(flow, "rst")
-			delete(c.flows, flowKey)
-		}
-	}
+	return false
 }
 
-func (c *IDSCollector) emitFlowEnd(flow *idsFlowState, reason string) {
-	evt := &EVEEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano), EventType: "flow",
-		SrcIP: flow.SrcIP, DstIP: flow.DstIP, SrcPort: flow.SrcPort, DstPort: flow.DstPort,
-		Proto: flow.Proto, CommunityID: flow.CommunityID, FlowID: flow.FlowID,
-		AppProto: flow.AppProto, Direction: flow.Direction,
-		Process: flow.Process, SrcGeo: flow.SrcGeo, DstGeo: flow.DstGeo,
-		Flow: &EVEFlow{
-			PktsToServer: flow.PktsToServer, PktsToClient: flow.PktsToClient,
-			BytesToServer: flow.BytesToServer, BytesToClient: flow.BytesToClient,
-			Start: flow.FirstSeen.Format(time.RFC3339Nano),
-			End: flow.LastSeen.Format(time.RFC3339Nano),
-			State: flow.State, Reason: reason,
-		},
-	}
-	c.writer.WriteJSON(evt)
-}
+// pruneDedup removes expired entries from the dedup cache
+func (c *IDSCollector) pruneDedup() {
+	cutoff := time.Now().Add(-dedupWindow)
 
-func (c *IDSCollector) flowCleanupLoop(ctx context.Context) {
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			c.flushAllFlows()
-			return
-		case <-ticker.C:
-			c.cleanupExpiredFlows()
+	c.dedupMu.Lock()
+	defer c.dedupMu.Unlock()
+
+	for k, t := range c.dedupCache {
+		if t.Before(cutoff) {
+			delete(c.dedupCache, k)
 		}
 	}
-}
-
-func (c *IDSCollector) cleanupExpiredFlows() {
-	now := time.Now()
-	c.flowsMu.Lock()
-	defer c.flowsMu.Unlock()
-	for key, flow := range c.flows {
-		if now.Sub(flow.LastSeen) > c.flowTimeout {
-			c.emitFlowEnd(flow, "timeout")
-			delete(c.flows, key)
-		}
-	}
-}
-
-func (c *IDSCollector) flushAllFlows() {
-	c.flowsMu.Lock()
-	defer c.flowsMu.Unlock()
-	for key, flow := range c.flows {
-		c.emitFlowEnd(flow, "shutdown")
-		delete(c.flows, key)
-	}
-}
-
-func (c *IDSCollector) generateFlowKey(pkt *models.PacketLog) string {
-	srcIP := pkt.Layers.Network.SrcIP
-	dstIP := pkt.Layers.Network.DstIP
-	var srcPort, dstPort uint16
-	proto := "OTHER"
-
-	if pkt.Layers.Transport != nil {
-		srcPort = pkt.Layers.Transport.SrcPort
-		dstPort = pkt.Layers.Transport.DstPort
-	}
-	switch pkt.Layers.Network.Protocol {
-	case 6:
-		proto = "TCP"
-	case 17:
-		proto = "UDP"
-	case 1:
-		proto = "ICMP"
-	}
-
-	if srcIP > dstIP || (srcIP == dstIP && srcPort > dstPort) {
-		srcIP, dstIP = dstIP, srcIP
-		srcPort, dstPort = dstPort, srcPort
-	}
-	return fmt.Sprintf("%s:%d-%s:%d/%s", srcIP, srcPort, dstIP, dstPort, proto)
-}
-
-func (c *IDSCollector) isDuplicate(pkt *models.PacketLog, dedupKey string) bool {
-	idsLog := &IDSLog{FlowID: c.generateFlowKey(pkt), Protocol: dedupKey}
-	isDup, _ := c.dedupFilter.IsDuplicate(idsLog)
-	return isDup
 }
 
 // GetStats returns collector statistics
 func (c *IDSCollector) GetStats() map[string]interface{} {
-	c.flowsMu.RLock()
-	activeFlows := len(c.flows)
-	c.flowsMu.RUnlock()
 	writerStats := c.writer.GetStats()
+
+	c.dedupMu.Lock()
+	dedupSize := len(c.dedupCache)
+	c.dedupMu.Unlock()
+
 	return map[string]interface{}{
-		"active_flows":  activeFlows,
 		"lines_written": writerStats["lines_written"],
+		"dedup_cache":   dedupSize,
 	}
-}
-
-func isPrivateIP(ipStr string) bool {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return false
-	}
-	privateRanges := []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16"}
-	for _, cidr := range privateRanges {
-		_, network, _ := net.ParseCIDR(cidr)
-		if network.Contains(ip) {
-			return true
-		}
-	}
-	return false
-}
-
-// IDSLog kept for DuplicateFilter compatibility
-type IDSLog struct {
-	TimestampIST string           `json:"timestamp_ist,omitempty"`
-	PacketID     string           `json:"packet_id,omitempty"`
-	FlowID       string           `json:"flow_id"`
-	SrcIP        string           `json:"src_ip,omitempty"`
-	DstIP        string           `json:"dst_ip,omitempty"`
-	SrcPort      uint16           `json:"src_port,omitempty"`
-	DstPort      uint16           `json:"dst_port,omitempty"`
-	Protocol     string           `json:"protocol,omitempty"`
-	SrcGeo       *models.GeoInfo  `json:"src_geo,omitempty"`
-	DstGeo       *models.GeoInfo  `json:"dst_geo,omitempty"`
-	HTTP         *models.HTTPData `json:"http,omitempty"`
-	DNS          *models.DNSData  `json:"dns,omitempty"`
-	TLS          *TLSCompact      `json:"tls,omitempty"`
-	TCPFlags     string           `json:"tcp_flags,omitempty"`
-}
-
-type TLSCompact struct {
-	SNI     string `json:"sni,omitempty"`
-	Version string `json:"version,omitempty"`
-}
-
-func formatTCPFlags(f *models.TCPFlags) string {
-	if f == nil {
-		return ""
-	}
-	var flags string
-	if f.SYN {
-		flags += "S"
-	}
-	if f.ACK {
-		flags += "A"
-	}
-	if f.FIN {
-		flags += "F"
-	}
-	if f.RST {
-		flags += "R"
-	}
-	if f.PSH {
-		flags += "P"
-	}
-	if f.URG {
-		flags += "U"
-	}
-	return flags
 }

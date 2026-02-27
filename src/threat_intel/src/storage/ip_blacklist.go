@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -167,6 +168,175 @@ func (s *IPBlacklistStorage) BulkInsert(ctx context.Context, ips []string, sourc
 	}
 
 	return s.db.BulkInsert(s.tableName, columns, values)
+}
+
+// ReconcileResult holds reconciliation statistics
+type ReconcileResult struct {
+	Inserted int64
+	Updated  int64
+	Removed  int64
+}
+
+// Reconcile performs smart feed reconciliation for IP blacklist.
+// 1. Upsert all current IPs from this feed (insert new, update existing)
+// 2. Remove IPs that this feed no longer reports (but keep if other sources still report it)
+func (s *IPBlacklistStorage) Reconcile(ctx context.Context, feedName string, ips []string, priority int) (*ReconcileResult, error) {
+	result := &ReconcileResult{}
+	if len(ips) == 0 {
+		return result, nil
+	}
+
+	// Map priority to threat score
+	threatScore := priorityToScore(priority)
+	now := time.Now()
+
+	// Step 1: Batch upsert current IPs
+	columns := []string{
+		"ip_address", "is_malicious", "threat_score", "abuse_type",
+		"sources", "status", "first_seen", "last_seen", "last_updated",
+	}
+	values := make([][]interface{}, len(ips))
+	for i, ip := range ips {
+		values[i] = []interface{}{
+			ip,
+			true,
+			threatScore,
+			feedCategoryFromName(feedName),
+			fmt.Sprintf(`["%s"]`, feedName),
+			"active",
+			now,
+			now,
+			now,
+		}
+	}
+
+	updateExprs := map[string]string{
+		"last_seen":      "NOW()",
+		"last_updated":   "NOW()",
+		"evidence_count": "ip_blacklist.evidence_count + 1",
+		"threat_score":   fmt.Sprintf("GREATEST(ip_blacklist.threat_score, %d)", threatScore),
+		"is_malicious":   "TRUE",
+		"status":         "'active'",
+		"sources":        fmt.Sprintf(`ip_blacklist.sources || '["%s"]'::jsonb`, feedName),
+	}
+
+	affected, err := s.db.BulkUpsert(s.tableName, columns, values, "ip_address", updateExprs)
+	if err != nil {
+		return result, fmt.Errorf("reconcile upsert failed: %w", err)
+	}
+	result.Updated = affected
+
+	// Step 2: Remove IPs this feed no longer reports
+	// Build a temp set of current IPs for the NOT IN check
+	// For large feeds, use a temp table approach
+	if len(ips) <= 10000 {
+		// Small feed: use IN clause directly
+		placeholders := make([]string, len(ips))
+		args := make([]interface{}, len(ips)+1)
+		args[0] = fmt.Sprintf(`["%s"]`, feedName) // for @> check
+		for i, ip := range ips {
+			placeholders[i] = fmt.Sprintf("$%d::inet", i+2)
+			args[i+1] = ip
+		}
+
+		removeQuery := fmt.Sprintf(`
+			DELETE FROM %s
+			WHERE sources @> $1::jsonb
+			AND ip_address NOT IN (%s)`,
+			s.tableName,
+			strings.Join(placeholders, ", "),
+		)
+		removeResult, err := s.db.ExecContext(ctx, removeQuery, args...)
+		if err == nil {
+			result.Removed, _ = removeResult.RowsAffected()
+		}
+	} else {
+		// Large feed: batch the removal check
+		// First get all IPs from this source
+		existingQuery := fmt.Sprintf(`
+			SELECT ip_address::text FROM %s WHERE sources @> $1::jsonb`,
+			s.tableName,
+		)
+		rows, err := s.db.QueryContext(ctx, existingQuery, fmt.Sprintf(`["%s"]`, feedName))
+		if err == nil {
+			defer rows.Close()
+			currentSet := make(map[string]bool, len(ips))
+			for _, ip := range ips {
+				currentSet[ip] = true
+			}
+
+			var toRemove []string
+			for rows.Next() {
+				var ip string
+				if rows.Scan(&ip) == nil && !currentSet[ip] {
+					toRemove = append(toRemove, ip)
+				}
+			}
+
+			// Delete stale IPs in batches
+			for i := 0; i < len(toRemove); i += 500 {
+				end := i + 500
+				if end > len(toRemove) {
+					end = len(toRemove)
+				}
+				batch := toRemove[i:end]
+				ph := make([]string, len(batch))
+				args := make([]interface{}, len(batch))
+				for j, ip := range batch {
+					ph[j] = fmt.Sprintf("$%d::inet", j+1)
+					args[j] = ip
+				}
+				delQuery := fmt.Sprintf(`DELETE FROM %s WHERE ip_address IN (%s)`,
+					s.tableName, strings.Join(ph, ", "))
+				delResult, err := s.db.ExecContext(ctx, delQuery, args...)
+				if err == nil {
+					removed, _ := delResult.RowsAffected()
+					result.Removed += removed
+				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// priorityToScore maps feed priority (1-5) to threat score
+func priorityToScore(priority int) int {
+	switch priority {
+	case 5:
+		return 95
+	case 4:
+		return 80
+	case 3:
+		return 60
+	case 2:
+		return 40
+	case 1:
+		return 20
+	default:
+		return 50
+	}
+}
+
+// feedCategoryFromName guesses abuse_type from feed name
+func feedCategoryFromName(name string) string {
+	lower := strings.ToLower(name)
+	if strings.Contains(lower, "feodo") || strings.Contains(lower, "c2") || strings.Contains(lower, "botnet") {
+		return "c2"
+	}
+	if strings.Contains(lower, "malware") || strings.Contains(lower, "bazaar") {
+		return "malware"
+	}
+	if strings.Contains(lower, "ssl") {
+		return "c2"
+	}
+	if strings.Contains(lower, "tor") {
+		return "scanner"
+	}
+	if strings.Contains(lower, "firehol") || strings.Contains(lower, "emerging") {
+		return "botnet"
+	}
+	return "unknown"
 }
 
 // GetByIP retrieves an IP blacklist record by IP address

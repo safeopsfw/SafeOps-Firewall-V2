@@ -137,6 +137,8 @@ database_schemas:
       description: "Intrusion detection/prevention"
     - file: "021_threat_intel.sql"
       description: "Core threat intel schema"
+    - file: "023_ssl_certificates.sql"
+      description: "SSL certificate threat intelligence"
     - file: "users.sql"
       description: "User management"
 

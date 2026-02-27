@@ -153,9 +153,9 @@ func main() {
 	vlCfg.Dir = verdictLogDir
 	verdictLogger, err := logging.NewVerdictFileLogger(vlCfg)
 	if err != nil {
-		logger.Warn().Err(err).Msg("Verdict logger init failed — verdict logging disabled")
+		logger.Warn().Err(err).Msg("Firewall logger init failed — logging disabled")
 	} else {
-		logger.Info().Str("dir", verdictLogDir).Str("rotate", "5m").Msg("Verdict Logger started (SOC-style JSONL)")
+		logger.Info().Str("file", filepath.Join(verdictLogDir, "firewall.jsonl")).Msg("Firewall Logger started (SIEM realtime JSONL)")
 	}
 
 	// ========================================================================
@@ -1114,7 +1114,7 @@ func main() {
 	}
 	if verdictLogger != nil {
 		vlStats := verdictLogger.Stats()
-		logger.Info().Int64("written", vlStats.Written).Int64("rotated", vlStats.Rotated).Msg("Verdict logger stopping")
+		logger.Info().Int64("written", vlStats.Written).Msg("Firewall logger stopping")
 		if err := verdictLogger.Stop(); err != nil {
 			logger.Error().Err(err).Msg("Error stopping verdict logger")
 		}

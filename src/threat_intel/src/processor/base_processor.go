@@ -19,10 +19,11 @@ import (
 
 // Config holds processor configuration
 type Config struct {
-	FetchPath     string // data/fetch directory
-	BatchSize     int    // rows per batch insert
-	DeleteAfter   bool   // delete files after processing
-	StorageConfig *storage.DBConfig
+	FetchPath      string         // data/fetch directory
+	BatchSize      int            // rows per batch insert
+	DeleteAfter    bool           // delete files after processing
+	StorageConfig  *storage.DBConfig
+	FeedPriorities map[string]int // feed name -> priority (1-5), loaded from sources.yaml
 }
 
 // DefaultConfig returns default processor configuration
@@ -87,7 +88,7 @@ func NewProcessor(config *Config) (*Processor, error) {
 
 	// Check required tables exist
 	logger.Println("Checking required tables...")
-	requiredTables := []string{"ip_blacklist", "ip_anonymization", "ip_geolocation", "domains", "hashes"}
+	requiredTables := []string{"ip_blacklist", "ip_anonymization", "ip_geolocation", "domains", "hashes", "ssl_certificates"}
 	for _, table := range requiredTables {
 		info, err := db.GetTableInfo(table)
 		if err != nil {
@@ -184,6 +185,18 @@ func (p *Processor) ProcessAll() (*Result, error) {
 		result.DeletedFiles += hashResult.DeletedFiles
 	}
 
+	// 5. Process SSL Certificate files (ssl_cert -> ssl_certificates)
+	p.logger.Println("Processing SSL Certificate files...")
+	sslResult, err := p.ProcessSSLCertFolder()
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("SSL Cert processing: %v", err))
+	} else {
+		result.FilesProcessed += sslResult.FilesProcessed
+		result.RowsRead += sslResult.RowsRead
+		result.RowsInserted += sslResult.RowsInserted
+		result.DeletedFiles += sslResult.DeletedFiles
+	}
+
 	result.ProcessingTime = time.Since(startTime)
 
 	// 5. Cleanup pending folder (files that couldn't be categorized)
@@ -259,6 +272,29 @@ func (p *Processor) cleanupPendingFolder() int {
 	p.logger.Printf("  Deleted %d pending files\n", deleted)
 	_ = pendingPath // Used in log message context
 	return deleted
+}
+
+// getPriority returns the priority for a feed name, default 3 (Medium)
+func (p *Processor) getPriority(feedName string) int {
+	if p.config.FeedPriorities == nil {
+		return 3
+	}
+	// Try exact match first
+	if pri, ok := p.config.FeedPriorities[feedName]; ok {
+		return pri
+	}
+	// Try case-insensitive match by checking lowercase keys
+	lower := strings.ToLower(feedName)
+	for name, pri := range p.config.FeedPriorities {
+		if strings.ToLower(name) == lower {
+			return pri
+		}
+		// Also try matching sanitized name (feodo_tracker -> Feodo Tracker)
+		if strings.Contains(lower, strings.ToLower(strings.ReplaceAll(name, " ", "_"))) {
+			return pri
+		}
+	}
+	return 3
 }
 
 // getSourceFromFilename extracts source name from filename

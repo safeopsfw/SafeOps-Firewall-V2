@@ -1,4 +1,5 @@
 # SIEM Log Forwarder Configuration
+# Updated for SafeOps v2 JSONL log format
 
 elasticsearch:
   hosts:
@@ -8,37 +9,37 @@ elasticsearch:
   bulk_size: 500          # Number of documents per bulk request
   flush_interval: 5s      # Flush interval when bulk_size not reached
 
-# Base path for SafeOps logs
+# Base path for SafeOps logs (relative to exe directory)
 log_base_path: "../logs"
 
-# Log files to monitor and forward
+# Log files to monitor and forward to SIEM
+# All files are JSONL format (one JSON object per line)
 log_files:
-  # Network Flow Logs - East/West (internal) traffic
-  - path: "netflow/east_west.log"
-    index_prefix: "safeops-netflow-eastwest"
-    type: "netflow_eastwest"
-    
-  # Network Flow Logs - North/South (external) traffic
-  - path: "netflow/north_south.log"
-    index_prefix: "safeops-netflow-northsouth"
-    type: "netflow_northsouth"
-    
-  # Network Flow Logs - Unknown/Other traffic
-  - path: "netflow/unknown.log"
-    index_prefix: "safeops-netflow-unknown"
-    type: "netflow_unknown"
-    
-  # Firewall events
-  - path: "firewall.log"
-    index_prefix: "safeops-firewall"
+  # Firewall decision logs (ALLOW/DROP/BLOCK with GeoIP, community_id)
+  - path: "firewall.jsonl"
+    index_prefix: "firewall"
     type: "firewall"
-    
-  # IDS alerts
-  - path: "ids.log"
-    index_prefix: "safeops-ids"
+
+  # IDS/IPS alerts (DNS, HTTP, TLS metadata)
+  - path: "ids_ips.jsonl"
+    index_prefix: "ids"
     type: "ids"
-    
-  # Removed: devices.jsonl - Device tracking logs not needed in SIEM (causes spam)
+
+  # Network Flow Logs - East/West (internal LAN traffic)
+  - path: "netflow/east_west.jsonl"
+    index_prefix: "east-west"
+    type: "netflow_eastwest"
+
+  # Network Flow Logs - North/South (external WAN traffic)
+  - path: "netflow/north_south.jsonl"
+    index_prefix: "north-south"
+    type: "netflow_northsouth"
+
+# Data retention: auto-delete Elasticsearch indices older than this
+retention:
+  enabled: true
+  max_days: 14            # Delete indices older than 14 days
+  check_interval: 6h      # How often to check for expired indices
 
 # Position tracking settings
 position_db:

@@ -152,7 +152,8 @@ func (s *IPGeoStorage) Insert(ctx context.Context, record *IPGeoRecord) error {
 	return err
 }
 
-// BulkInsertIPRanges inserts IP-to-ASN data (IP range to ASN mapping)
+// BulkInsertIPRanges upserts IP-to-ASN data (IP range to ASN mapping)
+// Uses ON CONFLICT to update existing records instead of creating duplicates
 func (s *IPGeoStorage) BulkInsertIPRanges(ctx context.Context, records []IPGeoRecord, source string) (int64, error) {
 	if len(records) == 0 {
 		return 0, nil
@@ -186,7 +187,15 @@ func (s *IPGeoStorage) BulkInsertIPRanges(ctx context.Context, records []IPGeoRe
 		}
 	}
 
-	return s.db.BulkInsert(s.tableName, columns, values)
+	updateExprs := map[string]string{
+		"ip_end":       "COALESCE(EXCLUDED.ip_end, ip_geolocation.ip_end)",
+		"country_code": "COALESCE(EXCLUDED.country_code, ip_geolocation.country_code)",
+		"asn":          "COALESCE(EXCLUDED.asn, ip_geolocation.asn)",
+		"asn_org":      "COALESCE(EXCLUDED.asn_org, ip_geolocation.asn_org)",
+		"last_updated":  "NOW()",
+	}
+
+	return s.db.BulkUpsert(s.tableName, columns, values, "ip_address", updateExprs)
 }
 
 // GetByIP retrieves geolocation info for an IP

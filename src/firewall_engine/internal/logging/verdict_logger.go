@@ -9,23 +9,20 @@
 //	 "reason":"Domain blocked: example.com (matched: exact, source: DNS)","size":64,"flags":"S","ttl":60}
 //
 // Storage optimization:
-//   - Only BLOCK/DROP/REDIRECT verdicts logged by default
-//   - ALLOW verdicts sampled at 1/1000 rate
+//   - ALL traffic logged (ALLOW sampled at 1:100, DROP/BLOCK/REDIRECT always)
 //   - Short field names to minimize storage (src, dst, sp, dp, proto)
-//   - 5-minute time-based rotation with gzip compression
-//   - Max 20 rotated archives (~200MB compressed typical)
+//   - 5-minute time-based rotation (plain JSONL, no compression)
+//   - Max 20 rotated files in bin/logs/
 //   - Buffered writes (64KB) — flushes every 2 seconds or on buffer full
 package logging
 
 import (
 	"bufio"
-	"compress/gzip"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -71,28 +68,26 @@ type VerdictEntry struct {
 
 // VerdictLoggerConfig controls the SOC/NOC firewall log output.
 type VerdictLoggerConfig struct {
-	Dir            string        // directory for firewall log files (e.g. bin/logs)
-	RotateInterval time.Duration // time-based rotation interval (default 5 min)
-	MaxBackups     int           // max rotated archives to keep (default 20)
-	LogAllows      bool          // log ALLOW decisions (default true for SOC visibility)
-	AllowSampleN   int           // if LogAllows, sample 1 in N (default 100 — every 100th ALLOW)
-	FlushInterval  time.Duration // buffer flush interval (default 2s)
+	Dir          string        // directory for firewall log files (e.g. bin/logs)
+	LogAllows    bool          // log ALLOW decisions (default true for SOC visibility)
+	AllowSampleN int           // if LogAllows, sample 1 in N (default 100 — every 100th ALLOW)
+	FlushInterval time.Duration // buffer flush interval (default 2s)
+	MaxFileSize  int64         // max file size in bytes before truncation (default 500MB, 0 = unlimited)
 }
 
 // DefaultVerdictLoggerConfig returns production defaults for SOC/NOC monitoring.
-// ALLOW traffic is sampled at 1:100 for full visibility without disk pressure.
-// DROP/BLOCK/REDIRECT always logged at 100%.
+// Single file (firewall.jsonl) — SIEM tails it in realtime.
+// ALLOW traffic sampled at 1:100. DROP/BLOCK/REDIRECT always logged at 100%.
 func DefaultVerdictLoggerConfig() VerdictLoggerConfig {
 	return VerdictLoggerConfig{
-		RotateInterval: 5 * time.Minute,
-		MaxBackups:     20,
-		LogAllows:      true,
-		AllowSampleN:   100,
-		FlushInterval:  2 * time.Second,
+		LogAllows:     true,
+		AllowSampleN:  100,
+		FlushInterval: 2 * time.Second,
+		MaxFileSize:   500 * 1024 * 1024, // 500MB safety limit
 	}
 }
 
-// VerdictFileLogger writes verdict entries to JSONL files with time-based rotation.
+// VerdictFileLogger writes firewall log entries to a single JSONL file for SIEM realtime tailing.
 type VerdictFileLogger struct {
 	mu       sync.Mutex
 	cfg      VerdictLoggerConfig
@@ -101,33 +96,29 @@ type VerdictFileLogger struct {
 	curSize  int64
 	stopCh   chan struct{}
 	stopped  atomic.Bool
-	openedAt time.Time // when current file was opened
 
 	// Stats
 	written  atomic.Int64
 	dropped  atomic.Int64
-	rotated  atomic.Int64
 	allowCtr atomic.Int64
 }
 
 const verdictActiveFile = "firewall.jsonl"
 
-// NewVerdictFileLogger creates a verdict logger writing to cfg.Dir.
+// NewVerdictFileLogger creates a firewall logger writing to cfg.Dir/firewall.jsonl.
+// Single file, no rotation — designed for SIEM realtime tailing.
 func NewVerdictFileLogger(cfg VerdictLoggerConfig) (*VerdictFileLogger, error) {
 	if cfg.Dir == "" {
 		return nil, fmt.Errorf("verdict logger: dir is required")
 	}
-	if cfg.RotateInterval <= 0 {
-		cfg.RotateInterval = 5 * time.Minute
-	}
-	if cfg.MaxBackups <= 0 {
-		cfg.MaxBackups = 20
-	}
 	if cfg.AllowSampleN <= 0 {
-		cfg.AllowSampleN = 1000
+		cfg.AllowSampleN = 100
 	}
 	if cfg.FlushInterval <= 0 {
 		cfg.FlushInterval = 2 * time.Second
+	}
+	if cfg.MaxFileSize <= 0 {
+		cfg.MaxFileSize = 500 * 1024 * 1024
 	}
 
 	if err := os.MkdirAll(cfg.Dir, 0755); err != nil {
@@ -143,7 +134,7 @@ func NewVerdictFileLogger(cfg VerdictLoggerConfig) (*VerdictFileLogger, error) {
 		return nil, err
 	}
 
-	// Background ticker: flush buffer + check time-based rotation
+	// Background ticker: flush buffer periodically
 	go vl.backgroundLoop()
 
 	return vl, nil
@@ -222,7 +213,6 @@ func (vl *VerdictFileLogger) Stats() VerdictLoggerStats {
 	return VerdictLoggerStats{
 		Written: vl.written.Load(),
 		Dropped: vl.dropped.Load(),
-		Rotated: vl.rotated.Load(),
 	}
 }
 
@@ -230,7 +220,6 @@ func (vl *VerdictFileLogger) Stats() VerdictLoggerStats {
 type VerdictLoggerStats struct {
 	Written int64 `json:"written"`
 	Dropped int64 `json:"dropped"`
-	Rotated int64 `json:"rotated"`
 }
 
 // --- internal ---
@@ -251,48 +240,20 @@ func (vl *VerdictFileLogger) openActive() error {
 	vl.file = f
 	vl.writer = bufio.NewWriterSize(f, 64*1024)
 	vl.curSize = info.Size()
-	vl.openedAt = time.Now()
 	return nil
 }
 
-func (vl *VerdictFileLogger) rotate() error {
-	if err := vl.closeFile(); err != nil {
-		return err
+// truncateFile resets firewall.jsonl when it exceeds MaxFileSize.
+// SIEM should have consumed the data by now. This is a safety valve only.
+func (vl *VerdictFileLogger) truncateFile() {
+	if vl.writer != nil {
+		vl.writer.Flush()
 	}
-
-	activePath := filepath.Join(vl.cfg.Dir, verdictActiveFile)
-
-	// Skip rotation if file is empty
-	info, err := os.Stat(activePath)
-	if err == nil && info.Size() == 0 {
-		return vl.openActive()
-	}
-
-	ts := time.Now().Format("2006-01-02T150405")
-	archiveName := fmt.Sprintf("firewall-verdicts-%s.jsonl.gz", ts)
-	archivePath := filepath.Join(vl.cfg.Dir, archiveName)
-
-	if err := verdictCompressFile(activePath, archivePath); err != nil {
-		fallback := filepath.Join(vl.cfg.Dir, fmt.Sprintf("firewall-verdicts-%s.jsonl", ts))
-		os.Rename(activePath, fallback)
-	} else {
-		os.Remove(activePath)
-	}
-
-	vl.pruneOldArchives()
-	vl.rotated.Add(1)
-	return vl.openActive()
-}
-
-func (vl *VerdictFileLogger) pruneOldArchives() {
-	pattern := filepath.Join(vl.cfg.Dir, "firewall-verdicts-*.jsonl.gz")
-	matches, _ := filepath.Glob(pattern)
-	if len(matches) <= vl.cfg.MaxBackups {
-		return
-	}
-	toRemove := len(matches) - vl.cfg.MaxBackups
-	for i := 0; i < toRemove; i++ {
-		os.Remove(matches[i])
+	if vl.file != nil {
+		vl.file.Truncate(0)
+		vl.file.Seek(0, 0)
+		vl.writer.Reset(vl.file)
+		vl.curSize = 0
 	}
 }
 
@@ -312,12 +273,10 @@ func (vl *VerdictFileLogger) closeFile() error {
 	return nil
 }
 
-// backgroundLoop handles periodic flushing and time-based rotation.
+// backgroundLoop handles periodic flushing and file size safety checks.
 func (vl *VerdictFileLogger) backgroundLoop() {
 	flushTicker := time.NewTicker(vl.cfg.FlushInterval)
-	rotateTicker := time.NewTicker(vl.cfg.RotateInterval)
 	defer flushTicker.Stop()
-	defer rotateTicker.Stop()
 
 	for {
 		select {
@@ -328,40 +287,13 @@ func (vl *VerdictFileLogger) backgroundLoop() {
 			if vl.writer != nil {
 				vl.writer.Flush()
 			}
-			vl.mu.Unlock()
-		case <-rotateTicker.C:
-			vl.mu.Lock()
-			vl.rotate()
+			// Safety: truncate if file exceeds max size (SIEM should have consumed it)
+			if vl.cfg.MaxFileSize > 0 && vl.curSize > vl.cfg.MaxFileSize {
+				vl.truncateFile()
+			}
 			vl.mu.Unlock()
 		}
 	}
-}
-
-func verdictCompressFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	gz, err := gzip.NewWriterLevel(out, gzip.BestSpeed)
-	if err != nil {
-		return err
-	}
-	gz.Name = filepath.Base(src)
-	gz.ModTime = time.Now()
-
-	if _, err := io.Copy(gz, in); err != nil {
-		gz.Close()
-		return err
-	}
-	return gz.Close()
 }
 
 // deriveSeverity maps action+detector to SOC severity level.

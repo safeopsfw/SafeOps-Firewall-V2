@@ -538,6 +538,95 @@ func (db *DB) BulkInsert(tableName string, columns []string, values [][]interfac
 	return totalInserted, nil
 }
 
+// BulkUpsert performs efficient batch insert with ON CONFLICT DO UPDATE.
+// conflictCol is the unique column for conflict detection (e.g. "ip_address", "domain").
+// updateExprs maps column names to SQL expressions for the UPDATE clause.
+// Example: {"last_seen": "NOW()", "evidence_count": "ip_blacklist.evidence_count + 1"}
+func (db *DB) BulkUpsert(tableName string, columns []string, values [][]interface{}, conflictCol string, updateExprs map[string]string) (int64, error) {
+	if db.pool == nil {
+		return 0, fmt.Errorf("database not connected")
+	}
+
+	if len(values) == 0 {
+		return 0, nil
+	}
+
+	// Deduplicate rows by conflict column to avoid
+	// "ON CONFLICT DO UPDATE command cannot affect row a second time" error
+	conflictIdx := -1
+	for i, col := range columns {
+		if col == conflictCol {
+			conflictIdx = i
+			break
+		}
+	}
+	if conflictIdx >= 0 {
+		seen := make(map[string]bool, len(values))
+		deduped := make([][]interface{}, 0, len(values))
+		for _, row := range values {
+			key := fmt.Sprintf("%v", row[conflictIdx])
+			if !seen[key] {
+				seen[key] = true
+				deduped = append(deduped, row)
+			}
+		}
+		values = deduped
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	// Build the ON CONFLICT DO UPDATE SET clause
+	var setClauses []string
+	for col, expr := range updateExprs {
+		setClauses = append(setClauses, fmt.Sprintf("%s = %s", col, expr))
+	}
+	onConflict := fmt.Sprintf("ON CONFLICT (%s) DO UPDATE SET %s", conflictCol, strings.Join(setClauses, ", "))
+
+	const batchSize = 500
+	var totalAffected int64
+
+	for i := 0; i < len(values); i += batchSize {
+		end := i + batchSize
+		if end > len(values) {
+			end = len(values)
+		}
+		batch := values[i:end]
+
+		var placeholders []string
+		var args []interface{}
+		argIdx := 1
+
+		for _, row := range batch {
+			var rowPlaceholders []string
+			for range row {
+				rowPlaceholders = append(rowPlaceholders, fmt.Sprintf("$%d", argIdx))
+				argIdx++
+			}
+			placeholders = append(placeholders, fmt.Sprintf("(%s)", strings.Join(rowPlaceholders, ", ")))
+			args = append(args, row...)
+		}
+
+		query := fmt.Sprintf(
+			"INSERT INTO %s (%s) VALUES %s %s",
+			tableName,
+			strings.Join(columns, ", "),
+			strings.Join(placeholders, ", "),
+			onConflict,
+		)
+
+		result, err := db.pool.ExecContext(ctx, query, args...)
+		if err != nil {
+			return totalAffected, fmt.Errorf("bulk upsert failed at batch %d: %w", i/batchSize, err)
+		}
+
+		affected, _ := result.RowsAffected()
+		totalAffected += affected
+	}
+
+	return totalAffected, nil
+}
+
 // =============================================================================
 // Test Connection Function
 // =============================================================================

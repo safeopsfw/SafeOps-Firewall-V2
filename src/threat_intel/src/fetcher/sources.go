@@ -26,6 +26,7 @@ const (
 	CategoryIOC             = "ioc"
 	CategoryMixed           = "mixed"
 	CategoryASN             = "asn"
+	CategorySSLCert         = "ssl_cert"
 )
 
 // ==========================================================================
@@ -37,7 +38,8 @@ const (
 	OutputFolderDomain = "domain" // Domain threat feeds
 	OutputFolderIP     = "ip"     // Blacklisted/anonymous IPs (malicious, Tor, VPN, Proxy)
 	OutputFolderIPGeo  = "ip_geo" // IP geolocation and ASN data
-	OutputFolderHash   = "hash"   // Hash/malware feeds
+	OutputFolderHash    = "hash"     // Hash/malware feeds
+	OutputFolderSSLCert = "ssl_cert" // SSL certificate blacklists
 )
 
 // ==========================================================================
@@ -142,6 +144,7 @@ var validCategories = map[string]bool{
 	CategoryIOC:             true,
 	CategoryMixed:           true,
 	CategoryASN:             true,
+	CategorySSLCert:         true,
 }
 
 // validFormats lists all supported file formats
@@ -610,6 +613,9 @@ var categoryToOutputFolder = map[string]string{
 
 	// Hash category -> hash folder
 	CategoryHash: OutputFolderHash,
+
+	// SSL certificate category -> ssl_cert folder
+	CategorySSLCert: OutputFolderSSLCert,
 }
 
 // NeedsContentAnalysis returns true if the source category requires
@@ -644,7 +650,7 @@ func GetOutputFolder(category string) string {
 // GetAllOutputFolders returns list of all output folder names
 // Includes domain, ip, ip_geo, hash for categorized feeds + pending for IOC feeds needing analysis
 func GetAllOutputFolders() []string {
-	return []string{OutputFolderDomain, OutputFolderIP, OutputFolderIPGeo, OutputFolderHash, "pending"}
+	return []string{OutputFolderDomain, OutputFolderIP, OutputFolderIPGeo, OutputFolderHash, OutputFolderSSLCert, "pending"}
 }
 
 // CreateOutputDirectories creates the simplified output directory structure

@@ -138,6 +138,18 @@ type Config struct {
 var config Config
 
 func main() {
+	// Parse command-line flags
+	dbInit := false
+	dbReset := false
+	for _, arg := range os.Args[1:] {
+		switch arg {
+		case "--db-init", "-db-init":
+			dbInit = true
+		case "--db-reset", "-db-reset":
+			dbReset = true
+		}
+	}
+
 	printBanner()
 
 	// Load configuration
@@ -148,6 +160,12 @@ func main() {
 
 	fmt.Println("[INFO] Configuration loaded successfully")
 	fmt.Println()
+
+	// Database-only modes
+	if dbInit || dbReset {
+		runDatabaseInit(dbReset)
+		return
+	}
 
 	// Display current configuration
 	displayConfiguration()
@@ -261,17 +279,161 @@ func main() {
 	printCompletionSummary()
 }
 
+// runDatabaseInit handles --db-init and --db-reset modes.
+// Skips PostgreSQL/Node.js/WinPkFilter installation.
+// Only runs database creation, schemas, patches, seeds, and permissions.
+func runDatabaseInit(reset bool) {
+	if reset {
+		fmt.Println("[MODE] Database RESET — will drop and recreate all databases")
+	} else {
+		fmt.Println("[MODE] Database INIT — will create/update databases (safe to re-run)")
+	}
+	fmt.Println()
+
+	// Verify PostgreSQL is installed and reachable
+	psqlPath := filepath.Join(config.PostgreSQL.InstallDir, "bin", "psql.exe")
+	if _, err := os.Stat(psqlPath); os.IsNotExist(err) {
+		fmt.Printf("[ERROR] psql not found at: %s\n", psqlPath)
+		fmt.Println("[HINT] Install PostgreSQL first with: safeops-requirements-setup.exe")
+		os.Exit(1)
+	}
+
+	// Check PostgreSQL service is running
+	fmt.Println("[CHECK] Verifying PostgreSQL is running...")
+	testCmd := exec.Command(psqlPath,
+		"-U", "postgres", "-h", "localhost",
+		"-p", fmt.Sprintf("%d", config.PostgreSQL.Port),
+		"-c", "SELECT 1;",
+	)
+	testCmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", config.PostgreSQL.PostgresPassword))
+	if output, err := testCmd.CombinedOutput(); err != nil {
+		fmt.Printf("[ERROR] Cannot connect to PostgreSQL: %v\n", err)
+		fmt.Printf("  Output: %s\n", string(output))
+		fmt.Println("[HINT] Make sure PostgreSQL service is running:")
+		fmt.Println("       net start postgresql-x64-16")
+		os.Exit(1)
+	}
+	fmt.Println("[OK] PostgreSQL is running")
+	fmt.Println()
+
+	// Create temp dir for SQL file execution
+	if err := createTempDir(); err != nil {
+		fmt.Printf("[ERROR] Failed to create temp directory: %v\n", err)
+		os.Exit(1)
+	}
+	defer cleanup()
+
+	steps := 7
+	step := 1
+
+	// Step 0 (reset only): Drop databases
+	if reset {
+		fmt.Printf("\n[STEP %d/%d] Dropping existing databases...\n", step, steps)
+		for _, db := range config.PostgreSQL.Databases {
+			fmt.Printf("  Dropping: %s\n", db.Name)
+			dropQuery := fmt.Sprintf("DROP DATABASE IF EXISTS %s;", db.Name)
+			cmd := exec.Command(psqlPath,
+				"-U", "postgres", "-h", "localhost",
+				"-p", fmt.Sprintf("%d", config.PostgreSQL.Port),
+				"-c", dropQuery,
+			)
+			cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", config.PostgreSQL.PostgresPassword))
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				// Ignore errors (db might have active connections)
+				fmt.Printf("  [WARN] %s: %s\n", db.Name, strings.TrimSpace(string(output)))
+			}
+		}
+		fmt.Println("[OK] Databases dropped")
+		step++
+	}
+
+	// Create databases
+	fmt.Printf("\n[STEP %d/%d] Creating databases...\n", step, steps)
+	if err := createDatabases(); err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[OK] Databases ready")
+	step++
+
+	// Create users
+	fmt.Printf("\n[STEP %d/%d] Creating database users...\n", step, steps)
+	if err := createUsers(); err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[OK] Users ready")
+	step++
+
+	// Apply schemas
+	fmt.Printf("\n[STEP %d/%d] Applying database schemas...\n", step, steps)
+	if err := applySchemas(); err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[OK] Schemas applied")
+	step++
+
+	// Apply patches
+	fmt.Printf("\n[STEP %d/%d] Applying schema patches...\n", step, steps)
+	if err := applyPatches(); err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[OK] Patches applied")
+	step++
+
+	// Apply seeds
+	fmt.Printf("\n[STEP %d/%d] Loading seed data...\n", step, steps)
+	if err := applySeeds(); err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[OK] Seed data loaded")
+	step++
+
+	// Grant permissions
+	fmt.Printf("\n[STEP %d/%d] Granting table-level permissions...\n", step, steps)
+	if err := grantTablePermissions(); err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("[OK] Permissions granted")
+
+	// Summary
+	fmt.Println()
+	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
+	fmt.Println("║           Database Initialization Complete!                   ║")
+	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
+	fmt.Println()
+	fmt.Println("Databases:")
+	for _, db := range config.PostgreSQL.Databases {
+		fmt.Printf("  [OK] %-20s (%s)\n", db.Name, db.Description)
+	}
+	fmt.Println()
+	fmt.Println("Next Steps:")
+	fmt.Println("  1. Run threat intel pipeline:  bin\\threat_intel\\threat_intel.exe")
+	fmt.Println("  2. Start SafeOps launcher:     bin\\launcher.exe")
+	fmt.Println()
+}
+
 func printBanner() {
 	fmt.Println("╔═══════════════════════════════════════════════════════════════╗")
 	fmt.Println("║       SafeOps Requirements Setup Installer v1.0              ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════╝")
 	fmt.Println()
+	fmt.Println("Usage:")
+	fmt.Println("  safeops-requirements-setup.exe              Full install")
+	fmt.Println("  safeops-requirements-setup.exe --db-init    Database only (safe to re-run)")
+	fmt.Println("  safeops-requirements-setup.exe --db-reset   Drop + recreate databases")
+	fmt.Println()
 	fmt.Println("This installer will set up:")
-	fmt.Println("  • PostgreSQL 16.1 (with 3 databases + schemas + patches)")
-	fmt.Println("  • Database seed data (threat feeds, categories)")
-	fmt.Println("  • Table-level permissions for all app users")
-	fmt.Println("  • Node.js 20.11.0 (for UI and Backend)")
-	fmt.Println("  • WinPkFilter 3.4.8 (packet capture driver)")
+	fmt.Println("  * PostgreSQL 16.1 (with 3 databases + schemas + patches)")
+	fmt.Println("  * Database seed data (threat feeds, categories)")
+	fmt.Println("  * Table-level permissions for all app users")
+	fmt.Println("  * Node.js 20.11.0 (for UI and Backend)")
+	fmt.Println("  * WinPkFilter 3.4.8 (packet capture driver)")
 	fmt.Println()
 }
 

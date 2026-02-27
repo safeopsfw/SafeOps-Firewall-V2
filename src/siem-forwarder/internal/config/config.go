@@ -13,6 +13,7 @@ type Config struct {
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
 	LogBasePath   string              `yaml:"log_base_path"`
 	LogFiles      []LogFileConfig     `yaml:"log_files"`
+	Retention     RetentionConfig     `yaml:"retention"`
 	PositionDB    PositionDBConfig    `yaml:"position_db"`
 	Tailer        TailerConfig        `yaml:"tailer"`
 }
@@ -45,6 +46,13 @@ type TailerConfig struct {
 	MaxLineSize  int           `yaml:"max_line_size"`
 }
 
+// RetentionConfig holds data retention settings
+type RetentionConfig struct {
+	Enabled       bool          `yaml:"enabled"`
+	MaxDays       int           `yaml:"max_days"`
+	CheckInterval time.Duration `yaml:"check_interval"`
+}
+
 // Load reads and parses the configuration file
 func Load(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
@@ -72,6 +80,12 @@ func Load(configPath string) (*Config, error) {
 	}
 	if cfg.PositionDB.SaveInterval == 0 {
 		cfg.PositionDB.SaveInterval = 10 * time.Second
+	}
+	if cfg.Retention.MaxDays == 0 {
+		cfg.Retention.MaxDays = 14
+	}
+	if cfg.Retention.CheckInterval == 0 {
+		cfg.Retention.CheckInterval = 6 * time.Hour
 	}
 
 	return &cfg, nil

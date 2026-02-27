@@ -7,17 +7,28 @@ if '%errorlevel%' NEQ '0' (
 )
 
 echo ============================================
-echo   Stopping SafeOps ELK Stack
+echo   SafeOps SIEM Stack - Stopping All
 echo ============================================
 echo.
 
-:: Stop Elasticsearch service
-net stop elasticsearch-service-x64 2>nul
-
-:: Kill Kibana and Logstash windows
-taskkill /FI "WINDOWTITLE eq Kibana*" /F 2>nul
-taskkill /FI "WINDOWTITLE eq Logstash*" /F 2>nul
-
+echo [1/3] Stopping SIEM Forwarder...
+taskkill /FI "WINDOWTITLE eq SafeOps SIEM Forwarder*" /F 2>nul
+taskkill /IM "siem-forwarder.exe" /F 2>nul
+echo   Done.
 echo.
-echo ELK Stack stopped.
+
+echo [2/3] Stopping Kibana...
+taskkill /FI "WINDOWTITLE eq Kibana*" /F 2>nul
+taskkill /IM "node.exe" /F 2>nul
+echo   Done.
+echo.
+
+echo [3/3] Stopping Elasticsearch...
+net stop elasticsearch-service-x64 2>nul
+echo   Done.
+echo.
+
+echo ============================================
+echo   SIEM Stack stopped.
+echo ============================================
 pause

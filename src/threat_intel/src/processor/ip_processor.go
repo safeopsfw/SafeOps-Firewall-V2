@@ -9,7 +9,7 @@ import (
 // =============================================================================
 // IP Processor
 // Processes ip/ folder -> ip_blacklist + ip_anonymization tables
-// For: malware, abuse, vpn, tor, proxy, blacklist IPs
+// Uses smart reconciliation: upsert current, remove stale per-feed
 // =============================================================================
 
 // ProcessIPFolder processes all files in the ip folder
@@ -38,7 +38,6 @@ func (p *Processor) ProcessIPFolder() (*Result, error) {
 		if err != nil {
 			p.logger.Printf("    Error parsing: %v\n", err)
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", filePath, err))
-			// Still delete failed files
 			if p.config.DeleteAfter {
 				p.deleteFile(filePath)
 				result.DeletedFiles++
@@ -49,48 +48,50 @@ func (p *Processor) ProcessIPFolder() (*Result, error) {
 		result.FilesProcessed++
 		source := getSourceFromFilename(filePath)
 		category := getCategoryFromFilename(filePath)
+		priority := p.getPriority(source)
 
 		// Use parser's GetAllIPs helper
 		ips := parsed.GetAllIPs()
 		result.RowsRead += len(ips)
 
 		if len(ips) > 0 {
-			// Batch IPs
-			batchSize := p.config.BatchSize
-			var totalInserted int64
-
-			for i := 0; i < len(ips); i += batchSize {
-				end := i + batchSize
-				if end > len(ips) {
-					end = len(ips)
-				}
-				batch := ips[i:end]
-
-				var inserted int64
-				var insertErr error
-
-				// Route to correct storage based on category
-				switch category {
-				case "tor":
-					inserted, insertErr = anonStore.BulkInsertTorNodes(ctx, batch, source)
-				case "vpn":
-					inserted, insertErr = anonStore.BulkInsertVPNs(ctx, batch, source, source)
-				case "proxy":
-					inserted, insertErr = anonStore.BulkInsertProxies(ctx, batch, "http", source)
-				default:
-					// Use IP Blacklist for malware, abuse, etc.
-					inserted, insertErr = ipStore.BulkInsert(ctx, batch, source, category)
-				}
-
-				if insertErr != nil {
-					p.logger.Printf("    Batch insert error: %v\n", insertErr)
+			// Route to correct storage based on category
+			switch category {
+			case "tor":
+				inserted, err := anonStore.BulkInsertTorNodes(ctx, ips, source)
+				if err != nil {
+					p.logger.Printf("    Tor insert error: %v\n", err)
 				} else {
-					totalInserted += inserted
+					result.RowsInserted += inserted
+					p.logger.Printf("    Inserted %d Tor exit nodes\n", inserted)
+				}
+			case "vpn":
+				inserted, err := anonStore.BulkInsertVPNs(ctx, ips, source, source)
+				if err != nil {
+					p.logger.Printf("    VPN insert error: %v\n", err)
+				} else {
+					result.RowsInserted += inserted
+					p.logger.Printf("    Inserted %d VPN IPs\n", inserted)
+				}
+			case "proxy":
+				inserted, err := anonStore.BulkInsertProxies(ctx, ips, "http", source)
+				if err != nil {
+					p.logger.Printf("    Proxy insert error: %v\n", err)
+				} else {
+					result.RowsInserted += inserted
+					p.logger.Printf("    Inserted %d proxy IPs\n", inserted)
+				}
+			default:
+				// Smart reconciliation for IP blacklist
+				reconcileResult, err := ipStore.Reconcile(ctx, source, ips, priority)
+				if err != nil {
+					p.logger.Printf("    Reconcile error: %v\n", err)
+				} else {
+					result.RowsInserted += reconcileResult.Updated
+					p.logger.Printf("    Reconciled: upserted=%d, removed=%d (priority=%d, feed=%s)\n",
+						reconcileResult.Updated, reconcileResult.Removed, priority, source)
 				}
 			}
-
-			result.RowsInserted += totalInserted
-			p.logger.Printf("    Inserted %d IPs (category: %s)\n", totalInserted, category)
 		} else {
 			p.logger.Printf("    No valid IPs found\n")
 		}

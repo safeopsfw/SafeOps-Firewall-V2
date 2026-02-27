@@ -136,7 +136,8 @@ func (s *DomainStorage) Insert(ctx context.Context, record *DomainRecord) error 
 	return err
 }
 
-// BulkInsert inserts multiple domain records efficiently
+// BulkInsert upserts multiple domain records efficiently
+// Uses ON CONFLICT to update existing domains instead of creating duplicates
 func (s *DomainStorage) BulkInsert(ctx context.Context, domains []string, source string, category string) (int64, error) {
 	if len(domains) == 0 {
 		return 0, nil
@@ -163,7 +164,126 @@ func (s *DomainStorage) BulkInsert(ctx context.Context, domains []string, source
 		}
 	}
 
-	return s.db.BulkInsert(s.tableName, columns, values)
+	updateExprs := map[string]string{
+		"is_malicious":    "TRUE",
+		"threat_score":    "GREATEST(domains.threat_score, EXCLUDED.threat_score)",
+		"detection_count": "domains.detection_count + 1",
+		"last_seen":       "NOW()",
+		"last_updated":    "NOW()",
+		"status":          "'active'",
+	}
+
+	return s.db.BulkUpsert(s.tableName, columns, values, "domain", updateExprs)
+}
+
+// Reconcile performs smart feed reconciliation for domains.
+// 1. Upsert all current domains from this feed (insert new, update existing)
+// 2. Remove domains that this feed no longer reports
+func (s *DomainStorage) Reconcile(ctx context.Context, feedName string, domains []string, priority int) (*ReconcileResult, error) {
+	result := &ReconcileResult{}
+	if len(domains) == 0 {
+		return result, nil
+	}
+
+	threatScore := priorityToScore(priority)
+	now := time.Now()
+	category := domainCategoryFromFeed(feedName)
+
+	// Step 1: Batch upsert current domains
+	columns := []string{
+		"domain", "is_malicious", "threat_score", "category",
+		"sources", "status", "first_seen", "last_seen", "last_updated",
+	}
+	values := make([][]interface{}, len(domains))
+	for i, d := range domains {
+		values[i] = []interface{}{
+			strings.ToLower(d),
+			true,
+			threatScore,
+			category,
+			fmt.Sprintf(`["%s"]`, feedName),
+			"active",
+			now,
+			now,
+			now,
+		}
+	}
+
+	updateExprs := map[string]string{
+		"last_seen":       "NOW()",
+		"last_updated":    "NOW()",
+		"detection_count": "domains.detection_count + 1",
+		"threat_score":    fmt.Sprintf("GREATEST(domains.threat_score, %d)", threatScore),
+		"is_malicious":    "TRUE",
+		"status":          "'active'",
+		"sources":         fmt.Sprintf(`domains.sources || '["%s"]'::jsonb`, feedName),
+	}
+
+	affected, err := s.db.BulkUpsert(s.tableName, columns, values, "domain", updateExprs)
+	if err != nil {
+		return result, fmt.Errorf("domain reconcile upsert failed: %w", err)
+	}
+	result.Updated = affected
+
+	// Step 2: Remove domains this feed no longer reports
+	// Get existing domains from this source, diff with current
+	existingQuery := fmt.Sprintf(`
+		SELECT domain FROM %s WHERE sources @> $1::jsonb`, s.tableName)
+	rows, err := s.db.QueryContext(ctx, existingQuery, fmt.Sprintf(`["%s"]`, feedName))
+	if err == nil {
+		defer rows.Close()
+		currentSet := make(map[string]bool, len(domains))
+		for _, d := range domains {
+			currentSet[strings.ToLower(d)] = true
+		}
+
+		var toRemove []string
+		for rows.Next() {
+			var d string
+			if rows.Scan(&d) == nil && !currentSet[d] {
+				toRemove = append(toRemove, d)
+			}
+		}
+
+		// Delete stale domains in batches
+		for i := 0; i < len(toRemove); i += 500 {
+			end := i + 500
+			if end > len(toRemove) {
+				end = len(toRemove)
+			}
+			batch := toRemove[i:end]
+			ph := make([]string, len(batch))
+			args := make([]interface{}, len(batch))
+			for j, d := range batch {
+				ph[j] = fmt.Sprintf("$%d", j+1)
+				args[j] = d
+			}
+			delQuery := fmt.Sprintf(`DELETE FROM %s WHERE domain IN (%s)`,
+				s.tableName, strings.Join(ph, ", "))
+			delResult, err := s.db.ExecContext(ctx, delQuery, args...)
+			if err == nil {
+				removed, _ := delResult.RowsAffected()
+				result.Removed += removed
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// domainCategoryFromFeed maps feed name to domain category
+func domainCategoryFromFeed(name string) string {
+	lower := strings.ToLower(name)
+	if strings.Contains(lower, "phish") || strings.Contains(lower, "openphish") {
+		return "phishing"
+	}
+	if strings.Contains(lower, "urlhaus") || strings.Contains(lower, "malware") {
+		return "malware"
+	}
+	if strings.Contains(lower, "threatfox") {
+		return "c2"
+	}
+	return "unknown"
 }
 
 // GetByDomain retrieves a domain record by domain name

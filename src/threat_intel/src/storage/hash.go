@@ -148,7 +148,8 @@ func (s *HashStorage) Insert(ctx context.Context, record *HashRecord) error {
 	return err
 }
 
-// BulkInsert inserts multiple hash records efficiently
+// BulkInsert upserts multiple hash records efficiently
+// Uses ON CONFLICT to update existing hashes instead of creating duplicates
 func (s *HashStorage) BulkInsert(ctx context.Context, hashes []string, hashType string, source string, malwareFamily string) (int64, error) {
 	if len(hashes) == 0 {
 		return 0, nil
@@ -186,7 +187,15 @@ func (s *HashStorage) BulkInsert(ctx context.Context, hashes []string, hashType 
 		}
 	}
 
-	return s.db.BulkInsert(s.tableName, columns, values)
+	updateExprs := map[string]string{
+		"is_malicious":  "TRUE",
+		"threat_score":  "GREATEST(hashes.threat_score, EXCLUDED.threat_score)",
+		"last_seen":     "NOW()",
+		"last_updated":  "NOW()",
+		"malware_family": "COALESCE(EXCLUDED.malware_family, hashes.malware_family)",
+	}
+
+	return s.db.BulkUpsert(s.tableName, columns, values, hashColumn, updateExprs)
 }
 
 // GetBySHA256 retrieves a hash record by SHA256

@@ -2,10 +2,8 @@ package api
 
 import (
 	"bufio"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,18 +18,30 @@ import (
 // Verdict Log Viewer — GET /api/v1/logs/verdicts
 // ============================================================================
 
-// VerdictEntry mirrors the SOC JSONL verdict log fields (short names from verdict_logger.go).
+// VerdictEntry mirrors the SOC JSONL firewall log fields (short names from verdict_logger.go).
 type VerdictEntry struct {
-	Timestamp string `json:"ts"`
-	SrcIP     string `json:"src"`
-	SrcPort   uint32 `json:"sp"`
-	DstIP     string `json:"dst"`
-	DstPort   uint32 `json:"dp"`
-	Proto     string `json:"proto"`
-	Action    string `json:"action"`
-	Detector  string `json:"detector"`
-	Domain    string `json:"domain,omitempty"`
-	Reason    string `json:"reason"`
+	Timestamp   string `json:"ts"`
+	EventType   string `json:"event_type,omitempty"`
+	SrcIP       string `json:"src"`
+	SrcPort     uint32 `json:"sp"`
+	DstIP       string `json:"dst"`
+	DstPort     uint32 `json:"dp"`
+	Proto       string `json:"proto"`
+	Action      string `json:"action"`
+	Detector    string `json:"detector"`
+	Domain      string `json:"domain,omitempty"`
+	Reason      string `json:"reason"`
+	Size        uint32 `json:"size,omitempty"`
+	Flags       string `json:"flags,omitempty"`
+	Direction   string `json:"dir,omitempty"`
+	TrafficType string `json:"ttype,omitempty"`
+	CommunityID string `json:"cid,omitempty"`
+	FlowID      uint64 `json:"flow_id,omitempty"`
+	SrcGeo      string `json:"src_geo,omitempty"`
+	DstGeo      string `json:"dst_geo,omitempty"`
+	SrcASN      string `json:"src_asn,omitempty"`
+	DstASN      string `json:"dst_asn,omitempty"`
+	Severity    string `json:"severity,omitempty"`
 }
 
 // VerdictLogResponse is the response for GET /api/v1/logs/verdicts.
@@ -115,7 +125,7 @@ func (s *Server) getVerdictLogDir() string {
 	return filepath.Join(filepath.Dir(configDir), "..", "logs")
 }
 
-// readVerdictLogs reads verdict log entries from JSONL files (including gzip-compressed rotated files).
+// readVerdictLogs reads firewall log entries from plain JSONL files.
 // Returns entries sorted newest-first, up to maxEntries, optionally filtered by action.
 func readVerdictLogs(logDir string, maxEntries int, actionFilter string) ([]VerdictEntry, error) {
 	entries, err := os.ReadDir(logDir)
@@ -126,7 +136,7 @@ func readVerdictLogs(logDir string, maxEntries int, actionFilter string) ([]Verd
 		return nil, fmt.Errorf("read log dir: %w", err)
 	}
 
-	// Collect verdict log files (active + gzipped rotated)
+	// Collect firewall log files (active + rotated plain JSONL)
 	type fileEntry struct {
 		name    string
 		modTime time.Time
@@ -137,10 +147,10 @@ func readVerdictLogs(logDir string, maxEntries int, actionFilter string) ([]Verd
 			continue
 		}
 		name := e.Name()
-		if !strings.HasPrefix(name, "firewall-verdicts") {
+		if !strings.HasPrefix(name, "firewall") {
 			continue
 		}
-		if !strings.HasSuffix(name, ".jsonl") && !strings.HasSuffix(name, ".jsonl.gz") {
+		if !strings.HasSuffix(name, ".jsonl") {
 			continue
 		}
 		info, err := e.Info()
@@ -171,7 +181,7 @@ func readVerdictLogs(logDir string, maxEntries int, actionFilter string) ([]Verd
 	return verdicts, nil
 }
 
-// readVerdictFile reads verdict entries from a single JSONL or JSONL.GZ file.
+// readVerdictFile reads firewall log entries from a single plain JSONL file.
 func readVerdictFile(path string, limit int, actionFilter string) ([]VerdictEntry, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -179,18 +189,8 @@ func readVerdictFile(path string, limit int, actionFilter string) ([]VerdictEntr
 	}
 	defer f.Close()
 
-	var reader io.Reader = f
-	if strings.HasSuffix(path, ".gz") {
-		gr, err := gzip.NewReader(f)
-		if err != nil {
-			return nil, err
-		}
-		defer gr.Close()
-		reader = gr
-	}
-
 	var lines []string
-	scanner := bufio.NewScanner(reader)
+	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 512*1024)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

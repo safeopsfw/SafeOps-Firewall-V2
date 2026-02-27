@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"threat_intel/src/enrichment"
@@ -37,7 +39,8 @@ func main() {
 	showStatus := flag.Bool("status", false, "Show database status and row counts")
 	showHeaders := flag.Bool("headers", false, "Show table headers/columns")
 	deleteAfter := flag.Bool("delete", true, "Delete files after processing")
-	scheduler := flag.Bool("scheduler", false, "Run continuously every 30 minutes")
+	scheduler := flag.Bool("scheduler", false, "Run continuously (default every 30 minutes)")
+	interval := flag.Int("interval", 30, "Scheduler interval in minutes (used with -scheduler)")
 	enrichCSV := flag.String("enrich", "", "Enrich unknown IPs from CSV file (path to CSV)")
 	flag.Parse()
 
@@ -73,13 +76,32 @@ func main() {
 		return
 	}
 
-	// Scheduler mode - run every 30 minutes
+	// Scheduler mode - run continuously with configurable interval
 	if *scheduler {
-		log.Println("[SCHEDULER] Running in continuous mode (every 30 minutes)")
+		dur := time.Duration(*interval) * time.Minute
+		log.Printf("[SCHEDULER] Running in continuous mode (every %d minutes)", *interval)
+		log.Println("[SCHEDULER] Press Ctrl+C to stop gracefully")
+
+		// Graceful shutdown
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+		// Run immediately on startup
+		runPipeline(*fetchOnly, *processOnly, *category, *deleteAfter)
+
+		ticker := time.NewTicker(dur)
+		defer ticker.Stop()
+
 		for {
-			runPipeline(*fetchOnly, *processOnly, *category, *deleteAfter)
-			log.Println("[SCHEDULER] Sleeping for 30 minutes...")
-			time.Sleep(30 * time.Minute)
+			select {
+			case <-ticker.C:
+				log.Printf("[SCHEDULER] Starting scheduled run...")
+				runPipeline(*fetchOnly, *processOnly, *category, *deleteAfter)
+				log.Printf("[SCHEDULER] Next run in %d minutes", *interval)
+			case <-sigCh:
+				log.Println("[SCHEDULER] Shutdown signal received, exiting...")
+				return
+			}
 		}
 	}
 
@@ -176,6 +198,22 @@ func runProcessor(deleteAfter bool) error {
 	config := processor.DefaultConfig(filepath.Join(exeDir, "data", "fetch"))
 	config.DeleteAfter = deleteAfter
 
+	// Load feed priorities from sources.yaml
+	configPath, err := fetcher.FindSourcesYAML(exeDir)
+	if err == nil {
+		sourcesConfig, err := fetcher.LoadSourcesFromYAML(configPath)
+		if err == nil {
+			priorities := make(map[string]int)
+			for _, feed := range sourcesConfig.Feeds {
+				if feed.Enabled && feed.Priority > 0 {
+					priorities[feed.Name] = feed.Priority
+				}
+			}
+			config.FeedPriorities = priorities
+			log.Printf("[PROCESS] Loaded priorities for %d feeds\n", len(priorities))
+		}
+	}
+
 	proc, err := processor.NewProcessor(config)
 	if err != nil {
 		return fmt.Errorf("failed to create processor: %w", err)
@@ -203,7 +241,7 @@ func showDatabaseStatus() {
 	fmt.Println("\n📊 DATABASE STATUS:")
 	fmt.Println("─────────────────────────────────────────")
 
-	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization"}
+	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization", "ssl_certificates"}
 	for _, table := range tables {
 		info, err := db.GetTableInfo(table)
 		if err != nil {
@@ -225,7 +263,7 @@ func showTableHeaders() {
 	}
 	defer db.Close()
 
-	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization"}
+	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization", "ssl_certificates"}
 
 	for _, table := range tables {
 		info, err := db.GetTableInfo(table)
@@ -315,7 +353,7 @@ func GetStatus() (map[string]int64, error) {
 	defer db.Close()
 
 	status := make(map[string]int64)
-	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization"}
+	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization", "ssl_certificates"}
 
 	for _, table := range tables {
 		info, err := db.GetTableInfo(table)

@@ -151,7 +151,7 @@ func (s *IPAnonymizationStorage) Insert(ctx context.Context, record *IPAnonymiza
 	return err
 }
 
-// BulkInsertTorNodes inserts Tor exit node IPs efficiently
+// BulkInsertTorNodes upserts Tor exit node IPs efficiently
 func (s *IPAnonymizationStorage) BulkInsertTorNodes(ctx context.Context, ips []string, source string) (int64, error) {
 	if len(ips) == 0 {
 		return 0, nil
@@ -166,21 +166,18 @@ func (s *IPAnonymizationStorage) BulkInsertTorNodes(ctx context.Context, ips []s
 	values := make([][]interface{}, len(ips))
 	for i, ip := range ips {
 		values[i] = []interface{}{
-			ip,
-			true, // is_tor
-			true, // tor_exit_node
-			true, // is_active
-			fmt.Sprintf(`["%s"]`, source),
-			now,
-			now,
-			now,
+			ip, true, true, true,
+			fmt.Sprintf(`["%s"]`, source), now, now, now,
 		}
 	}
 
-	return s.db.BulkInsert(s.tableName, columns, values)
+	return s.db.BulkUpsert(s.tableName, columns, values, "ip_address", map[string]string{
+		"is_tor": "TRUE", "tor_exit_node": "TRUE", "is_active": "TRUE",
+		"last_seen": "NOW()", "last_updated": "NOW()",
+	})
 }
 
-// BulkInsertVPNs inserts VPN IPs efficiently
+// BulkInsertVPNs upserts VPN IPs efficiently
 func (s *IPAnonymizationStorage) BulkInsertVPNs(ctx context.Context, ips []string, providerName string, source string) (int64, error) {
 	if len(ips) == 0 {
 		return 0, nil
@@ -195,21 +192,19 @@ func (s *IPAnonymizationStorage) BulkInsertVPNs(ctx context.Context, ips []strin
 	values := make([][]interface{}, len(ips))
 	for i, ip := range ips {
 		values[i] = []interface{}{
-			ip,
-			true, // is_vpn
-			providerName,
-			true, // is_active
-			fmt.Sprintf(`["%s"]`, source),
-			now,
-			now,
-			now,
+			ip, true, providerName, true,
+			fmt.Sprintf(`["%s"]`, source), now, now, now,
 		}
 	}
 
-	return s.db.BulkInsert(s.tableName, columns, values)
+	return s.db.BulkUpsert(s.tableName, columns, values, "ip_address", map[string]string{
+		"is_vpn": "TRUE", "is_active": "TRUE",
+		"last_seen": "NOW()", "last_updated": "NOW()",
+		"provider_name": "COALESCE(EXCLUDED.provider_name, ip_anonymization.provider_name)",
+	})
 }
 
-// BulkInsertProxies inserts proxy IPs efficiently
+// BulkInsertProxies upserts proxy IPs efficiently
 func (s *IPAnonymizationStorage) BulkInsertProxies(ctx context.Context, ips []string, proxyType string, source string) (int64, error) {
 	if len(ips) == 0 {
 		return 0, nil
@@ -224,18 +219,16 @@ func (s *IPAnonymizationStorage) BulkInsertProxies(ctx context.Context, ips []st
 	values := make([][]interface{}, len(ips))
 	for i, ip := range ips {
 		values[i] = []interface{}{
-			ip,
-			true, // is_proxy
-			proxyType,
-			true, // is_active
-			fmt.Sprintf(`["%s"]`, source),
-			now,
-			now,
-			now,
+			ip, true, proxyType, true,
+			fmt.Sprintf(`["%s"]`, source), now, now, now,
 		}
 	}
 
-	return s.db.BulkInsert(s.tableName, columns, values)
+	return s.db.BulkUpsert(s.tableName, columns, values, "ip_address", map[string]string{
+		"is_proxy": "TRUE", "is_active": "TRUE",
+		"last_seen": "NOW()", "last_updated": "NOW()",
+		"proxy_type": "COALESCE(EXCLUDED.proxy_type, ip_anonymization.proxy_type)",
+	})
 }
 
 // GetByIP retrieves anonymization info for an IP

@@ -261,12 +261,12 @@ func (s *Shipper) bulkIndex(entries []tailer.LogEntry) error {
 // Returns empty string if no timestamp found
 func extractTimestamp(doc map[string]interface{}, logType string) string {
 	// Map of log types to their timestamp field names
+	// SafeOps v2 JSONL uses "ts" as the primary timestamp field
 	timestampFields := map[string][]string{
-		"firewall":           {"timestamp_ist", "timestamp"},
-		"ids":                {"timestamp_ist", "timestamp"},
-		"netflow_eastwest":   {"timestamp", "flow_end", "@timestamp"},
-		"netflow_northsouth": {"timestamp", "flow_end", "@timestamp"},
-		"netflow_unknown":    {"timestamp", "flow_end", "@timestamp"},
+		"firewall":           {"ts", "timestamp", "timestamp_ist"},
+		"ids":                {"ts", "timestamp", "timestamp_ist"},
+		"netflow_eastwest":   {"timestamp", "ts", "flow_end", "@timestamp"},
+		"netflow_northsouth": {"timestamp", "ts", "flow_end", "@timestamp"},
 	}
 
 	// Get the fields to check for this log type

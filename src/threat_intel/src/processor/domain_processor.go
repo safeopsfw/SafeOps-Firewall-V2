@@ -9,7 +9,7 @@ import (
 // =============================================================================
 // Domain Processor
 // Processes domain/ folder -> domains table
-// For: phishing, malware, spam domains
+// Uses smart reconciliation: upsert current, remove stale per-feed
 // =============================================================================
 
 // ProcessDomainFolder processes all files in the domain folder
@@ -28,7 +28,6 @@ func (p *Processor) ProcessDomainFolder() (*Result, error) {
 
 	domainStore := storage.NewDomainStorage(p.db)
 	ctx := getContext()
-	batchSize := p.config.BatchSize
 
 	for _, filePath := range files {
 		p.logger.Printf("  Processing: %s\n", filePath)
@@ -38,7 +37,6 @@ func (p *Processor) ProcessDomainFolder() (*Result, error) {
 		if err != nil {
 			p.logger.Printf("    Error parsing: %v\n", err)
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", filePath, err))
-			// Still delete failed files
 			if p.config.DeleteAfter {
 				p.deleteFile(filePath)
 				result.DeletedFiles++
@@ -48,33 +46,22 @@ func (p *Processor) ProcessDomainFolder() (*Result, error) {
 
 		result.FilesProcessed++
 		source := getSourceFromFilename(filePath)
-		category := getCategoryFromFilename(filePath)
+		priority := p.getPriority(source)
 
 		// Use parser's GetAllDomains helper
 		domains := parsed.GetAllDomains()
 		result.RowsRead += len(domains)
 
 		if len(domains) > 0 {
-			// Batch insert domains
-			var totalInserted int64
-			for i := 0; i < len(domains); i += batchSize {
-				end := i + batchSize
-				if end > len(domains) {
-					end = len(domains)
-				}
-				batch := domains[i:end]
-
-				// BulkInsert takes: (ctx, domains []string, source string, category string)
-				inserted, err := domainStore.BulkInsert(ctx, batch, source, category)
-				if err != nil {
-					p.logger.Printf("    Batch insert error: %v\n", err)
-				} else {
-					totalInserted += inserted
-				}
+			// Smart reconciliation for domains
+			reconcileResult, err := domainStore.Reconcile(ctx, source, domains, priority)
+			if err != nil {
+				p.logger.Printf("    Reconcile error: %v\n", err)
+			} else {
+				result.RowsInserted += reconcileResult.Updated
+				p.logger.Printf("    Reconciled: upserted=%d, removed=%d (priority=%d, feed=%s)\n",
+					reconcileResult.Updated, reconcileResult.Removed, priority, source)
 			}
-
-			result.RowsInserted += totalInserted
-			p.logger.Printf("    Inserted %d domains (category: %s)\n", totalInserted, category)
 		} else {
 			p.logger.Printf("    No valid domains found\n")
 		}
