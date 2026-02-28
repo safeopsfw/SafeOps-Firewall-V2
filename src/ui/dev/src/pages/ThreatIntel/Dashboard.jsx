@@ -21,7 +21,8 @@ import {
   ChevronDown,
   Download,
   Play,
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 import {
   getDatabaseStats,
@@ -43,7 +44,8 @@ const CATEGORY_ICONS = {
   hashes: Hash,
   ip_blacklist: Shield,
   ip_geolocation: MapPin,
-  ip_anonymization: Eye
+  ip_anonymization: Eye,
+  ssl_certificates: Lock
 };
 
 export default function ThreatIntelDashboard() {
@@ -227,7 +229,7 @@ export default function ThreatIntelDashboard() {
       </div>
 
       {/* Database Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {Object.entries(DB_CATEGORIES).map(([key, cat]) => {
           const Icon = CATEGORY_ICONS[key];
           const stats = dbStats?.[key];

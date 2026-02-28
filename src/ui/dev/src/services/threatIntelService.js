@@ -38,6 +38,12 @@ export const DB_CATEGORIES = {
     icon: '🎭',
     description: 'Tor exit nodes, VPNs, proxies, hosting IPs',
     color: 'from-orange-500 to-orange-600'
+  },
+  ssl_certificates: {
+    name: 'SSL Certificates',
+    icon: '🔒',
+    description: 'Malicious SSL/TLS certificate fingerprints (C2, botnet)',
+    color: 'from-yellow-500 to-yellow-600'
   }
 };
 

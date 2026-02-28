@@ -1,1 +1,5 @@
-{"timestamp":"2026-02-27T11:32:42.5947745Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
+{"timestamp":"2026-02-28T02:47:36.8678332Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
+{"timestamp":"2026-02-28T02:47:51.3609607Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-02-28T02:47:53.3629559Z","level":"INFO","message":"New metadata subscriber","data":{"filters":["tcp","udp"],"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-02-28T02:48:34.3768546Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-02-28T02:48:36.3790789Z","level":"INFO","message":"New metadata subscriber","data":{"filters":["tcp","udp"],"subscriber_id":"firewall-engine"}}

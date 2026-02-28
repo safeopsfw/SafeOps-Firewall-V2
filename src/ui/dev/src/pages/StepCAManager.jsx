@@ -54,9 +54,9 @@ function StepCAManager() {
       if (certMgrRes && certMgrRes.ok) {
         const certMgrData = await certMgrRes.json();
         setStats({
-          total: 12, // Mock data - replace with actual API
-          active: 10,
-          expired: 2
+          total: certMgrData.total || 0,
+          active: certMgrData.active || 0,
+          expired: certMgrData.expired || 0
         });
       }
 
@@ -77,14 +77,25 @@ function StepCAManager() {
     return 'Unknown';
   };
 
-  const downloadRootCA = () => {
-    const element = document.createElement('a');
-    element.setAttribute('href', `${STEP_CA_API}/roots.pem`);
-    element.setAttribute('download', 'safeops-root-ca.pem');
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+  const downloadRootCA = async () => {
+    try {
+      const res = await fetch(`${STEP_CA_PROXY}/roots.pem`);
+      if (!res.ok) throw new Error('Failed to fetch root CA');
+      const pem = await res.text();
+      const blob = new Blob([pem], { type: 'application/x-x509-ca-cert' });
+      const url = URL.createObjectURL(blob);
+      const element = document.createElement('a');
+      element.setAttribute('href', url);
+      element.setAttribute('download', 'SafeOps_Root_CA.crt');
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
+      alert('Failed to download Root CA. Make sure step-ca and the backend API are running.');
+    }
   };
 
   const renewCertificate = async (certId) => {
@@ -334,7 +345,7 @@ function StepCAManager() {
                 borderRadius: '6px',
                 display: 'block'
               }}>
-                https://localhost:9000/roots.pem
+                http://localhost:8090/api/download-ca/
               </code>
             </div>
           </div>
@@ -456,7 +467,7 @@ function StepCAManager() {
             { name: 'Certificate Manager', port: '8082', status: 'connected', color: '#10b981' },
             { name: 'DHCP Server', port: '67', status: 'configured', color: '#10b981' },
             { name: 'DNS Server', port: '53', status: 'configured', color: '#10b981' },
-            { name: 'Captive Portal', port: '8080', status: 'active', color: '#10b981' },
+            { name: 'Captive Portal', port: '8090', status: 'active', color: '#10b981' },
             { name: 'NIC Management', port: '8081', status: 'connected', color: '#10b981' }
           ].map((service) => (
             <div key={service.name} style={{

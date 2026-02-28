@@ -7,14 +7,14 @@ const db = require('../db');
 router.get('/status', async (req, res) => {
     try {
         // Get row counts for each table
-        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization'];
+        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization', 'ssl_certificates'];
         const result = {};
 
         for (const table of tables) {
             try {
                 const countRes = await db.query(`SELECT COUNT(*) as count FROM ${table}`);
                 const colRes = await db.query(`
-                    SELECT COUNT(*) as count FROM information_schema.columns 
+                    SELECT COUNT(*) as count FROM information_schema.columns
                     WHERE table_schema = 'public' AND table_name = $1
                 `, [table]);
                 result[table] = {
@@ -46,7 +46,7 @@ router.get('/health', async (req, res) => {
 // GET /api/threat-intel/headers - Table column info
 router.get('/headers', async (req, res) => {
     try {
-        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization'];
+        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization', 'ssl_certificates'];
         const result = {};
 
         for (const table of tables) {
@@ -192,6 +192,50 @@ router.get('/hashes', async (req, res) => {
     } catch (error) {
         console.error('Hashes error:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch hashes' });
+    }
+});
+
+// GET /api/threat-intel/ssl-certs - SSL certificate blacklist data
+router.get('/ssl-certs', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
+        const search = req.query.search || '';
+
+        let query = `
+      SELECT sha1_fingerprint, subject_cn, issuer_cn, is_malicious, threat_score, listing_reason, first_seen, last_seen
+      FROM ssl_certificates
+      WHERE 1=1
+    `;
+        const params = [];
+
+        if (search) {
+            params.push(`%${search}%`);
+            query += ` AND (sha1_fingerprint ILIKE $${params.length} OR subject_cn ILIKE $${params.length} OR listing_reason ILIKE $${params.length})`;
+        }
+
+        query += ` ORDER BY last_seen DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limit, offset);
+
+        const result = await db.query(query, params);
+
+        const countQuery = search
+            ? `SELECT COUNT(*) FROM ssl_certificates WHERE sha1_fingerprint ILIKE $1 OR subject_cn ILIKE $1 OR listing_reason ILIKE $1`
+            : `SELECT COUNT(*) FROM ssl_certificates`;
+        const countResult = await db.query(countQuery, search ? [`%${search}%`] : []);
+
+        res.json({
+            success: true,
+            data: result.rows,
+            pagination: {
+                total: parseInt(countResult.rows[0].count),
+                limit,
+                offset
+            }
+        });
+    } catch (error) {
+        console.error('SSL certs error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch SSL certificates' });
     }
 });
 

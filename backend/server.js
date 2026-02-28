@@ -131,7 +131,7 @@ app.get('/api/stepca/roots.pem', async (req, res) => {
 // Database status endpoint for UI (returns row counts for threat intel tables)
 app.get('/api/status', async (req, res) => {
     try {
-        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization'];
+        const tables = ['domains', 'hashes', 'ip_blacklist', 'ip_geolocation', 'ip_anonymization', 'ssl_certificates'];
         const result = {};
 
         for (const table of tables) {

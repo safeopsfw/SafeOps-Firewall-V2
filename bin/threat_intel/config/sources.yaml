@@ -122,6 +122,55 @@ feeds:
     description: "DISABLED — returns 302 redirect, free feed may be discontinued"
 
   # ==========================================================================
+  # PRIORITY 3 — DOMAIN THREAT FEEDS
+  # ==========================================================================
+
+  - name: "CERT.pl Malicious Domains"
+    category: "domain"
+    url: "https://hole.cert.pl/domains/domains.txt"
+    format: "txt"
+    enabled: true
+    priority: 3
+    update_frequency: 3600
+    description: "Polish CERT malicious domain blocklist — phishing, malware C2"
+
+  - name: "Phishing Database Active"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt"
+    format: "txt"
+    enabled: true
+    priority: 2
+    update_frequency: 86400
+    description: "Community-maintained active phishing domains"
+
+  - name: "Maltrail Malware Domains"
+    category: "domain"
+    url: "https://raw.githubusercontent.com/stamparm/maltrail/master/trails/static/malware/domain.txt"
+    format: "txt"
+    enabled: true
+    priority: 4
+    update_frequency: 86400
+    description: "Maltrail curated malware C2 and distribution domains"
+
+  - name: "Disconnect Malvertising"
+    category: "domain"
+    url: "https://s3.amazonaws.com/lists.disconnect.me/simple_malvertising.txt"
+    format: "txt"
+    enabled: true
+    priority: 2
+    update_frequency: 86400
+    description: "Disconnect.me malvertising and tracking domains"
+
+  - name: "DGA Domains Feed"
+    category: "domain"
+    url: "https://osint.digitalside.it/Threat-Intel/lists/latestdomains.txt"
+    format: "txt"
+    enabled: true
+    priority: 4
+    update_frequency: 3600
+    description: "DigitalSide Threat-Intel — DGA and malware domains (updated hourly)"
+
+  # ==========================================================================
   # PRIORITY 1 — INFO (Enrichment / GeoIP)
   # ==========================================================================
 

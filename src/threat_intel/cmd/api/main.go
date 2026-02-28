@@ -69,7 +69,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 // Get database status (row counts)
 func statusHandler(w http.ResponseWriter, r *http.Request) {
-	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization"}
+	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization", "ssl_certificates"}
 	status := make(map[string]interface{})
 
 	for _, table := range tables {
@@ -93,7 +93,7 @@ func statusHandler(w http.ResponseWriter, r *http.Request) {
 
 // Get table headers/columns
 func headersHandler(w http.ResponseWriter, r *http.Request) {
-	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization"}
+	tables := []string{"domains", "hashes", "ip_blacklist", "ip_geolocation", "ip_anonymization", "ssl_certificates"}
 	headers := make(map[string]interface{})
 
 	for _, table := range tables {

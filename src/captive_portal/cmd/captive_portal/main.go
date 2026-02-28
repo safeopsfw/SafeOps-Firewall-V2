@@ -107,7 +107,11 @@ func main() {
 	}
 
 	log.Printf("[Main] Server started successfully")
-	log.Printf("[Main] Portal URL: https://localhost:%d", cfg.Server.HTTPSPort)
+	if cfg.Server.HTTPSEnabled {
+		log.Printf("[Main] Portal URL: https://localhost:%d", cfg.Server.HTTPSPort)
+	} else if cfg.Server.HTTPEnabled {
+		log.Printf("[Main] Portal URL: http://localhost:%d", cfg.Server.HTTPPort)
+	}
 	log.Printf("[Main] Press Ctrl+C to stop")
 
 	// Wait for shutdown
