@@ -11,7 +11,8 @@
     StartElasticsearch, StartKibana, StopElasticsearch, StopKibana,
     OpenKibana, RunESTemplates, OpenFirewallUI,
     VerifyPrerequisites, FixMissingDatabases, FixMissingIndices,
-    GetUserSettings, SaveUserSettings
+    GetUserSettings, SaveUserSettings,
+    CheckForUpdates, DownloadUpdate, ApplyUpdate, GetCurrentVersion
   } from '../wailsjs/go/main/App.js';
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -28,6 +29,41 @@
   let siem = { elasticRunning: false, kibanaRunning: false, siemDir: '', hasScripts: false, elasticPid: 0, kibanaPid: 0 };
   let siemBusy = { elastic: false, kibana: false, templates: false, choosePath: false };
   let siemPollTimer = null;
+
+  // Update state
+  let updateInfo = null;     // null = no update, or UpdateInfo object
+  let updateProgress = null; // null | { percent, message }
+  let updateDownloading = false;
+  let updateDismissed = false;
+
+  async function handleCheckUpdate() {
+    updateInfo = null;
+    updateDismissed = false;
+    const info = await CheckForUpdates();
+    if (info.error) { showToast(info.error, 'error'); return; }
+    if (info.available) { updateInfo = info; }
+    else { showToast('You are on the latest version', 'success'); }
+  }
+
+  async function handleDownloadUpdate() {
+    if (!updateInfo?.downloadURL) return;
+    updateDownloading = true;
+    updateProgress = { percent: 0, message: 'Starting download...' };
+    const result = await DownloadUpdate(updateInfo.downloadURL);
+    updateDownloading = false;
+    if (result.error) {
+      showToast('Download failed: ' + result.error, 'error');
+      updateProgress = null;
+    } else {
+      updateProgress = { percent: 100, message: 'Ready to install' };
+    }
+  }
+
+  async function handleApplyUpdate() {
+    showToast('Launching installer — app will close...', 'info');
+    const err = await ApplyUpdate();
+    if (err) showToast(err, 'error');
+  }
 
   // Prerequisites verification state
   let prereq = null; // null = not checked yet
@@ -228,10 +264,12 @@
       if (d.error) setupError = d.error;
       if (d.done)  { setupDone = true; }
     });
+    EventsOn('update:available', d => { if (!updateDismissed) updateInfo = d; });
+    EventsOn('update:progress',  d => { updateProgress = { percent: d.percent, message: d.message }; });
   });
 
   onDestroy(() => {
-    ['services:update','webui:update','stats:update','setup:progress'].forEach(EventsOff);
+    ['services:update','webui:update','stats:update','setup:progress','update:available','update:progress'].forEach(EventsOff);
     if (toastTimer) clearTimeout(toastTimer);
     if (siemPollTimer) clearInterval(siemPollTimer);
   });
@@ -760,10 +798,45 @@
           </section>
         {/each}
 
+        <!-- Update Banner -->
+        {#if updateInfo && updateInfo.available && !updateDismissed}
+          <div class="update-banner">
+            <div class="update-banner-left">
+              <span class="update-icon">🔄</span>
+              <div class="update-text">
+                <div class="update-title">Update Available — v{updateInfo.version}</div>
+                <div class="update-sub">
+                  {#if updateProgress}
+                    {updateProgress.message}
+                  {:else}
+                    Current: v{updateInfo.currentVersion} · Size: {updateInfo.size > 0 ? (updateInfo.size / 1048576).toFixed(1) + ' MB' : 'unknown'}
+                  {/if}
+                </div>
+                {#if updateProgress && updateDownloading}
+                  <div class="update-progress-bar">
+                    <div class="update-progress-fill" style="width:{updateProgress.percent}%"></div>
+                  </div>
+                {/if}
+              </div>
+            </div>
+            <div class="update-banner-right">
+              {#if updateProgress && updateProgress.percent >= 100}
+                <button class="btn-sm btn-green" on:click={handleApplyUpdate}>Install & Restart</button>
+              {:else if updateDownloading}
+                <button class="btn-sm btn-ghost-sm" disabled>{updateProgress?.percent || 0}%</button>
+              {:else}
+                <button class="btn-sm btn-green" on:click={handleDownloadUpdate}>Download</button>
+              {/if}
+              <button class="btn-sm btn-ghost-sm" on:click={() => updateDismissed = true} title="Dismiss">✕</button>
+            </div>
+          </div>
+        {/if}
+
         <!-- Footer -->
         <div class="launcher-footer">
           <span class="footer-path">{binDir || 'detecting...'}</span>
           <span class="footer-ver">SafeOps v1.0 · Administrator</span>
+          <button class="btn-link footer-update-btn" on:click={handleCheckUpdate}>Check for updates</button>
         </div>
       </div>
     </div>
@@ -1085,4 +1158,26 @@
 
   /* ── Service card starting state ────────────────────────────────────── */
   .svc-card.card-starting { border-color:#2563eb40 !important; }
+
+  /* ── Update banner ────────────────────────────────────────────────── */
+  .update-banner {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:linear-gradient(135deg, #0c1a2e, #0d2847);
+    border:1px solid #1f6feb; border-radius:10px; padding:12px 16px;
+    animation: update-glow 2s ease-in-out infinite;
+  }
+  @keyframes update-glow {
+    0%,100% { box-shadow:0 0 0 0 #1f6feb40; }
+    50%     { box-shadow:0 0 0 6px #1f6feb00; }
+  }
+  .update-banner-left { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+  .update-icon { font-size:22px; flex-shrink:0; }
+  .update-text { flex:1; min-width:0; }
+  .update-title { font-size:13px; font-weight:700; color:#58a6ff; }
+  .update-sub { font-size:11px; color:#8b949e; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .update-banner-right { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+  .update-progress-bar { height:3px; background:#21262d; border-radius:2px; overflow:hidden; margin-top:6px; }
+  .update-progress-fill { height:100%; background:linear-gradient(90deg,#1f6feb,#58a6ff); border-radius:2px; transition:width .3s; }
+  .footer-update-btn { margin-left:auto; font-size:10px; color:#6e7681; cursor:pointer; background:none; border:none; text-decoration:underline; }
+  .footer-update-btn:hover { color:#58a6ff; }
 </style>

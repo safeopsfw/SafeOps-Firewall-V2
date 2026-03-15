@@ -1247,4 +1247,9 @@ func (a *App) statsLoop() {
 	for {
 		select {
 		case <-t.C:
-			if a.ctx != nil { wailsruntime.EventsEmi
+			if a.ctx != nil { wailsruntime.EventsEmit(a.ctx, "stats:update", a.GetSystemStats()) }
+		case <-a.statsStop:
+			return
+		}
+	}
+}
