@@ -236,6 +236,9 @@ func (a *App) startup(ctx context.Context) {
 
 	go a.statsLoop()
 
+	// System tray icon (minimize-to-tray on close)
+	go a.initSystray()
+
 	// Check for updates in background (non-blocking, 8s delay)
 	go a.checkUpdateOnStartup()
 }
