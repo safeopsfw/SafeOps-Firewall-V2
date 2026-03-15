@@ -4,23 +4,38 @@
 # 🛡️ SafeOps Firewall V2
 ### Next-Generation Network Security Platform
 
-![Version](https://img.shields.io/badge/Version-2.0.0-blue?style=for-the-badge&logo=semver)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge&logo=semver)
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows)
 
-![Go](https://img.shields.io/badge/Go-1.21-00ADD8?style=for-the-badge&logo=go)
+![Go](https://img.shields.io/badge/Go-1.23-00ADD8?style=for-the-badge&logo=go)
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql)
-![Rust](https://img.shields.io/badge/Rust-1.75-000000?style=for-the-badge&logo=rust)
 
 <br/>
 
 **Complete network visibility, threat intelligence, and access control in a single unified platform.**
 
-[Quick Start](#-quick-start) • [Architecture](#-architecture) • [Features](#-key-features) • [📚 Documentation](#-documentation)
+[Download](#-download) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Features](#-key-features) • [Documentation](#-documentation)
 
 </div>
+
+---
+
+## Download
+
+> **[Download SafeOps-Complete-Setup.exe (v1.0.0)](https://github.com/safeopsfw/SafeOps-Firewall-V2/releases/latest)**
+>
+> One installer. Downloads all dependencies. Sets up everything. Auto-launches on login.
+
+### What the installer does:
+1. Downloads & installs PostgreSQL 16, Node.js 20, WinPkFilter, Elasticsearch 8.11, Kibana 8.11
+2. Creates databases and applies all schemas
+3. Installs all SafeOps binaries and services
+4. Creates desktop shortcut, start menu entry, and auto-launch scheduled task
+
+**Requirements:** Windows 10/11 64-bit, Administrator, Internet connection (~2GB downloads), ~4GB disk space
 
 ---
 
@@ -295,15 +310,21 @@ Then run the updater:
 
 ---
 
-## �📄 License
+## Authors
 
-**Proprietary & Confidential**  
-Copyright (c) 2026 SafeOps Project. All Rights Reserved.  
+- **Arjun Mishra**
+- **Hari Krishan**
+- **Raghav SOM**
+
+## License
+
+**Proprietary & Confidential**
+Copyright (c) 2026 SafeOps Project. All Rights Reserved.
 Unauthorized copying or distribution of this software is strictly prohibited.
 
 ---
 <div align="center">
 
-**SafeOps Engineering Team** • Built with ❤️ for Secure Networks
+**Made by Arjun Mishra, Hari Krishan & Raghav SOM** | Built for Secure Networks
 
 </div>
