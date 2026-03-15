@@ -66,8 +66,8 @@ func NewLoader(configPaths ...string) *Loader {
 			"../../config",
 			"config/firewall",
 			"../../config/firewall",
-			"D:/SafeOpsFV2/config/firewall",
-			"D:/SafeOpsFV2/config/templates",
+			"configs",
+			"../configs",
 		}
 	}
 

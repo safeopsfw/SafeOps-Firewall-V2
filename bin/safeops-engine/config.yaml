@@ -4,7 +4,7 @@
 logging:
   level: "info"  # debug, info, warn, error
   format: "json"  # json or text
-  file: "D:/SafeOpsFV2/data/logs/engine.log"
+  file: "../data/logs/engine.log"
 
 api:
   address: "0.0.0.0"
@@ -31,8 +31,8 @@ pipeline:
 
 dnsproxy:
   enabled: true
-  binary_path: "D:/SafeOpsFV2/bin/dnsproxy/windows-amd64/dnsproxy.exe"
-  config_path: "D:/SafeOpsFV2/src/safeops-engine/configs/dnsproxy.yaml"
+  binary_path: "../dnsproxy/windows-amd64/dnsproxy.exe"
+  config_path: "configs/dnsproxy.yaml"
   listen_port: 15353  # Changed from 5353 to avoid Steam/mDNS conflicts
   fallback_ports: [25353, 35353, 45353]  # Fallbacks if 15353 is busy
 

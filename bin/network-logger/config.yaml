@@ -16,7 +16,7 @@ capture:
 
 logging:
   # Master log file path - SINGLE FILE for IDS/IPS
-  log_path: "D:/SafeOpsFV2/bin/logs/network_packets_master.jsonl"
+  log_path: "../logs/network_packets_master.jsonl"
 
   # Batch size (packets per write)
   batch_size: 75
@@ -50,7 +50,7 @@ tls:
   enabled: true
 
   # SSLKEYLOGFILE path
-  keylog_file: "D:/SafeOpsFV2/bin/logs/sslkeys.log"
+  keylog_file: "../logs/sslkeys.log"
 
 stats:
   # Stats display interval (seconds)

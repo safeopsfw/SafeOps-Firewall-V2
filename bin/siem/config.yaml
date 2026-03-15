@@ -2,10 +2,10 @@
 # ES + Kibana only — Logstash replaced by SIEM Forwarder (Go binary)
 
 installation:
-  install_dir: "D:\\SafeOps-SIEM-Integration"
-  temp_dir: "D:\\SafeOps-SIEM-Integration\\temp"
-  data_dir: "D:\\SafeOps-SIEM-Integration\\data"
-  logs_dir: "D:\\SafeOps-SIEM-Integration\\logs"
+  install_dir: "siem"
+  temp_dir: "siem\\temp"
+  data_dir: "siem\\data"
+  logs_dir: "siem\\logs"
 
 # Elasticsearch + Kibana Configuration
 elk_stack:
@@ -30,10 +30,10 @@ credentials:
 safeops_integration:
   # SIEM Forwarder tails these JSONL files and ships to ES
   log_sources:
-    - "D:\\SafeOpsFV2\\bin\\logs\\firewall.jsonl"
-    - "D:\\SafeOpsFV2\\bin\\logs\\ids_ips.jsonl"
-    - "D:\\SafeOpsFV2\\bin\\logs\\netflow\\east_west.jsonl"
-    - "D:\\SafeOpsFV2\\bin\\logs\\netflow\\north_south.jsonl"
+    - "..\\logs\\firewall.jsonl"
+    - "..\\logs\\ids_ips.jsonl"
+    - "..\\logs\\netflow\\east_west.jsonl"
+    - "..\\logs\\netflow\\north_south.jsonl"
 
   # ES index names (clean, no safeops- prefix)
   index_patterns:

@@ -102,10 +102,19 @@ func GetEngine() *Engine {
 func Initialize() (*Engine, error) {
 	var err error
 	once.Do(func() {
+		// Resolve log path relative to executable directory
+		exeDir := "."
+		if exe, exeErr := os.Executable(); exeErr == nil {
+			exeDir = filepath.Dir(exe)
+		}
+		logFile := filepath.Join(exeDir, "..", "data", "logs", "engine.log")
+		// Ensure the log directory exists
+		os.MkdirAll(filepath.Dir(logFile), 0755)
+
 		logCfg := config.LoggingConfig{
 			Level:  "info",
 			Format: "json",
-			File:   "D:/SafeOpsFV2/data/logs/engine.log",
+			File:   logFile,
 		}
 
 		log := logger.New(logCfg)
