@@ -19,6 +19,7 @@ import Analytics from './pages/ThreatIntel/Analytics';
 import IDSRuleManager from './pages/Management/IDSRuleManager';
 import UserManagement from './pages/Management/UserManagement';
 import FirewallManager from './pages/Management/FirewallManager';
+import FirewallDashboard from './pages/Firewall/FirewallDashboard';
 
 // Network Management Module
 import NetworkLayout from './pages/Network/Layout';
@@ -28,6 +29,8 @@ import NetworkTopology from './pages/Network/NetworkTopology';
 import NICDetail from './pages/Network/NICDetail';
 import StepCAManager from './pages/StepCAManager';
 import DHCPMonitor from './pages/DHCPMonitor';
+import CaptivePortal from './pages/CaptivePortal';
+import NetworkLogger from './pages/NetworkLogger';
 
 // Protected Route wrapper
 function ProtectedRoute() {
@@ -105,8 +108,7 @@ function App() {
               <Route path="/manage/ids-rules" element={<IDSRuleManager />} />
 
               {/* Other Modules */}
-              <Route path="/dns" element={<ComingSoon title="DNS Server" />} />
-              <Route path="/firewall" element={<FirewallManager />} />
+              <Route path="/firewall" element={<FirewallDashboard />} />
               <Route path="/ids" element={<IDSRuleManager />} />
               {/* Network Management Module */}
               <Route path="/network" element={<NetworkLayout />}>
@@ -119,10 +121,11 @@ function App() {
               <Route path="/dhcp-monitor" element={<DHCPMonitor />} />
               <Route path="/certificates" element={<StepCAManager />} />
               <Route path="/step-ca" element={<StepCAManager />} />
+              <Route path="/captive-portal" element={<CaptivePortal />} />
+              <Route path="/network-logger" element={<NetworkLogger />} />
 
               {/* Settings */}
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/staging" element={<ComingSoon title="Staging Config" />} />
             </Route>
           </Route>
 

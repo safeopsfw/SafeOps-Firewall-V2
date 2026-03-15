@@ -10,6 +10,7 @@ const db = require('./db');
 const threatIntelRoutes = require('./routes/threat-intel');
 const devicesRoutes = require('./routes/devices');
 const firewallRoutes = require('./routes/firewall');
+const engineRoutes = require('./routes/engine');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -161,6 +162,7 @@ app.get('/api/status', async (req, res) => {
 app.use('/api/threat-intel', threatIntelRoutes);
 app.use('/api/devices', devicesRoutes);
 app.use('/api/firewall', firewallRoutes);
+app.use('/api/engine', engineRoutes);  // Proxy → firewall engine :50052
 
 // Root endpoint
 app.get('/', (req, res) => {

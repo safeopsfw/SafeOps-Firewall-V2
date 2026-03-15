@@ -294,6 +294,15 @@ func main() {
 				}
 			}
 
+			// Wire malicious visit auto-block threshold from blocklist.toml
+			visitThreshold := int64(parsedBlocklist.MaliciousVisitThreshold)
+			domainFilter.SetVisitThreshold(visitThreshold)
+			if visitThreshold > 0 {
+				logger.Info().Int64("threshold", visitThreshold).Msg("Domain auto-block: malicious domains blocked after N visits")
+			} else {
+				logger.Info().Msg("Domain auto-block: disabled (alert-only mode)")
+			}
+
 			stats := domainFilter.Stats()
 			logger.Info().
 				Int("config_domains", stats.ConfigDomains).
@@ -301,6 +310,7 @@ func main() {
 				Strs("enabled_categories", blockedCategories).
 				Int("cdn_providers", stats.CDNProviders).
 				Bool("threat_intel", stats.ThreatIntelAvail).
+				Int64("auto_block_threshold", visitThreshold).
 				Str("file", parsedBlocklist.DomainsFilePath).
 				Msg("Domain Filter initialized")
 		}

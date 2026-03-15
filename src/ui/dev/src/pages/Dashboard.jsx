@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield,
-  Globe,
   Server,
   Database,
   Settings,
@@ -28,17 +27,6 @@ const modules = [
     statsKey: "activeIOCs",
     statsLabel: "Active IOCs",
     status: "active",
-  },
-  {
-    id: "dns-server",
-    name: "DNS Server",
-    description: "DNS filtering and monitoring",
-    icon: Globe,
-    color: "from-emerald-500 to-emerald-600",
-    path: "/dns",
-    statsKey: "dnsQueries",
-    statsLabel: "Queries Today",
-    status: "coming-soon",
   },
   {
     id: "firewall",

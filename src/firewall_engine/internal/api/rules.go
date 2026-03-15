@@ -1180,3 +1180,89 @@ func (s *Server) handleToggleCustomRule(c *fiber.Ctx) error {
 		"enabled": body.Enabled,
 	})
 }
+
+// ============================================================================
+// Malicious Visit Auto-Block API
+// ============================================================================
+
+// handleGetAutoBlockedDomains handles GET /api/v1/domains/auto-blocked.
+// Returns domains that were automatically blocked after exceeding the visit threshold.
+func (s *Server) handleGetAutoBlockedDomains(c *fiber.Ctx) error {
+	if s.deps.DomainFilter == nil {
+		return c.JSON(fiber.Map{"domains": []interface{}{}, "total": 0})
+	}
+	entries := s.deps.DomainFilter.GetAutoBlockedDomains()
+	return c.JSON(fiber.Map{
+		"domains":   entries,
+		"total":     len(entries),
+		"threshold": s.deps.DomainFilter.GetVisitThreshold(),
+	})
+}
+
+// handleRemoveAutoBlock handles DELETE /api/v1/domains/auto-blocked/:domain.
+// Removes a domain from the auto-block set and resets its visit counter.
+// Note: takes effect for new connections; full removal requires Reload().
+func (s *Server) handleRemoveAutoBlock(c *fiber.Ctx) error {
+	if s.deps.DomainFilter == nil {
+		return respondError(c, fiber.StatusServiceUnavailable, "unavailable", "Domain filter not initialized")
+	}
+	domain := strings.TrimSpace(c.Params("domain"))
+	if domain == "" {
+		return respondError(c, fiber.StatusBadRequest, "bad_request", "Domain is required")
+	}
+	s.deps.DomainFilter.RemoveAutoBlock(domain)
+	return c.JSON(fiber.Map{"status": "ok", "domain": domain, "message": "Removed from auto-block list; call Reload to remove from in-memory blocklist"})
+}
+
+// handleGetMaliciousVisits handles GET /api/v1/domains/malicious-visits.
+// Returns all threat-intel-flagged domains with their visit counts.
+func (s *Server) handleGetMaliciousVisits(c *fiber.Ctx) error {
+	if s.deps.DomainFilter == nil {
+		return c.JSON(fiber.Map{"domains": []interface{}{}, "total": 0})
+	}
+	entries := s.deps.DomainFilter.GetMaliciousVisitCounts()
+	return c.JSON(fiber.Map{
+		"domains":   entries,
+		"total":     len(entries),
+		"threshold": s.deps.DomainFilter.GetVisitThreshold(),
+	})
+}
+
+// handleGetVisitThreshold handles GET /api/v1/domains/visit-threshold.
+func (s *Server) handleGetVisitThreshold(c *fiber.Ctx) error {
+	threshold := int64(10) // default
+	if s.deps.DomainFilter != nil {
+		threshold = s.deps.DomainFilter.GetVisitThreshold()
+	}
+	return c.JSON(fiber.Map{
+		"threshold": threshold,
+		"enabled":   threshold > 0,
+		"description": "Malicious domains are auto-blocked after this many visits. 0 = alert-only mode.",
+	})
+}
+
+// VisitThresholdRequest is the body for PUT /api/v1/domains/visit-threshold.
+type VisitThresholdRequest struct {
+	Threshold int64 `json:"threshold"`
+}
+
+// handleSetVisitThreshold handles PUT /api/v1/domains/visit-threshold.
+// Updates the malicious-visit auto-block threshold at runtime.
+func (s *Server) handleSetVisitThreshold(c *fiber.Ctx) error {
+	if s.deps.DomainFilter == nil {
+		return respondError(c, fiber.StatusServiceUnavailable, "unavailable", "Domain filter not initialized")
+	}
+	var req VisitThresholdRequest
+	if err := c.BodyParser(&req); err != nil {
+		return respondError(c, fiber.StatusBadRequest, "bad_request", "Invalid JSON: "+err.Error())
+	}
+	if req.Threshold < 0 {
+		return respondError(c, fiber.StatusBadRequest, "bad_request", "Threshold must be >= 0 (0 = disabled)")
+	}
+	s.deps.DomainFilter.SetVisitThreshold(req.Threshold)
+	return c.JSON(fiber.Map{
+		"status":    "ok",
+		"threshold": req.Threshold,
+		"enabled":   req.Threshold > 0,
+	})
+}

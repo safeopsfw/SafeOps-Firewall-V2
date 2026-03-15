@@ -227,6 +227,13 @@ func (s *Server) createApp() *fiber.App {
 	api.Get("/rules/domains/whitelist", s.handleGetWhitelistDomains)
 	api.Post("/rules/domains/whitelist", s.handleAddWhitelistDomain)
 	api.Delete("/rules/domains/whitelist/:domain", s.handleRemoveWhitelistDomain)
+
+	// Malicious visit auto-block tracking (threat intel escalation)
+	api.Get("/domains/auto-blocked", s.handleGetAutoBlockedDomains)
+	api.Delete("/domains/auto-blocked/:domain", s.handleRemoveAutoBlock)
+	api.Get("/domains/malicious-visits", s.handleGetMaliciousVisits)
+	api.Get("/domains/visit-threshold", s.handleGetVisitThreshold)
+	api.Put("/domains/visit-threshold", s.handleSetVisitThreshold)
 	api.Get("/rules/categories", s.handleGetCategories)
 	api.Put("/rules/categories", s.handleUpdateCategories)
 	api.Get("/rules/categories/patterns", s.handleGetCategoryPatterns)

@@ -2,20 +2,17 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Shield,
-  Globe,
   Database,
   Settings,
   Lock,
-  AlertTriangle,
   Network,
   Users,
-  Activity,
   Wrench,
   FileCode,
   Server,
-  Key,
-  ClipboardList,
-  Wifi
+  Wifi,
+  Radio,
+  ScrollText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -27,12 +24,13 @@ const operationsNav = [
 
 // Module navigation
 const moduleNav = [
-  { name: 'IDS/IPS Rules', path: '/ids', icon: FileCode },
-  { name: 'DNS Server', path: '/dns', icon: Globe, badge: 'Soon' },
   { name: 'Firewall', path: '/firewall', icon: Lock },
+  { name: 'IDS/IPS Rule Helper', path: '/ids', icon: FileCode },
   { name: 'Network', path: '/network', icon: Network },
   { name: 'DHCP Monitor', path: '/dhcp-monitor', icon: Wifi },
-  { name: 'Certificates', path: '/certificates', icon: Key },
+  { name: 'Captive Portal', path: '/captive-portal', icon: Radio },
+  { name: 'Network Logger', path: '/network-logger', icon: ScrollText },
+  { name: 'Certificates', path: '/certificates', icon: Server },
   { name: 'Cognitive', path: '/cognitive', icon: Database },
 ];
 
@@ -41,8 +39,6 @@ const managementNav = [
   { name: 'User Management', path: '/manage/users', icon: Users },
   { name: 'Feed Management', path: '/manage/feeds', icon: Database },
   { name: 'Database Config', path: '/manage/databases', icon: Server },
-  { name: 'API Keys', path: '/manage/apikeys', icon: Key, badge: 'Soon' },
-  { name: 'Audit Logs', path: '/manage/audit', icon: ClipboardList, badge: 'Soon' },
   { name: 'System Settings', path: '/settings', icon: Settings },
 ];
 

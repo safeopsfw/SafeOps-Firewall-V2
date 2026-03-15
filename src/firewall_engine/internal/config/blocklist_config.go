@@ -115,6 +115,10 @@ type BlocklistThreatIntelConfig struct {
 	DomainBlockThreshold     int  `toml:"domain_block_threshold"`
 	BlockAnonymizers         bool `toml:"block_anonymizers"`
 	AnonymizerBlockThreshold int  `toml:"anonymizer_block_threshold"`
+	// MaliciousVisitThreshold: auto-block a threat-intel-flagged domain after N visits.
+	// First N-1 visits fire ALERT only. At N visits the domain is promoted to the
+	// runtime config blocklist (in-memory). 0 = disabled (alert-only forever).
+	MaliciousVisitThreshold int `toml:"malicious_visit_threshold"`
 }
 
 // ============================================================================
@@ -189,6 +193,7 @@ type ParsedBlocklist struct {
 	DomainBlockThreshold     int
 	BlockAnonymizers         bool
 	AnonymizerBlockThreshold int
+	MaliciousVisitThreshold  int // auto-block after N visits; 0 = disabled
 
 	// Geo overrides
 	GeoEnabled            bool
@@ -227,6 +232,7 @@ func (b *BlocklistConfig) Parse(configDir string) (*ParsedBlocklist, error) {
 		DomainBlockThreshold:     b.ThreatIntel.DomainBlockThreshold,
 		BlockAnonymizers:         b.ThreatIntel.BlockAnonymizers,
 		AnonymizerBlockThreshold: b.ThreatIntel.AnonymizerBlockThreshold,
+		MaliciousVisitThreshold:  b.ThreatIntel.MaliciousVisitThreshold,
 
 		// Geo
 		GeoEnabled:            b.Geo.Enabled,
@@ -458,6 +464,7 @@ func DefaultBlocklistConfig() *BlocklistConfig {
 			DomainBlockThreshold:     50,
 			BlockAnonymizers:         false,
 			AnonymizerBlockThreshold: 70,
+			MaliciousVisitThreshold:  10,
 		},
 		Geo: BlocklistGeoConfig{
 			Enabled:               true,

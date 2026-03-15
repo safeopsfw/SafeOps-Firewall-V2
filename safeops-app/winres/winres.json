@@ -1,0 +1,12 @@
+{
+  "RT_GROUP_ICON": {
+    "#1": {
+      "0409": "icon.ico"
+    }
+  },
+  "RT_MANIFEST": {
+    "#1": {
+      "0000": "manifest.xml"
+    }
+  }
+}

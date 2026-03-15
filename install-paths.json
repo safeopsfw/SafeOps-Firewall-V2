@@ -1,0 +1,5 @@
+{
+  "es_dir": "D:\\SafeOps-SIEM-Integration\\scripts\\elasticsearch",
+  "kibana_dir": "D:\\SafeOps-SIEM-Integration\\scripts\\kibana",
+  "siem_dir": "D:\\SafeOps-SIEM-Integration\\scripts"
+}

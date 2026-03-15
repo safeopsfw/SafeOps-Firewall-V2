@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -102,7 +103,39 @@ type FilterStats struct {
 	CDNProtected     int64 `json:"cdn_protected"`
 	ConfigListHits   int64 `json:"config_list_hits"`
 	CategoryHits     int64 `json:"category_hits"`
+	AutoBlockedCount int64 `json:"auto_blocked_count"`
+	VisitThreshold   int64 `json:"visit_threshold"`
 	Errors           int64 `json:"errors"`
+}
+
+// ============================================================================
+// Auto-block tracking types
+// ============================================================================
+
+// autoBlockEntry holds internal state for a runtime-auto-blocked domain.
+type autoBlockEntry struct {
+	Domain      string    `json:"domain"`
+	VisitCount  int64     `json:"visit_count"`
+	BlockedAt   time.Time `json:"blocked_at"`
+	ThreatScore int       `json:"threat_score"`
+	Source      string    `json:"source"` // DNS / SNI / HTTP
+}
+
+// AutoBlockEntry is the public view exposed via API and GetAutoBlockedDomains().
+type AutoBlockEntry struct {
+	Domain      string    `json:"domain"`
+	VisitCount  int64     `json:"visit_count"`
+	BlockedAt   time.Time `json:"blocked_at"`
+	ThreatScore int       `json:"threat_score"`
+	Source      string    `json:"source"`
+}
+
+// MaliciousVisitEntry describes a threat-intel-flagged domain and its visit count.
+type MaliciousVisitEntry struct {
+	Domain      string `json:"domain"`
+	VisitCount  int64  `json:"visit_count"`
+	AutoBlocked bool   `json:"auto_blocked"`
+	ThreatScore int    `json:"threat_score"`
 }
 
 // ============================================================================
@@ -139,17 +172,25 @@ type Filter struct {
 	threatDecision *threatintel.Decision
 	threatMu       sync.RWMutex
 
+	// Malicious visit tracking and auto-block (threat intel domain escalation)
+	// maliciousVisits: domain → *atomic.Int64 (visit counter)
+	// autoBlocked: domain → autoBlockEntry (promoted to config blocklist)
+	maliciousVisits  sync.Map     // domain → *atomic.Int64
+	autoBlocked      sync.Map     // domain → autoBlockEntry
+	visitThreshold   atomic.Int64 // 0 = disabled; default 10
+
 	// Stats (all atomic for lock-free hot-path access)
-	totalChecks     atomic.Int64
-	totalBlocks     atomic.Int64
-	dnsBlocks       atomic.Int64
-	sniBlocks       atomic.Int64
-	httpBlocks      atomic.Int64
-	threatIntelHits atomic.Int64
-	cdnProtected    atomic.Int64
-	configListHits  atomic.Int64
-	categoryHits    atomic.Int64
-	errors          atomic.Int64
+	totalChecks      atomic.Int64
+	totalBlocks      atomic.Int64
+	dnsBlocks        atomic.Int64
+	sniBlocks        atomic.Int64
+	httpBlocks       atomic.Int64
+	threatIntelHits  atomic.Int64
+	cdnProtected     atomic.Int64
+	configListHits   atomic.Int64
+	categoryHits     atomic.Int64
+	autoBlockedCount atomic.Int64
+	errors           atomic.Int64
 
 	// Lifecycle
 	initialized atomic.Bool
@@ -174,6 +215,7 @@ func NewFilter(domainsFilePath string, blockedCategories []string, alertMgr *ale
 		categoryMatchers: make(map[string]*rules.DomainMatcher),
 		cdnAllowlist:     NewCDNAllowlist(),
 	}
+	f.visitThreshold.Store(10) // default: auto-block after 10 malicious visits
 
 	// Load config domains (non-fatal if file missing)
 	if loadErr := f.loadConfigDomains(domainsFilePath); loadErr != nil {
@@ -308,9 +350,9 @@ func (f *Filter) Check(domain, domainSource string) FilterResult {
 	f.categoryMu.RUnlock()
 
 	// Step 4: Threat intel database cache
-	// ALERT ONLY — threat intel hits are logged for security team review.
-	// Domains are NOT auto-blocked. Security team verifies and adds to
-	// config blocklist (domains.txt) or uses the control API to block.
+	// Visits 1 to (threshold-1) → ALERT ONLY (security team review).
+	// At threshold → AUTO-BLOCK: domain promoted to runtime config blocklist.
+	// If threshold is 0 (disabled) → always alert-only regardless of visit count.
 	f.threatMu.RLock()
 	td := f.threatDecision
 	f.threatMu.RUnlock()
@@ -320,10 +362,12 @@ func (f *Filter) Check(domain, domainSource string) FilterResult {
 		if threatResult != nil && threatResult.IsBlocked {
 			f.threatIntelHits.Add(1)
 
-			// Fire alert for security team (NO enforcement action)
-			f.fireThreatIntelAlert(domain, domainSource, cdnResult, threatResult.ThreatScore)
+			// Track visit and potentially auto-block
+			if blocked, result := f.trackMaliciousVisit(domain, domainSource, cdnResult, threatResult.ThreatScore); blocked {
+				return result
+			}
 
-			// Return NOT blocked — alert only, no verdict sent
+			// Under threshold (or threshold disabled) — alert only, no verdict sent
 			return FilterResult{
 				Blocked:      false,
 				Domain:       domain,
@@ -544,6 +588,8 @@ func (f *Filter) Stats() FilterStats {
 		CDNProtected:     f.cdnProtected.Load(),
 		ConfigListHits:   f.configListHits.Load(),
 		CategoryHits:     f.categoryHits.Load(),
+		AutoBlockedCount: f.autoBlockedCount.Load(),
+		VisitThreshold:   f.visitThreshold.Load(),
 		Errors:           f.errors.Load(),
 	}
 }
@@ -836,6 +882,199 @@ func (f *Filter) fireThreatIntelAlert(domain, source string, cdn CDNCheckResult,
 		WithMeta("matched_by", "threat_intel").
 		WithMeta("auto_blocked", "false").
 		WithMeta("review_required", "true")
+
+	if cdn.IsCDN {
+		builder = builder.
+			WithMeta("is_cdn", "true").
+			WithMeta("cdn_provider", cdn.Provider)
+	}
+
+	f.alertMgr.Alert(builder.Build())
+}
+
+// ============================================================================
+// Malicious visit tracking and auto-block
+// ============================================================================
+
+// trackMaliciousVisit increments the visit counter for a threat-intel-flagged domain.
+// If the counter reaches the visit threshold, the domain is auto-blocked (promoted
+// to the runtime config blocklist in-memory). Returns (true, result) when the domain
+// should be blocked, (false, {}) when it is still alert-only.
+//
+// Thread-safe: uses sync.Map atomic operations for counters.
+func (f *Filter) trackMaliciousVisit(domain, domainSource string, cdn CDNCheckResult, threatScore int) (bool, FilterResult) {
+	threshold := f.visitThreshold.Load()
+
+	// Already in autoBlocked set? The domain is in configMatcher on subsequent calls
+	// (from when it was promoted), but this covers the rare race where autoBlocked is
+	// set but configMatcher hasn't been updated yet.
+	if entry, alreadyBlocked := f.autoBlocked.Load(domain); alreadyBlocked {
+		ae := entry.(autoBlockEntry)
+		action := f.resolveAction(domainSource, cdn.IsCDN)
+		f.recordBlock(domainSource)
+		return true, FilterResult{
+			Blocked:      true,
+			Domain:       domain,
+			MatchedBy:    "auto_blocked_threat_intel",
+			Action:       action,
+			ThreatScore:  ae.ThreatScore,
+			IsCDN:        cdn.IsCDN,
+			CDNProvider:  cdn.Provider,
+			DomainSource: domainSource,
+		}
+	}
+
+	// Load or create atomic counter for this domain
+	counterIface, _ := f.maliciousVisits.LoadOrStore(domain, new(atomic.Int64))
+	counter := counterIface.(*atomic.Int64)
+	count := counter.Add(1)
+
+	// threshold == 0 means disabled (alert-only forever)
+	if threshold <= 0 || count < threshold {
+		// Under threshold — fire standard alert, do not block
+		f.fireThreatIntelAlert(domain, domainSource, cdn, threatScore)
+		return false, FilterResult{}
+	}
+
+	// Reached threshold — auto-block this domain
+	entry := autoBlockEntry{
+		Domain:      domain,
+		VisitCount:  count,
+		BlockedAt:   time.Now(),
+		ThreatScore: threatScore,
+		Source:      domainSource,
+	}
+
+	// Store in autoBlocked set (idempotent: LoadOrStore prevents double-blocking)
+	if _, existed := f.autoBlocked.LoadOrStore(domain, entry); !existed {
+		// We won the race — actually add to configMatcher
+		_ = f.AddDomain(domain) // also adds wildcard *.domain
+		f.autoBlockedCount.Add(1)
+		f.fireAutoBlockAlert(domain, domainSource, cdn, threatScore, count, threshold)
+	}
+
+	action := f.resolveAction(domainSource, cdn.IsCDN)
+	f.recordBlock(domainSource)
+	return true, FilterResult{
+		Blocked:      true,
+		Domain:       domain,
+		MatchedBy:    "auto_blocked_threat_intel",
+		Action:       action,
+		ThreatScore:  threatScore,
+		IsCDN:        cdn.IsCDN,
+		CDNProvider:  cdn.Provider,
+		DomainSource: domainSource,
+	}
+}
+
+// SetVisitThreshold sets the malicious-visit auto-block threshold at runtime.
+// 0 disables auto-blocking (alert-only mode).
+// Thread-safe.
+func (f *Filter) SetVisitThreshold(threshold int64) {
+	if threshold < 0 {
+		threshold = 0
+	}
+	f.visitThreshold.Store(threshold)
+}
+
+// GetVisitThreshold returns the current auto-block threshold. 0 = disabled.
+func (f *Filter) GetVisitThreshold() int64 {
+	return f.visitThreshold.Load()
+}
+
+// GetAutoBlockedDomains returns all domains that have been auto-blocked due to
+// exceeding the malicious visit threshold. Sorted by blocked_at descending.
+func (f *Filter) GetAutoBlockedDomains() []AutoBlockEntry {
+	var entries []AutoBlockEntry
+	f.autoBlocked.Range(func(k, v interface{}) bool {
+		ae := v.(autoBlockEntry)
+		entries = append(entries, AutoBlockEntry{
+			Domain:      ae.Domain,
+			VisitCount:  ae.VisitCount,
+			BlockedAt:   ae.BlockedAt,
+			ThreatScore: ae.ThreatScore,
+			Source:      ae.Source,
+		})
+		return true
+	})
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].BlockedAt.After(entries[j].BlockedAt)
+	})
+	return entries
+}
+
+// GetMaliciousVisitCounts returns all domains that have been seen by threat intel,
+// along with their visit counts and whether they are auto-blocked.
+// Sorted by visit count descending.
+func (f *Filter) GetMaliciousVisitCounts() []MaliciousVisitEntry {
+	var entries []MaliciousVisitEntry
+	f.maliciousVisits.Range(func(k, v interface{}) bool {
+		domain := k.(string)
+		count := v.(*atomic.Int64).Load()
+		_, blocked := f.autoBlocked.Load(domain)
+		entries = append(entries, MaliciousVisitEntry{
+			Domain:      domain,
+			VisitCount:  count,
+			AutoBlocked: blocked,
+		})
+		return true
+	})
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].VisitCount > entries[j].VisitCount
+	})
+	return entries
+}
+
+// RemoveAutoBlock removes a domain from the auto-block set.
+// The domain remains in configMatcher until the next Reload() is called.
+// Use this to manually un-block a domain that was auto-blocked incorrectly.
+// Thread-safe.
+func (f *Filter) RemoveAutoBlock(domain string) {
+	domain = strings.TrimSpace(strings.ToLower(domain))
+	if domain == "" {
+		return
+	}
+	f.autoBlocked.Delete(domain)
+	// Also reset the visit counter so it starts fresh
+	f.maliciousVisits.Delete(domain)
+}
+
+// ============================================================================
+// Auto-block alert
+// ============================================================================
+
+// fireAutoBlockAlert fires a high-severity alert when a domain is auto-blocked.
+func (f *Filter) fireAutoBlockAlert(domain, source string, cdn CDNCheckResult, threatScore int, visitCount, threshold int64) {
+	if f.alertMgr == nil {
+		return
+	}
+
+	severity := alerting.SeverityHigh
+	if threatScore >= 80 {
+		severity = alerting.SeverityCritical
+	}
+
+	details := fmt.Sprintf(
+		"Domain AUTO-BLOCKED after %d malicious visits (threshold=%d): %s (threat_score=%d, source=%s)",
+		visitCount, threshold, domain, threatScore, source,
+	)
+	if cdn.IsCDN {
+		details = fmt.Sprintf(
+			"Domain AUTO-BLOCKED after %d malicious visits (threshold=%d, CDN:%s): %s (threat_score=%d, source=%s) — DNS-only enforcement",
+			visitCount, threshold, cdn.Provider, domain, threatScore, source,
+		)
+	}
+
+	builder := alerting.NewAlert(alerting.AlertDomainBlock, severity).
+		WithDomain(domain).
+		WithDetails(details).
+		WithThreatScore(float64(threatScore)).
+		WithAction(alerting.ActionBlocked).
+		WithMeta("domain_source", source).
+		WithMeta("matched_by", "auto_blocked_threat_intel").
+		WithMeta("visit_count", fmt.Sprintf("%d", visitCount)).
+		WithMeta("threshold", fmt.Sprintf("%d", threshold)).
+		WithMeta("auto_blocked", "true")
 
 	if cdn.IsCDN {
 		builder = builder.

@@ -1,5 +1,48 @@
-{"timestamp":"2026-02-28T02:47:36.8678332Z","level":"INFO","message":"Log file rotated","data":{"rotation_interval":"5m0s"}}
-{"timestamp":"2026-02-28T02:47:51.3609607Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
-{"timestamp":"2026-02-28T02:47:53.3629559Z","level":"INFO","message":"New metadata subscriber","data":{"filters":["tcp","udp"],"subscriber_id":"firewall-engine"}}
-{"timestamp":"2026-02-28T02:48:34.3768546Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
-{"timestamp":"2026-02-28T02:48:36.3790789Z","level":"INFO","message":"New metadata subscriber","data":{"filters":["tcp","udp"],"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-03-15T10:41:39.0806294Z","level":"INFO","message":"Opening WinpkFilter driver (NDISAPI)"}
+{"timestamp":"2026-03-15T10:41:39.0827833Z","level":"INFO","message":"WinpkFilter driver opened","data":{"version":"6.2.12288"}}
+{"timestamp":"2026-03-15T10:41:39.0849783Z","level":"INFO","message":"Skipping virtual adapter","data":{"mac":"00:00:00:00:00:00","name":"Local Area Connection* 8"}}
+{"timestamp":"2026-03-15T10:41:39.0861139Z","level":"INFO","message":"Skipping virtual adapter","data":{"mac":"00:00:00:00:00:00","name":"Local Area Connection* 7"}}
+{"timestamp":"2026-03-15T10:41:39.0866895Z","level":"INFO","message":"Skipping virtual adapter","data":{"mac":"00:00:00:00:00:00","name":"Local Area Connection* 6"}}
+{"timestamp":"2026-03-15T10:41:39.0877863Z","level":"INFO","message":"Skipping virtual adapter","data":{"mac":"f6:26:79:73:6f:7c","name":"Local Area Connection* 10"}}
+{"timestamp":"2026-03-15T10:41:39.0888337Z","level":"INFO","message":"Skipping virtual adapter","data":{"mac":"f4:26:79:73:6f:7d","name":"Local Area Connection* 9"}}
+{"timestamp":"2026-03-15T10:41:39.0898903Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Wi-Fi","mac":"f4:26:79:73:6f:7c"}}
+{"timestamp":"2026-03-15T10:41:39.0909371Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet 3","mac":"f8:e4:3b:5a:65:f1"}}
+{"timestamp":"2026-03-15T10:41:39.0914803Z","level":"INFO","message":"Tunnel mode activated","data":{"adapter":"Ethernet","mac":"58:11:22:86:fd:c4"}}
+{"timestamp":"2026-03-15T10:41:39.0925484Z","level":"INFO","message":"Skipping virtual adapter","data":{"mac":"0a:00:27:00:00:0a","name":"Ethernet 2"}}
+{"timestamp":"2026-03-15T10:41:39.0935809Z","level":"INFO","message":"Monitoring adapters","data":{"count":3}}
+{"timestamp":"2026-03-15T10:41:39.0956831Z","level":"INFO","message":"gRPC server created","data":{"address":"127.0.0.1:50051"}}
+{"timestamp":"2026-03-15T10:41:39.11454Z","level":"INFO","message":"DNS cache flushed","data":{"output":"Windows IP Configuration\r\n\r\nSuccessfully flushed the DNS Resolver Cache."}}
+{"timestamp":"2026-03-15T10:41:39.1155906Z","level":"INFO","message":"Domain blocklist: waiting for Firewall Engine sync"}
+{"timestamp":"2026-03-15T10:41:39.117181Z","level":"INFO","message":"Loaded DoH server blocklist from file","data":{"count":27,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\doh_servers.txt"}}
+{"timestamp":"2026-03-15T10:41:39.1182468Z","level":"INFO","message":"DoH server blocklist loaded","data":{"count":27,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\doh_servers.txt"}}
+{"timestamp":"2026-03-15T10:41:39.1193314Z","level":"INFO","message":"Loaded blocked ports from file","data":{"count":16,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\blocked_ports.txt"}}
+{"timestamp":"2026-03-15T10:41:39.1198545Z","level":"INFO","message":"VPN port blocklist loaded","data":{"count":16,"path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\configs\\blocked_ports.txt"}}
+{"timestamp":"2026-03-15T10:41:39.120903Z","level":"INFO","message":"Starting gRPC server","data":{"address":"127.0.0.1:50051"}}
+{"timestamp":"2026-03-15T10:41:39.1219487Z","level":"INFO","message":"Control API server starting","data":{"address":"127.0.0.1:50052"}}
+{"timestamp":"2026-03-15T10:41:39.1769347Z","level":"INFO","message":"Block page CA already in cert store, replacing"}
+{"timestamp":"2026-03-15T10:41:39.2580792Z","level":"INFO","message":"Block page CA installed in trusted root store","data":{"cert_path":"D:\\SafeOpsFV2\\bin\\safeops-engine\\safeops-blockpage-ca.crt"}}
+{"timestamp":"2026-03-15T10:41:39.2606484Z","level":"INFO","message":"SafeOps Engine initialized","data":{"block_page":"127.0.0.1:80","control_listen":"127.0.0.1:50052","grpc_listen":"127.0.0.1:50051","mode":"fast-slow-path","version":"4.0.0"}}
+{"timestamp":"2026-03-15T10:41:39.2606484Z","level":"INFO","message":"Block page server starting (HTTP)","data":{"address":"127.0.0.1:80"}}
+{"timestamp":"2026-03-15T10:41:39.2606484Z","level":"INFO","message":"Multi-NIC packet processing started","data":{"adapters":3}}
+{"timestamp":"2026-03-15T10:41:39.2638806Z","level":"INFO","message":"Waiting for packets on all NICs..."}
+{"timestamp":"2026-03-15T10:41:39.2606484Z","level":"INFO","message":"Block page server starting (HTTPS)","data":{"address":"127.0.0.1:443"}}
+{"timestamp":"2026-03-15T10:41:40.7424443Z","level":"INFO","message":"New metadata subscriber","data":{"filters":["tcp","udp"],"subscriber_id":"firewall-engine"}}
+{"timestamp":"2026-03-15T10:41:40.7440637Z","level":"INFO","message":"Domain blocked","data":{"domain":"instagram.com"}}
+{"timestamp":"2026-03-15T10:41:40.746283Z","level":"INFO","message":"Domain blocked","data":{"domain":"t.co"}}
+{"timestamp":"2026-03-15T10:41:40.7473485Z","level":"INFO","message":"Domain blocked","data":{"domain":"twitter.jp"}}
+{"timestamp":"2026-03-15T10:41:40.7483861Z","level":"INFO","message":"Domain blocked","data":{"domain":"fb.com"}}
+{"timestamp":"2026-03-15T10:41:40.7489243Z","level":"INFO","message":"Domain blocked","data":{"domain":"fbpigeon.com"}}
+{"timestamp":"2026-03-15T10:41:40.7500032Z","level":"INFO","message":"Domain blocked","data":{"domain":"fbcdn.com"}}
+{"timestamp":"2026-03-15T10:41:40.7511268Z","level":"INFO","message":"Domain blocked","data":{"domain":"messenger.com"}}
+{"timestamp":"2026-03-15T10:41:40.7516571Z","level":"INFO","message":"Domain blocked","data":{"domain":"twitter.com"}}
+{"timestamp":"2026-03-15T10:41:40.7527048Z","level":"INFO","message":"Domain blocked","data":{"domain":"x.com"}}
+{"timestamp":"2026-03-15T10:41:40.7537837Z","level":"INFO","message":"Domain blocked","data":{"domain":"tweetdeck.com"}}
+{"timestamp":"2026-03-15T10:41:40.7548479Z","level":"INFO","message":"Domain blocked","data":{"domain":"twitpic.com"}}
+{"timestamp":"2026-03-15T10:41:40.7559598Z","level":"INFO","message":"Domain blocked","data":{"domain":"fbsbx.com"}}
+{"timestamp":"2026-03-15T10:41:40.7570732Z","level":"INFO","message":"Domain blocked","data":{"domain":"facebook.net"}}
+{"timestamp":"2026-03-15T10:41:40.7576025Z","level":"INFO","message":"Domain blocked","data":{"domain":"twimg.com"}}
+{"timestamp":"2026-03-15T10:41:40.7587145Z","level":"INFO","message":"Domain blocked","data":{"domain":"facebook.com"}}
+{"timestamp":"2026-03-15T10:41:40.7597671Z","level":"INFO","message":"Domain blocked","data":{"domain":"fbcdn.net"}}
+{"timestamp":"2026-03-15T10:41:40.7608308Z","level":"INFO","message":"Domain blocked","data":{"domain":"fb.me"}}
+{"timestamp":"2026-03-15T10:41:40.7619027Z","level":"INFO","message":"Bulk domain sync via control API","data":{"cleared":0,"synced":17}}
+{"timestamp":"2026-03-15T10:42:59.3344884Z","level":"INFO","message":"Metadata subscriber disconnected","data":{"subscriber_id":"firewall-engine"}}
