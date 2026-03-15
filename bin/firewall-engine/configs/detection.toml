@@ -1,88 +1,95 @@
-# SafeOps Firewall Engine - Detection Configuration
+[DDoS]
+Enabled = true
+SYNRateThreshold = 1000
+UDPRateThreshold = 5000
+ICMPRateThreshold = 100
+ConnectionRatioThreshold = 0.01
+BanDurationMinutes = 30
+MaxBanDurationHours = 720
+EscalationMultiplier = 4
+WindowSeconds = 10
 
-[ddos]
-enabled = true
-syn_rate_threshold = 1000        # SYN packets/sec per IP to trigger
-udp_rate_threshold = 5000        # UDP packets/sec per IP to trigger
-icmp_rate_threshold = 100        # ICMP packets/sec per IP to trigger
-connection_ratio_threshold = 0.01 # <1% SYN->ESTABLISHED = flood
-ban_duration_minutes = 30        # Initial ban duration
-max_ban_duration_hours = 720     # 30 days = permanent
-escalation_multiplier = 4        # 30m -> 2h -> 8h -> 32h -> 128h -> permanent
-window_seconds = 10              # Sliding window for rate calculation
+[RateLimit]
+Enabled = true
+DefaultRate = 1000
+BurstSize = 2000
+GlobalRate = 100000
+CleanupIntervalSeconds = 60
 
-[rate_limit]
-enabled = true
-default_rate = 1000              # Packets/sec per IP
-burst_size = 2000                # Allow burst up to this
-global_rate = 100000             # Total packets/sec across all IPs
-cleanup_interval_seconds = 60    # Remove idle buckets
+[BruteForce]
+Enabled = true
+WindowSeconds = 120
 
-[brute_force]
-enabled = true
-window_seconds = 120             # Time window for failure counting
+[BruteForce.Services.ssh]
+Port = 22
+MaxFailures = 5
+WindowSeconds = 120
 
-[brute_force.services]
-# service_name = { port = N, max_failures = N, window_seconds = N }
-ssh = { port = 22, max_failures = 5, window_seconds = 120 }
-rdp = { port = 3389, max_failures = 3, window_seconds = 60 }
-ftp = { port = 21, max_failures = 5, window_seconds = 120 }
-smtp = { port = 25, max_failures = 3, window_seconds = 300 }
-mysql = { port = 3306, max_failures = 3, window_seconds = 60 }
-postgres = { port = 5432, max_failures = 3, window_seconds = 60 }
-mssql = { port = 1433, max_failures = 3, window_seconds = 60 }
+[BruteForce.Services.ftp]
+Port = 21
+MaxFailures = 5
+WindowSeconds = 120
 
-[port_scan]
-enabled = true
-port_threshold = 100             # Unique ports in window = scan
-window_seconds = 10              # Sliding window
-ban_duration_minutes = 15        # Ban duration for scanners
-sequential_threshold = 20        # Sequential ports in window = sequential scan
+[BruteForce.Services.rdp]
+Port = 3389
+MaxFailures = 3
+WindowSeconds = 60
 
-[anomaly]
-enabled = true
-enable_protocol_violations = true    # SYN+FIN, Xmas, Null scans
-enable_packet_size = true            # Zero-byte, oversized packets
-enable_beaconing = true              # C2 callback detection
-beaconing_min_samples = 20           # Min connections to analyze
-beaconing_cov_threshold = 0.1        # Coefficient of variation threshold
-oversized_packet_bytes = 65535       # MTU violation threshold
+[BruteForce.Services.smtp]
+Port = 25
+MaxFailures = 3
+WindowSeconds = 300
 
-[baseline]
-enabled = true
-window_minutes = 60              # EMA window for baseline
-deviation_threshold = 3.0        # Alert if rate > baseline * threshold
-warmup_minutes = 10              # Don't alert during warmup
-update_interval_seconds = 10     # How often to update baseline
+[BruteForce.Services.mysql]
+Port = 3306
+MaxFailures = 3
+WindowSeconds = 60
 
-[whitelist]
-# IPs and CIDRs that bypass ALL detection (rate limit, DDoS, brute force, scan)
-# NOTE: Private ranges (192.168.x, 10.x, 172.16.x) are NOT whitelisted here
-# because internal/LAN attacks are a real threat. Only loopback is trusted.
-trusted_ips = [
-    "127.0.0.1",
-    "::1",
-]
-trusted_cidrs = []
-# CDN provider CIDRs (bypass rate limiting only)
-cdn_cidrs = [
-    "103.21.244.0/22",   # Cloudflare
-    "103.22.200.0/22",   # Cloudflare
-    "103.31.4.0/22",     # Cloudflare
-    "104.16.0.0/13",     # Cloudflare
-    "104.24.0.0/14",     # Cloudflare
-    "108.162.192.0/18",  # Cloudflare
-    "131.0.72.0/22",     # Cloudflare
-    "141.101.64.0/18",   # Cloudflare
-    "162.158.0.0/15",    # Cloudflare
-    "172.64.0.0/13",     # Cloudflare
-    "173.245.48.0/20",   # Cloudflare
-    "188.114.96.0/20",   # Cloudflare
-    "190.93.240.0/20",   # Cloudflare
-    "197.234.240.0/22",  # Cloudflare
-    "198.41.128.0/17",   # Cloudflare
-    "8.8.8.0/24",        # Google DNS
-    "8.8.4.0/24",        # Google DNS
-    "1.1.1.0/24",        # Cloudflare DNS
-    "1.0.0.0/24",        # Cloudflare DNS
+[BruteForce.Services.postgres]
+Port = 5432
+MaxFailures = 3
+WindowSeconds = 60
+
+[BruteForce.Services.mssql]
+Port = 1433
+MaxFailures = 3
+WindowSeconds = 60
+
+[PortScan]
+Enabled = true
+PortThreshold = 100
+WindowSeconds = 10
+BanDurationMinutes = 15
+SequentialThreshold = 20
+
+[Baseline]
+Enabled = true
+WindowMinutes = 60
+DeviationThreshold = 3
+WarmupMinutes = 10
+UpdateIntervalSeconds = 10
+
+[Whitelist]
+TrustedIPs = ["127.0.0.1", "::1"]
+TrustedCIDRs = []
+CDNCIDRs = [
+  "103.21.244.0/22",
+  "103.22.200.0/22",
+  "103.31.4.0/22",
+  "104.16.0.0/13",
+  "104.24.0.0/14",
+  "108.162.192.0/18",
+  "131.0.72.0/22",
+  "141.101.64.0/18",
+  "162.158.0.0/15",
+  "172.64.0.0/13",
+  "173.245.48.0/20",
+  "188.114.96.0/20",
+  "190.93.240.0/20",
+  "197.234.240.0/22",
+  "198.41.128.0/17",
+  "8.8.8.0/24",
+  "8.8.4.0/24",
+  "1.1.1.0/24",
+  "1.0.0.0/24"
 ]
