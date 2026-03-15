@@ -289,3 +289,12 @@ src/threat_intel/data/fetch/
 data/fetch/
 
 docs/plan/
+
+# =====================================
+# Installer Outputs (uploaded as GitHub Release assets)
+# =====================================
+release/*.exe
+safeops-app/installer/output/
+SafeOps App Installer/Output/
+SafeOps Dependencies Installer/Output/
+SafeOps Installer/Output/
