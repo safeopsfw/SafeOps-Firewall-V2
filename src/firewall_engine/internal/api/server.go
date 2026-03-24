@@ -221,12 +221,14 @@ func (s *Server) createApp() *fiber.App {
 	api.Post("/alerts/:id/triage", s.handleTriageAlert)
 
 	// Rules — Domains
+	// NOTE: Specific routes (whitelist) MUST be registered before wildcard
+	// (:domain) routes, otherwise Fiber matches "whitelist" as the :domain param.
 	api.Get("/rules/domains", s.handleGetDomains)
 	api.Post("/rules/domains", s.handleAddDomain)
-	api.Delete("/rules/domains/:domain", s.handleRemoveDomain)
 	api.Get("/rules/domains/whitelist", s.handleGetWhitelistDomains)
 	api.Post("/rules/domains/whitelist", s.handleAddWhitelistDomain)
 	api.Delete("/rules/domains/whitelist/:domain", s.handleRemoveWhitelistDomain)
+	api.Delete("/rules/domains/:domain", s.handleRemoveDomain)
 
 	// Malicious visit auto-block tracking (threat intel escalation)
 	api.Get("/domains/auto-blocked", s.handleGetAutoBlockedDomains)
@@ -240,12 +242,14 @@ func (s *Server) createApp() *fiber.App {
 	api.Put("/rules/categories/patterns/:category", s.handleUpdateCategoryPatterns)
 
 	// Rules — IPs
+	// NOTE: Specific routes (whitelist) MUST be registered before wildcard
+	// (:ip) routes, otherwise Fiber matches "whitelist" as the :ip param.
 	api.Get("/rules/ips", s.handleGetBlockedIPs)
 	api.Post("/rules/ips", s.handleAddBlockedIP)
-	api.Delete("/rules/ips/:ip", s.handleRemoveBlockedIP)
 	api.Get("/rules/ips/whitelist", s.handleGetWhitelistIPs)
 	api.Post("/rules/ips/whitelist", s.handleAddWhitelistIP)
 	api.Delete("/rules/ips/whitelist/:ip", s.handleRemoveWhitelistIP)
+	api.Delete("/rules/ips/:ip", s.handleRemoveBlockedIP)
 
 	// Rules — GeoIP
 	api.Get("/rules/geoip", s.handleGetGeoIPConfig)

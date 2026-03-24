@@ -978,29 +978,47 @@ func removeLineFromFile(path, target string) (bool, error) {
 	return true, nil
 }
 
-// writeJSONToTOMLFile writes a struct as a JSON file (TOML serializers not
-// available in this module). The hot-reload system will parse the file.
-// NOTE: This writes the config as JSON since we don't have a TOML writer
-// dependency. The config loaders should handle this gracefully if they
-// support JSON, otherwise a TOML writer dependency would be needed.
-// As a pragmatic solution, we write to a sidecar .json file and rely on
-// the hot-reload to pick up the changes.
+// writeJSONToTOMLFile writes a struct to a TOML-formatted file using the
+// BurntSushi/toml encoder. Config loaders call toml.Decode on these files,
+// so we must write valid TOML — not JSON.
+//
+// Before writing, it makes a timestamped .bak backup of the existing file
+// so edits can be rolled back manually if needed.
 func writeJSONToTOMLFile(path string, data interface{}) error {
-	// For safety, write to a .bak first
+	// Backup existing file before overwriting
 	content, _ := os.ReadFile(path)
 	if len(content) > 0 {
 		bakPath := path + ".bak." + time.Now().Format("20060102-150405")
-		os.WriteFile(bakPath, content, 0644)
+		// Best-effort — ignore backup errors
+		os.WriteFile(bakPath, content, 0644) //nolint:errcheck
 	}
 
-	jsonData, err := json.MarshalIndent(data, "", "  ")
+	// Write to a temp file atomically, then rename
+	tmpPath := path + ".tmp." + fmt.Sprintf("%d", time.Now().UnixNano())
+	f, err := os.Create(tmpPath)
 	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
+		return fmt.Errorf("create temp file: %w", err)
 	}
 
-	// Write the JSON data — the config loader will need to handle JSON
-	// For now, we write the data and rely on the observer pattern
-	return os.WriteFile(path, jsonData, 0644)
+	enc := toml.NewEncoder(f)
+	if encErr := enc.Encode(data); encErr != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return fmt.Errorf("encode TOML: %w", encErr)
+	}
+
+	if err := f.Close(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("close temp file: %w", err)
+	}
+
+	// Atomic rename so the hot-reloader never sees a partial write
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("rename temp to target: %w", err)
+	}
+
+	return nil
 }
 
 // ============================================================================
