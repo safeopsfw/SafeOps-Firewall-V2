@@ -80,6 +80,8 @@ security:
   cors_origins:
     - "https://captive.safeops.local:8445"
     - "http://192.168.137.1:8090"
+    - "http://localhost:3001"
+    - "http://localhost:8090"
   rate_limit_enabled: true
   rate_limit_requests: 100
   rate_limit_window: "1m"

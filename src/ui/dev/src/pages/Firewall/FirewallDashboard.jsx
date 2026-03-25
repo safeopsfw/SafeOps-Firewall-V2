@@ -682,7 +682,7 @@ function RateLimitTab() {
   const load = useCallback(async () => {
     try {
       const data = await apiFetch('/rules/detection');
-      setCfg(data);
+      setCfg(data.config || data);
     } catch (e) { flash('error', e.message); }
     setLoading(false);
   }, []);
@@ -749,7 +749,7 @@ function DDoSTab() {
   const flash = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3000); };
 
   const load = useCallback(async () => {
-    try { setCfg(await apiFetch('/rules/detection')); } catch (e) { flash('error', e.message); }
+    try { const data = await apiFetch('/rules/detection'); setCfg(data.config || data); } catch (e) { flash('error', e.message); }
     setLoading(false);
   }, []);
 
@@ -813,7 +813,7 @@ function BruteForceTab() {
   const flash = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3000); };
 
   const load = useCallback(async () => {
-    try { setCfg(await apiFetch('/rules/detection')); } catch (e) { flash('error', e.message); }
+    try { const data = await apiFetch('/rules/detection'); setCfg(data.config || data); } catch (e) { flash('error', e.message); }
     setLoading(false);
   }, []);
 
@@ -899,7 +899,7 @@ function PortScanTab() {
   const flash = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 3000); };
 
   const load = useCallback(async () => {
-    try { setCfg(await apiFetch('/rules/detection')); } catch (e) { flash('error', e.message); }
+    try { const data = await apiFetch('/rules/detection'); setCfg(data.config || data); } catch (e) { flash('error', e.message); }
     setLoading(false);
   }, []);
 

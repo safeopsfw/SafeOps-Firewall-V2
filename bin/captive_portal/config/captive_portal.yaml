@@ -5,8 +5,8 @@ server:
   # HTTPS server configuration
   https_port: 8445
   https_enabled: false
-  cert_file: "./certs/server.crt"
-  key_file: "./certs/server.key"
+  cert_file: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\certs\\server.crt"
+  key_file: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\certs\\server.key"
 
   # HTTP server configuration (for CA cert download - devices need HTTP access)
   http_port: 8090
@@ -56,19 +56,19 @@ integrations:
 
 # Static file paths
 static:
-  css_path: "./static/css"
-  js_path: "./static/js"
+  css_path: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\static\\css"
+  js_path: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\static\\js"
 
 # Template configuration
 templates:
-  path: "./templates"
+  path: "D:\\SafeOpsFV2\\src\\captive_portal\\internal\\templates"
   reload_on_change: true
 
 # Logging
 logging:
   level: "info"
   format: "json"
-  output: "./logs/captive_portal.log"
+  output: "D:\\SafeOpsFV2\\src\\captive_portal\\logs\\captive_portal.log"
   max_size: 100
   max_backups: 10
   max_age: 30
@@ -80,6 +80,8 @@ security:
   cors_origins:
     - "https://captive.safeops.local:8445"
     - "http://192.168.137.1:8090"
+    - "http://localhost:3001"
+    - "http://localhost:8090"
   rate_limit_enabled: true
   rate_limit_requests: 100
   rate_limit_window: "1m"

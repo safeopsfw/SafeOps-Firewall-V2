@@ -1,0 +1,95 @@
+[DDoS]
+Enabled = true
+SYNRateThreshold = 1000
+UDPRateThreshold = 5000
+ICMPRateThreshold = 100
+ConnectionRatioThreshold = 0.01
+BanDurationMinutes = 30
+MaxBanDurationHours = 720
+EscalationMultiplier = 4
+WindowSeconds = 10
+
+[RateLimit]
+Enabled = true
+DefaultRate = 1000
+BurstSize = 2000
+GlobalRate = 100000
+CleanupIntervalSeconds = 60
+
+[BruteForce]
+Enabled = true
+WindowSeconds = 120
+
+[BruteForce.Services.ssh]
+Port = 22
+MaxFailures = 5
+WindowSeconds = 120
+
+[BruteForce.Services.ftp]
+Port = 21
+MaxFailures = 5
+WindowSeconds = 120
+
+[BruteForce.Services.rdp]
+Port = 3389
+MaxFailures = 3
+WindowSeconds = 60
+
+[BruteForce.Services.smtp]
+Port = 25
+MaxFailures = 3
+WindowSeconds = 300
+
+[BruteForce.Services.mysql]
+Port = 3306
+MaxFailures = 3
+WindowSeconds = 60
+
+[BruteForce.Services.postgres]
+Port = 5432
+MaxFailures = 3
+WindowSeconds = 60
+
+[BruteForce.Services.mssql]
+Port = 1433
+MaxFailures = 3
+WindowSeconds = 60
+
+[PortScan]
+Enabled = true
+PortThreshold = 100
+WindowSeconds = 10
+BanDurationMinutes = 15
+SequentialThreshold = 20
+
+[Baseline]
+Enabled = true
+WindowMinutes = 60
+DeviationThreshold = 3
+WarmupMinutes = 10
+UpdateIntervalSeconds = 10
+
+[Whitelist]
+TrustedIPs = ["127.0.0.1", "::1"]
+TrustedCIDRs = []
+CDNCIDRs = [
+  "103.21.244.0/22",
+  "103.22.200.0/22",
+  "103.31.4.0/22",
+  "104.16.0.0/13",
+  "104.24.0.0/14",
+  "108.162.192.0/18",
+  "131.0.72.0/22",
+  "141.101.64.0/18",
+  "162.158.0.0/15",
+  "172.64.0.0/13",
+  "173.245.48.0/20",
+  "188.114.96.0/20",
+  "190.93.240.0/20",
+  "197.234.240.0/22",
+  "198.41.128.0/17",
+  "8.8.8.0/24",
+  "8.8.4.0/24",
+  "1.1.1.0/24",
+  "1.0.0.0/24"
+]

@@ -1,0 +1,370 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="arrowBlk" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d97706"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+
+  <!-- White Background -->
+  <rect width="1400" height="1050" fill="#ffffff" rx="0"/>
+
+  <!-- Title -->
+  <text x="700" y="38" text-anchor="middle" fill="#111" font-size="24" font-weight="700">SafeOps Firewall V2 — System Architecture</text>
+  <text x="700" y="58" text-anchor="middle" fill="#6b7280" font-size="12">12 Components · 3 Layers · gRPC + REST + PostgreSQL + File I/O</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  LAYER 3: PRESENTATION LAYER                                -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <rect x="30" y="78" width="1340" height="185" rx="8" fill="#fafafa" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="52" y="98" fill="#6b7280" font-size="11" font-weight="700" letter-spacing="1.5">LAYER 3 — PRESENTATION</text>
+
+  <!-- Desktop App -->
+  <rect x="60" y="110" width="300" height="135" rx="6" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="60" y="110" width="300" height="28" rx="6" fill="#7c3aed"/>
+  <rect x="60" y="128" width="300" height="10" fill="#7c3aed"/>
+  <text x="210" y="131" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Desktop App (Wails + Svelte)</text>
+  <text x="75" y="158" fill="#374151" font-size="10">• 9-Service Manager (Start / Stop / Status)</text>
+  <text x="75" y="173" fill="#374151" font-size="10">• System Tray (Hide-on-Close)</text>
+  <text x="75" y="188" fill="#374151" font-size="10">• GitHub Auto-Updater</text>
+  <text x="75" y="203" fill="#374151" font-size="10">• First-Run Setup Wizard (8 steps)</text>
+  <text x="75" y="218" fill="#374151" font-size="10">• SIEM Panel (ES + Kibana)</text>
+  <text x="75" y="236" fill="#7c3aed" font-size="9" font-weight="600">WebView2 · 1100×720 window</text>
+
+  <!-- Web Dashboard -->
+  <rect x="400" y="110" width="250" height="135" rx="6" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="400" y="110" width="250" height="28" rx="6" fill="#7c3aed"/>
+  <rect x="400" y="128" width="250" height="10" fill="#7c3aed"/>
+  <text x="525" y="131" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Web Dashboard</text>
+  <text x="415" y="158" fill="#374151" font-size="10">• React UI on :3001</text>
+  <text x="415" y="173" fill="#374151" font-size="10">• Node.js Backend on :5050</text>
+  <text x="415" y="188" fill="#374151" font-size="10">• Firewall Dashboard</text>
+  <text x="415" y="203" fill="#374151" font-size="10">• Device Management</text>
+  <text x="415" y="218" fill="#374151" font-size="10">• Traffic Analytics</text>
+
+  <!-- Kibana -->
+  <rect x="690" y="110" width="200" height="135" rx="6" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <rect x="690" y="110" width="200" height="28" rx="6" fill="#d97706"/>
+  <rect x="690" y="128" width="200" height="10" fill="#d97706"/>
+  <text x="790" y="131" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Kibana (SIEM UI)</text>
+  <text x="705" y="158" fill="#374151" font-size="10">• Log Search &amp; Visualisation</text>
+  <text x="705" y="173" fill="#374151" font-size="10">• Alert Dashboards</text>
+  <text x="705" y="188" fill="#374151" font-size="10">• Index Management</text>
+  <text x="705" y="208" fill="#d97706" font-size="9" font-weight="600">Port :5601</text>
+
+  <!-- Firewall UI -->
+  <rect x="930" y="110" width="200" height="135" rx="6" fill="#fff" stroke="#dc2626" stroke-width="2"/>
+  <rect x="930" y="110" width="200" height="28" rx="6" fill="#dc2626"/>
+  <rect x="930" y="128" width="200" height="10" fill="#dc2626"/>
+  <text x="1030" y="131" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Firewall Web UI</text>
+  <text x="945" y="158" fill="#374151" font-size="10">• Pipeline Statistics</text>
+  <text x="945" y="173" fill="#374151" font-size="10">• Live Block Log</text>
+  <text x="945" y="188" fill="#374151" font-size="10">• Rule Editor</text>
+  <text x="945" y="208" fill="#dc2626" font-size="9" font-weight="600">Embedded :8443</text>
+
+  <!-- Requirements Setup -->
+  <rect x="1170" y="110" width="180" height="135" rx="6" fill="#fff" stroke="#6b7280" stroke-width="2"/>
+  <rect x="1170" y="110" width="180" height="28" rx="6" fill="#6b7280"/>
+  <rect x="1170" y="128" width="180" height="10" fill="#6b7280"/>
+  <text x="1260" y="131" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">Req. Setup</text>
+  <text x="1185" y="158" fill="#374151" font-size="10">• PostgreSQL 16.1</text>
+  <text x="1185" y="173" fill="#374151" font-size="10">• Node.js 20.11</text>
+  <text x="1185" y="188" fill="#374151" font-size="10">• WinPkFilter 3.4.8</text>
+  <text x="1185" y="203" fill="#374151" font-size="10">• 23 SQL Schemas</text>
+  <text x="1185" y="223" fill="#6b7280" font-size="9" font-weight="600">One-Click Installer</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  LAYER 2: SERVICE LAYER                                     -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <rect x="30" y="283" width="1340" height="385" rx="8" fill="#fafafa" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="52" y="303" fill="#6b7280" font-size="11" font-weight="700" letter-spacing="1.5">LAYER 2 — SERVICE LAYER (9 Services + Orchestrator)</text>
+
+  <!-- Launcher bar -->
+  <rect x="60" y="315" width="1290" height="36" rx="5" fill="#fff" stroke="#111" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="700" y="338" text-anchor="middle" fill="#111" font-size="13" font-weight="700">SafeOps Launcher — Service Orchestrator (PID Tracking · Ordered Startup · Graceful Shutdown)</text>
+
+  <!-- === Row 1: Core + Network + Certificates === -->
+
+  <!-- Group label: CORE -->
+  <text x="72" y="376" fill="#dc2626" font-size="10" font-weight="700">CORE</text>
+
+  <!-- Firewall Engine -->
+  <rect x="60" y="385" width="285" height="108" rx="6" fill="#fff" stroke="#dc2626" stroke-width="2"/>
+  <rect x="60" y="385" width="285" height="24" rx="6" fill="#dc2626"/>
+  <rect x="60" y="400" width="285" height="9" fill="#dc2626"/>
+  <text x="202" y="403" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Firewall Engine</text>
+  <text x="75" y="428" fill="#374151" font-size="9.5">8-Stage Pipeline: Whitelist → Security</text>
+  <text x="75" y="441" fill="#374151" font-size="9.5">→ Custom Rules → Blocklist → GeoIP</text>
+  <text x="75" y="454" fill="#374151" font-size="9.5">→ Threat Intel → Domain → Inspector</text>
+  <text x="75" y="467" fill="#374151" font-size="9.5">Hot-reload via atomic pointer swap</text>
+  <text x="75" y="485" fill="#dc2626" font-size="9" font-weight="600">:50052 HTTP · :8443 UI</text>
+
+  <!-- Group label: NETWORK -->
+  <text x="367" y="376" fill="#2563eb" font-size="10" font-weight="700">NETWORK</text>
+
+  <!-- NIC Management -->
+  <rect x="365" y="385" width="190" height="108" rx="6" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="365" y="385" width="190" height="24" rx="6" fill="#2563eb"/>
+  <rect x="365" y="400" width="190" height="9" fill="#2563eb"/>
+  <text x="460" y="403" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">NIC Management</text>
+  <text x="380" y="428" fill="#374151" font-size="9.5">Multi-WAN Failover</text>
+  <text x="380" y="441" fill="#374151" font-size="9.5">NAT / ICS Config</text>
+  <text x="380" y="454" fill="#374151" font-size="9.5">Bandwidth Monitor</text>
+  <text x="380" y="467" fill="#374151" font-size="9.5">Go + Rust (WinDivert)</text>
+  <text x="380" y="485" fill="#2563eb" font-size="9" font-weight="600">:8081 REST · gRPC</text>
+
+  <!-- DHCP Monitor -->
+  <rect x="570" y="385" width="190" height="108" rx="6" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="570" y="385" width="190" height="24" rx="6" fill="#2563eb"/>
+  <rect x="570" y="400" width="190" height="9" fill="#2563eb"/>
+  <text x="665" y="403" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">DHCP Monitor</text>
+  <text x="585" y="428" fill="#374151" font-size="9.5">ARP Scan (30s cycle)</text>
+  <text x="585" y="441" fill="#374151" font-size="9.5">Device Trust Mgmt</text>
+  <text x="585" y="454" fill="#374151" font-size="9.5">MAC → Vendor Lookup</text>
+  <text x="585" y="467" fill="#374151" font-size="9.5">mDNS Responder</text>
+  <text x="585" y="485" fill="#2563eb" font-size="9" font-weight="600">:50055 gRPC</text>
+
+  <!-- Captive Portal -->
+  <rect x="775" y="385" width="190" height="108" rx="6" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="775" y="385" width="190" height="24" rx="6" fill="#2563eb"/>
+  <rect x="775" y="400" width="190" height="9" fill="#2563eb"/>
+  <text x="870" y="403" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Captive Portal</text>
+  <text x="790" y="428" fill="#374151" font-size="9.5">Zero-Trust Onboarding</text>
+  <text x="790" y="441" fill="#374151" font-size="9.5">CA Cert Distribution</text>
+  <text x="790" y="454" fill="#374151" font-size="9.5">OS Auto-Detection</text>
+  <text x="790" y="467" fill="#374151" font-size="9.5">PEM / DER / PKCS#12</text>
+  <text x="790" y="485" fill="#2563eb" font-size="9" font-weight="600">:8090 HTTP · :8445 HTTPS</text>
+
+  <!-- Group label: CERTIFICATES -->
+  <text x="982" y="376" fill="#d97706" font-size="10" font-weight="700">CERTIFICATES</text>
+
+  <!-- Step-CA -->
+  <rect x="980" y="385" width="175" height="108" rx="6" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <rect x="980" y="385" width="175" height="24" rx="6" fill="#d97706"/>
+  <rect x="980" y="400" width="175" height="9" fill="#d97706"/>
+  <text x="1067" y="403" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Step-CA (PKI)</text>
+  <text x="995" y="428" fill="#374151" font-size="9.5">Root + Intermediate CA</text>
+  <text x="995" y="441" fill="#374151" font-size="9.5">EC P-256 / ES256</text>
+  <text x="995" y="454" fill="#374151" font-size="9.5">JWK Provisioner</text>
+  <text x="995" y="467" fill="#374151" font-size="9.5">BadgerV2 DB</text>
+  <text x="995" y="485" fill="#d97706" font-size="9" font-weight="600">:9000 HTTPS</text>
+
+  <!-- === Row 2: Data Pipeline + Data Stores === -->
+
+  <!-- Group label: DATA PIPELINE -->
+  <text x="72" y="520" fill="#16a34a" font-size="10" font-weight="700">DATA PIPELINE</text>
+
+  <!-- Network Logger -->
+  <rect x="60" y="530" width="235" height="108" rx="6" fill="#fff" stroke="#16a34a" stroke-width="2"/>
+  <rect x="60" y="530" width="235" height="24" rx="6" fill="#16a34a"/>
+  <rect x="60" y="545" width="235" height="9" fill="#16a34a"/>
+  <text x="177" y="548" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Network Logger</text>
+  <text x="75" y="573" fill="#374151" font-size="9.5">5 Parallel Collectors</text>
+  <text x="75" y="586" fill="#374151" font-size="9.5">master | IDS | EW | NS | IP</text>
+  <text x="75" y="599" fill="#374151" font-size="9.5">6-Stage Enrichment Pipeline</text>
+  <text x="75" y="612" fill="#374151" font-size="9.5">5-min Log Rotation</text>
+  <text x="75" y="630" fill="#16a34a" font-size="9" font-weight="600">Passive Forensics (gopacket)</text>
+
+  <!-- SIEM Forwarder -->
+  <rect x="315" y="530" width="235" height="108" rx="6" fill="#fff" stroke="#16a34a" stroke-width="2"/>
+  <rect x="315" y="530" width="235" height="24" rx="6" fill="#16a34a"/>
+  <rect x="315" y="545" width="235" height="9" fill="#16a34a"/>
+  <text x="432" y="548" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">SIEM Forwarder</text>
+  <text x="330" y="573" fill="#374151" font-size="9.5">Tail → Channel → Bulk API</text>
+  <text x="330" y="586" fill="#374151" font-size="9.5">500-doc Batching / 5s Flush</text>
+  <text x="330" y="599" fill="#374151" font-size="9.5">Position Tracking (crash-safe)</text>
+  <text x="330" y="612" fill="#374151" font-size="9.5">14-day Retention Manager</text>
+  <text x="330" y="630" fill="#16a34a" font-size="9" font-weight="600">Zero deps (pure stdlib HTTP)</text>
+
+  <!-- Threat Intel -->
+  <rect x="570" y="530" width="235" height="108" rx="6" fill="#fff" stroke="#16a34a" stroke-width="2"/>
+  <rect x="570" y="530" width="235" height="24" rx="6" fill="#16a34a"/>
+  <rect x="570" y="545" width="235" height="9" fill="#16a34a"/>
+  <text x="687" y="548" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Threat Intelligence</text>
+  <text x="585" y="573" fill="#374151" font-size="9.5">7+ OSINT Feeds (abuse.ch etc.)</text>
+  <text x="585" y="586" fill="#374151" font-size="9.5">IP / Domain / Hash Reputation</text>
+  <text x="585" y="599" fill="#374151" font-size="9.5">Dedup + Scoring (0-100)</text>
+  <text x="585" y="612" fill="#374151" font-size="9.5">6-hour Refresh Cycle</text>
+  <text x="585" y="630" fill="#16a34a" font-size="9" font-weight="600">ETL Pipeline (-scheduler)</text>
+
+  <!-- Group label: DATA STORES -->
+  <text x="832" y="520" fill="#374151" font-size="10" font-weight="700">DATA STORES</text>
+
+  <!-- PostgreSQL -->
+  <rect x="830" y="530" width="195" height="108" rx="6" fill="#fff" stroke="#336791" stroke-width="2"/>
+  <rect x="830" y="530" width="195" height="24" rx="6" fill="#336791"/>
+  <rect x="830" y="545" width="195" height="9" fill="#336791"/>
+  <text x="927" y="548" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">PostgreSQL 16</text>
+  <text x="845" y="573" fill="#374151" font-size="9.5">threat_intel_db</text>
+  <text x="845" y="586" fill="#374151" font-size="9.5">safeops_network</text>
+  <text x="845" y="599" fill="#374151" font-size="9.5">safeops</text>
+  <text x="845" y="612" fill="#374151" font-size="9.5">23 schemas · 4 users</text>
+  <text x="845" y="630" fill="#336791" font-size="9" font-weight="600">:5432</text>
+
+  <!-- Elasticsearch -->
+  <rect x="1045" y="530" width="195" height="108" rx="6" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <rect x="1045" y="530" width="195" height="24" rx="6" fill="#d97706"/>
+  <rect x="1045" y="545" width="195" height="9" fill="#d97706"/>
+  <text x="1142" y="548" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">Elasticsearch</text>
+  <text x="1060" y="573" fill="#374151" font-size="9.5">safeops-fw-YYYY.MM.DD</text>
+  <text x="1060" y="586" fill="#374151" font-size="9.5">safeops-ids-YYYY.MM.DD</text>
+  <text x="1060" y="599" fill="#374151" font-size="9.5">safeops-netflow-YYYY.MM.DD</text>
+  <text x="1060" y="612" fill="#374151" font-size="9.5">14-day auto-retention</text>
+  <text x="1060" y="630" fill="#d97706" font-size="9" font-weight="600">:9200 (Bulk API)</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  LAYER 1: KERNEL LAYER                                      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <rect x="30" y="688" width="1340" height="155" rx="8" fill="#fafafa" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="52" y="708" fill="#6b7280" font-size="11" font-weight="700" letter-spacing="1.5">LAYER 1 — KERNEL (Ring 0 / NDIS Driver)</text>
+
+  <!-- SafeOps Engine -->
+  <rect x="60" y="720" width="530" height="105" rx="6" fill="#fff" stroke="#dc2626" stroke-width="2.5"/>
+  <rect x="60" y="720" width="530" height="28" rx="6" fill="#dc2626"/>
+  <rect x="60" y="738" width="530" height="10" fill="#dc2626"/>
+  <text x="325" y="742" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">SafeOps Engine — Packet Interceptor</text>
+  <text x="80" y="772" fill="#374151" font-size="10.5">WinPkFilter NDIS Driver → Kernel-mode packet capture &amp; injection</text>
+  <text x="80" y="788" fill="#374151" font-size="10.5">DNS Domain Extraction · TLS SNI Extraction</text>
+  <text x="80" y="804" fill="#374151" font-size="10.5">Verdict: ALLOW | BLOCK | REDIRECT</text>
+  <text x="80" y="818" fill="#dc2626" font-size="9" font-weight="600">:50051 gRPC Metadata Stream</text>
+
+  <!-- WinPkFilter -->
+  <rect x="620" y="720" width="290" height="105" rx="6" fill="#fff" stroke="#111" stroke-width="2" stroke-dasharray="6,3"/>
+  <rect x="620" y="720" width="290" height="28" rx="6" fill="#374151"/>
+  <rect x="620" y="738" width="290" height="10" fill="#374151"/>
+  <text x="765" y="742" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">WinPkFilter 3.4.8</text>
+  <text x="640" y="772" fill="#374151" font-size="10.5">NDIS Intermediate Driver</text>
+  <text x="640" y="788" fill="#374151" font-size="10.5">Ring 0 Kernel Packet Filter</text>
+  <text x="640" y="804" fill="#374151" font-size="10.5">Intercept / Modify / Drop</text>
+
+  <!-- Network Hardware -->
+  <rect x="940" y="720" width="410" height="105" rx="6" fill="#fff" stroke="#9ca3af" stroke-width="1.5"/>
+  <rect x="940" y="720" width="410" height="28" rx="6" fill="#9ca3af"/>
+  <rect x="940" y="738" width="410" height="10" fill="#9ca3af"/>
+  <text x="1145" y="742" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Network Hardware</text>
+  <text x="960" y="772" fill="#374151" font-size="10.5">Physical: Ethernet (Intel I211), Wi-Fi (Realtek 8822CE)</text>
+  <text x="960" y="788" fill="#374151" font-size="10.5">Virtual: Hyper-V vSwitch, Loopback</text>
+  <text x="960" y="804" fill="#6b7280" font-size="9" font-weight="600">Managed by NIC Management service</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  COMMUNICATION LINES                                        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Engine (:50051 gRPC) → Firewall Engine -->
+  <line x1="325" y1="720" x2="200" y2="493" stroke="#2563eb" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowBlue)"/>
+  <rect x="215" y="600" width="90" height="16" rx="3" fill="#fff" stroke="#2563eb" stroke-width="1"/>
+  <text x="260" y="612" text-anchor="middle" fill="#2563eb" font-size="8.5" font-weight="600">gRPC :50051</text>
+
+  <!-- Firewall → PostgreSQL -->
+  <line x1="345" y1="475" x2="830" y2="565" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowAmber)"/>
+
+  <!-- DHCP Monitor → PostgreSQL -->
+  <line x1="665" y1="493" x2="848" y2="540" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowAmber)"/>
+
+  <!-- Threat Intel → PostgreSQL -->
+  <line x1="805" y1="585" x2="830" y2="585" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowAmber)"/>
+
+  <!-- Step-CA → PostgreSQL -->
+  <line x1="1010" y1="493" x2="960" y2="530" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowAmber)"/>
+
+  <!-- Logger .jsonl → SIEM Forwarder -->
+  <line x1="295" y1="585" x2="315" y2="585" stroke="#6b7280" stroke-width="2" marker-end="url(#arrowGray)"/>
+  <rect x="273" y="565" width="44" height="14" rx="3" fill="#fff" stroke="#6b7280" stroke-width="0.8"/>
+  <text x="295" y="575" text-anchor="middle" fill="#6b7280" font-size="7.5">.jsonl</text>
+
+  <!-- SIEM Forwarder → Elasticsearch (Bulk API) -->
+  <line x1="550" y1="585" x2="1045" y2="585" stroke="#16a34a" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrowGreen)"/>
+  <rect x="760" y="572" width="70" height="16" rx="3" fill="#fff" stroke="#16a34a" stroke-width="1"/>
+  <text x="795" y="584" text-anchor="middle" fill="#16a34a" font-size="8.5" font-weight="600">Bulk API</text>
+
+  <!-- Captive Portal → DHCP Monitor -->
+  <line x1="775" y1="440" x2="760" y2="440" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowBlue)"/>
+
+  <!-- Captive Portal → Step-CA -->
+  <line x1="965" y1="440" x2="980" y2="440" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowAmber)"/>
+
+  <!-- Desktop App → Launcher -->
+  <line x1="210" y1="245" x2="210" y2="315" stroke="#374151" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrowBlk)"/>
+  <rect x="180" y="271" width="60" height="14" rx="3" fill="#fff" stroke="#374151" stroke-width="0.8"/>
+  <text x="210" y="281" text-anchor="middle" fill="#374151" font-size="7.5">Process</text>
+
+  <!-- Kibana → Elasticsearch -->
+  <line x1="790" y1="245" x2="1142" y2="530" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrowAmber)"/>
+
+  <!-- Engine → WinPkFilter -->
+  <line x1="590" y1="772" x2="620" y2="772" stroke="#374151" stroke-width="2" marker-end="url(#arrowBlk)"/>
+
+  <!-- WinPkFilter → Hardware -->
+  <line x1="910" y1="772" x2="940" y2="772" stroke="#374151" stroke-width="2" marker-end="url(#arrowBlk)"/>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  LEGEND                                                     -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <rect x="30" y="863" width="1340" height="170" rx="8" fill="#fff" stroke="#d1d5db" stroke-width="1"/>
+
+  <text x="55" y="888" fill="#111" font-size="14" font-weight="700">Legend — Communication Protocols</text>
+
+  <line x1="60" y1="908" x2="115" y2="908" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6,3"/>
+  <text x="125" y="912" fill="#374151" font-size="11">gRPC (Protobuf)</text>
+
+  <line x1="60" y1="932" x2="115" y2="932" stroke="#16a34a" stroke-width="2.5" stroke-dasharray="5,3"/>
+  <text x="125" y="936" fill="#374151" font-size="11">REST / HTTP API</text>
+
+  <line x1="60" y1="956" x2="115" y2="956" stroke="#d97706" stroke-width="2.5" stroke-dasharray="4,3"/>
+  <text x="125" y="960" fill="#374151" font-size="11">PostgreSQL / DB Query</text>
+
+  <line x1="60" y1="980" x2="115" y2="980" stroke="#6b7280" stroke-width="2.5"/>
+  <text x="125" y="984" fill="#374151" font-size="11">File I/O (JSONL, Certs)</text>
+
+  <line x1="60" y1="1004" x2="115" y2="1004" stroke="#374151" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <text x="125" y="1008" fill="#374151" font-size="11">Process Management</text>
+
+  <!-- Component color legend -->
+  <text x="370" y="888" fill="#111" font-size="14" font-weight="700">Component Groups</text>
+
+  <rect x="370" y="898" width="16" height="12" rx="2" fill="#fff" stroke="#dc2626" stroke-width="2"/>
+  <text x="395" y="909" fill="#374151" font-size="11">Core Services (Engine, Firewall)</text>
+
+  <rect x="370" y="920" width="16" height="12" rx="2" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <text x="395" y="931" fill="#374151" font-size="11">Network Services (NIC, DHCP, Portal)</text>
+
+  <rect x="370" y="942" width="16" height="12" rx="2" fill="#fff" stroke="#16a34a" stroke-width="2"/>
+  <text x="395" y="953" fill="#374151" font-size="11">Data Pipeline (Logger, SIEM, Threat Intel)</text>
+
+  <rect x="370" y="964" width="16" height="12" rx="2" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <text x="395" y="975" fill="#374151" font-size="11">Certificate Authority (Step-CA)</text>
+
+  <rect x="370" y="986" width="16" height="12" rx="2" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="395" y="997" fill="#374151" font-size="11">Presentation (Desktop App, Web UI)</text>
+
+  <!-- Port Reference -->
+  <text x="720" y="888" fill="#111" font-size="14" font-weight="700">Port Reference</text>
+
+  <text x="720" y="909" fill="#374151" font-size="11">:50051  SafeOps Engine (gRPC)</text>
+  <text x="720" y="926" fill="#374151" font-size="11">:50052  Firewall Engine (HTTP)</text>
+  <text x="720" y="943" fill="#374151" font-size="11">:50055  DHCP Monitor (gRPC)</text>
+  <text x="720" y="960" fill="#374151" font-size="11">:8081    NIC Management (REST)</text>
+  <text x="720" y="977" fill="#374151" font-size="11">:8090    Captive Portal (HTTP)</text>
+  <text x="720" y="994" fill="#374151" font-size="11">:9000    Step-CA (HTTPS)</text>
+
+  <text x="1020" y="909" fill="#374151" font-size="11">:5432    PostgreSQL</text>
+  <text x="1020" y="926" fill="#374151" font-size="11">:9200    Elasticsearch</text>
+  <text x="1020" y="943" fill="#374151" font-size="11">:5601    Kibana</text>
+  <text x="1020" y="960" fill="#374151" font-size="11">:3001    Web Dashboard (React)</text>
+  <text x="1020" y="977" fill="#374151" font-size="11">:5050    Node.js Backend</text>
+  <text x="1020" y="994" fill="#374151" font-size="11">:8443    Firewall UI (Embedded)</text>
+
+  <!-- Footer -->
+  <text x="700" y="1028" text-anchor="middle" fill="#9ca3af" font-size="10">SafeOps Firewall V2 · System Architecture · March 2026 · Print-Friendly Edition</text>
+</svg>
