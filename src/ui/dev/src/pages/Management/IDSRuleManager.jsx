@@ -200,18 +200,18 @@ export default function IDSRuleManager() {
     <div className="animate-fade-in h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">IDS/IPS Rule Manager</h1>
+          <h1 className="text-2xl font-bold text-dark-900 dark:text-white">IDS/IPS Rule Manager</h1>
           <p className="text-dark-400">Suricata-compatible detection rules</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setShowHelperModal(true)}
-            className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Wand2 className="w-4 h-4" />
             Rule Helper
           </button>
-          <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors">
+          <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors">
             <Plus className="w-4 h-4" />
             Custom Rule
           </button>
@@ -220,9 +220,9 @@ export default function IDSRuleManager() {
 
       <div className="grid grid-cols-12 gap-4 h-full">
         {/* Left Panel: Rule Library (30%) */}
-        <div className="col-span-3 bg-dark-800 border border-dark-700 rounded-xl overflow-hidden flex flex-col">
+        <div className="col-span-3 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden flex flex-col">
           {/* Search */}
-          <div className="p-4 border-b border-dark-700">
+          <div className="p-4 border-b border-dark-200 dark:border-dark-700">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
               <input
@@ -230,13 +230,13 @@ export default function IDSRuleManager() {
                 placeholder="Search rules..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white text-sm placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white text-sm placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
 
           {/* Tree View */}
-          <div className="p-4 border-b border-dark-700">
+          <div className="p-4 border-b border-dark-200 dark:border-dark-700">
             <div className="flex items-center gap-2 mb-3">
               <FolderTree className="w-4 h-4 text-dark-400" />
               <span className="text-dark-400 text-sm font-medium">Sources</span>
@@ -272,12 +272,12 @@ export default function IDSRuleManager() {
               <button
                 key={rule.sid}
                 onClick={() => setSelectedRule(rule)}
-                className={`w-full text-left px-4 py-3 border-b border-dark-700 transition-colors ${
+                className={`w-full text-left px-4 py-3 border-b border-dark-200 dark:border-dark-700 transition-colors ${
                   selectedRule?.sid === rule.sid ? 'bg-dark-700' : 'hover:bg-dark-700/50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-white font-mono text-sm">SID:{rule.sid}</span>
+                  <span className="text-dark-900 dark:text-white font-mono text-sm">SID:{rule.sid}</span>
                   <span className={`text-xs px-2 py-0.5 rounded ${
                     rule.status === 'active' ? 'bg-green-500/20 text-green-400' :
                     rule.status === 'staging' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -293,13 +293,13 @@ export default function IDSRuleManager() {
         </div>
 
         {/* Center Panel: Rule Editor (55%) */}
-        <div className="col-span-7 bg-dark-800 border border-dark-700 rounded-xl overflow-hidden flex flex-col">
+        <div className="col-span-7 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden flex flex-col">
           {/* Tabs */}
-          <div className="flex border-b border-dark-700">
+          <div className="flex border-b border-dark-200 dark:border-dark-700">
             <button
               onClick={() => setActiveTab('editor')}
               className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'editor' ? 'text-primary-400 border-b-2 border-primary-400 bg-dark-700/50' : 'text-dark-400 hover:text-white'
+                activeTab === 'editor' ? 'text-primary-400 border-b-2 border-primary-400 bg-dark-700/50' : 'text-dark-400 hover:text-dark-900 dark:text-white'
               }`}
             >
               <FileCode className="w-4 h-4 inline mr-2" />
@@ -308,7 +308,7 @@ export default function IDSRuleManager() {
             <button
               onClick={() => setActiveTab('helper')}
               className={`px-6 py-3 font-medium transition-colors ${
-                activeTab === 'helper' ? 'text-primary-400 border-b-2 border-primary-400 bg-dark-700/50' : 'text-dark-400 hover:text-white'
+                activeTab === 'helper' ? 'text-primary-400 border-b-2 border-primary-400 bg-dark-700/50' : 'text-dark-400 hover:text-dark-900 dark:text-white'
               }`}
             >
               <Wand2 className="w-4 h-4 inline mr-2" />
@@ -319,18 +319,18 @@ export default function IDSRuleManager() {
           {activeTab === 'editor' && (
             <>
               {/* Editor Header */}
-              <div className="p-4 border-b border-dark-700 flex items-center justify-between">
+              <div className="p-4 border-b border-dark-200 dark:border-dark-700 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-semibold">SID: {selectedRule?.sid}</span>
+                    <span className="text-dark-900 dark:text-white font-semibold">SID: {selectedRule?.sid}</span>
                     <span className="text-dark-500 text-sm">rev:{selectedRule?.rev}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg">
+                  <button className="p-2 text-dark-400 hover:text-dark-900 dark:text-white hover:bg-dark-700 rounded-lg">
                     <History className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-dark-400 hover:text-white hover:bg-dark-700 rounded-lg">
+                  <button className="p-2 text-dark-400 hover:text-dark-900 dark:text-white hover:bg-dark-700 rounded-lg">
                     <Copy className="w-4 h-4" />
                   </button>
                 </div>
@@ -341,7 +341,7 @@ export default function IDSRuleManager() {
                 <textarea
                   value={ruleContent}
                   onChange={(e) => setRuleContent(e.target.value)}
-                  className="w-full h-full bg-dark-900 border border-dark-600 rounded-lg p-4 text-green-400 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  className="w-full h-full bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg p-4 text-green-400 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   spellCheck={false}
                 />
               </div>
@@ -357,7 +357,7 @@ export default function IDSRuleManager() {
                   <select 
                     value={helperForm.action}
                     onChange={(e) => setHelperForm({...helperForm, action: e.target.value})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   >
                     {actionOptions.map(opt => <option key={opt} value={opt}>{opt.toUpperCase()}</option>)}
                   </select>
@@ -367,7 +367,7 @@ export default function IDSRuleManager() {
                   <select 
                     value={helperForm.protocol}
                     onChange={(e) => setHelperForm({...helperForm, protocol: e.target.value})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   >
                     {protocolOptions.map(opt => <option key={opt} value={opt}>{opt.toUpperCase()}</option>)}
                   </select>
@@ -378,7 +378,7 @@ export default function IDSRuleManager() {
                     type="text"
                     value={helperForm.sourceIP}
                     onChange={(e) => setHelperForm({...helperForm, sourceIP: e.target.value})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                     placeholder="$EXTERNAL_NET or any"
                   />
                 </div>
@@ -388,7 +388,7 @@ export default function IDSRuleManager() {
                     type="text"
                     value={helperForm.sourcePort}
                     onChange={(e) => setHelperForm({...helperForm, sourcePort: e.target.value})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                     placeholder="any"
                   />
                 </div>
@@ -398,7 +398,7 @@ export default function IDSRuleManager() {
                     type="text"
                     value={helperForm.destIP}
                     onChange={(e) => setHelperForm({...helperForm, destIP: e.target.value})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                     placeholder="$HOME_NET"
                   />
                 </div>
@@ -408,7 +408,7 @@ export default function IDSRuleManager() {
                     type="text"
                     value={helperForm.destPort}
                     onChange={(e) => setHelperForm({...helperForm, destPort: e.target.value})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                     placeholder="80,443 or any"
                   />
                 </div>
@@ -420,7 +420,7 @@ export default function IDSRuleManager() {
                   type="text"
                   value={helperForm.msg}
                   onChange={(e) => setHelperForm({...helperForm, msg: e.target.value})}
-                  className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   placeholder="CUSTOM Suspicious Activity Detected"
                 />
               </div>
@@ -431,7 +431,7 @@ export default function IDSRuleManager() {
                   type="text"
                   value={helperForm.content}
                   onChange={(e) => setHelperForm({...helperForm, content: e.target.value})}
-                  className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   placeholder="String to match in payload"
                 />
               </div>
@@ -442,7 +442,7 @@ export default function IDSRuleManager() {
                   <select 
                     value={helperForm.classification}
                     onChange={(e) => setHelperForm({...helperForm, classification: e.target.value})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   >
                     {classificationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
@@ -452,7 +452,7 @@ export default function IDSRuleManager() {
                   <select 
                     value={helperForm.priority}
                     onChange={(e) => setHelperForm({...helperForm, priority: parseInt(e.target.value)})}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                   >
                     <option value={1}>1 - Critical</option>
                     <option value={2}>2 - High</option>
@@ -463,7 +463,7 @@ export default function IDSRuleManager() {
               </div>
 
               {/* Preview */}
-              <div className="bg-dark-900 border border-dark-600 rounded-lg p-4 mb-4">
+              <div className="bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="w-4 h-4 text-primary-400" />
                   <span className="text-dark-400 text-sm">Generated Suricata Rule</span>
@@ -473,7 +473,7 @@ export default function IDSRuleManager() {
 
               <button
                 onClick={applyHelperRule}
-                className="w-full py-3 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-colors"
+                className="w-full py-3 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white font-medium rounded-lg transition-colors"
               >
                 Apply to Editor
               </button>
@@ -484,8 +484,8 @@ export default function IDSRuleManager() {
         {/* Right Panel: Actions (15%) */}
         <div className="col-span-2 space-y-4">
           {/* Status */}
-          <div className="bg-dark-800 border border-dark-700 rounded-xl p-4">
-            <h3 className="text-white font-medium mb-3">Status</h3>
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-4">
+            <h3 className="text-dark-900 dark:text-white font-medium mb-3">Status</h3>
             <div className="space-y-2">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="radio" name="status" defaultChecked className="accent-primary-500" />
@@ -503,12 +503,12 @@ export default function IDSRuleManager() {
           </div>
 
           {/* Actions */}
-          <div className="bg-dark-800 border border-dark-700 rounded-xl p-4 space-y-3">
-            <button className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-4 space-y-3">
+            <button className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-dark-900 dark:text-white py-2 rounded-lg">
               <CheckCircle className="w-4 h-4" />
               Validate
             </button>
-            <button className="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white py-2 rounded-lg">
+            <button className="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white py-2 rounded-lg">
               <Save className="w-4 h-4" />
               Save
             </button>
@@ -532,13 +532,13 @@ export default function IDSRuleManager() {
       {/* Rule Helper Modal */}
       {showHelperModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between p-6 border-b border-dark-700">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-auto">
+            <div className="flex items-center justify-between p-6 border-b border-dark-200 dark:border-dark-700">
               <div>
-                <h2 className="text-xl font-bold text-white">Rule Helper</h2>
+                <h2 className="text-xl font-bold text-dark-900 dark:text-white">Rule Helper</h2>
                 <p className="text-dark-400 text-sm">Choose a template to get started</p>
               </div>
-              <button onClick={() => setShowHelperModal(false)} className="p-2 text-dark-400 hover:text-white">
+              <button onClick={() => setShowHelperModal(false)} className="p-2 text-dark-400 hover:text-dark-900 dark:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -547,10 +547,10 @@ export default function IDSRuleManager() {
                 <button
                   key={preset.id}
                   onClick={() => { selectPreset(preset); setShowHelperModal(false); setActiveTab('helper'); }}
-                  className="text-left p-4 bg-dark-700 hover:bg-dark-600 border border-dark-600 hover:border-primary-500/50 rounded-xl transition-all"
+                  className="text-left p-4 bg-dark-700 hover:bg-dark-600 border border-dark-300 dark:border-dark-600 hover:border-primary-500/50 rounded-xl transition-all"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-white font-medium">{preset.name}</span>
+                    <span className="text-dark-900 dark:text-white font-medium">{preset.name}</span>
                     <ChevronRight className="w-4 h-4 text-dark-400" />
                   </div>
                   <p className="text-dark-400 text-sm">{preset.description}</p>

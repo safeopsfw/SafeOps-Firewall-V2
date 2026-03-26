@@ -58,12 +58,12 @@ export default function UserManagement() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">User & Role Management</h1>
+          <h1 className="text-2xl font-bold text-dark-900 dark:text-white">User & Role Management</h1>
           <p className="text-dark-400">Manage access control and permissions</p>
         </div>
         <button 
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add User
@@ -71,13 +71,13 @@ export default function UserManagement() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-dark-700">
+      <div className="flex gap-2 mb-6 border-b border-dark-200 dark:border-dark-700">
         <button
           onClick={() => setActiveTab('users')}
           className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'users'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
           }`}
         >
           <Users className="w-4 h-4 inline mr-2" />
@@ -88,7 +88,7 @@ export default function UserManagement() {
           className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'roles'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
           }`}
         >
           <Shield className="w-4 h-4 inline mr-2" />
@@ -99,7 +99,7 @@ export default function UserManagement() {
           className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'sessions'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
           }`}
         >
           <Monitor className="w-4 h-4 inline mr-2" />
@@ -110,7 +110,7 @@ export default function UserManagement() {
           className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'apikeys'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
           }`}
         >
           <Key className="w-4 h-4 inline mr-2" />
@@ -129,12 +129,12 @@ export default function UserManagement() {
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-lg text-dark-900 dark:text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
           {/* Users Table */}
-          <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-dark-700">
                 <tr>
@@ -148,14 +148,14 @@ export default function UserManagement() {
               </thead>
               <tbody>
                 {filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-t border-dark-700 hover:bg-dark-700/50">
+                  <tr key={user.id} className="border-t border-dark-200 dark:border-dark-700 hover:bg-dark-700/50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
-                          <span className="text-white font-medium">{user.name.charAt(0)}</span>
+                          <span className="text-dark-900 dark:text-white font-medium">{user.name.charAt(0)}</span>
                         </div>
                         <div>
-                          <div className="text-white font-medium">{user.name}</div>
+                          <div className="text-dark-900 dark:text-white font-medium">{user.name}</div>
                           <div className="text-dark-400 text-sm">{user.email}</div>
                         </div>
                       </div>
@@ -189,10 +189,10 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 text-dark-400 hover:text-white hover:bg-dark-600 rounded-lg transition-colors" title="Impersonate">
+                        <button className="p-2 text-dark-400 hover:text-dark-900 dark:text-white hover:bg-dark-600 rounded-lg transition-colors" title="Impersonate">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="p-2 text-dark-400 hover:text-white hover:bg-dark-600 rounded-lg transition-colors">
+                        <button className="p-2 text-dark-400 hover:text-dark-900 dark:text-white hover:bg-dark-600 rounded-lg transition-colors">
                           <Edit className="w-4 h-4" />
                         </button>
                         <button className="p-2 text-dark-400 hover:text-red-400 hover:bg-dark-600 rounded-lg transition-colors">
@@ -210,7 +210,7 @@ export default function UserManagement() {
 
       {/* Role Permissions Tab */}
       {activeTab === 'roles' && (
-        <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden">
           <table className="w-full">
             <thead className="bg-dark-700">
               <tr>
@@ -222,8 +222,8 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {permissions.dashboards.map((dashboard) => (
-                <tr key={dashboard} className="border-t border-dark-700">
-                  <td className="px-6 py-4 text-white">{dashboard}</td>
+                <tr key={dashboard} className="border-t border-dark-200 dark:border-dark-700">
+                  <td className="px-6 py-4 text-dark-900 dark:text-white">{dashboard}</td>
                   {Object.keys(rolePermissions).map(role => (
                     <td key={role} className="text-center px-6 py-4">
                       <select 
@@ -250,7 +250,7 @@ export default function UserManagement() {
 
       {/* Active Sessions Tab */}
       {activeTab === 'sessions' && (
-        <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden">
           <table className="w-full">
             <thead className="bg-dark-700">
               <tr>
@@ -263,8 +263,8 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {activeSessions.map((session) => (
-                <tr key={session.id} className="border-t border-dark-700 hover:bg-dark-700/50">
-                  <td className="px-6 py-4 text-white">{session.user}</td>
+                <tr key={session.id} className="border-t border-dark-200 dark:border-dark-700 hover:bg-dark-700/50">
+                  <td className="px-6 py-4 text-dark-900 dark:text-white">{session.user}</td>
                   <td className="px-6 py-4 text-dark-300 font-mono">{session.ip}</td>
                   <td className="px-6 py-4 text-dark-400">{session.started}</td>
                   <td className="px-6 py-4 text-dark-300">{session.lastAction}</td>
@@ -284,14 +284,14 @@ export default function UserManagement() {
       {/* API Keys Tab */}
       {activeTab === 'apikeys' && (
         <div className="space-y-6">
-          <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors">
+          <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors">
             <Plus className="w-4 h-4" />
             Generate New Key
           </button>
-          <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-white font-medium">Intel Feed Read-Only</div>
+                <div className="text-dark-900 dark:text-white font-medium">Intel Feed Read-Only</div>
                 <div className="text-dark-400 text-sm">Created: Jan 10, 2024</div>
               </div>
               <div className="flex items-center gap-4">
@@ -303,10 +303,10 @@ export default function UserManagement() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <code className="flex-1 bg-dark-900 px-4 py-2 rounded-lg text-dark-400 font-mono text-sm">
+              <code className="flex-1 bg-dark-50 dark:bg-dark-900 px-4 py-2 rounded-lg text-dark-400 font-mono text-sm">
                 sk_live_••••••••••••••••••••••••4a2b
               </code>
-              <button className="p-2 text-dark-400 hover:text-white">
+              <button className="p-2 text-dark-400 hover:text-dark-900 dark:text-white">
                 <Eye className="w-4 h-4" />
               </button>
             </div>

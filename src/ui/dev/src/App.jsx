@@ -38,7 +38,7 @@ function ProtectedRoute() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-dark-900">
+      <div className="min-h-screen flex items-center justify-center bg-dark-100 dark:bg-dark-900 transition-colors">
         <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -56,7 +56,7 @@ function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-dark-900">
+    <div className="flex min-h-screen bg-dark-100 dark:bg-dark-900 transition-colors">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-h-screen lg:ml-0">
         <Header onMenuClick={() => setSidebarOpen(true)} />

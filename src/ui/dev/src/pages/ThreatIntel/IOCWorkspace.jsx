@@ -66,7 +66,7 @@ export default function IOCWorkspace() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-6">IOC Workspace</h1>
+      <h1 className="text-2xl font-bold text-dark-900 dark:text-white mb-6">IOC Workspace</h1>
 
       {/* Alert Banner */}
       {maliciousCount > 0 && (
@@ -85,13 +85,13 @@ export default function IOCWorkspace() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Input Panel */}
-        <div className="lg:col-span-2 bg-dark-800 border border-dark-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Input IOCs</h2>
+        <div className="lg:col-span-2 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4">Input IOCs</h2>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Paste IOCs here (one per line)&#10;Supports: IPs, Domains, URLs, Hashes (MD5, SHA1, SHA256)&#10;&#10;Example:&#10;192.168.1.100&#10;malware-c2.evil.com&#10;d41d8cd98f00b204e9800998ecf8427e"
-            className="w-full h-48 px-4 py-3 bg-dark-900 border border-dark-600 rounded-lg text-white font-mono text-sm placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+            className="w-full h-48 px-4 py-3 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white font-mono text-sm placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
           />
           <div className="flex items-center gap-4 mt-4">
             <button className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg transition-colors">
@@ -105,8 +105,8 @@ export default function IOCWorkspace() {
         </div>
 
         {/* Database Selection */}
-        <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4 flex items-center gap-2">
             <Database className="w-5 h-5" />
             Select Databases
           </h2>
@@ -115,7 +115,7 @@ export default function IOCWorkspace() {
               <label
                 key={db.id}
                 className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                  db.placeholder ? 'bg-dark-700/50 border border-dashed border-dark-600' : 'hover:bg-dark-700'
+                  db.placeholder ? 'bg-dark-700/50 border border-dashed border-dark-300 dark:border-dark-600' : 'hover:bg-dark-700'
                 }`}
               >
                 {db.placeholder ? (
@@ -124,7 +124,7 @@ export default function IOCWorkspace() {
                     placeholder="Enter database name..."
                     value={customDbName}
                     onChange={(e) => setCustomDbName(e.target.value)}
-                    className="flex-1 bg-transparent border-none text-white placeholder-dark-500 focus:outline-none text-sm"
+                    className="flex-1 bg-transparent border-none text-dark-900 dark:text-white placeholder-dark-500 focus:outline-none text-sm"
                   />
                 ) : (
                   <>
@@ -132,10 +132,10 @@ export default function IOCWorkspace() {
                       type="checkbox"
                       checked={selectedDatabases.includes(db.id)}
                       onChange={() => toggleDatabase(db.id)}
-                      className="w-4 h-4 rounded border-dark-500 bg-dark-900 text-primary-500 focus:ring-primary-500"
+                      className="w-4 h-4 rounded border-dark-500 bg-dark-50 dark:bg-dark-900 text-primary-500 focus:ring-primary-500"
                     />
                     <div className="flex-1">
-                      <div className="text-white text-sm">{db.name}</div>
+                      <div className="text-dark-900 dark:text-white text-sm">{db.name}</div>
                       <div className="text-dark-500 text-xs">{db.records} records</div>
                     </div>
                   </>
@@ -150,7 +150,7 @@ export default function IOCWorkspace() {
       <button
         onClick={handleCompare}
         disabled={loading || !input.trim()}
-        className="w-full py-4 bg-primary-500 hover:bg-primary-600 disabled:bg-primary-500/50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 mb-6"
+        className="w-full py-4 bg-primary-500 hover:bg-primary-600 disabled:bg-primary-500/50 disabled:cursor-not-allowed text-dark-900 dark:text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 mb-6"
       >
         {loading ? (
           <>
@@ -167,9 +167,9 @@ export default function IOCWorkspace() {
 
       {/* Results */}
       {results && (
-        <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden animate-fade-in">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden animate-fade-in">
           {/* Summary */}
-          <div className="px-6 py-4 border-b border-dark-700 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-dark-200 dark:border-dark-700 flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-red-400" />
@@ -204,9 +204,9 @@ export default function IOCWorkspace() {
               </thead>
               <tbody>
                 {results.items.map((item, idx) => (
-                  <tr key={idx} className="border-t border-dark-700 hover:bg-dark-700/50">
+                  <tr key={idx} className="border-t border-dark-200 dark:border-dark-700 hover:bg-dark-700/50">
                     <td className="px-6 py-4">
-                      <code className="text-white font-mono text-sm">{item.ioc}</code>
+                      <code className="text-dark-900 dark:text-white font-mono text-sm">{item.ioc}</code>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-dark-300 uppercase text-xs">{item.type}</span>

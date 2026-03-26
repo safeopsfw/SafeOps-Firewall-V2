@@ -12,13 +12,13 @@ function StatCard({ icon: Icon, label, value, sub, color = 'blue' }) {
     red:    'bg-red-500/10 text-red-400 border-red-500/20',
   };
   return (
-    <div className="bg-dark-800 border border-dark-700 rounded-xl p-4 flex items-start gap-3">
+    <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-4 flex items-start gap-3">
       <div className={`p-2 rounded-lg border ${colors[color]}`}>
         <Icon className="w-4 h-4" />
       </div>
       <div>
-        <div className="text-xl font-bold text-white">{value ?? '—'}</div>
-        <div className="text-xs text-dark-400">{label}</div>
+        <div className="text-xl font-bold text-dark-900 dark:text-white">{value ?? '—'}</div>
+        <div className="text-xs text-dark-500 dark:text-dark-400">{label}</div>
         {sub && <div className="text-xs text-dark-500 mt-0.5">{sub}</div>}
       </div>
     </div>
@@ -128,11 +128,11 @@ export default function NetworkLogger() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-dark-900 dark:text-white flex items-center gap-3">
             <Network className="w-7 h-7 text-purple-400" />
             Network Logger
           </h1>
-          <p className="text-dark-400 mt-1 text-sm">
+          <p className="text-dark-500 dark:text-dark-400 mt-1 text-sm">
             Packet capture & flow logging — 5-minute cycle, JSONL output for IDS/IPS analysis
           </p>
         </div>
@@ -142,14 +142,14 @@ export default function NetworkLogger() {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
               autoRefresh
                 ? 'bg-green-500/20 text-green-400 border-green-500/40'
-                : 'bg-dark-700 text-dark-400 border-dark-600'
+                : 'bg-dark-100 dark:bg-dark-700 text-dark-500 dark:text-dark-400 border-dark-300 dark:border-dark-600'
             }`}
           >
             {autoRefresh ? '● Live (5s)' : '○ Paused'}
           </button>
           <button
             onClick={() => { fetchLogs(); fetchStats(); }}
-            className="flex items-center gap-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-dark-100 dark:bg-dark-700 hover:bg-dark-200 dark:hover:bg-dark-600 border border-dark-300 dark:border-dark-600 text-dark-600 dark:text-dark-300 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white rounded-lg text-sm transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -169,8 +169,8 @@ export default function NetworkLogger() {
 
       {/* Config info */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-dark-800 border border-dark-700 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-dark-900 dark:text-white mb-3 flex items-center gap-2">
             <FileText className="w-4 h-4 text-purple-400" />
             Log Output Files
           </h2>
@@ -183,15 +183,15 @@ export default function NetworkLogger() {
               { path: 'bin/logs/netflow/',                     desc: 'NetFlow records directory' },
             ].map(({ path, desc }) => (
               <div key={path} className="text-xs">
-                <div className="font-mono text-dark-300">{path}</div>
+                <div className="font-mono text-dark-600 dark:text-dark-300">{path}</div>
                 <div className="text-dark-500">{desc}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-dark-800 border border-dark-700 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-dark-900 dark:text-white mb-3 flex items-center gap-2">
             <Activity className="w-4 h-4 text-blue-400" />
             Capture Settings
           </h2>
@@ -205,8 +205,8 @@ export default function NetworkLogger() {
               { label: 'Batch Size',     value: '75 packets/write' },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between">
-                <span className="text-dark-400">{label}</span>
-                <span className="text-dark-200 font-mono text-xs">{value}</span>
+                <span className="text-dark-500 dark:text-dark-400">{label}</span>
+                <span className="text-dark-700 dark:text-dark-200 font-mono text-xs">{value}</span>
               </div>
             ))}
           </div>
@@ -214,9 +214,9 @@ export default function NetworkLogger() {
       </div>
 
       {/* Log Viewer */}
-      <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-dark-700 flex flex-wrap items-center gap-3">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+      <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-dark-200 dark:border-dark-700 flex flex-wrap items-center gap-3">
+          <h2 className="text-sm font-semibold text-dark-900 dark:text-white flex items-center gap-2">
             <FileText className="w-4 h-4 text-dark-400" />
             Recent Verdict Log
             {filtered.length > 0 && (
@@ -231,8 +231,8 @@ export default function NetworkLogger() {
                 onClick={() => setProtoFilter(p)}
                 className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                   protoFilter === p
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-dark-700 text-dark-400 hover:text-dark-200'
+                    ? 'bg-primary-600 text-dark-900 dark:text-white'
+                    : 'bg-dark-100 dark:bg-dark-700 text-dark-500 dark:text-dark-400 hover:text-dark-700 dark:hover:text-dark-200'
                 }`}
               >
                 {p}
@@ -245,7 +245,7 @@ export default function NetworkLogger() {
             placeholder="Search IPs, domains..."
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            className="ml-auto px-3 py-1 bg-dark-700 border border-dark-600 rounded text-xs text-dark-200 placeholder-dark-500 focus:outline-none focus:border-primary-500 w-44"
+            className="ml-auto px-3 py-1 bg-dark-100 dark:bg-dark-700 border border-dark-300 dark:border-dark-600 rounded text-xs text-dark-700 dark:text-dark-200 placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:border-primary-500 w-44"
           />
         </div>
 
@@ -277,7 +277,7 @@ export default function NetworkLogger() {
               </thead>
               <tbody>
                 {filtered.map((p, i) => (
-                  <tr key={p.id ?? i} className="border-t border-dark-700/50 hover:bg-dark-700/30">
+                  <tr key={p.id ?? i} className="border-t border-dark-200 dark:border-dark-700/50 hover:bg-dark-700/30">
                     <td className="px-4 py-2 font-mono text-dark-400 whitespace-nowrap">
                       {p.ts ? new Date(p.ts * 1000).toLocaleTimeString() : '—'}
                     </td>

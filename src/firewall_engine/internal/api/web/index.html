@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="fw-root">
 
 <head>
     <meta charset="UTF-8">
@@ -7,7 +7,7 @@
     <title>SafeOps Firewall — Dashboard</title>
     <meta name="description"
         content="SafeOps Firewall Management Dashboard — Real-time security monitoring and threat management">
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="index.css?v=2">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 </head>
@@ -132,7 +132,10 @@
                 </div>
                 <div style="margin-top:0.5rem; display:flex; align-items:center; justify-content:space-between;">
                     <span style="font-size:0.72rem; color:var(--text-muted);" id="uptime-display">Uptime: —</span>
-                    <button class="btn btn-ghost btn-sm" id="logout-btn" title="Sign Out">🚪</button>
+                    <div style="display:flex; gap:0.35rem;">
+                        <button class="btn btn-ghost btn-sm" id="fw-theme-toggle" title="Toggle light/dark theme" style="font-size:1rem;padding:0.3rem 0.5rem;">☀️</button>
+                        <button class="btn btn-ghost btn-sm" id="logout-btn" title="Sign Out">🚪</button>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -759,6 +762,25 @@
         </div>
     </div>
 
+    <script>
+        // Theme toggle — restore saved theme before app.js loads
+        (function() {
+            var saved = localStorage.getItem('safeops-fw-theme');
+            var root = document.documentElement;
+            if (saved === 'light') root.classList.add('light');
+            document.addEventListener('DOMContentLoaded', function() {
+                var btn = document.getElementById('fw-theme-toggle');
+                if (!btn) return;
+                btn.textContent = root.classList.contains('light') ? '🌙' : '☀️';
+                btn.addEventListener('click', function() {
+                    root.classList.toggle('light');
+                    var isLight = root.classList.contains('light');
+                    localStorage.setItem('safeops-fw-theme', isLight ? 'light' : 'dark');
+                    btn.textContent = isLight ? '🌙' : '☀️';
+                });
+            });
+        })();
+    </script>
     <script src="app.js"></script>
 </body>
 

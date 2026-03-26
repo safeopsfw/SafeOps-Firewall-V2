@@ -32,8 +32,8 @@ export default function ThreatIntelLayout() {
               to={item.path}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
                 isActive
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-dark-800 text-dark-300 hover:bg-dark-700 hover:text-white'
+                  ? 'bg-primary-500 text-dark-900 dark:text-white'
+                  : 'bg-white dark:bg-dark-800 text-dark-600 dark:text-dark-300 hover:bg-dark-100 dark:hover:bg-dark-700 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white shadow-sm'
               }`}
             >
               <Icon className="w-4 h-4" />

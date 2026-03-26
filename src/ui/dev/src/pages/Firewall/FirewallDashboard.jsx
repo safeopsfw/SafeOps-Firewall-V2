@@ -18,7 +18,7 @@ async function apiFetch(path, options = {}) {
 // ─── Tiny UI primitives ─────────────────────────────────────────────────────
 function Card({ children, className = '' }) {
   return (
-    <div className={`bg-dark-800 rounded-xl border border-dark-700 p-5 ${className}`}>
+    <div className={`bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 p-5 ${className}`}>
       {children}
     </div>
   );
@@ -30,7 +30,7 @@ function Badge({ children, color = 'primary' }) {
     green:   'bg-green-900/40 text-green-400 border-green-700',
     red:     'bg-red-900/40 text-red-400 border-red-700',
     yellow:  'bg-yellow-900/40 text-yellow-400 border-yellow-700',
-    gray:    'bg-dark-700 text-dark-300 border-dark-600',
+    gray:    'bg-dark-700 text-dark-300 border-dark-300 dark:border-dark-600',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${colors[color] || colors.primary}`}>
@@ -73,7 +73,7 @@ function Input({ label, value, onChange, type = 'text', min, step, className = '
         min={min}
         step={step}
         onChange={e => onChange(e.target.value)}
-        className="bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500"
+        className="bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500"
       />
     </div>
   );
@@ -83,10 +83,10 @@ function Btn({ children, onClick, variant = 'primary', size = 'sm', disabled = f
   const base = 'inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
   const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' };
   const variants = {
-    primary: 'bg-primary-600 hover:bg-primary-700 text-white',
-    danger:  'bg-red-600/80 hover:bg-red-700 text-white',
+    primary: 'bg-primary-600 hover:bg-primary-700 text-dark-900 dark:text-white',
+    danger:  'bg-red-600/80 hover:bg-red-700 text-dark-900 dark:text-white',
     ghost:   'bg-dark-700 hover:bg-dark-600 text-dark-200',
-    outline: 'border border-dark-600 hover:border-primary-500 text-dark-300 hover:text-white',
+    outline: 'border border-dark-300 dark:border-dark-600 hover:border-primary-500 text-dark-300 hover:text-dark-900 dark:text-white',
   };
   return (
     <button onClick={onClick} disabled={disabled} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
@@ -110,7 +110,7 @@ function SectionHeader({ title, subtitle, action }) {
   return (
     <div className="flex items-center justify-between mb-4">
       <div>
-        <h3 className="text-base font-semibold text-white">{title}</h3>
+        <h3 className="text-base font-semibold text-dark-900 dark:text-white">{title}</h3>
         {subtitle && <p className="text-xs text-dark-400 mt-0.5">{subtitle}</p>}
       </div>
       {action}
@@ -181,7 +181,7 @@ function OverviewTab() {
 
       <div className="grid grid-cols-2 gap-4">
         <Card>
-          <h4 className="text-sm font-semibold text-white mb-3">Engine Status</h4>
+          <h4 className="text-sm font-semibold text-dark-900 dark:text-white mb-3">Engine Status</h4>
           <div className="space-y-2 text-sm">
             {[
               ['Version', s.version],
@@ -191,15 +191,15 @@ function OverviewTab() {
               ['Threat Intel DB', s.threat_intel_available ? '✅ Available' : '❌ Unavailable'],
               ['WFP Engine', s.wfp_enabled ? '✅ Active' : '—'],
             ].map(([k, v]) => (
-              <div key={k} className="flex justify-between items-center py-1 border-b border-dark-700">
+              <div key={k} className="flex justify-between items-center py-1 border-b border-dark-200 dark:border-dark-700">
                 <span className="text-dark-400">{k}</span>
-                <span className="text-white font-medium">{v ?? '—'}</span>
+                <span className="text-dark-900 dark:text-white font-medium">{v ?? '—'}</span>
               </div>
             ))}
           </div>
         </Card>
         <Card>
-          <h4 className="text-sm font-semibold text-white mb-3">Domain Filter</h4>
+          <h4 className="text-sm font-semibold text-dark-900 dark:text-white mb-3">Domain Filter</h4>
           <div className="space-y-2 text-sm">
             {[
               ['Config Domains', s.domain_filter?.config_domains],
@@ -209,9 +209,9 @@ function OverviewTab() {
               ['Auto-Block Threshold', s.domain_filter?.visit_threshold > 0 ? `${s.domain_filter?.visit_threshold} visits` : 'Disabled'],
               ['Auto-Blocked Count', s.domain_filter?.auto_blocked_count],
             ].map(([k, v]) => (
-              <div key={k} className="flex justify-between items-center py-1 border-b border-dark-700">
+              <div key={k} className="flex justify-between items-center py-1 border-b border-dark-200 dark:border-dark-700">
                 <span className="text-dark-400">{k}</span>
-                <span className="text-white font-medium">{v ?? '—'}</span>
+                <span className="text-dark-900 dark:text-white font-medium">{v ?? '—'}</span>
               </div>
             ))}
           </div>
@@ -324,10 +324,10 @@ function DomainRulesTab() {
     <div className="space-y-4">
       {msg && <Alert type={msg.type}>{msg.text}</Alert>}
 
-      <div className="flex gap-2 border-b border-dark-700 pb-0">
+      <div className="flex gap-2 border-b border-dark-200 dark:border-dark-700 pb-0">
         {SUB_TABS.map(t => (
           <button key={t.id} onClick={() => setActiveSubTab(t.id)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeSubTab === t.id ? 'border-primary-500 text-primary-400' : 'border-transparent text-dark-400 hover:text-white'}`}>
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeSubTab === t.id ? 'border-primary-500 text-primary-400' : 'border-transparent text-dark-400 hover:text-dark-900 dark:text-white'}`}>
             {t.label}
           </button>
         ))}
@@ -341,15 +341,15 @@ function DomainRulesTab() {
             <input value={newDomain} onChange={e => setNewDomain(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addDomain()}
               placeholder="evil.com  (wildcards auto-added)"
-              className="flex-1 bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" />
+              className="flex-1 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500" />
             <Btn onClick={addDomain} size="md">+ Add Domain</Btn>
           </div>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search domains…"
-            className="w-full bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 mb-3" />
+            className="w-full bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500 mb-3" />
           <div className="space-y-1 max-h-96 overflow-y-auto">
             {filtered.length === 0 ? <p className="text-dark-500 text-sm py-4 text-center">No domains found</p> :
               filtered.map(d => (
-                <div key={d} className="flex items-center justify-between px-3 py-2 bg-dark-900 rounded-lg">
+                <div key={d} className="flex items-center justify-between px-3 py-2 bg-dark-50 dark:bg-dark-900 rounded-lg">
                   <span className="text-sm text-dark-200 font-mono">{d}</span>
                   <Btn variant="danger" onClick={() => removeDomain(d)}>Remove</Btn>
                 </div>
@@ -368,7 +368,7 @@ function DomainRulesTab() {
               <Card key={cat}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium text-white capitalize">{cat.replace('_', ' ')}</div>
+                    <div className="text-sm font-medium text-dark-900 dark:text-white capitalize">{cat.replace('_', ' ')}</div>
                     <div className="text-xs text-dark-500">Block all {cat.replace('_', ' ')} domains</div>
                   </div>
                   <Toggle
@@ -395,7 +395,7 @@ function DomainRulesTab() {
                 <Card key={entry.domain}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-mono text-sm text-white">{entry.domain}</div>
+                      <div className="font-mono text-sm text-dark-900 dark:text-white">{entry.domain}</div>
                       <div className="text-xs text-dark-400 mt-0.5">
                         {entry.visit_count} visits · Score {entry.threat_score} · Blocked {new Date(entry.blocked_at).toLocaleString()} · via {entry.source}
                       </div>
@@ -423,7 +423,7 @@ function DomainRulesTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-dark-400 border-b border-dark-700">
+                  <tr className="text-left text-xs text-dark-400 border-b border-dark-200 dark:border-dark-700">
                     <th className="pb-2 pr-4">Domain</th>
                     <th className="pb-2 pr-4">Visits</th>
                     <th className="pb-2 pr-4">Threat Score</th>
@@ -432,7 +432,7 @@ function DomainRulesTab() {
                 </thead>
                 <tbody>
                   {maliciousVisits.map(entry => (
-                    <tr key={entry.domain} className="border-b border-dark-800 hover:bg-dark-800/50">
+                    <tr key={entry.domain} className="border-b border-dark-800 hover:bg-white dark:bg-dark-800/50">
                       <td className="py-2 pr-4 font-mono text-dark-200">{entry.domain}</td>
                       <td className="py-2 pr-4">
                         <span className={`font-bold ${entry.visit_count >= threshold && threshold > 0 ? 'text-red-400' : 'text-yellow-400'}`}>
@@ -459,7 +459,7 @@ function DomainRulesTab() {
       {activeSubTab === 'settings' && (
         <div className="space-y-4">
           <Card>
-            <h4 className="text-sm font-semibold text-white mb-3">Auto-Block Threshold</h4>
+            <h4 className="text-sm font-semibold text-dark-900 dark:text-white mb-3">Auto-Block Threshold</h4>
             <p className="text-xs text-dark-400 mb-3">
               Threat-intel-flagged domains are alerted for the first N-1 visits.
               On the Nth visit they are automatically promoted to the blocked list (in-memory only; resets on restart).
@@ -481,7 +481,7 @@ function DomainRulesTab() {
 
           {blocklist && (
             <Card>
-              <h4 className="text-sm font-semibold text-white mb-3">Threat Intel Settings</h4>
+              <h4 className="text-sm font-semibold text-dark-900 dark:text-white mb-3">Threat Intel Settings</h4>
               <div className="space-y-2 text-sm">
                 {[
                   ['Enabled', blocklist.threat_intel?.enabled ? '✅ Yes' : '❌ No'],
@@ -490,9 +490,9 @@ function DomainRulesTab() {
                   ['Block Anonymizers', blocklist.threat_intel?.block_anonymizers ? '✅ Yes' : '❌ No'],
                   ['Anonymizer Threshold', blocklist.threat_intel?.anonymizer_block_threshold],
                 ].map(([k, v]) => (
-                  <div key={k} className="flex justify-between py-1 border-b border-dark-700">
+                  <div key={k} className="flex justify-between py-1 border-b border-dark-200 dark:border-dark-700">
                     <span className="text-dark-400">{k}</span>
-                    <span className="text-white">{v ?? '—'}</span>
+                    <span className="text-dark-900 dark:text-white">{v ?? '—'}</span>
                   </div>
                 ))}
               </div>
@@ -584,10 +584,10 @@ function IPRulesTab() {
   return (
     <div className="space-y-4">
       {msg && <Alert type={msg.type}>{msg.text}</Alert>}
-      <div className="flex gap-2 border-b border-dark-700 pb-0">
+      <div className="flex gap-2 border-b border-dark-200 dark:border-dark-700 pb-0">
         {SUB_TABS.map(t => (
           <button key={t.id} onClick={() => setActiveSubTab(t.id)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeSubTab === t.id ? 'border-primary-500 text-primary-400' : 'border-transparent text-dark-400 hover:text-white'}`}>
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeSubTab === t.id ? 'border-primary-500 text-primary-400' : 'border-transparent text-dark-400 hover:text-dark-900 dark:text-white'}`}>
             {t.label}
           </button>
         ))}
@@ -599,13 +599,13 @@ function IPRulesTab() {
           <div className="flex gap-2 mb-4">
             <input value={newIP} onChange={e => setNewIP(e.target.value)} onKeyDown={e => e.key === 'Enter' && addIP()}
               placeholder="1.2.3.4 or 10.0.0.0/8"
-              className="flex-1 bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" />
+              className="flex-1 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500" />
             <Btn onClick={addIP} size="md">+ Add</Btn>
           </div>
           <div className="space-y-1 max-h-80 overflow-y-auto">
             {ips.length === 0 ? <p className="text-dark-500 text-sm text-center py-4">No manually blocked IPs</p> :
               ips.map(ip => (
-                <div key={ip} className="flex items-center justify-between px-3 py-2 bg-dark-900 rounded-lg">
+                <div key={ip} className="flex items-center justify-between px-3 py-2 bg-dark-50 dark:bg-dark-900 rounded-lg">
                   <span className="font-mono text-sm text-dark-200">{ip}</span>
                   <Btn variant="danger" onClick={() => removeIP(ip)}>Remove</Btn>
                 </div>
@@ -621,13 +621,13 @@ function IPRulesTab() {
           <div className="flex gap-2 mb-4">
             <input value={newWL} onChange={e => setNewWL(e.target.value)} onKeyDown={e => e.key === 'Enter' && addWhitelist()}
               placeholder="1.2.3.4 or 192.168.0.0/24"
-              className="flex-1 bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" />
+              className="flex-1 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500" />
             <Btn onClick={addWhitelist} size="md">+ Whitelist</Btn>
           </div>
           <div className="space-y-1 max-h-80 overflow-y-auto">
             {whitelist.length === 0 ? <p className="text-dark-500 text-sm text-center py-4">No whitelisted IPs</p> :
               whitelist.map(ip => (
-                <div key={ip} className="flex items-center justify-between px-3 py-2 bg-dark-900 rounded-lg">
+                <div key={ip} className="flex items-center justify-between px-3 py-2 bg-dark-50 dark:bg-dark-900 rounded-lg">
                   <span className="font-mono text-sm text-dark-200">{ip}</span>
                   <Badge color="green">Whitelisted</Badge>
                 </div>
@@ -642,9 +642,9 @@ function IPRulesTab() {
           <SectionHeader title="Active IP Bans" subtitle="Escalating bans: 30m → 2h → 8h → 32h → permanent" />
           <div className="flex gap-2 mb-4">
             <input value={banIP} onChange={e => setBanIP(e.target.value)} placeholder="1.2.3.4"
-              className="flex-1 bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" />
+              className="flex-1 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500" />
             <select value={banDur} onChange={e => setBanDur(e.target.value)}
-              className="bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white">
+              className="bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white">
               {[['30', '30 min'],['120', '2 hr'],['480', '8 hr'],['1440', '24 hr'],['43200', '30 days']].map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
@@ -654,9 +654,9 @@ function IPRulesTab() {
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {bans.length === 0 ? <p className="text-dark-500 text-sm text-center py-4">No active bans</p> :
               bans.map(ban => (
-                <div key={ban.ip} className="flex items-center justify-between px-3 py-2 bg-dark-900 rounded-lg">
+                <div key={ban.ip} className="flex items-center justify-between px-3 py-2 bg-dark-50 dark:bg-dark-900 rounded-lg">
                   <div>
-                    <span className="font-mono text-sm text-white">{ban.ip}</span>
+                    <span className="font-mono text-sm text-dark-900 dark:text-white">{ban.ip}</span>
                     <div className="text-xs text-dark-500">{ban.reason} · expires {ban.expires_at ? new Date(ban.expires_at).toLocaleString() : 'permanent'}</div>
                   </div>
                   <Btn variant="ghost" onClick={() => deleteBan(ban.ip)}>Unban</Btn>
@@ -856,7 +856,7 @@ function BruteForceTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-dark-400 border-b border-dark-700">
+              <tr className="text-left text-xs text-dark-400 border-b border-dark-200 dark:border-dark-700">
                 <th className="pb-2 pr-4">Service</th>
                 <th className="pb-2 pr-4">Port</th>
                 <th className="pb-2 pr-4">Max Failures</th>
@@ -866,18 +866,18 @@ function BruteForceTab() {
             <tbody>
               {Object.entries(services).map(([svc, conf]) => (
                 <tr key={svc} className="border-b border-dark-800">
-                  <td className="py-2 pr-4 font-medium text-white uppercase text-xs">{svc}</td>
+                  <td className="py-2 pr-4 font-medium text-dark-900 dark:text-white uppercase text-xs">{svc}</td>
                   <td className="py-2 pr-4">
                     <input type="number" value={conf.port ?? ''} onChange={e => update(`brute_force.services.${svc}.port`, parseInt(e.target.value))}
-                      className="w-20 bg-dark-900 border border-dark-600 rounded px-2 py-1 text-xs text-white" />
+                      className="w-20 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded px-2 py-1 text-xs text-dark-900 dark:text-white" />
                   </td>
                   <td className="py-2 pr-4">
                     <input type="number" value={conf.max_failures ?? ''} onChange={e => update(`brute_force.services.${svc}.max_failures`, parseInt(e.target.value))}
-                      className="w-20 bg-dark-900 border border-dark-600 rounded px-2 py-1 text-xs text-white" />
+                      className="w-20 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded px-2 py-1 text-xs text-dark-900 dark:text-white" />
                   </td>
                   <td className="py-2">
                     <input type="number" value={conf.window_seconds ?? ''} onChange={e => update(`brute_force.services.${svc}.window_seconds`, parseInt(e.target.value))}
-                      className="w-20 bg-dark-900 border border-dark-600 rounded px-2 py-1 text-xs text-white" />
+                      className="w-20 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded px-2 py-1 text-xs text-dark-900 dark:text-white" />
                   </td>
                 </tr>
               ))}
@@ -943,7 +943,7 @@ function PortScanTab() {
         </div>
       </Card>
       <Card>
-        <h4 className="text-sm font-semibold text-white mb-3">Anomaly Detection</h4>
+        <h4 className="text-sm font-semibold text-dark-900 dark:text-white mb-3">Anomaly Detection</h4>
         <div className="grid grid-cols-2 gap-3">
           {[
             ['Protocol Violations (SYN+FIN, Xmas, Null)', 'anomaly.enable_protocol_violations', an.enable_protocol_violations],
@@ -1018,7 +1018,7 @@ function GeoIPTab() {
         <div className="mb-4">
           <label className="text-xs text-dark-400 block mb-1">Blocking Mode</label>
           <select value={cfg.mode || 'deny'} onChange={e => setCfg(p => ({ ...p, mode: e.target.value }))}
-            className="bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white">
+            className="bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white">
             <option value="deny">Deny Listed Countries</option>
             <option value="allow">Allow Listed Countries Only</option>
           </select>
@@ -1028,13 +1028,13 @@ function GeoIPTab() {
           <div className="flex gap-2 mb-3">
             <input value={newCountry} onChange={e => setNewCountry(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCountry()}
               placeholder="CN" maxLength={2}
-              className="w-20 bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white text-center uppercase focus:outline-none focus:border-primary-500" />
+              className="w-20 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white text-center uppercase focus:outline-none focus:border-primary-500" />
             <Btn onClick={addCountry}>+ Add</Btn>
           </div>
           <div className="flex flex-wrap gap-2">
             {(cfg.extra_blocked_countries || []).map(cc => (
-              <div key={cc} className="flex items-center gap-1 bg-dark-900 border border-dark-700 rounded px-2 py-1">
-                <span className="text-sm text-white">{cc}</span>
+              <div key={cc} className="flex items-center gap-1 bg-dark-50 dark:bg-dark-900 border border-dark-200 dark:border-dark-700 rounded px-2 py-1">
+                <span className="text-sm text-dark-900 dark:text-white">{cc}</span>
                 <button onClick={() => removeCountry(cc)} className="text-dark-500 hover:text-red-400 ml-1">×</button>
               </div>
             ))}
@@ -1090,7 +1090,7 @@ function CustomRulesTab() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-white">{rule.name}</span>
+                  <span className="text-sm font-semibold text-dark-900 dark:text-white">{rule.name}</span>
                   <Badge color={severityColor(rule.severity)}>{rule.severity}</Badge>
                   <Badge color={actionColor(rule.action)}>{rule.action}</Badge>
                   {rule.threshold_count > 0 && <Badge color="primary">threshold:{rule.threshold_count}</Badge>}
@@ -1150,9 +1150,9 @@ function VerdictLogsTab() {
       {msg && <Alert type={msg.type}>{msg.text}</Alert>}
       <div className="flex gap-3 items-center">
         <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter by IP, domain, reason…"
-          className="flex-1 bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" />
+          className="flex-1 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500" />
         <select value={actionFilter} onChange={e => setActionFilter(e.target.value)}
-          className="bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white">
+          className="bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white">
           <option value="">All Actions</option>
           {['DROP','BLOCK','REDIRECT','ALLOW'].map(a => <option key={a} value={a}>{a}</option>)}
         </select>
@@ -1161,8 +1161,8 @@ function VerdictLogsTab() {
       <div className="text-xs text-dark-500">{filtered.length} entries shown (last 200 verdicts)</div>
       <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
         <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-dark-800">
-            <tr className="text-left text-dark-400 border-b border-dark-700">
+          <thead className="sticky top-0 bg-white dark:bg-dark-800">
+            <tr className="text-left text-dark-400 border-b border-dark-200 dark:border-dark-700">
               <th className="pb-2 pr-3">Time</th>
               <th className="pb-2 pr-3">Action</th>
               <th className="pb-2 pr-3">Source</th>
@@ -1173,7 +1173,7 @@ function VerdictLogsTab() {
           </thead>
           <tbody>
             {filtered.map((l, i) => (
-              <tr key={i} className="border-b border-dark-800 hover:bg-dark-800/50">
+              <tr key={i} className="border-b border-dark-800 hover:bg-white dark:bg-dark-800/50">
                 <td className="py-1.5 pr-3 text-dark-500">{l.ts ? new Date(l.ts * 1000).toLocaleTimeString() : '—'}</td>
                 <td className="py-1.5 pr-3"><Badge color={actionBadge(l.action)}>{l.action}</Badge></td>
                 <td className="py-1.5 pr-3 font-mono text-dark-300">{l.src}:{l.sp}</td>
@@ -1230,7 +1230,7 @@ function AlertsTab() {
       {msg && <Alert type={msg.type}>{msg.text}</Alert>}
       <div className="flex gap-3">
         <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter alerts…"
-          className="flex-1 bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500" />
+          className="flex-1 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg px-3 py-2 text-sm text-dark-900 dark:text-white focus:outline-none focus:border-primary-500" />
         <Btn variant="ghost" onClick={load}>Refresh</Btn>
       </div>
       {filtered.length === 0 ? <Card><p className="text-dark-500 text-sm text-center py-4">No alerts</p></Card> :
@@ -1280,7 +1280,7 @@ class TabErrorBoundary extends Component {
           <p className="text-red-400 font-semibold mb-2">This tab encountered an error</p>
           <p className="text-dark-400 text-sm mb-4">{this.state.error.message}</p>
           <button onClick={() => this.setState({ error: null })}
-            className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg text-sm">
+            className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-dark-900 dark:text-white rounded-lg text-sm">
             Retry
           </button>
         </div>
@@ -1316,7 +1316,7 @@ export default function FirewallDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Firewall Engine</h1>
+          <h1 className="text-2xl font-bold text-dark-900 dark:text-white">Firewall Engine</h1>
           <p className="text-dark-400 text-sm mt-1">Comprehensive network security control panel</p>
         </div>
         <div className="flex items-center gap-2">
@@ -1326,7 +1326,7 @@ export default function FirewallDashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-dark-700 overflow-x-auto">
+      <div className="border-b border-dark-200 dark:border-dark-700 overflow-x-auto">
         <div className="flex gap-0 min-w-max">
           {TABS.map(tab => (
             <button
@@ -1335,7 +1335,7 @@ export default function FirewallDashboard() {
               className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-400 bg-primary-900/10'
-                  : 'border-transparent text-dark-400 hover:text-white hover:border-dark-600'
+                  : 'border-transparent text-dark-400 hover:text-dark-900 dark:text-white hover:border-dark-300 dark:border-dark-600'
               }`}
             >
               <span>{tab.icon}</span>

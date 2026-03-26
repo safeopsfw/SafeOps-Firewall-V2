@@ -34,13 +34,13 @@ export default function Analytics() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">Analytics</h1>
+        <h1 className="text-2xl font-bold text-dark-900 dark:text-white">Analytics</h1>
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-dark-400" />
+          <Calendar className="w-4 h-4 text-dark-500 dark:text-dark-400" />
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-lg text-dark-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm"
           >
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
@@ -51,10 +51,10 @@ export default function Analytics() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Threat Trends Chart */}
-        <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="w-5 h-5 text-primary-400" />
-            <h2 className="text-lg font-semibold text-white">Threat Trends</h2>
+            <TrendingUp className="w-5 h-5 text-primary-500 dark:text-primary-400" />
+            <h2 className="text-lg font-semibold text-dark-900 dark:text-white">Threat Trends</h2>
           </div>
           
           {/* Simple bar chart representation */}
@@ -62,10 +62,10 @@ export default function Analytics() {
             {threatTrends.slice(-5).map((day, idx) => (
               <div key={idx}>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-dark-400">{day.date}</span>
-                  <span className="text-white">{day.malware + day.phishing + day.c2 + day.spam}</span>
+                  <span className="text-dark-500 dark:text-dark-400">{day.date}</span>
+                  <span className="text-dark-900 dark:text-white">{day.malware + day.phishing + day.c2 + day.spam}</span>
                 </div>
-                <div className="flex h-6 bg-dark-700 rounded-lg overflow-hidden">
+                <div className="flex h-6 bg-dark-100 dark:bg-dark-700 rounded-lg overflow-hidden">
                   <div className="bg-red-500" style={{ width: `${(day.malware / 400) * 100}%` }} />
                   <div className="bg-yellow-500" style={{ width: `${(day.phishing / 400) * 100}%` }} />
                   <div className="bg-blue-500" style={{ width: `${(day.c2 / 400) * 100}%` }} />
@@ -76,27 +76,27 @@ export default function Analytics() {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-6 pt-4 border-t border-dark-700">
-            <span className="flex items-center gap-2 text-sm text-dark-300">
+          <div className="flex items-center gap-4 mt-6 pt-4 border-t border-dark-100 dark:border-dark-200 dark:border-dark-700">
+            <span className="flex items-center gap-2 text-sm text-dark-600 dark:text-dark-300">
               <span className="w-3 h-3 bg-red-500 rounded" /> Malware
             </span>
-            <span className="flex items-center gap-2 text-sm text-dark-300">
+            <span className="flex items-center gap-2 text-sm text-dark-600 dark:text-dark-300">
               <span className="w-3 h-3 bg-yellow-500 rounded" /> Phishing
             </span>
-            <span className="flex items-center gap-2 text-sm text-dark-300">
+            <span className="flex items-center gap-2 text-sm text-dark-600 dark:text-dark-300">
               <span className="w-3 h-3 bg-blue-500 rounded" /> C2
             </span>
-            <span className="flex items-center gap-2 text-sm text-dark-300">
+            <span className="flex items-center gap-2 text-sm text-dark-600 dark:text-dark-300">
               <span className="w-3 h-3 bg-green-500 rounded" /> Spam
             </span>
           </div>
         </div>
 
         {/* Threat Distribution */}
-        <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
+        <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
-            <PieChart className="w-5 h-5 text-primary-400" />
-            <h2 className="text-lg font-semibold text-white">Threat Distribution</h2>
+            <PieChart className="w-5 h-5 text-primary-500 dark:text-primary-400" />
+            <h2 className="text-lg font-semibold text-dark-900 dark:text-white">Threat Distribution</h2>
           </div>
 
           {/* Donut chart representation */}
@@ -126,8 +126,8 @@ export default function Analytics() {
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white">108K</div>
-                  <div className="text-dark-400 text-xs">Total</div>
+                  <div className="text-2xl font-bold text-dark-900 dark:text-white">108K</div>
+                  <div className="text-dark-500 dark:text-dark-400 text-xs">Total</div>
                 </div>
               </div>
             </div>
@@ -136,8 +136,8 @@ export default function Analytics() {
               {threatDistribution.map((item) => (
                 <div key={item.type} className="flex items-center gap-3">
                   <span className="w-3 h-3 rounded" style={{ backgroundColor: item.color }} />
-                  <span className="text-dark-300 text-sm flex-1">{item.type}</span>
-                  <span className="text-white font-medium">{item.percentage}%</span>
+                  <span className="text-dark-600 dark:text-dark-300 text-sm flex-1">{item.type}</span>
+                  <span className="text-dark-900 dark:text-white font-medium">{item.percentage}%</span>
                 </div>
               ))}
             </div>
@@ -146,20 +146,20 @@ export default function Analytics() {
       </div>
 
       {/* Top Sources */}
-      <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
+      <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
-          <BarChart3 className="w-5 h-5 text-primary-400" />
-          <h2 className="text-lg font-semibold text-white">Top Feed Sources</h2>
+          <BarChart3 className="w-5 h-5 text-primary-500 dark:text-primary-400" />
+          <h2 className="text-lg font-semibold text-dark-900 dark:text-white">Top Feed Sources</h2>
         </div>
 
         <div className="space-y-4">
           {topSources.map((source, idx) => (
             <div key={source.name}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-white">{source.name}</span>
-                <span className="text-dark-400">{source.count.toLocaleString()} records</span>
+                <span className="text-dark-900 dark:text-white">{source.name}</span>
+                <span className="text-dark-500 dark:text-dark-400">{source.count.toLocaleString()} records</span>
               </div>
-              <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
+              <div className="h-2 bg-dark-100 dark:bg-dark-700 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary-500 rounded-full"
                   style={{ width: `${source.percentage}%` }}

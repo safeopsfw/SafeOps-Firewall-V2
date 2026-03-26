@@ -23,13 +23,13 @@ function StatCard({ icon: Icon, label, value, sub, color = 'blue' }) {
     purple: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   };
   return (
-    <div className="bg-dark-800 border border-dark-700 rounded-xl p-5 flex items-start gap-4">
+    <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5 flex items-start gap-4">
       <div className={`p-2.5 rounded-lg border ${colors[color]}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div>
-        <div className="text-2xl font-bold text-white">{value ?? '—'}</div>
-        <div className="text-sm text-dark-400">{label}</div>
+        <div className="text-2xl font-bold text-dark-900 dark:text-white">{value ?? '—'}</div>
+        <div className="text-sm text-dark-500 dark:text-dark-400">{label}</div>
         {sub && <div className="text-xs text-dark-500 mt-0.5">{sub}</div>}
       </div>
     </div>
@@ -89,11 +89,11 @@ export default function CaptivePortal() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-dark-900 dark:text-white flex items-center gap-3">
             <Shield className="w-7 h-7 text-blue-400" />
             Captive Portal
           </h1>
-          <p className="text-dark-400 mt-1 text-sm">
+          <p className="text-dark-500 dark:text-dark-400 mt-1 text-sm">
             Network access control — redirects unregistered devices for CA certificate installation
           </p>
         </div>
@@ -101,7 +101,7 @@ export default function CaptivePortal() {
           <StatusBadge ok={isOnline} label={isOnline ? 'Online' : 'Offline'} />
           <button
             onClick={fetchHealth}
-            className="flex items-center gap-2 px-3 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-dark-100 dark:bg-dark-700 hover:bg-dark-200 dark:hover:bg-dark-600 border border-dark-300 dark:border-dark-600 text-dark-600 dark:text-dark-300 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white rounded-lg text-sm transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -168,8 +168,8 @@ export default function CaptivePortal() {
           {/* Portal Info */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Service Details */}
-            <div className="bg-dark-800 border border-dark-700 rounded-xl p-5">
-              <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5">
+              <h2 className="text-base font-semibold text-dark-900 dark:text-white mb-4 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-blue-400" />
                 Service Details
               </h2>
@@ -182,20 +182,20 @@ export default function CaptivePortal() {
                   { label: 'Version',    value: health.version || '—' },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between text-sm">
-                    <span className="text-dark-400">{label}</span>
-                    <span className="text-dark-200 font-mono">{value}</span>
+                    <span className="text-dark-500 dark:text-dark-400">{label}</span>
+                    <span className="text-dark-700 dark:text-dark-200 font-mono">{value}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* CA Certificate Download */}
-            <div className="bg-dark-800 border border-dark-700 rounded-xl p-5">
-              <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5">
+              <h2 className="text-base font-semibold text-dark-900 dark:text-white mb-4 flex items-center gap-2">
                 <Download className="w-4 h-4 text-green-400" />
                 CA Certificate
               </h2>
-              <p className="text-sm text-dark-400 mb-4">
+              <p className="text-sm text-dark-500 dark:text-dark-400 mb-4">
                 Download the SafeOps root CA certificate to trust internally signed TLS certificates.
               </p>
               <div className="space-y-2">
@@ -203,7 +203,7 @@ export default function CaptivePortal() {
                   <button
                     key={fmt}
                     onClick={() => downloadCA(fmt)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg text-sm text-dark-200 hover:text-white transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-2.5 bg-dark-100 dark:bg-dark-700 hover:bg-dark-200 dark:hover:bg-dark-600 border border-dark-300 dark:border-dark-600 rounded-lg text-sm text-dark-700 dark:text-dark-200 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white transition-colors"
                   >
                     <span className="font-mono">safeops-ca.{fmt}</span>
                     <Download className="w-4 h-4 text-dark-400" />
@@ -214,8 +214,8 @@ export default function CaptivePortal() {
           </div>
 
           {/* How it works */}
-          <div className="bg-dark-800 border border-dark-700 rounded-xl p-5">
-            <h2 className="text-base font-semibold text-white mb-4">How it works</h2>
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5">
+            <h2 className="text-base font-semibold text-dark-900 dark:text-white mb-4">How it works</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 {
@@ -239,8 +239,8 @@ export default function CaptivePortal() {
                     {step}
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-white">{title}</div>
-                    <div className="text-xs text-dark-400 mt-1">{desc}</div>
+                    <div className="text-sm font-medium text-dark-900 dark:text-white">{title}</div>
+                    <div className="text-xs text-dark-500 dark:text-dark-400 mt-1">{desc}</div>
                   </div>
                 </div>
               ))}
@@ -250,14 +250,14 @@ export default function CaptivePortal() {
       )}
 
       {/* Portal Actions */}
-      <div className="bg-dark-800 border border-dark-700 rounded-xl p-5">
-        <h2 className="text-base font-semibold text-white mb-4">Quick Actions</h2>
+      <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5">
+        <h2 className="text-base font-semibold text-dark-900 dark:text-white mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
           <a
             href="http://localhost:8090"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-dark-900 dark:text-white rounded-lg text-sm transition-colors"
           >
             <Wifi className="w-4 h-4" />
             Open Portal Page (HTTP)
@@ -266,14 +266,14 @@ export default function CaptivePortal() {
             href="https://localhost:8445"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-600 text-dark-900 dark:text-white rounded-lg text-sm transition-colors"
           >
             <Shield className="w-4 h-4" />
             Open Portal Page (HTTPS)
           </a>
           <button
             onClick={fetchHealth}
-            className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-dark-300 hover:text-white rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-dark-100 dark:bg-dark-700 hover:bg-dark-200 dark:hover:bg-dark-600 border border-dark-300 dark:border-dark-600 text-dark-600 dark:text-dark-300 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white rounded-lg text-sm transition-colors"
           >
             <CheckCircle className="w-4 h-4" />
             Check Trust Status

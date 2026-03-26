@@ -71,23 +71,23 @@ export default function Cognitive() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Cognitive Library</h1>
-          <p className="text-dark-400">Entity management and data models</p>
+          <h1 className="text-3xl font-bold text-dark-900 dark:text-white mb-2">Cognitive Library</h1>
+          <p className="text-dark-500 dark:text-dark-400">Entity management and data models</p>
         </div>
-        <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors">
+        <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors">
           <Plus className="w-4 h-4" />
           Import Entities
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-dark-700">
+      <div className="flex gap-2 mb-6 border-b border-dark-200 dark:border-dark-700">
         <button
           onClick={() => setActiveTab('entities')}
           className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'entities'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
           }`}
         >
           <Database className="w-4 h-4 inline mr-2" />
@@ -97,8 +97,8 @@ export default function Cognitive() {
           onClick={() => setActiveTab('users')}
           className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'users'
-              ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              ? 'text-primary-500 dark:text-primary-400 border-b-2 border-primary-500 dark:border-primary-400'
+              : 'text-dark-500 dark:text-dark-400 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white'
           }`}
         >
           <Users className="w-4 h-4 inline mr-2" />
@@ -116,7 +116,7 @@ export default function Cognitive() {
               placeholder="Filter entities..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -124,7 +124,7 @@ export default function Cognitive() {
           <div className="space-y-8">
             {Object.entries(filteredCategories).map(([letter, entities]) => (
               <div key={letter}>
-                <h2 className="text-xl font-bold text-white mb-4">{letter}</h2>
+                <h2 className="text-xl font-bold text-dark-900 dark:text-white mb-4">{letter}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {entities.map((entity) => {
                     const Icon = entity.icon;
@@ -132,7 +132,7 @@ export default function Cognitive() {
                       <button
                         key={entity.name}
                         onClick={() => setSelectedEntity(entity)}
-                        className="flex items-start gap-4 p-4 bg-dark-800 border border-dark-700 rounded-lg hover:bg-dark-700 hover:border-dark-600 transition-all text-left group"
+                        className="flex items-start gap-4 p-4 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-lg hover:bg-dark-50 dark:hover:bg-dark-700 hover:border-dark-300 dark:hover:border-dark-300 dark:border-dark-600 transition-all text-left group"
                       >
                         <div className="p-2 bg-primary-500/20 rounded-lg">
                           <Icon className="w-5 h-5 text-primary-400" />
@@ -146,7 +146,7 @@ export default function Cognitive() {
                               </span>
                             )}
                           </div>
-                          <p className="text-dark-400 text-sm mt-1">{entity.description}</p>
+                          <p className="text-dark-500 dark:text-dark-400 text-sm mt-1">{entity.description}</p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-dark-500 group-hover:text-primary-400 transition-colors" />
                       </button>
@@ -163,35 +163,35 @@ export default function Cognitive() {
         <div className="space-y-6">
           {/* Add User Button */}
           <div className="flex justify-end">
-            <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors">
+            <button className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors">
               <Plus className="w-4 h-4" />
               Add User
             </button>
           </div>
 
           {/* Users Table */}
-          <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden">
             <table className="w-full">
-              <thead className="bg-dark-700">
+              <thead className="bg-dark-100 dark:bg-dark-700">
                 <tr>
-                  <th className="text-left px-6 py-4 text-dark-300 font-medium">User</th>
-                  <th className="text-left px-6 py-4 text-dark-300 font-medium">Role</th>
-                  <th className="text-left px-6 py-4 text-dark-300 font-medium">Status</th>
-                  <th className="text-left px-6 py-4 text-dark-300 font-medium">Last Login</th>
-                  <th className="text-right px-6 py-4 text-dark-300 font-medium">Actions</th>
+                  <th className="text-left px-6 py-4 text-dark-600 dark:text-dark-300 font-medium">User</th>
+                  <th className="text-left px-6 py-4 text-dark-600 dark:text-dark-300 font-medium">Role</th>
+                  <th className="text-left px-6 py-4 text-dark-600 dark:text-dark-300 font-medium">Status</th>
+                  <th className="text-left px-6 py-4 text-dark-600 dark:text-dark-300 font-medium">Last Login</th>
+                  <th className="text-right px-6 py-4 text-dark-600 dark:text-dark-300 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {mockUsers.map((user) => (
-                  <tr key={user.id} className="border-t border-dark-700 hover:bg-dark-700/50">
+                  <tr key={user.id} className="border-t border-dark-200 dark:border-dark-700 hover:bg-dark-50 dark:hover:bg-dark-700/50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
-                          <span className="text-white font-medium">{user.name.charAt(0)}</span>
+                          <span className="text-dark-900 dark:text-white font-medium">{user.name.charAt(0)}</span>
                         </div>
                         <div>
-                          <div className="text-white font-medium">{user.name}</div>
-                          <div className="text-dark-400 text-sm">{user.email}</div>
+                          <div className="text-dark-900 dark:text-white font-medium">{user.name}</div>
+                          <div className="text-dark-500 dark:text-dark-400 text-sm">{user.email}</div>
                         </div>
                       </div>
                     </td>
@@ -211,15 +211,15 @@ export default function Cognitive() {
                         {user.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-dark-400">
+                    <td className="px-6 py-4 text-dark-500 dark:text-dark-400">
                       {new Date(user.lastLogin).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 text-dark-400 hover:text-white hover:bg-dark-600 rounded-lg transition-colors">
+                        <button className="p-2 text-dark-400 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white hover:bg-dark-100 dark:hover:bg-dark-600 rounded-lg transition-colors">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button className="p-2 text-dark-400 hover:text-red-400 hover:bg-dark-600 rounded-lg transition-colors">
+                        <button className="p-2 text-dark-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-dark-100 dark:hover:bg-dark-600 rounded-lg transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

@@ -94,6 +94,109 @@
   --transition-slow:   0.4s  cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ---------- Light Theme Variables ---------- */
+:root.light {
+  /* Surface colors */
+  --bg-base:       #f1f5f9;
+  --bg-surface:    #ffffff;
+  --bg-elevated:   #ffffff;
+  --bg-overlay:    #f8fafc;
+  --bg-card:       rgba(255, 255, 255, 0.9);
+  --bg-card-hover: rgba(241, 245, 249, 0.95);
+  --bg-glass:      rgba(255, 255, 255, 0.75);
+  --bg-input:      #f8fafc;
+
+  /* Borders */
+  --border-subtle:  rgba(0, 0, 0, 0.08);
+  --border-default: rgba(0, 0, 0, 0.12);
+  --border-focus:   rgba(37, 99, 235, 0.50);
+  --border-card:    rgba(0, 0, 0, 0.10);
+
+  /* Text */
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --text-inverse:   #ffffff;
+
+  /* Accent palette — slightly deeper for contrast on light */
+  --accent-blue:    #2563eb;
+  --accent-purple:  #7c3aed;
+  --accent-pink:    #db2777;
+  --accent-cyan:    #0891b2;
+  --accent-green:   #059669;
+  --accent-amber:   #d97706;
+  --accent-orange:  #ea580c;
+  --accent-red:     #dc2626;
+
+  /* Semantic */
+  --color-success:  #059669;
+  --color-warning:  #d97706;
+  --color-danger:   #dc2626;
+  --color-info:     #2563eb;
+
+  /* Severity */
+  --severity-critical: #dc2626;
+  --severity-high:     #ef4444;
+  --severity-medium:   #d97706;
+  --severity-low:      #2563eb;
+  --severity-info:     #64748b;
+
+  /* Status */
+  --status-active:   #059669;
+  --status-inactive: #94a3b8;
+  --status-warning:  #d97706;
+  --status-error:    #dc2626;
+
+  /* Gradients */
+  --gradient-primary:   linear-gradient(135deg, #2563eb, #7c3aed);
+  --gradient-glow:      linear-gradient(135deg, #2563eb, #7c3aed, #db2777);
+  --gradient-success:   linear-gradient(135deg, #059669, #0891b2);
+  --gradient-danger:    linear-gradient(135deg, #dc2626, #ea580c);
+  --gradient-surface:   linear-gradient(180deg, rgba(0,0,0,0.02) 0%, transparent 100%);
+
+  /* Shadows */
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg:    0 8px 30px rgba(0, 0, 0, 0.10);
+  --shadow-glow:  0 0 20px rgba(37, 99, 235, 0.08);
+}
+
+/* Light-mode specific overrides */
+:root.light body::before { display: none; }
+
+:root.light ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); }
+:root.light ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.25); }
+
+:root.light .stat-card .stat-icon.blue { background: rgba(37, 99, 235, 0.10); }
+:root.light .stat-card .stat-icon.green { background: rgba(5, 150, 105, 0.10); }
+:root.light .stat-card .stat-icon.purple { background: rgba(124, 58, 237, 0.10); }
+:root.light .stat-card .stat-icon.red { background: rgba(220, 38, 38, 0.10); }
+:root.light .stat-card .stat-icon.amber { background: rgba(217, 119, 6, 0.10); }
+:root.light .stat-card .stat-icon.cyan { background: rgba(8, 145, 178, 0.10); }
+
+:root.light .stat-card:hover { border-color: rgba(0, 0, 0, 0.15); }
+:root.light .card:hover { border-color: rgba(0, 0, 0, 0.15); }
+:root.light .card:hover::before { opacity: 0.3; }
+:root.light tbody tr:nth-child(even) { background: rgba(0, 0, 0, 0.02); }
+:root.light tbody tr:hover { background: rgba(0, 0, 0, 0.03); }
+:root.light .nav-item:hover { background: rgba(0, 0, 0, 0.04); }
+:root.light .nav-item.active { color: var(--accent-blue); background: rgba(37, 99, 235, 0.06); }
+:root.light .badge-critical { background: rgba(220, 38, 38, 0.10); }
+:root.light .badge-high { background: rgba(239, 68, 68, 0.10); }
+:root.light .badge-medium { background: rgba(217, 119, 6, 0.10); }
+:root.light .badge-low { background: rgba(37, 99, 235, 0.10); }
+:root.light .badge-success { background: rgba(5, 150, 105, 0.10); }
+:root.light .badge-warning { background: rgba(217, 119, 6, 0.10); }
+:root.light .badge-danger { background: rgba(220, 38, 38, 0.10); }
+:root.light .badge-secondary { background: rgba(100, 116, 139, 0.08); }
+:root.light .tag { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.08); }
+:root.light .ticket-card:hover { border-color: rgba(0, 0, 0, 0.15); }
+:root.light .skeleton { background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); }
+:root.light .modal-overlay { background: rgba(0, 0, 0, 0.3); }
+:root.light .btn-ghost:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
+:root.light .stat-change.up { background: rgba(5, 150, 105, 0.10); }
+:root.light .stat-change.down { background: rgba(220, 38, 38, 0.10); }
+
 /* ---------- Reset & Base ---------- */
 *, *::before, *::after {
   margin: 0;

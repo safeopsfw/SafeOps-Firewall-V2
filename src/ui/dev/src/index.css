@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Tailwind v4: enable class-based dark mode (html.dark) */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -8,39 +12,60 @@
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
 }
 
 /* Dark theme default */
-body {
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
   background-color: #0f172a;
   color: #f8fafc;
 }
 
 /* Light theme */
-body.light {
-  background-color: #f8fafc;
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #f1f5f9;
   color: #0f172a;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - dark */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Custom scrollbar - light */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: #e2e8f0;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #94a3b8;
   border-radius: 4px;
 }
 
@@ -56,15 +81,28 @@ body.light {
   background-clip: text;
 }
 
-.glass {
+html.dark .glass {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.card {
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+html.dark .card {
   background-color: #1e293b;
   border: 1px solid #334155;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 0.75rem;
   padding: 1.5rem;
 }
@@ -73,9 +111,14 @@ body.light {
   transition: all 0.2s;
 }
 
-.card-hover:hover {
+html.dark .card-hover:hover {
   background-color: #334155;
   border-color: #475569;
+}
+
+.card-hover:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 /* Animations */
@@ -95,4 +138,37 @@ body.light {
 
 .animate-slide-up {
   animation: slideUp 0.3s ease-out;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+html.dark .theme-toggle {
+  color: #94a3b8;
+}
+
+html.dark .theme-toggle:hover {
+  color: #f8fafc;
+  background: #334155;
+}
+
+.theme-toggle {
+  color: #475569;
+}
+
+.theme-toggle:hover {
+  color: #0f172a;
+  background: #e2e8f0;
 }

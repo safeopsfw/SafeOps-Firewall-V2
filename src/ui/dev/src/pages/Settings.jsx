@@ -13,8 +13,12 @@ import {
   XCircle,
   Loader2,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const mockDatabases = [
   { id: 1, name: 'Threat Intelligence DB', host: 'localhost', port: 5432, database: 'threat_intel_db', isDefault: true, status: 'connected' },
@@ -26,7 +30,7 @@ export default function SettingsPage() {
   const [dataSource, setDataSource] = useState(() => localStorage.getItem('safeops_data_source') || 'dummy');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [theme, setTheme] = useState('dark');
+  const { theme, toggleTheme } = useTheme();
   const [databases, setDatabases] = useState(mockDatabases);
   const [newDb, setNewDb] = useState({ name: '', host: 'localhost', port: '5432', database: '', username: '', password: '' });
   const [testing, setTesting] = useState(false);
@@ -82,12 +86,12 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-3xl font-bold text-white mb-6">Settings</h1>
+      <h1 className="text-3xl font-bold text-dark-900 dark:text-white mb-6">Settings</h1>
 
       <div className="flex gap-6">
         {/* Sidebar */}
         <div className="w-64 shrink-0">
-          <div className="bg-dark-800 border border-dark-700 rounded-xl p-2">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-2 transition-colors">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -96,8 +100,8 @@ export default function SettingsPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     activeTab === tab.id
-                      ? 'bg-primary-500/20 text-primary-400'
-                      : 'text-dark-300 hover:bg-dark-700 hover:text-white'
+                      ? 'bg-primary-500/20 text-primary-600 dark:text-primary-400'
+                      : 'text-dark-600 dark:text-dark-300 hover:bg-dark-100 dark:hover:bg-dark-700 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -114,16 +118,16 @@ export default function SettingsPage() {
           {activeTab === 'general' && (
             <div className="space-y-6">
               {/* Data Source Toggle */}
-              <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">Data Source</h2>
-                <p className="text-dark-400 text-sm mb-4">
+              <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-colors">
+                <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4">Data Source</h2>
+                <p className="text-dark-500 dark:text-dark-400 text-sm mb-4">
                   Choose between demo data for development or connect to real database.
                 </p>
                 <div className="flex gap-4 mb-4">
                   <label className={`flex-1 flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
                     dataSource === 'dummy' 
                       ? 'border-primary-500 bg-primary-500/10' 
-                      : 'border-dark-600 hover:border-dark-500'
+                      : 'border-dark-300 dark:border-dark-600 hover:border-dark-400 dark:hover:border-dark-500'
                   }`}>
                     <input
                       type="radio"
@@ -134,14 +138,14 @@ export default function SettingsPage() {
                       className="accent-primary-500"
                     />
                     <div>
-                      <div className="text-white font-medium">Demo Data</div>
-                      <div className="text-dark-400 text-sm">Use mock data for development</div>
+                      <div className="text-dark-900 dark:text-white font-medium">Demo Data</div>
+                      <div className="text-dark-500 dark:text-dark-400 text-sm">Use mock data for development</div>
                     </div>
                   </label>
                   <label className={`flex-1 flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
                     dataSource === 'database' 
                       ? 'border-primary-500 bg-primary-500/10' 
-                      : 'border-dark-600 hover:border-dark-500'
+                      : 'border-dark-300 dark:border-dark-600 hover:border-dark-400 dark:hover:border-dark-500'
                   }`}>
                     <input
                       type="radio"
@@ -152,8 +156,8 @@ export default function SettingsPage() {
                       className="accent-primary-500"
                     />
                     <div>
-                      <div className="text-white font-medium">Database</div>
-                      <div className="text-dark-400 text-sm">Connect to PostgreSQL</div>
+                      <div className="text-dark-900 dark:text-white font-medium">Database</div>
+                      <div className="text-dark-500 dark:text-dark-400 text-sm">Connect to PostgreSQL</div>
                     </div>
                   </label>
                 </div>
@@ -163,10 +167,10 @@ export default function SettingsPage() {
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 animate-fade-in">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                        <AlertTriangle className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />
                         <div>
-                          <div className="text-yellow-400 font-medium">Unsaved Changes</div>
-                          <div className="text-yellow-300/70 text-sm">
+                          <div className="text-yellow-600 dark:text-yellow-400 font-medium">Unsaved Changes</div>
+                          <div className="text-yellow-600/70 dark:text-yellow-300/70 text-sm">
                             {dataSource === 'database' 
                               ? 'Switching to database mode will reload the app to fetch real data.'
                               : 'Switching to demo mode will reload the app with mock data.'
@@ -197,7 +201,7 @@ export default function SettingsPage() {
                 
                 {/* Current Mode Indicator */}
                 <div className={`mt-4 flex items-center gap-2 text-sm ${
-                  localStorage.getItem('safeops_data_source') === 'database' ? 'text-green-400' : 'text-blue-400'
+                  localStorage.getItem('safeops_data_source') === 'database' ? 'text-green-500 dark:text-green-400' : 'text-blue-500 dark:text-blue-400'
                 }`}>
                   <Database className="w-4 h-4" />
                   <span>Current: {localStorage.getItem('safeops_data_source') === 'database' ? 'Database Mode' : 'Demo Mode'}</span>
@@ -205,16 +209,16 @@ export default function SettingsPage() {
               </div>
 
               {/* Account Info */}
-              <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">Account</h2>
+              <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-colors">
+                <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4">Account</h2>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-2xl font-bold">S</span>
+                    <span className="text-dark-900 dark:text-white text-2xl font-bold">S</span>
                   </div>
                   <div>
-                    <div className="text-white font-medium">SafeOps Admin</div>
-                    <div className="text-dark-400">admin@safeops.com</div>
-                    <div className="text-primary-400 text-sm">superadmin</div>
+                    <div className="text-dark-900 dark:text-white font-medium">SafeOps Admin</div>
+                    <div className="text-dark-500 dark:text-dark-400">admin@safeops.com</div>
+                    <div className="text-primary-500 dark:text-primary-400 text-sm">superadmin</div>
                   </div>
                 </div>
               </div>
@@ -225,39 +229,39 @@ export default function SettingsPage() {
           {activeTab === 'database' && (
             <div className="space-y-6">
               {/* Current Databases */}
-              <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">Database Connections</h2>
+              <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-colors">
+                <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4">Database Connections</h2>
                 <div className="space-y-3">
                   {databases.map((db) => (
                     <div
                       key={db.id}
                       className={`flex items-center justify-between p-4 rounded-lg border ${
-                        db.isDefault ? 'border-primary-500/30 bg-primary-500/5' : 'border-dark-600'
+                        db.isDefault ? 'border-primary-500/30 bg-primary-500/5' : 'border-dark-300 dark:border-dark-600'
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <Database className="w-8 h-8 text-primary-400" />
+                        <Database className="w-8 h-8 text-primary-500 dark:text-primary-400" />
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">{db.name}</span>
+                            <span className="text-dark-900 dark:text-white font-medium">{db.name}</span>
                             {db.isDefault && (
-                              <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded">Default</span>
+                              <span className="text-xs bg-primary-500/20 text-primary-500 dark:text-primary-400 px-2 py-0.5 rounded">Default</span>
                             )}
                           </div>
-                          <div className="text-dark-400 text-sm">
+                          <div className="text-dark-500 dark:text-dark-400 text-sm">
                             {db.host}:{db.port}/{db.database}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={`flex items-center gap-1 text-sm ${
-                          db.status === 'connected' ? 'text-green-400' : 'text-yellow-400'
+                          db.status === 'connected' ? 'text-green-500 dark:text-green-400' : 'text-yellow-500 dark:text-yellow-400'
                         }`}>
                           {db.status === 'connected' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                           {db.status}
                         </span>
                         {!db.isDefault && (
-                          <button className="p-2 text-dark-400 hover:text-red-400 hover:bg-dark-700 rounded-lg">
+                          <button className="p-2 text-dark-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-dark-100 dark:hover:bg-dark-700 rounded-lg">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
@@ -268,67 +272,67 @@ export default function SettingsPage() {
               </div>
 
               {/* Add New Database */}
-              <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">Add Database Connection</h2>
+              <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-colors">
+                <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4">Add Database Connection</h2>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm text-dark-300 mb-2">Connection Name</label>
+                    <label className="block text-sm text-dark-600 dark:text-dark-300 mb-2">Connection Name</label>
                     <input
                       type="text"
                       value={newDb.name}
                       onChange={(e) => setNewDb({...newDb, name: e.target.value})}
                       placeholder="My Database"
-                      className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-dark-300 mb-2">Database Name</label>
+                    <label className="block text-sm text-dark-600 dark:text-dark-300 mb-2">Database Name</label>
                     <input
                       type="text"
                       value={newDb.database}
                       onChange={(e) => setNewDb({...newDb, database: e.target.value})}
                       placeholder="my_database"
-                      className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-dark-300 mb-2">Host</label>
+                    <label className="block text-sm text-dark-600 dark:text-dark-300 mb-2">Host</label>
                     <input
                       type="text"
                       value={newDb.host}
                       onChange={(e) => setNewDb({...newDb, host: e.target.value})}
                       placeholder="localhost"
-                      className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-dark-300 mb-2">Port</label>
+                    <label className="block text-sm text-dark-600 dark:text-dark-300 mb-2">Port</label>
                     <input
                       type="text"
                       value={newDb.port}
                       onChange={(e) => setNewDb({...newDb, port: e.target.value})}
                       placeholder="5432"
-                      className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-dark-300 mb-2">Username</label>
+                    <label className="block text-sm text-dark-600 dark:text-dark-300 mb-2">Username</label>
                     <input
                       type="text"
                       value={newDb.username}
                       onChange={(e) => setNewDb({...newDb, username: e.target.value})}
                       placeholder="postgres"
-                      className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-dark-300 mb-2">Password</label>
+                    <label className="block text-sm text-dark-600 dark:text-dark-300 mb-2">Password</label>
                     <input
                       type="password"
                       value={newDb.password}
                       onChange={(e) => setNewDb({...newDb, password: e.target.value})}
                       placeholder="••••••••"
-                      className="w-full px-4 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 dark:placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
@@ -336,14 +340,14 @@ export default function SettingsPage() {
                   <button
                     onClick={testConnection}
                     disabled={testing}
-                    className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-dark-100 dark:bg-dark-700 hover:bg-dark-200 dark:hover:bg-dark-600 text-dark-600 dark:text-dark-300 rounded-lg transition-colors"
                   >
                     {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                     Test Connection
                   </button>
                   <button
                     onClick={addDatabase}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white rounded-lg transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                     Add Database
@@ -355,39 +359,33 @@ export default function SettingsPage() {
 
           {/* Appearance */}
           {activeTab === 'appearance' && (
-            <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Theme</h2>
+            <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-colors">
+              <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4">Theme</h2>
               <div className="flex gap-4">
-                <label className={`flex-1 flex items-center gap-3 p-4 rounded-lg border cursor-pointer ${
-                  theme === 'dark' ? 'border-primary-500 bg-primary-500/10' : 'border-dark-600'
-                }`}>
-                  <input
-                    type="radio"
-                    name="theme"
-                    value="dark"
-                    checked={theme === 'dark'}
-                    onChange={(e) => setTheme(e.target.value)}
-                    className="accent-primary-500"
-                  />
+                <label className={`flex-1 flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                  theme === 'dark' ? 'border-primary-500 bg-primary-500/10' : 'border-dark-300 dark:border-dark-600'
+                }`}
+                  onClick={() => { if (theme !== 'dark') toggleTheme(); }}
+                >
+                  <div className="p-2 bg-white dark:bg-dark-800 dark:bg-dark-50 dark:bg-dark-900 rounded-lg">
+                    <Moon className="w-5 h-5 text-primary-400" />
+                  </div>
                   <div>
-                    <div className="text-white font-medium">Dark Mode</div>
-                    <div className="text-dark-400 text-sm">Easier on the eyes</div>
+                    <div className="text-dark-900 dark:text-white font-medium">Dark Mode</div>
+                    <div className="text-dark-500 dark:text-dark-400 text-sm">Easier on the eyes</div>
                   </div>
                 </label>
-                <label className={`flex-1 flex items-center gap-3 p-4 rounded-lg border cursor-pointer ${
-                  theme === 'light' ? 'border-primary-500 bg-primary-500/10' : 'border-dark-600'
-                }`}>
-                  <input
-                    type="radio"
-                    name="theme"
-                    value="light"
-                    checked={theme === 'light'}
-                    onChange={(e) => setTheme(e.target.value)}
-                    className="accent-primary-500"
-                  />
+                <label className={`flex-1 flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                  theme === 'light' ? 'border-primary-500 bg-primary-500/10' : 'border-dark-300 dark:border-dark-600'
+                }`}
+                  onClick={() => { if (theme !== 'light') toggleTheme(); }}
+                >
+                  <div className="p-2 bg-yellow-100 dark:bg-yellow-500/20 rounded-lg">
+                    <Sun className="w-5 h-5 text-yellow-500" />
+                  </div>
                   <div>
-                    <div className="text-white font-medium">Light Mode</div>
-                    <div className="text-dark-400 text-sm">Better for daylight</div>
+                    <div className="text-dark-900 dark:text-white font-medium">Light Mode</div>
+                    <div className="text-dark-500 dark:text-dark-400 text-sm">Better for daylight</div>
                   </div>
                 </label>
               </div>
@@ -396,11 +394,11 @@ export default function SettingsPage() {
 
           {/* Other tabs - placeholder */}
           {(activeTab === 'notifications' || activeTab === 'security') && (
-            <div className="bg-dark-800 border border-dark-700 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">
+            <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-colors">
+              <h2 className="text-lg font-semibold text-dark-900 dark:text-white mb-4">
                 {activeTab === 'notifications' ? 'Notifications' : 'Security'}
               </h2>
-              <p className="text-dark-400">Settings for {activeTab} will be available here.</p>
+              <p className="text-dark-500 dark:text-dark-400">Settings for {activeTab} will be available here.</p>
             </div>
           )}
         </div>

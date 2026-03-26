@@ -24,6 +24,7 @@
   let loadingIds = new Set();
   let toast = null;
   let toastTimer = null;
+  let lightMode = false;
 
   // SIEM state
   let siem = { elasticRunning: false, kibanaRunning: false, siemDir: '', hasScripts: false, elasticPid: 0, kibanaPid: 0 };
@@ -266,6 +267,13 @@
     });
     EventsOn('update:available', d => { if (!updateDismissed) updateInfo = d; });
     EventsOn('update:progress',  d => { updateProgress = { percent: d.percent, message: d.message }; });
+
+    // Restore theme preference
+    const savedTheme = localStorage.getItem('safeops-desktop-theme');
+    if (savedTheme === 'light') {
+      lightMode = true;
+      document.body.classList.add('light');
+    }
   });
 
   onDestroy(() => {
@@ -484,6 +492,9 @@
           <button class="btn-sm btn-red-outline" on:click={handleStopAll}>Stop All</button>
           <button class="btn-sm btn-blue" on:click={handleOpenConsole}>🌐 Open Console</button>
           <button class="btn-sm btn-ghost-sm" on:click={handleReadme} title="View getting started guide">📄</button>
+          <button class="btn-sm btn-theme-toggle" on:click={() => { lightMode = !lightMode; document.body.classList.toggle('light'); localStorage.setItem('safeops-desktop-theme', lightMode ? 'light' : 'dark'); }} title={lightMode ? 'Switch to dark mode' : 'Switch to light mode'}>
+            {lightMode ? '🌙' : '☀️'}
+          </button>
         </div>
       </header>
 
@@ -1180,4 +1191,141 @@
   .update-progress-fill { height:100%; background:linear-gradient(90deg,#1f6feb,#58a6ff); border-radius:2px; transition:width .3s; }
   .footer-update-btn { margin-left:auto; font-size:10px; color:#6e7681; cursor:pointer; background:none; border:none; text-decoration:underline; }
   .footer-update-btn:hover { color:#58a6ff; }
+
+  /* ── Theme toggle button ────────────────────────────────────────────── */
+  .btn-theme-toggle {
+    background: #21262d; border: 1px solid #30363d; color: #8b949e;
+    padding: 6px 10px; border-radius: 6px; font-size: 14px; cursor: pointer;
+    transition: all .15s; line-height: 1;
+  }
+  .btn-theme-toggle:hover { background: #30363d; border-color: #6e7681; color: #e6edf3; }
+
+  /* ── LIGHT THEME OVERRIDES ──────────────────────────────────────────── */
+  :global(body.light) { background: #f1f5f9 !important; color: #0f172a !important; }
+
+  :global(body.light) main { color: #0f172a; }
+
+  /* Toast */
+  :global(body.light) .toast-info    { background: #3b82f6; }
+  :global(body.light) .toast-error   { background: #ef4444; }
+  :global(body.light) .toast-success { background: #16a34a; }
+
+  /* Loading */
+  :global(body.light) .spinner { border-color: #e2e8f0; border-top-color: #3b82f6; }
+  :global(body.light) .spinner-sm { border-color: #e2e8f0; border-top-color: #3b82f6; }
+  :global(body.light) .loading-text { color: #64748b; }
+
+  /* Shared */
+  :global(body.light) .logo-title { color: #0f172a; }
+  :global(body.light) .logo-sub   { color: #64748b; }
+
+  :global(body.light) .btn-ghost { background: transparent; border-color: #cbd5e1; color: #475569; }
+  :global(body.light) .btn-ghost:hover { border-color: #94a3b8; color: #0f172a; }
+  :global(body.light) .btn-ghost-sm { background: transparent; border-color: #cbd5e1; color: #475569; }
+  :global(body.light) .btn-ghost-sm:hover:not(:disabled) { border-color: #94a3b8; color: #0f172a; }
+  :global(body.light) .btn-link { color: #64748b; }
+  :global(body.light) .btn-link:hover { color: #475569; }
+
+  /* Theme toggle in light mode */
+  :global(body.light) .btn-theme-toggle { background: #e2e8f0; border-color: #cbd5e1; color: #475569; }
+  :global(body.light) .btn-theme-toggle:hover { background: #cbd5e1; border-color: #94a3b8; color: #0f172a; }
+
+  /* Setup */
+  :global(body.light) .setup-sidebar { background: #ffffff; border-right-color: #e2e8f0; }
+  :global(body.light) .setup-logo { border-bottom-color: #e2e8f0; }
+  :global(body.light) .setup-step-item.step-active { background: #f1f5f9; }
+  :global(body.light) .step-num { border-color: #cbd5e1; background: #ffffff; color: #475569; }
+  :global(body.light) .setup-step-item.step-active .step-num { border-color: #3b82f6; color: #3b82f6; }
+  :global(body.light) .step-label { color: #475569; }
+  :global(body.light) .setup-step-item.step-active .step-label { color: #0f172a; }
+  :global(body.light) .setup-sidebar-foot { border-top-color: #e2e8f0; }
+  :global(body.light) .setup-content { background: #f8fafc; }
+  :global(body.light) .setup-title { color: #0f172a; }
+  :global(body.light) .setup-desc { color: #64748b; }
+  :global(body.light) .info-card { background: #ffffff; border-color: #e2e8f0; }
+  :global(body.light) .info-name { color: #0f172a; }
+  :global(body.light) .info-desc { color: #64748b; }
+  :global(body.light) .setup-creds-section { background: #ffffff; border-color: #e2e8f0; }
+  :global(body.light) .creds-title { color: #0f172a; }
+  :global(body.light) .creds-desc { color: #64748b; }
+  :global(body.light) .creds-form input { background: #f8fafc; border-color: #cbd5e1; color: #0f172a; }
+  :global(body.light) .creds-form input:focus { border-color: #3b82f6; }
+  :global(body.light) .setup-note { background: #fffbeb; border-color: #f59e0b33; color: #92400e; }
+  :global(body.light) .step-msg { color: #475569; }
+  :global(body.light) .step-running { color: #475569; }
+  :global(body.light) .progress-bar-track { background: #e2e8f0; }
+  :global(body.light) .progress-pct { color: #64748b; }
+  :global(body.light) .steps-list-mini { background: #ffffff; }
+  :global(body.light) .step-mini { color: #64748b; }
+  :global(body.light) .step-mini.mini-active { color: #0f172a; }
+
+  /* Launcher */
+  :global(body.light) .launcher-header { background: #ffffff; border-bottom-color: #e2e8f0; }
+  :global(body.light) .pill-green  { background: #f0fdf4; color: #16a34a; border-color: #16a34a33; }
+  :global(body.light) .pill-yellow { background: #fffbeb; color: #d97706; border-color: #d9770633; }
+  :global(body.light) .pill-gray   { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+
+  :global(body.light) .stat-chip { background: #f1f5f9; border-color: #e2e8f0; }
+  :global(body.light) .stat-label { color: #64748b; }
+  :global(body.light) .stat-val { color: #2563eb; }
+
+  :global(body.light) .launcher-body::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+  :global(body.light) .group-label { color: #475569; border-bottom-color: #e2e8f0; }
+  :global(body.light) .glabel-count { background: #e2e8f0; }
+
+  :global(body.light) .webui-card { background: #ffffff; border-color: #e2e8f0; }
+  :global(body.light) .webui-title { color: #0f172a; }
+  :global(body.light) .webui-desc { color: #64748b; }
+  :global(body.light) .port-tag { background: #f1f5f9; color: #475569; }
+  :global(body.light) .sub-row { color: #64748b; }
+  :global(body.light) .dot-off { background: #cbd5e1; }
+
+  :global(body.light) .badge-stopped { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+
+  :global(body.light) .svc-card { background: #ffffff; border-color: #e2e8f0; }
+  :global(body.light) .svc-card:hover { border-color: #cbd5e1; }
+  :global(body.light) .svc-name { color: #0f172a; }
+  :global(body.light) .svc-desc { color: #64748b; }
+  :global(body.light) .svc-port { color: #2563eb; }
+  :global(body.light) .pid { color: #94a3b8; }
+  :global(body.light) .tag-admin { background: #eff6ff; color: #2563eb; border-color: #2563eb33; }
+  :global(body.light) .tag-auto  { background: #f0fdf4; color: #16a34a; border-color: #16a34a33; }
+
+  :global(body.light) .siem-card { background: #ffffff; border-color: #e2e8f0; }
+  :global(body.light) .siem-card:hover { border-color: #cbd5e1; }
+  :global(body.light) .siem-name { color: #0f172a; }
+  :global(body.light) .siem-desc { color: #64748b; }
+  :global(body.light) .siem-port { color: #2563eb; }
+  :global(body.light) .siem-progress { background: #e2e8f0; }
+  :global(body.light) .siem-starting-label { color: #64748b; }
+  :global(body.light) .siem-path-btn { background: #ffffff; border-color: #e2e8f0; color: #475569; }
+  :global(body.light) .siem-path-btn:hover:not(:disabled) { border-color: #3b82f6; color: #3b82f6; }
+
+  :global(body.light) .siem-setup-notice { background: #f0fdf4; border-color: #16a34a40; }
+  :global(body.light) .siem-notice-title { color: #16a34a; }
+  :global(body.light) .siem-notice-desc { color: #64748b; }
+
+  :global(body.light) .prereq-card { background: #ffffff; border-color: #e2e8f0; }
+  :global(body.light) .prereq-item { background: #ffffff; border-color: #e2e8f0; }
+  :global(body.light) .prereq-name { color: #0f172a; }
+  :global(body.light) .prereq-detail { color: #64748b; }
+
+  :global(body.light) .launcher-footer { color: #94a3b8; border-top-color: #e2e8f0; }
+  :global(body.light) .footer-path { color: #94a3b8; }
+  :global(body.light) .footer-ver { color: #94a3b8; }
+  :global(body.light) .footer-update-btn { color: #64748b; }
+  :global(body.light) .footer-update-btn:hover { color: #3b82f6; }
+
+  :global(body.light) .update-banner { background: linear-gradient(135deg, #eff6ff, #dbeafe); border-color: #3b82f6; }
+  :global(body.light) .update-title { color: #2563eb; }
+  :global(body.light) .update-sub { color: #64748b; }
+  :global(body.light) .update-progress-bar { background: #e2e8f0; }
+
+  :global(body.light) .card-err-msg { color: #ef4444; background: #fef2f2; }
+
+  :global(body.light) .btn-green-sm { background: #f0fdf4; border-color: #16a34a40; color: #16a34a; }
+  :global(body.light) .btn-green-sm:hover:not(:disabled) { background: #16a34a; color: #fff; border-color: #16a34a; }
+  :global(body.light) .btn-red-sm { background: #fef2f2; border-color: #ef444440; color: #ef4444; }
+  :global(body.light) .btn-red-sm:hover:not(:disabled) { background: #ef4444; color: #fff; border-color: #ef4444; }
 </style>

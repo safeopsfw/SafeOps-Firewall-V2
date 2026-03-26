@@ -150,7 +150,7 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       {/* Data Source Indicator */}
       <div
-        className={`mb-4 flex items-center gap-2 text-sm ${dbMode ? "text-green-400" : "text-blue-400"
+        className={`mb-4 flex items-center gap-2 text-sm ${dbMode ? "text-green-500 dark:text-green-400" : "text-blue-500 dark:text-blue-400"
           }`}
       >
         {dbMode ? (
@@ -169,10 +169,10 @@ export default function Dashboard() {
 
       {/* Welcome Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <h1 className="text-3xl font-bold text-dark-900 dark:text-white mb-2">
           Welcome back, {user?.name?.split(" ")[0] || "Admin"}
         </h1>
-        <p className="text-dark-400">
+        <p className="text-dark-500 dark:text-dark-400">
           Here's what's happening with your security infrastructure
         </p>
       </div>
@@ -182,28 +182,28 @@ export default function Dashboard() {
         {quickStats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-dark-800 border border-dark-700 rounded-xl p-5"
+            className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-5 transition-colors"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-dark-400 text-sm">{stat.label}</span>
+              <span className="text-dark-500 dark:text-dark-400 text-sm">{stat.label}</span>
               {stat.change && (
                 <span
                   className={`text-xs px-2 py-1 rounded-full ${stat.positive
-                    ? "bg-green-500/20 text-green-400"
-                    : "bg-red-500/20 text-red-400"
+                    ? "bg-green-500/20 text-green-500 dark:text-green-400"
+                    : "bg-red-500/20 text-red-500 dark:text-red-400"
                     }`}
                 >
                   {stat.change}
                 </span>
               )}
             </div>
-            <div className="text-2xl font-bold text-white">{stat.value}</div>
+            <div className="text-2xl font-bold text-dark-900 dark:text-white">{stat.value}</div>
           </div>
         ))}
       </div>
 
       {/* Modules Grid */}
-      <h2 className="text-xl font-semibold text-white mb-4">
+      <h2 className="text-xl font-semibold text-dark-900 dark:text-white mb-4">
         Security Modules
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -216,14 +216,14 @@ export default function Dashboard() {
             <Link
               key={module.id}
               to={isActive ? module.path : "#"}
-              className={`group relative bg-dark-800 border border-dark-700 rounded-xl p-6 transition-all duration-300 ${isActive
-                ? "hover:bg-dark-700 hover:border-dark-600 cursor-pointer"
+              className={`group relative bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-all duration-300 ${isActive
+                ? "hover:bg-dark-50 dark:hover:bg-dark-700 hover:border-dark-300 dark:hover:border-dark-300 dark:border-dark-600 cursor-pointer"
                 : "opacity-60 cursor-not-allowed"
                 }`}
             >
               {/* Status Badge */}
               {!isActive && (
-                <div className="absolute top-4 right-4 text-xs bg-dark-600 text-dark-300 px-2 py-1 rounded-full">
+                <div className="absolute top-4 right-4 text-xs bg-dark-200 dark:bg-dark-600 text-dark-500 dark:text-dark-300 px-2 py-1 rounded-full">
                   Coming Soon
                 </div>
               )}
@@ -232,21 +232,21 @@ export default function Dashboard() {
               <div
                 className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${module.color} mb-4`}
               >
-                <Icon className="w-6 h-6 text-white" />
+                <Icon className="w-6 h-6 text-dark-900 dark:text-white" />
               </div>
 
               {/* Content */}
-              <h3 className="text-lg font-semibold text-white mb-2">
+              <h3 className="text-lg font-semibold text-dark-900 dark:text-white mb-2">
                 {module.name}
               </h3>
-              <p className="text-dark-400 text-sm mb-4">{module.description}</p>
+              <p className="text-dark-500 dark:text-dark-400 text-sm mb-4">{module.description}</p>
 
               {/* Stats */}
-              <div className="flex items-center justify-between pt-4 border-t border-dark-700">
-                <span className="text-dark-500 text-sm">
+              <div className="flex items-center justify-between pt-4 border-t border-dark-200 dark:border-dark-700">
+                <span className="text-dark-400 dark:text-dark-500 text-sm">
                   {module.statsLabel}
                 </span>
-                <span className="text-white font-semibold">
+                <span className="text-dark-900 dark:text-white font-semibold">
                   {typeof statValue === "number"
                     ? statValue.toLocaleString()
                     : statValue}
@@ -265,11 +265,11 @@ export default function Dashboard() {
       </div>
 
       {/* System Status */}
-      <div className="mt-8 bg-dark-800 border border-dark-700 rounded-xl p-6">
+      <div className="mt-8 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl p-6 transition-colors">
         <div className="flex items-center gap-3 mb-4">
-          <Activity className="w-5 h-5 text-green-400" />
-          <h3 className="text-lg font-semibold text-white">System Status</h3>
-          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+          <Activity className="w-5 h-5 text-green-500 dark:text-green-400" />
+          <h3 className="text-lg font-semibold text-dark-900 dark:text-white">System Status</h3>
+          <span className="text-xs bg-green-500/20 text-green-500 dark:text-green-400 px-2 py-1 rounded-full">
             All Systems Operational
           </span>
         </div>
@@ -279,21 +279,21 @@ export default function Dashboard() {
               className={`w-2 h-2 rounded-full ${dbMode ? "bg-green-400" : "bg-yellow-400"
                 }`}
             />
-            <span className="text-dark-300 text-sm">
+            <span className="text-dark-600 dark:text-dark-300 text-sm">
               Database {dbMode ? "" : "(Demo)"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full" />
-            <span className="text-dark-300 text-sm">API Server</span>
+            <span className="text-dark-600 dark:text-dark-300 text-sm">API Server</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full" />
-            <span className="text-dark-300 text-sm">Feed Fetcher</span>
+            <span className="text-dark-600 dark:text-dark-300 text-sm">Feed Fetcher</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full" />
-            <span className="text-dark-300 text-sm">Background Worker</span>
+            <span className="text-dark-600 dark:text-dark-300 text-sm">Background Worker</span>
           </div>
         </div>
       </div>

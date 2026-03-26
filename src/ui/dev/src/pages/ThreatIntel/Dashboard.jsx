@@ -176,11 +176,11 @@ export default function ThreatIntelDashboard() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Database className="w-7 h-7 text-primary-400" />
+          <h1 className="text-2xl font-bold text-dark-900 dark:text-white flex items-center gap-3">
+            <Database className="w-7 h-7 text-primary-500 dark:text-primary-400" />
             Threat Intelligence Database
           </h1>
-          <p className="text-dark-400 mt-1">Manage threat data sources and API access</p>
+          <p className="text-dark-500 dark:text-dark-400 mt-1">Manage threat data sources and API access</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -202,7 +202,7 @@ export default function ThreatIntelDashboard() {
             disabled={pipelineStatus.running}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${pipelineStatus.running
               ? 'bg-yellow-500/20 text-yellow-400 cursor-wait'
-              : 'bg-green-500 hover:bg-green-600 text-white'
+              : 'bg-green-500 hover:bg-green-600 text-dark-900 dark:text-white'
               }`}
           >
             {pipelineStatus.running ? (
@@ -220,7 +220,7 @@ export default function ThreatIntelDashboard() {
 
           <button
             onClick={loadData}
-            className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-700 hover:bg-dark-50 dark:hover:bg-dark-600 text-dark-700 dark:text-dark-900 dark:text-white border border-dark-200 dark:border-transparent rounded-lg transition-colors shadow-sm"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -240,8 +240,8 @@ export default function ThreatIntelDashboard() {
               key={key}
               onClick={() => setActiveTab(key)}
               className={`p-4 rounded-xl border transition-all duration-200 text-left ${isActive
-                ? 'bg-gradient-to-br ' + cat.color + ' border-transparent text-white shadow-lg scale-[1.02]'
-                : 'bg-dark-800 border-dark-700 hover:border-dark-500 text-dark-200 hover:text-white'
+                ? 'bg-gradient-to-br ' + cat.color + ' border-transparent text-dark-900 dark:text-white shadow-lg scale-[1.02]'
+                : 'bg-white dark:bg-dark-800 border-dark-200 dark:border-dark-700 hover:border-dark-300 dark:hover:border-dark-500 text-dark-600 dark:text-dark-200 hover:text-dark-900 dark:hover:text-dark-900 dark:text-white shadow-sm'
                 }`}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -251,7 +251,7 @@ export default function ThreatIntelDashboard() {
               <div className="text-2xl font-bold">
                 {stats?.row_count?.toLocaleString() || '0'}
               </div>
-              <div className={`text-sm ${isActive ? 'text-white/70' : 'text-dark-400'}`}>
+              <div className={`text-sm ${isActive ? 'text-dark-900 dark:text-white/70' : 'text-dark-400'}`}>
                 {cat.name}
               </div>
             </button>
@@ -264,10 +264,10 @@ export default function ThreatIntelDashboard() {
         {/* Left: Category Details & Sources */}
         <div className="lg:col-span-2 space-y-6">
           {/* Category Header */}
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-dark-900 dark:text-white flex items-center gap-2">
                   <span className="text-2xl">{DB_CATEGORIES[activeTab].icon}</span>
                   {DB_CATEGORIES[activeTab].name}
                 </h2>
@@ -275,7 +275,7 @@ export default function ThreatIntelDashboard() {
               </div>
               <button
                 onClick={() => setShowAddSource(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add Source
@@ -284,35 +284,34 @@ export default function ThreatIntelDashboard() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-dark-700/50 rounded-lg p-4">
-                <div className="text-dark-400 text-sm mb-1">Total Records</div>
-                <div className="text-2xl font-bold text-white">
+              <div className="bg-dark-50 dark:bg-dark-700/50 rounded-lg p-4">
+                <div className="text-dark-500 dark:text-dark-400 text-sm mb-1">Total Records</div>
+                <div className="text-2xl font-bold text-dark-900 dark:text-white">
                   {categoryStats.row_count?.toLocaleString() || '0'}
                 </div>
               </div>
-              <div className="bg-dark-700/50 rounded-lg p-4">
-                <div className="text-dark-400 text-sm mb-1">Active Sources</div>
-                <div className="text-2xl font-bold text-white">
+              <div className="bg-dark-50 dark:bg-dark-700/50 rounded-lg p-4">
+                <div className="text-dark-500 dark:text-dark-400 text-sm mb-1">Active Sources</div>
+                <div className="text-2xl font-bold text-dark-900 dark:text-white">
                   {categorySources.filter(s => s.status === 'active').length}
                 </div>
               </div>
-              <div className="bg-dark-700/50 rounded-lg p-4">
-                <div className="text-dark-400 text-sm mb-1">Columns</div>
-                <div className="text-2xl font-bold text-white">
+              <div className="bg-dark-50 dark:bg-dark-700/50 rounded-lg p-4">
+                <div className="text-dark-500 dark:text-dark-400 text-sm mb-1">Columns</div>
+                <div className="text-2xl font-bold text-dark-900 dark:text-white">
                   {categoryStats.columns || '—'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Sources Table */}
-          <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-dark-700">
-              <h3 className="text-lg font-semibold text-white">Data Sources</h3>
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 overflow-hidden shadow-sm">
+            <div className="px-6 py-4 border-b border-dark-200 dark:border-dark-700">
+              <h3 className="text-lg font-semibold text-dark-900 dark:text-white">Data Sources</h3>
             </div>
 
             {categorySources.length === 0 ? (
-              <div className="p-8 text-center text-dark-400">
+              <div className="p-8 text-center text-dark-500 dark:text-dark-400">
                 <Database className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>No sources configured for {DB_CATEGORIES[activeTab].name}</p>
                 <button
@@ -325,29 +324,29 @@ export default function ThreatIntelDashboard() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-dark-700/50">
+                  <thead className="bg-dark-50 dark:bg-dark-700/50 border-b border-dark-200 dark:border-dark-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-400 uppercase">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-400 uppercase">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-400 uppercase">Records</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-400 uppercase">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-400 uppercase">Last Fetch</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-dark-400 uppercase">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 dark:text-dark-400 uppercase">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 dark:text-dark-400 uppercase">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 dark:text-dark-400 uppercase">Records</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 dark:text-dark-400 uppercase">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-500 dark:text-dark-400 uppercase">Last Fetch</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-dark-500 dark:text-dark-400 uppercase">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-dark-700">
+                  <tbody className="divide-y divide-dark-200 dark:divide-dark-700">
                     {categorySources.map(source => (
-                      <tr key={source.id} className="hover:bg-dark-700/30">
+                      <tr key={source.id} className="hover:bg-dark-50 dark:hover:bg-dark-700/30">
                         <td className="px-6 py-4">
-                          <div className="font-medium text-white">{source.name}</div>
-                          <div className="text-xs text-dark-400 truncate max-w-xs">{source.url}</div>
+                          <div className="font-medium text-dark-900 dark:text-white">{source.name}</div>
+                          <div className="text-xs text-dark-500 dark:text-dark-400 truncate max-w-xs">{source.url}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-dark-300">
+                          <span className="text-dark-600 dark:text-dark-300">
                             {SOURCE_TYPES.find(t => t.id === source.type)?.name || source.type}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-white">
+                        <td className="px-6 py-4 text-dark-900 dark:text-white">
                           {source.records?.toLocaleString() || '—'}
                         </td>
                         <td className="px-6 py-4">
@@ -372,7 +371,7 @@ export default function ThreatIntelDashboard() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              className="p-1.5 text-dark-400 hover:text-white hover:bg-dark-600 rounded"
+                              className="p-1.5 text-dark-400 hover:text-dark-900 dark:text-white hover:bg-dark-600 rounded"
                               title="Open URL"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -398,15 +397,15 @@ export default function ThreatIntelDashboard() {
         {/* Right: API Keys */}
         <div className="space-y-6">
           {/* API Keys */}
-          <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-dark-700 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-dark-200 dark:border-dark-700 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-dark-900 dark:text-white flex items-center gap-2">
                 <Key className="w-5 h-5 text-primary-400" />
                 API Keys
               </h3>
               <button
                 onClick={() => setShowAddApiKey(true)}
-                className="p-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg"
+                className="p-2 bg-dark-700 hover:bg-dark-600 text-dark-900 dark:text-white rounded-lg"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -423,12 +422,12 @@ export default function ThreatIntelDashboard() {
                   <div
                     key={apiKey.id}
                     className={`p-4 rounded-lg border ${apiKey.isActive
-                      ? 'bg-dark-700/50 border-dark-600'
-                      : 'bg-dark-800 border-dark-700 opacity-50'
+                      ? 'bg-dark-700/50 border-dark-300 dark:border-dark-600'
+                      : 'bg-white dark:bg-dark-800 border-dark-200 dark:border-dark-700 opacity-50'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-white">{apiKey.name}</span>
+                      <span className="font-medium text-dark-900 dark:text-white">{apiKey.name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded ${apiKey.isActive
                         ? 'bg-green-500/10 text-green-400'
                         : 'bg-red-500/10 text-red-400'
@@ -437,12 +436,12 @@ export default function ThreatIntelDashboard() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mb-3">
-                      <code className="flex-1 text-xs bg-dark-900 px-3 py-2 rounded text-dark-300 font-mono truncate">
+                      <code className="flex-1 text-xs bg-dark-50 dark:bg-dark-900 px-3 py-2 rounded text-dark-300 font-mono truncate">
                         {apiKey.key}
                       </code>
                       <button
                         onClick={() => copyToClipboard(apiKey.key)}
-                        className="p-2 text-dark-400 hover:text-white hover:bg-dark-600 rounded"
+                        className="p-2 text-dark-400 hover:text-dark-900 dark:text-white hover:bg-dark-600 rounded"
                       >
                         {copiedKey === apiKey.key ? (
                           <Check className="w-4 h-4 text-green-400" />
@@ -477,8 +476,8 @@ export default function ThreatIntelDashboard() {
           </div>
 
           {/* Custom API Builder */}
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 p-6">
+            <h3 className="text-lg font-semibold text-dark-900 dark:text-white mb-4 flex items-center gap-2">
               <Plus className="w-5 h-5 text-green-400" />
               Create Custom API
             </h3>
@@ -497,7 +496,7 @@ export default function ThreatIntelDashboard() {
                 className="w-full flex items-center justify-between p-3 bg-dark-700/50 hover:bg-dark-600 rounded-lg text-left transition-colors"
               >
                 <div>
-                  <div className="text-white font-medium">List All</div>
+                  <div className="text-dark-900 dark:text-white font-medium">List All</div>
                   <div className="text-xs text-dark-400">GET /api/custom/{activeTab}/list</div>
                 </div>
                 <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">GET</span>
@@ -512,7 +511,7 @@ export default function ThreatIntelDashboard() {
                 className="w-full flex items-center justify-between p-3 bg-dark-700/50 hover:bg-dark-600 rounded-lg text-left transition-colors"
               >
                 <div>
-                  <div className="text-white font-medium">Search</div>
+                  <div className="text-dark-900 dark:text-white font-medium">Search</div>
                   <div className="text-xs text-dark-400">GET /api/custom/{activeTab}/search?q=</div>
                 </div>
                 <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">GET</span>
@@ -527,7 +526,7 @@ export default function ThreatIntelDashboard() {
                 className="w-full flex items-center justify-between p-3 bg-dark-700/50 hover:bg-dark-600 rounded-lg text-left transition-colors"
               >
                 <div>
-                  <div className="text-white font-medium">Bulk Lookup</div>
+                  <div className="text-dark-900 dark:text-white font-medium">Bulk Lookup</div>
                   <div className="text-xs text-dark-400">POST /api/custom/{activeTab}/bulk</div>
                 </div>
                 <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs">POST</span>
@@ -542,14 +541,14 @@ export default function ThreatIntelDashboard() {
                 className="w-full flex items-center justify-between p-3 bg-dark-700/50 hover:bg-dark-600 rounded-lg text-left transition-colors"
               >
                 <div>
-                  <div className="text-white font-medium">Export CSV</div>
+                  <div className="text-dark-900 dark:text-white font-medium">Export CSV</div>
                   <div className="text-xs text-dark-400">GET /api/custom/{activeTab}/export</div>
                 </div>
                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs">CSV</span>
               </button>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-dark-700">
+            <div className="mt-4 pt-4 border-t border-dark-200 dark:border-dark-700">
               <p className="text-dark-500 text-xs">
                 Click any button to create the API endpoint and copy to clipboard
               </p>
@@ -557,12 +556,12 @@ export default function ThreatIntelDashboard() {
           </div>
 
           {/* API Endpoints Info - Expandable */}
-          <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 overflow-hidden">
             <button
               onClick={() => setShowApiList(!showApiList)}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-dark-700/50 transition-colors"
             >
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-dark-900 dark:text-white flex items-center gap-2">
                 <Server className="w-5 h-5 text-primary-400" />
                 All API Endpoints
               </h3>
@@ -644,7 +643,7 @@ export default function ThreatIntelDashboard() {
                   </div>
                 ))}
 
-                <div className="pt-4 border-t border-dark-700">
+                <div className="pt-4 border-t border-dark-200 dark:border-dark-700">
                   <p className="text-dark-400 text-xs">Base URL: <code className="text-primary-400">http://localhost:5050</code></p>
                 </div>
               </div>
@@ -656,8 +655,8 @@ export default function ThreatIntelDashboard() {
       {/* Add Source Modal */}
       {showAddSource && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6 w-full max-w-lg mx-4 animate-fade-in">
-            <h3 className="text-xl font-bold text-white mb-4">Add New Source</h3>
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 p-6 w-full max-w-lg mx-4 animate-fade-in">
+            <h3 className="text-xl font-bold text-dark-900 dark:text-white mb-4">Add New Source</h3>
 
             <div className="space-y-4">
               <div>
@@ -667,7 +666,7 @@ export default function ThreatIntelDashboard() {
                   value={newSource.name}
                   onChange={e => setNewSource({ ...newSource, name: e.target.value })}
                   placeholder="e.g., Abuse.ch URLhaus"
-                  className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-dark-700 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 focus:outline-none focus:border-primary-500"
                 />
               </div>
 
@@ -676,7 +675,7 @@ export default function ThreatIntelDashboard() {
                 <select
                   value={newSource.category}
                   onChange={e => setNewSource({ ...newSource, category: e.target.value })}
-                  className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-dark-700 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:outline-none focus:border-primary-500"
                 >
                   {Object.entries(DB_CATEGORIES).map(([key, cat]) => (
                     <option key={key} value={key}>{cat.icon} {cat.name}</option>
@@ -689,7 +688,7 @@ export default function ThreatIntelDashboard() {
                 <select
                   value={newSource.type}
                   onChange={e => setNewSource({ ...newSource, type: e.target.value })}
-                  className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-dark-700 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:outline-none focus:border-primary-500"
                 >
                   {SOURCE_TYPES.map(type => (
                     <option key={type.id} value={type.id}>{type.icon} {type.name}</option>
@@ -704,7 +703,7 @@ export default function ThreatIntelDashboard() {
                   value={newSource.url}
                   onChange={e => setNewSource({ ...newSource, url: e.target.value })}
                   placeholder="https://example.com/feed.csv"
-                  className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:outline-none focus:border-primary-500"
+                  className="w-full px-4 py-2 bg-dark-700 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 focus:outline-none focus:border-primary-500"
                 />
               </div>
             </div>
@@ -712,13 +711,13 @@ export default function ThreatIntelDashboard() {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowAddSource(false)}
-                className="px-4 py-2 text-dark-300 hover:text-white"
+                className="px-4 py-2 text-dark-300 hover:text-dark-900 dark:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddSource}
-                className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg"
+                className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white rounded-lg"
               >
                 Add Source
               </button>
@@ -730,8 +729,8 @@ export default function ThreatIntelDashboard() {
       {/* Add API Key Modal */}
       {showAddApiKey && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6 w-full max-w-md mx-4 animate-fade-in">
-            <h3 className="text-xl font-bold text-white mb-4">Generate API Key</h3>
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 p-6 w-full max-w-md mx-4 animate-fade-in">
+            <h3 className="text-xl font-bold text-dark-900 dark:text-white mb-4">Generate API Key</h3>
 
             <div>
               <label className="block text-sm text-dark-400 mb-1">Key Name</label>
@@ -740,7 +739,7 @@ export default function ThreatIntelDashboard() {
                 value={newApiKeyName}
                 onChange={e => setNewApiKeyName(e.target.value)}
                 placeholder="e.g., Production App"
-                className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:outline-none focus:border-primary-500"
+                className="w-full px-4 py-2 bg-dark-700 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white placeholder-dark-400 focus:outline-none focus:border-primary-500"
               />
             </div>
 
@@ -756,13 +755,13 @@ export default function ThreatIntelDashboard() {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowAddApiKey(false)}
-                className="px-4 py-2 text-dark-300 hover:text-white"
+                className="px-4 py-2 text-dark-300 hover:text-dark-900 dark:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={handleGenerateApiKey}
-                className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg"
+                className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white rounded-lg"
               >
                 Generate Key
               </button>
@@ -774,9 +773,9 @@ export default function ThreatIntelDashboard() {
       {/* Pipeline Progress Modal */}
       {showUpdateModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-xl border border-dark-700 p-6 w-full max-w-2xl mx-4 animate-fade-in">
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700 p-6 w-full max-w-2xl mx-4 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <h3 className="text-xl font-bold text-dark-900 dark:text-white flex items-center gap-2">
                 {pipelineStatus.running ? (
                   <>
                     <Loader2 className="w-6 h-6 text-yellow-400 animate-spin" />
@@ -797,7 +796,7 @@ export default function ThreatIntelDashboard() {
               {!pipelineStatus.running && (
                 <button
                   onClick={() => setShowUpdateModal(false)}
-                  className="p-1 text-dark-400 hover:text-white"
+                  className="p-1 text-dark-400 hover:text-dark-900 dark:text-white"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -805,7 +804,7 @@ export default function ThreatIntelDashboard() {
             </div>
 
             {/* Log Output */}
-            <div className="bg-dark-900 rounded-lg p-4 h-80 overflow-y-auto font-mono text-sm">
+            <div className="bg-dark-50 dark:bg-dark-900 rounded-lg p-4 h-80 overflow-y-auto font-mono text-sm">
               {pipelineStatus.logs?.map((log, i) => (
                 <div
                   key={i}
@@ -843,7 +842,7 @@ export default function ThreatIntelDashboard() {
               <div className="flex justify-end mt-4">
                 <button
                   onClick={() => setShowUpdateModal(false)}
-                  className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white rounded-lg"
+                  className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-dark-900 dark:text-white rounded-lg"
                 >
                   Close
                 </button>

@@ -316,13 +316,13 @@ export default function FirewallManager() {
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Firewall Manager</h1>
+            <h1 className="text-2xl font-bold text-dark-900 dark:text-white">Firewall Manager</h1>
             <p className="text-dark-400">Real-time packet filtering and rule management</p>
           </div>
         </div>
         <button
           onClick={() => { fetchRules(); fetchStats(); }}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-dark-900 dark:text-white rounded-lg transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           Refresh
@@ -331,17 +331,17 @@ export default function FirewallManager() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-dark-800 rounded-xl p-5 border border-dark-700">
+        <div className="bg-white dark:bg-dark-800 rounded-xl p-5 border border-dark-200 dark:border-dark-700">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-dark-400 text-sm">Total Packets</p>
-              <p className="text-2xl font-bold mt-1 text-white">{stats.total?.toLocaleString() || 0}</p>
+              <p className="text-2xl font-bold mt-1 text-dark-900 dark:text-white">{stats.total?.toLocaleString() || 0}</p>
             </div>
             <Activity className="w-10 h-10 text-primary-400 opacity-50" />
           </div>
         </div>
 
-        <div className="bg-dark-800 rounded-xl p-5 border border-green-900/30">
+        <div className="bg-white dark:bg-dark-800 rounded-xl p-5 border border-green-900/30">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-dark-400 text-sm">Allowed</p>
@@ -351,7 +351,7 @@ export default function FirewallManager() {
           </div>
         </div>
 
-        <div className="bg-dark-800 rounded-xl p-5 border border-red-900/30">
+        <div className="bg-white dark:bg-dark-800 rounded-xl p-5 border border-red-900/30">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-dark-400 text-sm">Blocked</p>
@@ -361,11 +361,11 @@ export default function FirewallManager() {
           </div>
         </div>
 
-        <div className="bg-dark-800 rounded-xl p-5 border border-dark-700">
+        <div className="bg-white dark:bg-dark-800 rounded-xl p-5 border border-dark-200 dark:border-dark-700">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-dark-400 text-sm">Active Rules</p>
-              <p className="text-2xl font-bold mt-1 text-white">{stats.activeRules || 0}</p>
+              <p className="text-2xl font-bold mt-1 text-dark-900 dark:text-white">{stats.activeRules || 0}</p>
             </div>
             <Shield className="w-10 h-10 text-primary-400 opacity-50" />
           </div>
@@ -373,12 +373,12 @@ export default function FirewallManager() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-dark-700">
+      <div className="flex gap-2 mb-6 border-b border-dark-200 dark:border-dark-700">
         <button
           onClick={() => setActiveTab('rules')}
           className={`px-4 py-3 font-medium transition-colors ${activeTab === 'rules'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
             }`}
         >
           <Shield className="w-4 h-4 inline mr-2" />
@@ -388,7 +388,7 @@ export default function FirewallManager() {
           onClick={() => setActiveTab('monitor')}
           className={`px-4 py-3 font-medium transition-colors ${activeTab === 'monitor'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
             }`}
         >
           <Activity className="w-4 h-4 inline mr-2" />
@@ -398,7 +398,7 @@ export default function FirewallManager() {
           onClick={() => setActiveTab('devices')}
           className={`px-4 py-3 font-medium transition-colors ${activeTab === 'devices'
               ? 'text-primary-400 border-b-2 border-primary-400'
-              : 'text-dark-400 hover:text-white'
+              : 'text-dark-400 hover:text-dark-900 dark:text-white'
             }`}
         >
           <Filter className="w-4 h-4 inline mr-2" />
@@ -418,27 +418,27 @@ export default function FirewallManager() {
                   placeholder="Search rules..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 w-64"
+                  className="pl-10 pr-4 py-2 bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-lg text-dark-900 dark:text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500 w-64"
                 />
               </div>
-              <div className="flex gap-1 bg-dark-800 p-1 rounded-lg border border-dark-700">
+              <div className="flex gap-1 bg-white dark:bg-dark-800 p-1 rounded-lg border border-dark-200 dark:border-dark-700">
                 <button
                   onClick={() => setFilterStatus('all')}
-                  className={`px-3 py-1.5 rounded text-sm transition ${filterStatus === 'all' ? 'bg-primary-500 text-white' : 'text-dark-400 hover:text-white'
+                  className={`px-3 py-1.5 rounded text-sm transition ${filterStatus === 'all' ? 'bg-primary-500 text-dark-900 dark:text-white' : 'text-dark-400 hover:text-dark-900 dark:text-white'
                     }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setFilterStatus('enabled')}
-                  className={`px-3 py-1.5 rounded text-sm transition ${filterStatus === 'enabled' ? 'bg-primary-500 text-white' : 'text-dark-400 hover:text-white'
+                  className={`px-3 py-1.5 rounded text-sm transition ${filterStatus === 'enabled' ? 'bg-primary-500 text-dark-900 dark:text-white' : 'text-dark-400 hover:text-dark-900 dark:text-white'
                     }`}
                 >
                   Enabled
                 </button>
                 <button
                   onClick={() => setFilterStatus('disabled')}
-                  className={`px-3 py-1.5 rounded text-sm transition ${filterStatus === 'disabled' ? 'bg-primary-500 text-white' : 'text-dark-400 hover:text-white'
+                  className={`px-3 py-1.5 rounded text-sm transition ${filterStatus === 'disabled' ? 'bg-primary-500 text-dark-900 dark:text-white' : 'text-dark-400 hover:text-dark-900 dark:text-white'
                     }`}
                 >
                   Disabled
@@ -449,14 +449,14 @@ export default function FirewallManager() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowHelperModal(true)}
-                className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors"
               >
                 <Wand2 className="w-4 h-4" />
                 Rule Helper
               </button>
               <button
                 onClick={() => { resetForm(); setEditingRule(null); setShowRuleModal(true); }}
-                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-dark-900 dark:text-white px-4 py-2 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add Rule
@@ -465,7 +465,7 @@ export default function FirewallManager() {
           </div>
 
           {/* Rules Table */}
-          <div className="bg-dark-800 border border-dark-700 rounded-xl overflow-hidden">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead className="bg-dark-700">
                 <tr>
@@ -491,10 +491,10 @@ export default function FirewallManager() {
                   filteredRules.map((rule) => (
                     <tr
                       key={rule.id}
-                      className={`border-t border-dark-700 hover:bg-dark-700/50 ${!rule.enabled ? 'opacity-50' : ''}`}
+                      className={`border-t border-dark-200 dark:border-dark-700 hover:bg-dark-700/50 ${!rule.enabled ? 'opacity-50' : ''}`}
                     >
-                      <td className="px-4 py-3 text-white text-sm">{rule.priority}</td>
-                      <td className="px-4 py-3 text-white font-medium text-sm">{rule.name}</td>
+                      <td className="px-4 py-3 text-dark-900 dark:text-white text-sm">{rule.priority}</td>
+                      <td className="px-4 py-3 text-dark-900 dark:text-white font-medium text-sm">{rule.name}</td>
                       <td className="px-4 py-3">
                         <span className={`flex items-center gap-1 text-sm ${rule.action === 'ALLOW' ? 'text-green-400' :
                             rule.action === 'BLOCK' ? 'text-red-400' :
@@ -552,9 +552,9 @@ export default function FirewallManager() {
 
       {/* Packet Monitor Tab */}
       {activeTab === 'monitor' && (
-        <div className="bg-dark-800 rounded-xl border border-dark-700">
-          <div className="p-4 border-b border-dark-700 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700">
+          <div className="p-4 border-b border-dark-200 dark:border-dark-700 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-dark-900 dark:text-white flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary-400" />
               Live Packet Stream
             </h3>
@@ -611,9 +611,9 @@ export default function FirewallManager() {
 
       {/* Device Policies Tab */}
       {activeTab === 'devices' && (
-        <div className="bg-dark-800 rounded-xl border border-dark-700">
-          <div className="p-4 border-b border-dark-700">
-            <h3 className="text-lg font-semibold text-white">Device-Specific Policies</h3>
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-dark-200 dark:border-dark-700">
+          <div className="p-4 border-b border-dark-200 dark:border-dark-700">
+            <h3 className="text-lg font-semibold text-dark-900 dark:text-white">Device-Specific Policies</h3>
             <p className="text-sm text-dark-400 mt-1">Apply firewall rules based on device trust level</p>
           </div>
           <div className="overflow-auto">
@@ -639,7 +639,7 @@ export default function FirewallManager() {
                     <tr key={device.mac} className="hover:bg-dark-700/50">
                       <td className="px-4 py-3 font-mono text-sm text-dark-300">{device.mac}</td>
                       <td className="px-4 py-3 font-mono text-sm text-dark-300">{device.ip}</td>
-                      <td className="px-4 py-3 text-sm text-white">{device.hostname || 'Unknown'}</td>
+                      <td className="px-4 py-3 text-sm text-dark-900 dark:text-white">{device.hostname || 'Unknown'}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${device.trustStatus === 'TRUSTED' ? 'bg-green-900/50 text-green-300' :
                             device.trustStatus === 'UNTRUSTED' ? 'bg-yellow-900/50 text-yellow-300' :
@@ -649,7 +649,7 @@ export default function FirewallManager() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 rounded text-sm transition text-white">
+                        <button className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 rounded text-sm transition text-dark-900 dark:text-white">
                           Configure Policy
                         </button>
                       </td>
@@ -665,13 +665,13 @@ export default function FirewallManager() {
       {/* Rule Helper Modal */}
       {showHelperModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-dark-700">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-2xl w-full max-w-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-dark-200 dark:border-dark-700">
               <div>
-                <h2 className="text-xl font-bold text-white">Rule Helper</h2>
+                <h2 className="text-xl font-bold text-dark-900 dark:text-white">Rule Helper</h2>
                 <p className="text-dark-400 text-sm">Choose a template to get started</p>
               </div>
-              <button onClick={() => setShowHelperModal(false)} className="p-2 text-dark-400 hover:text-white">
+              <button onClick={() => setShowHelperModal(false)} className="p-2 text-dark-400 hover:text-dark-900 dark:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -680,10 +680,10 @@ export default function FirewallManager() {
                 <button
                   key={preset.id}
                   onClick={() => applyPreset(preset)}
-                  className="text-left p-4 bg-dark-700 hover:bg-dark-600 border border-dark-600 hover:border-primary-500/50 rounded-xl transition-all"
+                  className="text-left p-4 bg-dark-700 hover:bg-dark-600 border border-dark-300 dark:border-dark-600 hover:border-primary-500/50 rounded-xl transition-all"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-white font-medium">{preset.name}</span>
+                    <span className="text-dark-900 dark:text-white font-medium">{preset.name}</span>
                     <ChevronRight className="w-4 h-4 text-dark-400" />
                   </div>
                   <p className="text-dark-400 text-sm">{preset.description}</p>
@@ -697,14 +697,14 @@ export default function FirewallManager() {
       {/* Add/Edit Rule Modal */}
       {showRuleModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-auto">
-            <div className="flex items-center justify-between p-6 border-b border-dark-700">
-              <h2 className="text-xl font-bold text-white">
+          <div className="bg-white dark:bg-dark-800 border border-dark-200 dark:border-dark-700 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between p-6 border-b border-dark-200 dark:border-dark-700">
+              <h2 className="text-xl font-bold text-dark-900 dark:text-white">
                 {editingRule ? 'Edit Rule' : 'Add New Rule'}
               </h2>
               <button
                 onClick={() => { setShowRuleModal(false); setEditingRule(null); resetForm(); }}
-                className="p-2 text-dark-400 hover:text-white"
+                className="p-2 text-dark-400 hover:text-dark-900 dark:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -719,7 +719,7 @@ export default function FirewallManager() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     placeholder="e.g., Block Malicious IPs"
                   />
                 </div>
@@ -730,7 +730,7 @@ export default function FirewallManager() {
                     <select
                       value={formData.action}
                       onChange={(e) => setFormData({ ...formData, action: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       {actionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
@@ -740,7 +740,7 @@ export default function FirewallManager() {
                     <select
                       value={formData.protocol}
                       onChange={(e) => setFormData({ ...formData, protocol: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                     >
                       {protocolOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
@@ -754,7 +754,7 @@ export default function FirewallManager() {
                       type="text"
                       value={formData.srcIp}
                       onChange={(e) => setFormData({ ...formData, srcIp: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       placeholder="* or 192.168.1.0/24"
                     />
                   </div>
@@ -764,7 +764,7 @@ export default function FirewallManager() {
                       type="text"
                       value={formData.srcPort}
                       onChange={(e) => setFormData({ ...formData, srcPort: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       placeholder="* or 1024-65535"
                     />
                   </div>
@@ -777,7 +777,7 @@ export default function FirewallManager() {
                       type="text"
                       value={formData.dstIp}
                       onChange={(e) => setFormData({ ...formData, dstIp: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       placeholder="* or 10.0.0.1"
                     />
                   </div>
@@ -787,7 +787,7 @@ export default function FirewallManager() {
                       type="text"
                       value={formData.dstPort}
                       onChange={(e) => setFormData({ ...formData, dstPort: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       placeholder="* or 80,443"
                     />
                   </div>
@@ -800,7 +800,7 @@ export default function FirewallManager() {
                       type="text"
                       value={formData.deviceMac}
                       onChange={(e) => setFormData({ ...formData, deviceMac: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       placeholder="* or AA:BB:CC:DD:EE:FF"
                     />
                   </div>
@@ -810,7 +810,7 @@ export default function FirewallManager() {
                       type="number"
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 100 })}
-                      className="w-full px-3 py-2 bg-dark-900 border border-dark-600 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
                       min="1"
                       max="1000"
                     />
@@ -823,7 +823,7 @@ export default function FirewallManager() {
                     id="enabled"
                     checked={formData.enabled}
                     onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
-                    className="w-4 h-4 rounded border-dark-600 bg-dark-900 text-primary-500 focus:ring-primary-500"
+                    className="w-4 h-4 rounded border-dark-300 dark:border-dark-600 bg-dark-50 dark:bg-dark-900 text-primary-500 focus:ring-primary-500"
                   />
                   <label htmlFor="enabled" className="text-dark-300 text-sm">Enable rule immediately</label>
                 </div>
@@ -831,7 +831,7 @@ export default function FirewallManager() {
 
               {/* Preview */}
               <div className="space-y-4">
-                <div className="bg-dark-900 border border-dark-600 rounded-lg p-4">
+                <div className="bg-dark-50 dark:bg-dark-900 border border-dark-300 dark:border-dark-600 rounded-lg p-4">
                   <div className="text-dark-400 text-sm mb-2">Generated Command:</div>
                   <pre className="text-green-400 font-mono text-sm whitespace-pre-wrap break-all">
                     {generateIptablesRule()}
@@ -848,37 +848,37 @@ export default function FirewallManager() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-dark-400">Protocol:</span>
-                      <span className="text-white">{formData.protocol}</span>
+                      <span className="text-dark-900 dark:text-white">{formData.protocol}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-dark-400">Source:</span>
-                      <span className="text-white font-mono">{formData.srcIp || '*'}:{formData.srcPort || '*'}</span>
+                      <span className="text-dark-900 dark:text-white font-mono">{formData.srcIp || '*'}:{formData.srcPort || '*'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-dark-400">Destination:</span>
-                      <span className="text-white font-mono">{formData.dstIp || '*'}:{formData.dstPort || '*'}</span>
+                      <span className="text-dark-900 dark:text-white font-mono">{formData.dstIp || '*'}:{formData.dstPort || '*'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-dark-400">Priority:</span>
-                      <span className="text-white">{formData.priority}</span>
+                      <span className="text-dark-900 dark:text-white">{formData.priority}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-dark-700 flex gap-3">
+            <div className="p-6 border-t border-dark-200 dark:border-dark-700 flex gap-3">
               <button
                 onClick={editingRule ? handleUpdateRule : handleAddRule}
                 disabled={!formData.name}
-                className="flex-1 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-dark-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-dark-600 disabled:cursor-not-allowed text-dark-900 dark:text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
                 {editingRule ? 'Update Rule' : 'Create Rule'}
               </button>
               <button
                 onClick={() => { setShowRuleModal(false); setEditingRule(null); resetForm(); }}
-                className="flex-1 py-3 bg-dark-700 hover:bg-dark-600 text-white font-medium rounded-lg transition-colors"
+                className="flex-1 py-3 bg-dark-700 hover:bg-dark-600 text-dark-900 dark:text-white font-medium rounded-lg transition-colors"
               >
                 Cancel
               </button>
