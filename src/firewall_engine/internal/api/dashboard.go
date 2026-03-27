@@ -117,6 +117,12 @@ func (s *Server) handleDashboardStats(c *fiber.Ctx) error {
 			BySeverity: as.BySeverity,
 			ByType:     as.ByType,
 		}
+
+		// The in-memory TotalAlerts counter resets on engine restart.
+		// Count alerts from log files to include alerts from previous sessions.
+		if logCount := s.countAlertLogLines(); logCount > stats.Alerts.Total {
+			stats.Alerts.Total = logCount
+		}
 	}
 
 	// Security stats
@@ -428,4 +434,39 @@ func getString(m map[string]interface{}, key string) string {
 		return fmt.Sprintf("%v", v)
 	}
 	return ""
+}
+
+// countAlertLogLines counts the total number of alert entries across all log files.
+// This provides an accurate total that persists across engine restarts.
+func (s *Server) countAlertLogLines() int64 {
+	alertDir := s.getAlertLogDir()
+	if alertDir == "" {
+		return 0
+	}
+
+	entries, err := os.ReadDir(alertDir)
+	if err != nil {
+		return 0
+	}
+
+	var total int64
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jsonl") {
+			continue
+		}
+		filePath := filepath.Join(alertDir, entry.Name())
+		file, err := os.Open(filePath)
+		if err != nil {
+			continue
+		}
+		scanner := bufio.NewScanner(file)
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		for scanner.Scan() {
+			if strings.TrimSpace(scanner.Text()) != "" {
+				total++
+			}
+		}
+		file.Close()
+	}
+	return total
 }

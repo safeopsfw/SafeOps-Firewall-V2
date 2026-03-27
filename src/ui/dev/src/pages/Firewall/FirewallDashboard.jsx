@@ -701,7 +701,10 @@ function RateLimitTab() {
       const next = JSON.parse(JSON.stringify(prev));
       const keys = path.split('.');
       let obj = next;
-      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!obj[keys[i]] || typeof obj[keys[i]] !== 'object') obj[keys[i]] = {};
+        obj = obj[keys[i]];
+      }
       obj[keys[keys.length - 1]] = val;
       return next;
     });
@@ -765,7 +768,10 @@ function DDoSTab() {
       const next = JSON.parse(JSON.stringify(prev));
       const keys = path.split('.');
       let obj = next;
-      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!obj[keys[i]] || typeof obj[keys[i]] !== 'object') obj[keys[i]] = {};
+        obj = obj[keys[i]];
+      }
       obj[keys[keys.length - 1]] = val;
       return next;
     });
@@ -829,7 +835,10 @@ function BruteForceTab() {
       const next = JSON.parse(JSON.stringify(prev));
       const keys = path.split('.');
       let obj = next;
-      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!obj[keys[i]] || typeof obj[keys[i]] !== 'object') obj[keys[i]] = {};
+        obj = obj[keys[i]];
+      }
       obj[keys[keys.length - 1]] = val;
       return next;
     });
@@ -915,7 +924,10 @@ function PortScanTab() {
       const next = JSON.parse(JSON.stringify(prev));
       const keys = path.split('.');
       let obj = next;
-      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!obj[keys[i]] || typeof obj[keys[i]] !== 'object') obj[keys[i]] = {};
+        obj = obj[keys[i]];
+      }
       obj[keys[keys.length - 1]] = val;
       return next;
     });

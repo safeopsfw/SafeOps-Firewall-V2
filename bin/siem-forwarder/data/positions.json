@@ -1,22 +1,22 @@
 {
   "D:\\SafeOpsFV2\\bin\\logs\\firewall.jsonl": {
-    "offset": 1124873,
-    "inode": 1774499327515761200,
-    "updated_at": 1774499328
+    "offset": 1474142,
+    "inode": 1774634624260481000,
+    "updated_at": 1774634624
   },
   "D:\\SafeOpsFV2\\bin\\logs\\ids_ips.jsonl": {
-    "offset": 4067995,
-    "inode": 1774499305866388800,
-    "updated_at": 1774499306
+    "offset": 4541197,
+    "inode": 1774634625765979300,
+    "updated_at": 1774634626
   },
   "D:\\SafeOpsFV2\\bin\\logs\\netflow\\east_west.jsonl": {
-    "offset": 904807,
-    "inode": 1774499317367237100,
-    "updated_at": 1774499317
+    "offset": 1161730,
+    "inode": 1774634619266662000,
+    "updated_at": 1774634619
   },
   "D:\\SafeOpsFV2\\bin\\logs\\netflow\\north_south.jsonl": {
-    "offset": 6871560,
-    "inode": 1774499327367481600,
-    "updated_at": 1774499329
+    "offset": 7444942,
+    "inode": 1774634619267209300,
+    "updated_at": 1774634620
   }
 }
